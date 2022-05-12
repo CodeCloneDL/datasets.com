@@ -1,0 +1,3802 @@
+<clones>
+<systeminfo processor="nicad6" system="PySyft-0.2.8" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="1328" npairs="129"/>
+<runinfo ncompares="56093" cputime="58485"/>
+<classinfo nclasses="51"/>
+
+<class classid="1" nclones="3" nlines="13" similarity="92">
+<source file="systems/PySyft-0.2.8/syft/frameworks/torch/tensors/interpreters/paillier.py" startline="78" endline="105" pcid="64">
+    def __add__(self, *args, **kwargs):
+        """
+        Here is the version of the add method without the decorator: as you can see
+        it is much more complicated. However you misght need sometimes to specify
+        some particular behaviour: so here what to start from :)
+        """
+
+        if isinstance(args[0], th.Tensor):
+            data = self.child + args[0].numpy()
+            obj = PaillierTensor()
+            obj.child = data
+            return obj
+
+        if isinstance(self.child, th.Tensor):
+            self.child = self.child.numpy()
+
+        # Replace all syft tensor with their child attribute
+        new_self, new_args, new_kwargs = hook_args.unwrap_args_from_method(
+            "__add__", self, args, kwargs
+        )
+
+        # Send it to the appropriates class and get the response
+        response = getattr(new_self, "__add__")(*new_args, **new_kwargs)
+
+        # Put back SyftTensor on the tensors found in the response
+        response = hook_args.hook_response("__add__", response, wrap_type=type(self))
+        return response
+
+</source>
+<source file="systems/PySyft-0.2.8/syft/frameworks/torch/tensors/interpreters/paillier.py" startline="134" endline="161" pcid="66">
+    def __mul__(self, *args, **kwargs):
+        """
+        Here is the version of the add method without the decorator: as you can see
+        it is much more complicated. However you misght need sometimes to specify
+        some particular behaviour: so here what to start from :)
+        """
+
+        if isinstance(args[0], th.Tensor):
+            data = self.child * args[0].numpy()
+            obj = PaillierTensor()
+            obj.child = data
+            return obj
+
+        if isinstance(self.child, th.Tensor):
+            self.child = self.child.numpy()
+
+        # Replace all syft tensor with their child attribute
+        new_self, new_args, new_kwargs = hook_args.unwrap_args_from_method(
+            "__mul__", self, args, kwargs
+        )
+
+        # Send it to the appropriate class and get the response
+        response = getattr(new_self, "__mul__")(*new_args, **new_kwargs)
+
+        # Put back SyftTensor on the tensors found in the response
+        response = hook_args.hook_response("__mul__", response, wrap_type=type(self))
+        return response
+
+</source>
+<source file="systems/PySyft-0.2.8/syft/frameworks/torch/tensors/interpreters/paillier.py" startline="106" endline="133" pcid="65">
+    def __sub__(self, *args, **kwargs):
+        """
+        Here is the version of the add method without the decorator: as you can see
+        it is much more complicated. However you misght need sometimes to specify
+        some particular behaviour: so here what to start from :)
+        """
+
+        if isinstance(args[0], th.Tensor):
+            data = self.child - args[0].numpy()
+            obj = PaillierTensor()
+            obj.child = data
+            return obj
+
+        if isinstance(self.child, th.Tensor):
+            self.child = self.child.numpy()
+
+        # Replace all syft tensor with their child attribute
+        new_self, new_args, new_kwargs = hook_args.unwrap_args_from_method(
+            "__sub__", self, args, kwargs
+        )
+
+        # Send it to the appropriate class and get the response
+        response = getattr(new_self, "__sub__")(*new_args, **new_kwargs)
+
+        # Put back SyftTensor on the tensors found in the response
+        response = hook_args.hook_response("__sub__", response, wrap_type=type(self))
+        return response
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="11" similarity="90">
+<source file="systems/PySyft-0.2.8/syft/frameworks/torch/he/fv/util/operations.py" startline="260" endline="286" pcid="179">
+def multiply_add_plain_with_delta(ct, pt, context):
+    """Add message into phase.
+
+    Args:
+        ct (Ciphertext): ct is pre-computed carrier polynomial where we can add pt data.
+        pt (Plaintext): A plaintext representation of integer data to be encrypted.
+        context (Context): Context for extracting encryption parameters.
+
+    Returns:
+        A Ciphertext object with the encrypted result of encryption process.
+    """
+    coeff_modulus = context.param.coeff_modulus
+    pt = pt.data
+    plain_coeff_count = len(pt)
+    delta = context.coeff_div_plain_modulus
+    ct0, ct1 = ct.data  # here ct = pk * u * e
+
+    # Coefficients of plain m multiplied by coeff_modulus q, divided by plain_modulus t,
+    # and rounded to the nearest integer (rounded up in case of a tie). Equivalent to
+    for i in range(plain_coeff_count):
+        for j in range(len(coeff_modulus)):
+            temp = round(delta[j] * pt[i]) % coeff_modulus[j]
+            ct0[j][i] = (ct0[j][i] + temp) % coeff_modulus[j]
+
+    return CipherText([ct0, ct1])  # ct0 = pk0 * u * e + delta * pt
+
+
+</source>
+<source file="systems/PySyft-0.2.8/syft/frameworks/torch/he/fv/util/operations.py" startline="287" endline="311" pcid="180">
+def multiply_sub_plain_with_delta(ct, pt, context):
+    """Subtract plaintext from ciphertext.
+
+    Args:
+        ct (Ciphertext): ct is pre-computed carrier polynomial where we can add message data.
+        pt (Plaintext): A plaintext representation of integer data to be encrypted.
+        context (Context): Context for extracting encryption parameters.
+
+    Returns:
+        A Ciphertext object with the encrypted result of encryption process.
+    """
+    coeff_modulus = context.param.coeff_modulus
+    pt = pt.data
+    plain_coeff_count = len(pt)
+    delta = context.coeff_div_plain_modulus
+    ct0, ct1 = ct.data  # here ct = pk * u * e
+
+    # Coefficients of plain m multiplied by coeff_modulus q, divided by plain_modulus t,
+    # and rounded to the nearest integer (rounded up in case of a tie). Equivalent to
+    for i in range(plain_coeff_count):
+        for j in range(len(coeff_modulus)):
+            temp = round(delta[j] * pt[i]) % coeff_modulus[j]
+            ct0[j][i] = (ct0[j][i] - temp) % coeff_modulus[j]
+
+    return CipherText([ct0, ct1])  # ct0 = pk0 * u * e - delta * pt
+</source>
+</class>
+
+<class classid="3" nclones="3" nlines="12" similarity="75">
+<source file="systems/PySyft-0.2.8/syft/frameworks/torch/he/fv/evaluator.py" startline="48" endline="77" pcid="188">
+    def add(self, op1, op2):
+        """Add two operands using FV scheme.
+
+        Args:
+            op1 (Ciphertext/Plaintext): First polynomial argument (Augend).
+            op2 (Ciphertext/Plaintext): Second polynomial argument (Addend).
+
+        Returns:
+            If both arguments are Plaintext elements then the result will be a Plaintext object
+                otherwise a Ciphertext object with value equivalent to the result of addition
+                operation of two provided arguments.
+        """
+
+        param_type = _typecheck(op1, op2)
+
+        if param_type == ParamTypes.CTCT:
+            return self._add_cipher_cipher(op1, op2)
+
+        elif param_type == ParamTypes.PTPT:
+            return self._add_plain_plain(op1, op2)
+
+        elif param_type == ParamTypes.CTPT:
+            return self._add_cipher_plain(op1, op2)
+
+        elif param_type == ParamTypes.PTCT:
+            return self._add_cipher_plain(op2, op1)
+
+        else:
+            raise TypeError(f"Addition Operation not supported between {type(op1)} and {type(op2)}")
+
+</source>
+<source file="systems/PySyft-0.2.8/syft/frameworks/torch/he/fv/evaluator.py" startline="123" endline="152" pcid="191">
+    def mul(self, op1, op2):
+        """Multiply two operands using FV scheme.
+
+        Args:
+            op1 (Ciphertext/Plaintext): First polynomial argument (Multiplicand).
+            op2 (Ciphertext/Plaintext): Second polynomial argument (Multiplier).
+
+        Returns:
+            A Ciphertext object with a value equivalent to the result of the product of two
+                operands.
+        """
+        param_type = _typecheck(op1, op2)
+
+        if param_type == ParamTypes.CTCT:
+            return self._mul_cipher_cipher(op1, op2)
+
+        elif param_type == ParamTypes.PTPT:
+            return self._mul_plain_plain(op1, op2)
+
+        elif param_type == ParamTypes.CTPT:
+            return self._mul_cipher_plain(op1, op2)
+
+        elif param_type == ParamTypes.PTCT:
+            return self._mul_cipher_plain(op2, op1)
+
+        else:
+            raise TypeError(
+                f"Multiplication Operation not supported between {type(op1)} and {type(op2)}"
+            )
+
+</source>
+<source file="systems/PySyft-0.2.8/syft/frameworks/torch/he/fv/evaluator.py" startline="78" endline="104" pcid="189">
+    def sub(self, op1, op2):
+        """Subtracts two operands using FV scheme.
+
+        Args:
+            op1 (Ciphertext/Plaintext): First polynomial argument (Minuend).
+            op2 (Ciphertext/Plaintext): Second polynomial argument (Subtrahend).
+
+        Returns:
+            A ciphertext object with the value equivalent to the result of the subtraction
+                of two operands.
+        """
+        param_type = _typecheck(op1, op2)
+
+        if param_type == ParamTypes.CTCT:
+            return self._sub_cipher_cipher(op1, op2)
+
+        elif param_type == ParamTypes.CTPT:
+            return self._sub_cipher_plain(op1, op2)
+
+        elif param_type == ParamTypes.PTCT:
+            return self._sub_cipher_plain(op2, op1)
+
+        else:
+            raise TypeError(
+                f"Subtraction Operation not supported between {type(op1)} and {type(op2)}"
+            )
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="11" similarity="70">
+<source file="systems/PySyft-0.2.8/syft/serde/msgpack/torch_serde.py" startline="31" endline="54" pcid="235">
+def _serialize_tensor(worker: AbstractWorker, tensor) -> bin:
+    """Serialize the tensor using as default Torch serialization strategy
+    This function can be overridden to provide different tensor serialization strategies
+
+    Args
+        (torch.Tensor): an input tensor to be serialized
+
+    Returns
+        A serialized version of the input tensor
+
+    """
+    serializers = {
+        TENSOR_SERIALIZATION.TORCH: torch_tensor_serializer,
+        TENSOR_SERIALIZATION.NUMPY: numpy_tensor_serializer,
+        TENSOR_SERIALIZATION.ALL: simplified_tensor_serializer,
+    }
+    if worker.serializer not in serializers:
+        raise NotImplementedError(
+            f"Tensor serialization strategy is not supported: {worker.serializer}"
+        )
+    serializer = serializers[worker.serializer]
+    return serializer(worker, tensor)
+
+
+</source>
+<source file="systems/PySyft-0.2.8/syft/serde/msgpack/torch_serde.py" startline="55" endline="79" pcid="236">
+def _deserialize_tensor(worker: AbstractWorker, serializer: str, tensor_bin) -> torch.Tensor:
+    """Deserialize the input tensor passed as parameter into a Torch tensor.
+    `serializer` parameter selects different deserialization strategies
+
+    Args
+        worker: Worker
+        serializer: Strategy used for tensor deserialization (e.g.: torch, numpy, all)
+        tensor_bin: A simplified representation of a tensor
+
+    Returns
+        a Torch tensor
+    """
+    deserializers = {
+        TENSOR_SERIALIZATION.TORCH: torch_tensor_deserializer,
+        TENSOR_SERIALIZATION.NUMPY: numpy_tensor_serializer,
+        TENSOR_SERIALIZATION.ALL: simplified_tensor_deserializer,
+    }
+    if serializer not in deserializers:
+        raise NotImplementedError(
+            f"Cannot deserialize tensor serialized with '{serializer}' strategy"
+        )
+    deserializer = deserializers[serializer]
+    return deserializer(worker, tensor_bin)
+
+
+</source>
+</class>
+
+<class classid="5" nclones="3" nlines="22" similarity="95">
+<source file="systems/PySyft-0.2.8/syft/grid/utils/autoscale/utils/notebook/terraform_notebook.py" startline="7" endline="36" pcid="269">
+def init():
+    """
+    args:
+    """
+    proc = subprocess.Popen(
+        "/bin/sh", stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.STDOUT,
+    )
+
+    def outloop():
+        running = True
+        while running:
+            line = proc.stdout.readline().decode(sys.stdout.encoding)
+            print(line, end="")
+            running = "\n" in line
+        print("Exited")
+
+    threading.Thread(target=outloop).start()
+
+    commands = [b"terraform init\n", b"exit\n"]
+    i = 0
+    while proc.poll() is None and i < len(commands):
+        inp = commands[i]
+        if inp == "INPUT":
+            inp = bytearray(input("") + "\n", sys.stdin.encoding)  # nosec
+        if proc.poll() is None:
+            proc.stdin.write(inp)
+            proc.stdin.flush()
+        i += 1
+
+
+</source>
+<source file="systems/PySyft-0.2.8/syft/grid/utils/autoscale/utils/notebook/terraform_notebook.py" startline="67" endline="94" pcid="273">
+def destroy():
+    """
+    args:
+    """
+    proc = subprocess.Popen(
+        "/bin/sh", stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.STDOUT,
+    )
+
+    def outloop():
+        running = True
+        while running:
+            line = proc.stdout.readline().decode(sys.stdout.encoding)
+            print(line, end="")
+            running = "\n" in line
+        print("Exited")
+
+    threading.Thread(target=outloop).start()
+
+    commands = [b"terraform destroy\n", "INPUT", b"exit\n"]
+    i = 0
+    while proc.poll() is None and i < len(commands):
+        inp = commands[i]
+        if inp == "INPUT":
+            inp = bytearray(input("") + "\n", sys.stdin.encoding)  # nosec
+        if proc.poll() is None:
+            proc.stdin.write(inp)
+            proc.stdin.flush()
+        i += 1
+</source>
+<source file="systems/PySyft-0.2.8/syft/grid/utils/autoscale/utils/notebook/terraform_notebook.py" startline="37" endline="66" pcid="271">
+def apply():
+    """
+    args:
+    """
+    proc = subprocess.Popen(
+        "/bin/sh", stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.STDOUT,
+    )
+
+    def outloop():
+        running = True
+        while running:
+            line = proc.stdout.readline().decode(sys.stdout.encoding)
+            print(line, end="")
+            running = "\n" in line
+        print("Exited")
+
+    threading.Thread(target=outloop).start()
+
+    commands = [b"terraform apply\n", "INPUT", b"exit\n"]
+    i = 0
+    while proc.poll() is None and i < len(commands):
+        inp = commands[i]
+        if inp == "INPUT":
+            inp = bytearray(input("") + "\n", sys.stdin.encoding)  # nosec
+        if proc.poll() is None:
+            proc.stdin.write(inp)
+            proc.stdin.flush()
+        i += 1
+
+
+</source>
+</class>
+
+<class classid="6" nclones="4" nlines="22" similarity="72">
+<source file="systems/PySyft-0.2.8/syft/generic/pointers/pointer_tensor.py" startline="52" endline="101" pcid="415">
+    def __init__(
+        self,
+        location: "AbstractWorker" = None,
+        id_at_location: Union[str, int] = None,
+        owner: "AbstractWorker" = None,
+        id: Union[str, int] = None,
+        garbage_collect_data: bool = True,
+        shape: FrameworkShapeType = None,
+        point_to_attr: str = None,
+        tags: List[str] = None,
+        description: str = None,
+    ):
+        """Initializes a PointerTensor.
+
+        Args:
+            location: An optional AbstractWorker object which points to the worker
+                on which this pointer's object can be found.
+            id_at_location: An optional string or integer id of the object
+                being pointed to.
+            owner: An optional AbstractWorker object to specify the worker on which
+                the pointer is located. It is also where the pointer is
+                registered if register is set to True. Note that this is
+                different from the location parameter that specifies where the
+                pointer points to.
+            id: An optional string or integer id of the PointerTensor.
+            garbage_collect_data: If true (default), delete the remote object when the
+                pointer is deleted.
+            shape: size of the tensor the pointer points to
+            point_to_attr: string which can tell a pointer to not point directly to\
+                an object, but to point to an attribute of that object such as .child or
+                .grad. Note the string can be a chain (i.e., .child.child.child or
+                .grad.child.child). Defaults to None, which means don't point to any attr,
+                just point to then object corresponding to the id_at_location.
+            tags: an optional set of strings corresponding to this tensor
+                which this tensor should be searchable for.
+            description: an optional string describing the purpose of the tensor.
+        """
+
+        super().__init__(
+            location=location,
+            id_at_location=id_at_location,
+            owner=owner,
+            id=id,
+            garbage_collect_data=garbage_collect_data,
+            point_to_attr=point_to_attr,
+            tags=tags,
+            description=description,
+        )
+        self._shape = shape
+
+</source>
+<source file="systems/PySyft-0.2.8/syft/generic/pointers/pointer_dataset.py" startline="11" endline="33" pcid="479">
+    def __init__(
+        self,
+        location: "AbstractWorker" = None,
+        id_at_location: Union[str, int] = None,
+        owner: "AbstractWorker" = None,
+        garbage_collect_data: bool = True,
+        id: Union[str, int] = None,
+        tags: List[str] = None,
+        description: str = None,
+    ):
+        if owner is None:
+            owner = sy.framework.hook.local_worker
+        self.federated = False  # flag whether it in a federated_dataset object
+        super().__init__(
+            location=location,
+            id_at_location=id_at_location,
+            owner=owner,
+            garbage_collect_data=garbage_collect_data,
+            id=id,
+            tags=tags,
+            description=description,
+        )
+
+</source>
+<source file="systems/PySyft-0.2.8/syft/generic/pointers/callable_pointer.py" startline="20" endline="62" pcid="462">
+    def __init__(
+        self,
+        location: "BaseWorker" = None,
+        id_at_location: Union[str, int] = None,
+        owner: "BaseWorker" = None,
+        id: Union[str, int] = None,
+        garbage_collect_data: bool = True,
+        point_to_attr: str = None,
+        tags: List[str] = None,
+        description: str = None,
+    ):
+        """
+
+        Args:
+            location: An optional BaseWorker object which points to the worker
+                on which this pointer's object can be found.
+            id_at_location: An optional string or integer id of the object
+                being pointed to.
+            owner: An optional BaseWorker object to specify the worker on which
+                the pointer is located. It is also where the pointer is
+                registered if register is set to True. Note that this is
+                different from the location parameter that specifies where the
+                pointer points to.
+            id: An optional string or integer id of the PointerTensor.
+            garbage_collect_data: If true (default), delete the remote object when the
+                pointer is deleted.
+            point_to_attr: string which can tell a pointer to not point directly to\
+                an object, but to point to an attribute of that object such as .child or
+                .grad. Note the string can be a chain (i.e., .child.child.child or
+                .grad.child.child). Defaults to None, which means don't point to any attr,
+                just point to then object corresponding to the id_at_location.
+        """
+        super().__init__(
+            location=location,
+            id_at_location=id_at_location,
+            owner=owner,
+            id=id,
+            garbage_collect_data=garbage_collect_data,
+            point_to_attr=point_to_attr,
+            tags=tags,
+            description=description,
+        )
+
+</source>
+<source file="systems/PySyft-0.2.8/syft/generic/pointers/string_pointer.py" startline="20" endline="39" pcid="461">
+    def __init__(
+        self,
+        location: BaseWorker = None,
+        id_at_location: Union[str, int] = None,
+        owner: BaseWorker = None,
+        id: Union[str, int] = None,
+        garbage_collect_data: bool = True,
+        tags: List[str] = None,
+        description: str = None,
+    ):
+
+        super(StringPointer, self).__init__(
+            location=location,
+            id_at_location=id_at_location,
+            owner=owner,
+            id=id,
+            garbage_collect_data=garbage_collect_data,
+            tags=tags,
+            description=description,
+        )
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="27" similarity="75">
+<source file="systems/PySyft-0.2.8/syft/generic/pointers/pointer_tensor.py" startline="181" endline="250" pcid="426">
+    def create_pointer(
+        tensor,
+        location: Union[AbstractWorker, str] = None,
+        id_at_location: (str or int) = None,
+        owner: Union[AbstractWorker, str] = None,
+        ptr_id: (str or int) = None,
+        garbage_collect_data=None,
+        shape=None,
+    ) -> "PointerTensor":
+        """Creates a pointer to the "self" FrameworkTensor object.
+
+        This method is called on a FrameworkTensor object, returning a pointer
+        to that object. This method is the CORRECT way to create a pointer,
+        and the parameters of this method give all possible attributes that
+        a pointer can be created with.
+
+        Args:
+            location: The AbstractWorker object which points to the worker on which
+                this pointer's object can be found. In nearly all cases, this
+                is self.owner and so this attribute can usually be left blank.
+                Very rarely you may know that you are about to move the Tensor
+                to another worker so you can pre-initialize the location
+                attribute of the pointer to some other worker, but this is a
+                rare exception.
+            id_at_location: A string or integer id of the tensor being pointed
+                to. Similar to location, this parameter is almost always
+                self.id and so you can leave this parameter to None. The only
+                exception is if you happen to know that the ID is going to be
+                something different than self.id, but again this is very rare
+                and most of the time, setting this means that you are probably
+                doing something you shouldn't.
+            owner: A AbstractWorker parameter to specify the worker on which the
+                pointer is located. It is also where the pointer is registered
+                if register is set to True.
+            ptr_id: A string or integer parameter to specify the id of the pointer
+                in case you wish to set it manually for any special reason.
+                Otherwise, it will be set randomly.
+            garbage_collect_data: If true (default), delete the remote tensor when the
+                pointer is deleted.
+
+        Returns:
+            A FrameworkTensor[PointerTensor] pointer to self. Note that this
+            object itself will likely be wrapped by a FrameworkTensor wrapper.
+        """
+        if owner is None:
+            owner = tensor.owner
+
+        if location is None:
+            location = tensor.owner
+
+        owner = tensor.owner.get_worker(owner)
+        location = tensor.owner.get_worker(location)
+
+        # previous_pointer = owner.get_pointer_to(location, id_at_location)
+        previous_pointer = None
+
+        if previous_pointer is None:
+            ptr = PointerTensor(
+                location=location,
+                id_at_location=id_at_location,
+                owner=owner,
+                id=ptr_id,
+                garbage_collect_data=True if garbage_collect_data is None else garbage_collect_data,
+                shape=shape,
+                tags=tensor.tags,
+                description=tensor.description,
+            )
+
+        return ptr
+
+</source>
+<source file="systems/PySyft-0.2.8/syft/generic/pointers/object_pointer.py" startline="83" endline="162" pcid="466">
+    def create_pointer(
+        obj,
+        location: "AbstractWorker" = None,
+        id_at_location: (str or int) = None,
+        register: bool = False,
+        owner: "AbstractWorker" = None,
+        ptr_id: (str or int) = None,
+        garbage_collect_data=None,
+    ) -> "ObjectPointer":
+        """Creates a pointer to the "self" FrameworkTensor object.
+
+        This method is called on a FrameworkTensor object, returning a pointer
+        to that object. This method is the CORRECT way to create a pointer,
+        and the parameters of this method give all possible attributes that
+        a pointer can be created with.
+
+        Args:
+            location: The AbstractWorker object which points to the worker on which
+                this pointer's object can be found. In nearly all cases, this
+                is self.owner and so this attribute can usually be left blank.
+                Very rarely you may know that you are about to move the Tensor
+                to another worker so you can pre-initialize the location
+                attribute of the pointer to some other worker, but this is a
+                rare exception.
+            id_at_location: A string or integer id of the tensor being pointed
+                to. Similar to location, this parameter is almost always
+                self.id and so you can leave this parameter to None. The only
+                exception is if you happen to know that the ID is going to be
+                something different than self.id, but again this is very rare
+                and most of the time, setting this means that you are probably
+                doing something you shouldn't.
+            register: A boolean parameter (default False) that determines
+                whether to register the new pointer that gets created. This is
+                set to false by default because most of the time a pointer is
+                initialized in this way so that it can be sent to someone else
+                (i.e., "Oh you need to point to my tensor? let me create a
+                pointer and send it to you" ). Thus, when a pointer gets
+                created, we want to skip being registered on the local worker
+                because the pointer is about to be sent elsewhere. However, if
+                you are initializing a pointer you intend to keep, then it is
+                probably a good idea to register it, especially if there is any
+                chance that someone else will initialize a pointer to your
+                pointer.
+            owner: A AbstractWorker parameter to specify the worker on which the
+                pointer is located. It is also where the pointer is registered
+                if register is set to True.
+            ptr_id: A string or integer parameter to specify the id of the pointer
+                in case you wish to set it manually for any special reason.
+                Otherwise, it will be set randomly.
+            garbage_collect_data: If true (default), delete the remote tensor when the
+                pointer is deleted.
+            local_autograd: Use autograd system on the local machine instead of PyTorch's
+                autograd on the workers.
+            preinitialize_grad: Initialize gradient for AutogradTensors to a tensor.
+
+        Returns:
+            A FrameworkTensor[ObjectPointer] pointer to self. Note that this
+            object itself will likely be wrapped by a FrameworkTensor wrapper.
+        """
+        if owner is None:
+            owner = obj.owner
+
+        if location is None:
+            location = obj.owner.id
+
+        owner = obj.owner.get_worker(owner)
+        location = obj.owner.get_worker(location)
+
+        ptr = ObjectPointer(
+            location=location,
+            id_at_location=id_at_location,
+            owner=owner,
+            id=ptr_id,
+            garbage_collect_data=True if garbage_collect_data is None else garbage_collect_data,
+            tags=obj.tags,
+            description=obj.description,
+        )
+
+        return ptr
+
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="10" similarity="80">
+<source file="systems/PySyft-0.2.8/syft/generic/pointers/pointer_tensor.py" startline="336" endline="346" pcid="431">
+    def attr(self, attr_name):
+        attr_ptr = PointerTensor(
+            id=self.id,
+            owner=self.owner,
+            location=self.location,
+            id_at_location=self.id_at_location,
+            point_to_attr=self._create_attr_name_string(attr_name),
+        ).wrap(register=False)
+        self.__setattr__(attr_name, attr_ptr)
+        return attr_ptr
+
+</source>
+<source file="systems/PySyft-0.2.8/syft/generic/pointers/object_pointer.py" startline="354" endline="364" pcid="475">
+    def attr(self, attr_name):
+        attr_ptr = syft.ObjectPointer(
+            id=self.id,
+            owner=self.owner,
+            location=self.location,
+            id_at_location=self.id_at_location,
+            point_to_attr=self._create_attr_name_string(attr_name),
+        )  # .wrap()
+        self.__setattr__(attr_name, attr_ptr)
+        return attr_ptr
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="11" similarity="75">
+<source file="systems/PySyft-0.2.8/syft/generic/pointers/pointer_tensor.py" startline="536" endline="549" pcid="443">
+    def bufferize(worker: AbstractWorker, ptr: "PointerTensor") -> PointerTensorPB:
+        protobuf_pointer = PointerTensorPB()
+
+        syft.serde.protobuf.proto.set_protobuf_id(protobuf_pointer.object_id, ptr.id)
+        syft.serde.protobuf.proto.set_protobuf_id(protobuf_pointer.location_id, ptr.location.id)
+        syft.serde.protobuf.proto.set_protobuf_id(
+            protobuf_pointer.object_id_at_location, ptr.id_at_location
+        )
+
+        if ptr.point_to_attr:
+            protobuf_pointer.point_to_attr = ptr.point_to_attr
+        protobuf_pointer.garbage_collect_data = ptr.garbage_collect_data
+        return protobuf_pointer
+
+</source>
+<source file="systems/PySyft-0.2.8/syft/generic/pointers/pointer_dataset.py" startline="148" endline="171" pcid="489">
+    def bufferize(worker, pointer_obj):
+        """
+        This method serializes a PointerDataset into a PointerDatasetPB.
+
+        Args:
+            pointer_obj (PointerDataset): input PointerDataset to be serialized.
+
+        Returns:
+            protobuf_script (PointerDatasetPB): serialized PointerDataset.
+        """
+        proto_pointer = PointerDatasetPB()
+        sy.serde.protobuf.proto.set_protobuf_id(proto_pointer.object_id, pointer_obj.id)
+        sy.serde.protobuf.proto.set_protobuf_id(proto_pointer.location_id, pointer_obj.location.id)
+        sy.serde.protobuf.proto.set_protobuf_id(
+            proto_pointer.object_id_at_location, pointer_obj.id_at_location
+        )
+        for tag in pointer_obj.tags:
+            proto_pointer.tags.append(tag)
+
+        if pointer_obj.description:
+            proto_pointer.description = pointer_obj.description
+        proto_pointer.garbage_collect_data = pointer_obj.garbage_collect_data
+        return proto_pointer
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="29" similarity="70">
+<source file="systems/PySyft-0.2.8/syft/generic/pointers/pointer_tensor.py" startline="551" endline="600" pcid="444">
+    def unbufferize(worker: AbstractWorker, protobuf_tensor: PointerTensorPB) -> "PointerTensor":
+        # Extract the field values
+
+        obj_id = syft.serde.protobuf.proto.get_protobuf_id(protobuf_tensor.object_id)
+        obj_id_at_location = syft.serde.protobuf.proto.get_protobuf_id(
+            protobuf_tensor.object_id_at_location
+        )
+        worker_id = syft.serde.protobuf.proto.get_protobuf_id(protobuf_tensor.location_id)
+        point_to_attr = protobuf_tensor.point_to_attr
+        shape = syft.hook.create_shape(protobuf_tensor.shape.dims)
+        garbage_collect_data = protobuf_tensor.garbage_collect_data
+
+        # If the pointer received is pointing at the current worker, we load the tensor instead
+        if worker_id == worker.id:
+            tensor = worker.get_obj(obj_id_at_location)
+
+            if point_to_attr is not None and tensor is not None:
+
+                point_to_attrs = point_to_attr.split(".")
+                for attr in point_to_attrs:
+                    if len(attr) > 0:
+                        tensor = getattr(tensor, attr)
+
+                if tensor is not None:
+
+                    if not tensor.is_wrapper and not isinstance(tensor, FrameworkTensor):
+                        # if the tensor is a wrapper then it doesn't need to be wrapped
+                        # if the tensor isn't a wrapper, BUT it's just a plain torch tensor,
+                        # then it doesn't need to be wrapped.
+                        # if the tensor is not a wrapper BUT it's also not a torch tensor,
+                        # then it needs to be wrapped or else it won't be able to be used
+                        # by other interfaces
+                        tensor = tensor.wrap()
+
+            return tensor
+        # Else we keep the same Pointer
+        else:
+            location = syft.hook.local_worker.get_worker(worker_id)
+
+            ptr = PointerTensor(
+                location=location,
+                id_at_location=obj_id_at_location,
+                owner=worker,
+                id=obj_id,
+                shape=shape,
+                garbage_collect_data=garbage_collect_data,
+            )
+
+            return ptr
+
+</source>
+<source file="systems/PySyft-0.2.8/syft/generic/pointers/object_pointer.py" startline="395" endline="455" pcid="478">
+    def detail(worker: "AbstractWorker", object_tuple: tuple) -> "ObjectPointer":
+        """
+        This function reconstructs an ObjectPointer given it's attributes in form of a dictionary.
+        We use the spread operator to pass the dict data as arguments
+        to the init method of ObjectPointer
+        Args:
+            worker: the worker doing the deserialization
+            tensor_tuple: a tuple holding the attributes of the ObjectPointer
+        Returns:
+            ObjectPointer: an ObjectPointer
+        Examples:
+            ptr = detail(data)
+        """
+        # TODO: fix comment for this and simplifier
+        obj_id, id_at_location, worker_id, point_to_attr, garbage_collect_data = object_tuple
+
+        obj_id = syft.serde.msgpack.serde._detail(worker, obj_id)
+        id_at_location = syft.serde.msgpack.serde._detail(worker, id_at_location)
+        worker_id = syft.serde.msgpack.serde._detail(worker, worker_id)
+        point_to_attr = syft.serde.msgpack.serde._detail(worker, point_to_attr)
+
+        # If the pointer received is pointing at the current worker, we load the tensor instead
+        if worker_id == worker.id:
+            obj = worker.get_obj(id_at_location)
+
+            if point_to_attr is not None and obj is not None:
+
+                point_to_attrs = point_to_attr.split(".")
+                for attr in point_to_attrs:
+                    if len(attr) > 0:
+                        obj = getattr(obj, attr)
+
+                if obj is not None:
+
+                    if not obj.is_wrapper and not isinstance(obj, FrameworkTensor):
+                        # if the object is a wrapper then it doesn't need to be wrapped
+                        # i the object isn't a wrapper, BUT it's just a plain torch tensor,
+                        # then it doesn't need to be wrapped.
+                        # if the object is not a wrapper BUT it's also not a framework object,
+                        # then it needs to be wrapped or else it won't be able to be used
+                        # by other interfaces
+                        obj = obj.wrap()
+
+            return obj
+        # Else we keep the same Pointer
+        else:
+
+            location = syft.hook.local_worker.get_worker(worker_id)
+
+            ptr = ObjectPointer(
+                location=location,
+                id_at_location=id_at_location,
+                owner=worker,
+                id=obj_id,
+                garbage_collect_data=garbage_collect_data,
+            )
+
+            return ptr
+
+
+### Register the object with hook_args.py ###
+</source>
+</class>
+
+<class classid="11" nclones="2" nlines="10" similarity="100">
+<source file="systems/PySyft-0.2.8/syft/generic/pointers/object_pointer.py" startline="163" endline="193" pcid="467">
+    def wrap(self, register=True, type=None, **kwargs):
+        """Wraps the class inside framework tensor.
+
+        Because PyTorch/TF do not (yet) support functionality for creating
+        arbitrary Tensor types (via subclassing torch.Tensor), in order for our
+        new tensor types (such as PointerTensor) to be usable by the rest of
+        PyTorch/TF (such as PyTorch's layers and loss functions), we need to
+        wrap all of our new tensor types inside of a native PyTorch type.
+
+        This function adds a .wrap() function to all of our tensor types (by
+        adding it to AbstractTensor), such that (on any custom tensor
+        my_tensor), my_tensor.wrap() will return a tensor that is compatible
+        with the rest of the PyTorch/TensorFlow API.
+
+        Returns:
+            A wrapper tensor of class `type`, or whatever is specified as
+            default by the current syft.framework.Tensor.
+        """
+        wrapper = syft.framework.hook.create_wrapper(type, **kwargs)
+        wrapper.child = self
+        wrapper.is_wrapper = True
+        wrapper.child.parent = weakref.ref(wrapper)
+
+        if self.id is None:
+            self.id = syft.ID_PROVIDER.pop()
+
+        if self.owner is not None and register:
+            self.owner.register_obj(wrapper, obj_id=self.id)
+
+        return wrapper
+
+</source>
+<source file="systems/PySyft-0.2.8/syft/generic/abstract/tensor.py" startline="22" endline="52" pcid="497">
+    def wrap(self, register=True, type=None, **kwargs):
+        """Wraps the class inside an empty object of class `type`.
+
+        Because PyTorch/TF do not (yet) support functionality for creating
+        arbitrary Tensor types (via subclassing torch.Tensor), in order for our
+        new tensor types (such as PointerTensor) to be usable by the rest of
+        PyTorch/TF (such as PyTorch's layers and loss functions), we need to
+        wrap all of our new tensor types inside of a native PyTorch type.
+
+        This function adds a .wrap() function to all of our tensor types (by
+        adding it to AbstractTensor), such that (on any custom tensor
+        my_tensor), my_tensor.wrap() will return a tensor that is compatible
+        with the rest of the PyTorch/TensorFlow API.
+
+        Returns:
+            A wrapper tensor of class `type`, or whatever is specified as
+            default by the current syft.framework.Tensor.
+        """
+        wrapper = sy.framework.hook.create_wrapper(type, **kwargs)
+        wrapper.child = self
+        wrapper.is_wrapper = True
+        wrapper.child.parent = weakref.ref(wrapper)
+
+        if self.id is None:
+            self.id = sy.ID_PROVIDER.pop()
+
+        if self.owner is not None and register:
+            self.owner.register_obj(wrapper, obj_id=self.id)
+
+        return wrapper
+
+</source>
+</class>
+
+<class classid="12" nclones="2" nlines="18" similarity="100">
+<source file="systems/PySyft-0.2.8/syft/generic/pointers/object_pointer.py" startline="282" endline="321" pcid="471">
+    def __str__(self):
+        """Returns a string version of this pointer.
+
+        This is primarily for end users to quickly see things about the object.
+        This tostring shouldn't be used for anything else though as it's likely
+        to change. (aka, don't try to parse it to extract information. Read the
+        attribute you need directly). Also, don't use this to-string as a
+        serialized form of the pointer.
+        """
+
+        type_name = type(self).__name__
+        out = (
+            f"["
+            f"{type_name} | "
+            f"{str(self.owner.id)}:{self.id}"
+            " -> "
+            f"{str(self.location.id)}:{self.id_at_location}"
+            f"]"
+        )
+
+        if self.point_to_attr is not None:
+            out += "::" + str(self.point_to_attr).replace(".", "::")
+
+        big_str = False
+
+        if self.tags is not None and len(self.tags):
+            big_str = True
+            out += "\n\tTags: "
+            for tag in self.tags:
+                out += str(tag) + " "
+
+        if big_str and hasattr(self, "shape"):
+            out += "\n\tShape: " + str(self.shape)
+
+        if self.description is not None:
+            big_str = True
+            out += "\n\tDescription: " + str(self.description).split("\n")[0] + "..."
+
+        return out
+
+</source>
+<source file="systems/PySyft-0.2.8/syft/generic/pointers/pointer_dataset.py" startline="57" endline="87" pcid="484">
+    def __repr__(self):
+        type_name = type(self).__name__
+        out = (
+            f"["
+            f"{type_name} | "
+            f"{str(self.owner.id)}:{self.id}"
+            " -> "
+            f"{str(self.location.id)}:{self.id_at_location}"
+            f"]"
+        )
+
+        if self.point_to_attr is not None:
+            out += "::" + str(self.point_to_attr).replace(".", "::")
+
+        big_str = False
+
+        if self.tags is not None and len(self.tags):
+            big_str = True
+            out += "\n\tTags: "
+            for tag in self.tags:
+                out += str(tag) + " "
+
+        if big_str and hasattr(self, "shape"):
+            out += "\n\tShape: " + str(self.shape)
+
+        if self.description is not None:
+            big_str = True
+            out += "\n\tDescription: " + str(self.description).split("\n")[0] + "..."
+
+        return out
+
+</source>
+</class>
+
+<class classid="13" nclones="2" nlines="13" similarity="100">
+<source file="systems/PySyft-0.2.8/syft/exceptions.py" startline="150" endline="169" pcid="638">
+    def simplify(worker: "sy.workers.AbstractWorker", e):
+        """
+        Serialize information about an Exception which was raised to forward it
+        """
+        # Get information about the exception: type of error,  traceback
+        tp = type(e)
+        tb = e.__traceback__
+        # Serialize the traceback
+        traceback_str = "Traceback (most recent call last):\n" + "".join(traceback.format_tb(tb))
+        # Include special attributes if relevant
+        try:
+            attributes = e.get_attributes()
+        except AttributeError:
+            attributes = {}
+        return (
+            sy.serde.msgpack.serde._simplify(worker, tp.__name__),
+            sy.serde.msgpack.serde._simplify(worker, traceback_str),
+            sy.serde.msgpack.serde._simplify(worker, attributes),
+        )
+
+</source>
+<source file="systems/PySyft-0.2.8/syft/exceptions.py" startline="241" endline="260" pcid="642">
+    def simplify(worker: "sy.workers.AbstractWorker", e):
+        """
+        Serialize information about an Exception which was raised to forward it
+        """
+        # Get information about the exception: type of error,  traceback
+        tp = type(e)
+        tb = e.__traceback__
+        # Serialize the traceback
+        traceback_str = "Traceback (most recent call last):\n" + "".join(traceback.format_tb(tb))
+        # Include special attributes if relevant
+        try:
+            attributes = e.get_attributes()
+        except AttributeError:
+            attributes = {}
+        return (
+            sy.serde.msgpack.serde._simplify(worker, tp.__name__),
+            sy.serde.msgpack.serde._simplify(worker, traceback_str),
+            sy.serde.msgpack.serde._simplify(worker, attributes),
+        )
+
+</source>
+</class>
+
+<class classid="14" nclones="3" nlines="14" similarity="85">
+<source file="systems/PySyft-0.2.8/syft/exceptions.py" startline="171" endline="192" pcid="639">
+    def detail(worker: "sy.workers.AbstractWorker", error_tuple: Tuple[str, str, dict]):
+        """
+        Detail and re-raise an Exception forwarded by another worker
+        """
+        error_name, traceback_str, attributes = error_tuple
+        error_name = sy.serde.msgpack.serde._detail(worker, error_name)
+        traceback_str = sy.serde.msgpack.serde._detail(worker, traceback_str)
+        attributes = sy.serde.msgpack.serde._detail(worker, attributes)
+        # De-serialize the traceback
+        tb = Traceback.from_string(traceback_str)
+        # Check that the error belongs to a valid set of Exceptions
+        if error_name in dir(sy.exceptions):
+            error_type = getattr(sy.exceptions, error_name)
+            error = error_type()
+            # Include special attributes if any
+            for attr_name, attr in attributes.items():
+                setattr(error, attr_name, attr)
+            reraise(error_type, error, tb.as_traceback())
+        else:
+            raise ValueError(f"Invalid Exception returned:\n{traceback_str}")
+
+
+</source>
+<source file="systems/PySyft-0.2.8/syft/exceptions.py" startline="262" endline="283" pcid="643">
+    def detail(worker: "sy.workers.AbstractWorker", error_tuple: Tuple[str, str, dict]):
+        """
+        Detail and re-raise an Exception forwarded by another worker
+        """
+        error_name, traceback_str, attributes = error_tuple
+        error_name = sy.serde.msgpack.serde._detail(worker, error_name)
+        traceback_str = sy.serde.msgpack.serde._detail(worker, traceback_str)
+        attributes = sy.serde.msgpack.serde._detail(worker, attributes)
+        # De-serialize the traceback
+        tb = Traceback.from_string(traceback_str)
+        # Check that the error belongs to a valid set of Exceptions
+        if error_name in dir(sy.exceptions):
+            error_type = getattr(sy.exceptions, error_name)
+            error = error_type()
+            # Include special attributes if any
+            for attr_name, attr in attributes.items():
+                setattr(error, attr_name, attr)
+            reraise(error_type, error, tb.as_traceback())
+        else:
+            raise ValueError(f"Invalid Exception returned:\n{traceback_str}")
+
+
+</source>
+<source file="systems/PySyft-0.2.8/syft/exceptions.py" startline="215" endline="235" pcid="641">
+    def detail(worker: "sy.workers.AbstractWorker", error_tuple: Tuple[str, str, dict]):
+        """
+        Detail and re-raise an Exception forwarded by another worker
+        """
+        error_name, traceback_str, attributes = error_tuple
+        error_name, traceback_str = error_name.decode("utf-8"), traceback_str.decode("utf-8")
+        attributes = sy.serde.msgpack.serde._detail(worker, attributes)
+        # De-serialize the traceback
+        tb = Traceback.from_string(traceback_str)
+        # Check that the error belongs to a valid set of Exceptions
+        if error_name in dir(sy.exceptions):
+            error_type = getattr(sy.exceptions, error_name)
+            error = error_type()
+            # Include special attributes if any
+            for attr_name, attr in attributes.items():
+                setattr(error, attr_name, attr)
+            reraise(error_type, error, tb.as_traceback())
+        else:
+            raise ValueError(f"Invalid Exception returned:\n{traceback_str}")
+
+
+</source>
+</class>
+
+<class classid="15" nclones="2" nlines="39" similarity="87">
+<source file="systems/PySyft-0.2.8/test/torch/test_hook.py" startline="251" endline="315" pcid="670">
+def test_RNN_grad_set_backpropagation(workers):
+    """Perform backpropagation at a remote worker and check if the gradient updates
+    and properly computed within the model"""
+
+    alice = workers["alice"]
+
+    class RNN(nn.Module):
+        def __init__(self, input_size, hidden_size, output_size):
+            super(RNN, self).__init__()
+            self.hidden_size = hidden_size
+            self.i2h = nn.Linear(input_size + hidden_size, hidden_size)
+            self.i2o = nn.Linear(input_size + hidden_size, output_size)
+            self.softmax = nn.LogSoftmax(dim=1)
+
+        def forward(self, input, hidden):
+            combined = torch.cat((input, hidden), 1)
+            hidden = self.i2h(combined)
+            output = self.i2o(combined)
+            output = self.softmax(output)
+            return output, hidden
+
+        def initHidden(self):
+            return torch.zeros(1, self.hidden_size)
+
+    # let's initialize a simple RNN
+    n_hidden = 128
+    n_letters = 57
+    n_categories = 18
+
+    rnn = RNN(n_letters, n_hidden, n_categories)
+
+    # Let's send the model to alice, who will be responsible for the tiny computation
+    alice_model = rnn.copy().send(alice)
+
+    # Simple input for the Recurrent Neural Network
+    input_tensor = torch.zeros(size=(1, 57))
+    # Just set a random category for it
+    input_tensor[0][20] = 1
+    alice_input = input_tensor.copy().send(alice)
+
+    label_tensor = torch.randint(low=0, high=(n_categories - 1), size=(1,))
+    alice_label = label_tensor.send(alice)
+
+    hidden_layer = alice_model.initHidden()
+    alice_hidden_layer = hidden_layer.send(alice)
+    # Forward pass into the NN and its hidden layers, notice how it goes sequentially
+    output, alice_hidden_layer = alice_model(alice_input, alice_hidden_layer)
+    criterion = nn.NLLLoss()
+    loss = criterion(output, alice_label)
+    # time to backpropagate...
+    loss.backward()
+
+    # now let's get the model and check if its parameters are indeed there
+    model_got = alice_model.get()
+
+    learning_rate = 0.005
+
+    # If the gradients are there, then the backpropagation did indeed complete successfully
+    for param in model_got.parameters():
+        # param.grad.data would raise an exception in case it is none,
+        # so we better check it beforehand
+        assert param.grad.data is not None
+        param.data.add_(-learning_rate, param.grad.data)
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/torch/test_hook.py" startline="316" endline="382" pcid="674">
+def test_local_remote_gradient_clipping(workers):
+    """
+    Real test case of gradient clipping for the remote and
+    local parameters of an RNN
+    """
+    alice = workers["alice"]
+
+    class RNN(nn.Module):
+        def __init__(self, input_size, hidden_size, output_size):
+            super(RNN, self).__init__()
+            self.hidden_size = hidden_size
+            self.i2h = nn.Linear(input_size + hidden_size, hidden_size)
+            self.i2o = nn.Linear(input_size + hidden_size, output_size)
+            self.softmax = nn.LogSoftmax(dim=1)
+
+        def forward(self, input, hidden):
+            combined = torch.cat((input, hidden), 1)
+            hidden = self.i2h(combined)
+            output = self.i2o(combined)
+            output = self.softmax(output)
+            return output, hidden
+
+        def initHidden(self):
+            return torch.zeros(1, self.hidden_size)
+
+    # let's initialize a simple RNN
+    n_hidden = 128
+    n_letters = 57
+    n_categories = 18
+
+    rnn = RNN(n_letters, n_hidden, n_categories)
+
+    # Let's send the model to alice, who will be responsible for the tiny computation
+    alice_model = rnn.copy().send(alice)
+
+    # Simple input for the Recurrent Neural Network
+    input_tensor = torch.zeros(size=(1, 57))
+    # Just set a random category for it
+    input_tensor[0][20] = 1
+    alice_input = input_tensor.copy().send(alice)
+
+    label_tensor = torch.randint(low=0, high=(n_categories - 1), size=(1,))
+    alice_label = label_tensor.send(alice)
+
+    hidden_layer = alice_model.initHidden()
+    alice_hidden_layer = hidden_layer.send(alice)
+    # Forward pass into the NN and its hidden layers, notice how it goes sequentially
+    output, alice_hidden_layer = alice_model(alice_input, alice_hidden_layer)
+    criterion = nn.NLLLoss()
+    loss = criterion(output, alice_label)
+    # time to backpropagate...
+    loss.backward()
+
+    # Remote gradient clipping
+    remote_parameters = alice_model.parameters()
+    total_norm_remote = nn.utils.clip_grad_norm_(remote_parameters, 2)
+
+    # Local gradient clipping
+    local_alice_model = alice_model.get()
+    local_parameters = local_alice_model.parameters()
+    total_norm_local = nn.utils.clip_grad_norm_(local_parameters, 2)
+
+    # Is the output of the remote gradient clipping version equal to
+    # the output of the local gradient clipping version?
+    assert torch.isclose(total_norm_remote.get(), total_norm_local, atol=1e-4)
+
+
+</source>
+</class>
+
+<class classid="16" nclones="2" nlines="25" similarity="85">
+<source file="systems/PySyft-0.2.8/test/torch/nn/test_functional.py" startline="135" endline="170" pcid="684">
+def test_torch_nn_functional_maxpool(workers, protocol):
+    bob, alice, james = (workers["bob"], workers["alice"], workers["james"])
+    # 4d
+    enc_tensor = torch.tensor(
+        [[[[1, 1, 2, 4], [5, 6, 7, 8], [3, 2, 1, 0], [1, 2, 3, 4]]]], dtype=torch.float
+    )
+    enc_tensor = enc_tensor.fix_prec().share(bob, alice, crypto_provider=james)
+    r_max = F.max_pool2d(enc_tensor, kernel_size=2)
+    r_max = r_max.get().float_prec()
+    exp_max = torch.tensor([[[[6.0, 8.0], [3.0, 4.0]]]])
+    assert (r_max == exp_max).all()
+    # 4d kernel_size = 3
+    r_max = F.max_pool2d(enc_tensor, kernel_size=3, stride=1)
+    r_max = r_max.get().float_prec()
+    exp_max = torch.tensor([[[[7.0, 8.0], [7.0, 8.0]]]])
+    assert (r_max == exp_max).all()
+    # 3d
+    enc_tensor = torch.tensor(
+        [[[1, 1, 2, 4], [5, 6, 7, 8], [3, 2, 1, 0], [1, 2, 3, 4]]], dtype=torch.float
+    )
+    enc_tensor = enc_tensor.fix_prec().share(bob, alice, crypto_provider=james)
+    r_max = F.max_pool2d(enc_tensor, kernel_size=2)
+    r_max = r_max.get().float_prec()
+    exp_max = torch.tensor([[[6.0, 8.0], [3.0, 4.0]]])
+    assert (r_max == exp_max).all()
+    # 2d
+    enc_tensor = torch.tensor(
+        [[1, 1, 2, 4], [5, 6, 7, 8], [3, 2, 1, 0], [1, 2, 3, 4]], dtype=torch.float
+    )
+    enc_tensor = enc_tensor.fix_prec().share(bob, alice, crypto_provider=james)
+    r_max = F.max_pool2d(enc_tensor, kernel_size=2)
+    r_max = r_max.get().float_prec()
+    exp_max = torch.tensor([[6.0, 8.0], [3.0, 4.0]])
+    assert (r_max == exp_max).all()
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/torch/nn/test_functional.py" startline="172" endline="199" pcid="685">
+def test_torch_nn_functional_avgpool(workers, protocol):
+    bob, alice, james = (workers["bob"], workers["alice"], workers["james"])
+    enc_tensor = torch.tensor(
+        [[[[1, 1, 2, 4], [5, 6, 7, 8], [3, 2, 1, 0], [1, 2, 3, 4]]]], dtype=torch.float
+    )
+    enc_tensor = enc_tensor.fix_prec().share(bob, alice, crypto_provider=james)
+    r_avg = F.avg_pool2d(enc_tensor, kernel_size=2)
+    r_avg = r_avg.get().float_prec()
+    exp_avg = torch.tensor([[[[3.2500, 5.2500], [2.0000, 2.0000]]]])
+    assert (r_avg == exp_avg).all()
+    # 3d
+    enc_tensor = torch.tensor(
+        [[[1, 1, 2, 4], [5, 6, 7, 8], [3, 2, 1, 0], [1, 2, 3, 4]]], dtype=torch.float
+    )
+    enc_tensor = enc_tensor.fix_prec().share(bob, alice, crypto_provider=james)
+    r_avg = F.avg_pool2d(enc_tensor, kernel_size=2)
+    r_avg = r_avg.get().float_prec()
+    exp_avg = torch.tensor([[[3.2500, 5.2500], [2.0000, 2.0000]]])
+    assert (r_avg == exp_avg).all()
+    # 2d
+    enc_tensor = torch.tensor(
+        [[1, 1, 2, 4], [5, 6, 7, 8], [3, 2, 1, 0], [1, 2, 3, 4]], dtype=torch.float
+    )
+    enc_tensor = enc_tensor.fix_prec().share(bob, alice, crypto_provider=james)
+    r_avg = F.avg_pool2d(enc_tensor, kernel_size=2)
+    r_avg = r_avg.get().float_prec()
+    exp_avg = torch.tensor([[3.2500, 5.2500], [2.0000, 2.0000]])
+    assert (r_avg == exp_avg).all()
+</source>
+</class>
+
+<class classid="17" nclones="3" nlines="18" similarity="80">
+<source file="systems/PySyft-0.2.8/test/torch/nn/test_nn.py" startline="128" endline="165" pcid="692">
+def test_RNNCell():
+    """
+    Test the RNNCell module to ensure that it produces the exact same
+    output as the primary torch implementation, in the same order.
+    """
+
+    # Disable mkldnn to avoid rounding errors due to difference in implementation
+    mkldnn_enabled_init = torch._C._get_mkldnn_enabled()
+    torch._C._set_mkldnn_enabled(False)
+
+    batch_size = 5
+    input_size = 10
+    hidden_size = 50
+
+    test_input = torch.rand(batch_size, input_size)
+    test_hidden = torch.rand(batch_size, hidden_size)
+
+    # RNNCell implemented in pysyft
+    rnn_syft = syft_nn.RNNCell(input_size, hidden_size, True, "tanh")
+
+    # RNNCell implemented in original pytorch
+    rnn_torch = nn.RNNCell(input_size, hidden_size, True, "tanh")
+
+    # Make sure the weights of both RNNCell are identical
+    rnn_syft.fc_xh.weight = rnn_torch.weight_ih
+    rnn_syft.fc_hh.weight = rnn_torch.weight_hh
+    rnn_syft.fc_xh.bias = rnn_torch.bias_ih
+    rnn_syft.fc_hh.bias = rnn_torch.bias_hh
+
+    output_syft = rnn_syft(test_input, test_hidden)
+    output_torch = rnn_torch(test_input, test_hidden)
+
+    assert torch.allclose(output_syft, output_torch, atol=1e-2)
+
+    # Reset mkldnn to the original state
+    torch._C._set_mkldnn_enabled(mkldnn_enabled_init)
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/torch/nn/test_nn.py" startline="166" endline="203" pcid="693">
+def test_GRUCell():
+    """
+    Test the GRUCell module to ensure that it produces the exact same
+    output as the primary torch implementation, in the same order.
+    """
+
+    # Disable mkldnn to avoid rounding errors due to difference in implementation
+    mkldnn_enabled_init = torch._C._get_mkldnn_enabled()
+    torch._C._set_mkldnn_enabled(False)
+
+    batch_size = 5
+    input_size = 10
+    hidden_size = 50
+
+    test_input = torch.rand(batch_size, input_size)
+    test_hidden = torch.rand(batch_size, hidden_size)
+
+    # GRUCell implemented in pysyft
+    rnn_syft = syft_nn.GRUCell(input_size, hidden_size, True)
+
+    # GRUCell implemented in original pytorch
+    rnn_torch = nn.GRUCell(input_size, hidden_size, True)
+
+    # Make sure the weights of both GRUCell are identical
+    rnn_syft.fc_xh.weight = rnn_torch.weight_ih
+    rnn_syft.fc_hh.weight = rnn_torch.weight_hh
+    rnn_syft.fc_xh.bias = rnn_torch.bias_ih
+    rnn_syft.fc_hh.bias = rnn_torch.bias_hh
+
+    output_syft = rnn_syft(test_input, test_hidden)
+    output_torch = rnn_torch(test_input, test_hidden)
+
+    # Reset mkldnn to the original state
+    torch._C._set_mkldnn_enabled(mkldnn_enabled_init)
+
+    assert torch.all(torch.lt(torch.abs(output_syft - output_torch), 1e-6))
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/torch/nn/test_nn.py" startline="204" endline="244" pcid="694">
+def test_LSTMCell():
+    """
+    Test the LSTMCell module to ensure that it produces the exact same
+    output as the primary torch implementation, in the same order.
+    """
+
+    # Disable mkldnn to avoid rounding errors due to difference in implementation
+    mkldnn_enabled_init = torch._C._get_mkldnn_enabled()
+    torch._C._set_mkldnn_enabled(False)
+
+    batch_size = 5
+    input_size = 10
+    hidden_size = 50
+
+    test_input = torch.rand(batch_size, input_size)
+    test_hidden_state = torch.rand(batch_size, hidden_size)
+    test_cell_state = torch.rand(batch_size, hidden_size)
+
+    # LSTMCell implemented in pysyft
+    rnn_syft = syft_nn.LSTMCell(input_size, hidden_size, True)
+
+    # LSTMCell implemented in original pytorch
+    rnn_torch = nn.LSTMCell(input_size, hidden_size, True)
+
+    # Make sure the weights of both LSTMCell are identical
+    rnn_syft.fc_xh.weight = rnn_torch.weight_ih
+    rnn_syft.fc_hh.weight = rnn_torch.weight_hh
+    rnn_syft.fc_xh.bias = rnn_torch.bias_ih
+    rnn_syft.fc_hh.bias = rnn_torch.bias_hh
+
+    hidden_syft, cell_syft = rnn_syft(test_input, (test_hidden_state, test_cell_state))
+    hidden_torch, cell_torch = rnn_torch(test_input, (test_hidden_state, test_cell_state))
+
+    # Reset mkldnn to the original state
+    torch._C._set_mkldnn_enabled(mkldnn_enabled_init)
+
+    # Assert the hidden_state and cell_state of both models are identical separately
+    assert torch.all(torch.lt(torch.abs(hidden_syft - hidden_torch), 1e-6))
+    assert torch.all(torch.lt(torch.abs(cell_syft - cell_torch), 1e-6))
+
+
+</source>
+</class>
+
+<class classid="18" nclones="3" nlines="22" similarity="76">
+<source file="systems/PySyft-0.2.8/test/torch/nn/test_nn.py" startline="245" endline="286" pcid="695">
+def test_RNN():
+    """
+    Test the RNN module to ensure that it produces the exact same
+    output as the primary torch implementation, in the same order.
+    """
+
+    # Disable mkldnn to avoid rounding errors due to difference in implementation
+    mkldnn_enabled_init = torch._C._get_mkldnn_enabled()
+    torch._C._set_mkldnn_enabled(False)
+
+    batch_size = 5
+    input_size = 10
+    hidden_size = 50
+    num_layers = 1
+    seq_len = 8
+
+    test_input = torch.rand(seq_len, batch_size, input_size)
+    test_hidden_state = torch.rand(num_layers, batch_size, hidden_size)
+
+    # RNN implemented in pysyft
+    rnn_syft = syft_nn.RNN(input_size, hidden_size, num_layers)
+
+    # RNN implemented in original pytorch
+    rnn_torch = nn.RNN(input_size, hidden_size, num_layers)
+
+    # Make sure the weights of both RNN are identical
+    rnn_syft.rnn_forward[0].fc_xh.weight = rnn_torch.weight_ih_l0
+    rnn_syft.rnn_forward[0].fc_xh.bias = rnn_torch.bias_ih_l0
+    rnn_syft.rnn_forward[0].fc_hh.weight = rnn_torch.weight_hh_l0
+    rnn_syft.rnn_forward[0].fc_hh.bias = rnn_torch.bias_hh_l0
+
+    output_syft, hidden_syft = rnn_syft(test_input, test_hidden_state)
+    output_torch, hidden_torch = rnn_torch(test_input, test_hidden_state)
+
+    # Reset mkldnn to the original state
+    torch._C._set_mkldnn_enabled(mkldnn_enabled_init)
+
+    # Assert the hidden_state and output of both models are identical separately
+    assert torch.all(torch.lt(torch.abs(output_syft - output_torch), 1e-6))
+    assert torch.all(torch.lt(torch.abs(hidden_syft - hidden_torch), 1e-6))
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/torch/nn/test_nn.py" startline="329" endline="374" pcid="697">
+def test_LSTM():
+    """
+    Test the LSTM module to ensure that it produces the exact same
+    output as the primary torch implementation, in the same order.
+    """
+
+    # Disable mkldnn to avoid rounding errors due to difference in implementation
+    mkldnn_enabled_init = torch._C._get_mkldnn_enabled()
+    torch._C._set_mkldnn_enabled(False)
+
+    batch_size = 5
+    input_size = 10
+    hidden_size = 50
+    num_layers = 1
+    seq_len = 8
+
+    test_input = torch.rand(seq_len, batch_size, input_size)
+    test_hidden_state = torch.rand(num_layers, batch_size, hidden_size)
+    test_cell_state = torch.rand(num_layers, batch_size, hidden_size)
+
+    # LSTM implemented in pysyft
+    rnn_syft = syft_nn.LSTM(input_size, hidden_size, num_layers)
+
+    # LSTM implemented in original pytorch
+    rnn_torch = nn.LSTM(input_size, hidden_size, num_layers)
+
+    # Make sure the weights of both LSTM are identical
+    rnn_syft.rnn_forward[0].fc_xh.weight = rnn_torch.weight_ih_l0
+    rnn_syft.rnn_forward[0].fc_xh.bias = rnn_torch.bias_ih_l0
+    rnn_syft.rnn_forward[0].fc_hh.weight = rnn_torch.weight_hh_l0
+    rnn_syft.rnn_forward[0].fc_hh.bias = rnn_torch.bias_hh_l0
+
+    output_syft, (hidden_syft, cell_syft) = rnn_syft(
+        test_input, (test_hidden_state, test_cell_state)
+    )
+    output_torch, (hidden_torch, cell_torch) = rnn_torch(
+        test_input, (test_hidden_state, test_cell_state)
+    )
+
+    # Reset mkldnn to the original state
+    torch._C._set_mkldnn_enabled(mkldnn_enabled_init)
+
+    # Assert the hidden_state, cell_state and output of both models are identical separately
+    assert torch.all(torch.lt(torch.abs(output_syft - output_torch), 1e-6))
+    assert torch.all(torch.lt(torch.abs(hidden_syft - hidden_torch), 1e-6))
+    assert torch.all(torch.lt(torch.abs(cell_syft - cell_torch), 1e-6))
+</source>
+<source file="systems/PySyft-0.2.8/test/torch/nn/test_nn.py" startline="287" endline="328" pcid="696">
+def test_GRU():
+    """
+    Test the GRU module to ensure that it produces the exact same
+    output as the primary torch implementation, in the same order.
+    """
+
+    # Disable mkldnn to avoid rounding errors due to difference in implementation
+    mkldnn_enabled_init = torch._C._get_mkldnn_enabled()
+    torch._C._set_mkldnn_enabled(False)
+
+    batch_size = 5
+    input_size = 10
+    hidden_size = 50
+    num_layers = 1
+    seq_len = 8
+
+    test_input = torch.rand(seq_len, batch_size, input_size)
+    test_hidden_state = torch.rand(num_layers, batch_size, hidden_size)
+
+    # GRU implemented in pysyft
+    rnn_syft = syft_nn.GRU(input_size, hidden_size, num_layers)
+
+    # GRU implemented in original pytorch
+    rnn_torch = nn.GRU(input_size, hidden_size, num_layers)
+
+    # Make sure the weights of both GRU are identical
+    rnn_syft.rnn_forward[0].fc_xh.weight = rnn_torch.weight_ih_l0
+    rnn_syft.rnn_forward[0].fc_xh.bias = rnn_torch.bias_ih_l0
+    rnn_syft.rnn_forward[0].fc_hh.weight = rnn_torch.weight_hh_l0
+    rnn_syft.rnn_forward[0].fc_hh.bias = rnn_torch.bias_hh_l0
+
+    output_syft, hidden_syft = rnn_syft(test_input, test_hidden_state)
+    output_torch, hidden_torch = rnn_torch(test_input, test_hidden_state)
+
+    # Reset mkldnn to the original state
+    torch._C._set_mkldnn_enabled(mkldnn_enabled_init)
+
+    # Assert the hidden_state and output of both models are identical separately
+    assert torch.all(torch.lt(torch.abs(output_syft - output_torch), 1e-6))
+    assert torch.all(torch.lt(torch.abs(hidden_syft - hidden_torch), 1e-6))
+
+
+</source>
+</class>
+
+<class classid="19" nclones="6" nlines="14" similarity="78">
+<source file="systems/PySyft-0.2.8/test/torch/tensors/test_fv.py" startline="459" endline="476" pcid="724">
+def test_fv_add_cipher_cipher(int1, int2):
+    ctx = Context(EncryptionParams(1024, CoeffModulus().create(1024, [30, 30]), 1024))
+    keys = KeyGenerator(ctx).keygen()
+    encoder = IntegerEncoder(ctx)
+    encryptor = Encryptor(ctx, keys[1])  # keys[1] = public_key
+    decryptor = Decryptor(ctx, keys[0])  # keys[0] = secret_key
+    evaluator = Evaluator(ctx)
+
+    op1 = encryptor.encrypt(encoder.encode(int1))
+    op2 = encryptor.encrypt(encoder.encode(int2))
+    assert (
+        int1 + int2
+        == encoder.decode(decryptor.decrypt(evaluator._add_cipher_cipher(op1, op2)))
+        == encoder.decode(decryptor.decrypt(evaluator.add(op1, op2)))
+        == encoder.decode(decryptor.decrypt(evaluator.add(op2, op1)))
+    )
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/torch/tensors/test_fv.py" startline="615" endline="632" pcid="731">
+def test_fv_mul_cipher_plain(int1, int2):
+    ctx = Context(EncryptionParams(64, CoeffModulus().create(64, [40]), 64))
+    keys = KeyGenerator(ctx).keygen()
+    encoder = IntegerEncoder(ctx)
+    encryptor = Encryptor(ctx, keys[1])  # keys[1] = public_key
+    decryptor = Decryptor(ctx, keys[0])  # keys[0] = secret_key
+    evaluator = Evaluator(ctx)
+
+    op1 = encryptor.encrypt(encoder.encode(int1))
+    op2 = encoder.encode(int2)
+    assert (
+        int1 * int2
+        == encoder.decode(decryptor.decrypt(evaluator._mul_cipher_plain(op1, op2)))
+        == encoder.decode(decryptor.decrypt(evaluator.mul(op1, op2)))
+        == encoder.decode(decryptor.decrypt(evaluator.mul(op2, op1)))
+    )
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/torch/tensors/test_fv.py" startline="584" endline="601" pcid="730">
+def test_fv_mul_cipher_cipher(int1, int2):
+    ctx = Context(EncryptionParams(64, CoeffModulus().create(64, [40]), 64))
+    keys = KeyGenerator(ctx).keygen()
+    encoder = IntegerEncoder(ctx)
+    encryptor = Encryptor(ctx, keys[1])  # keys[1] = public_key
+    decryptor = Decryptor(ctx, keys[0])  # keys[0] = secret_key
+    evaluator = Evaluator(ctx)
+
+    op1 = encryptor.encrypt(encoder.encode(int1))
+    op2 = encryptor.encrypt(encoder.encode(int2))
+    assert (
+        int1 * int2
+        == encoder.decode(decryptor.decrypt(evaluator._mul_cipher_cipher(op1, op2)))
+        == encoder.decode(decryptor.decrypt(evaluator.mul(op1, op2)))
+        == encoder.decode(decryptor.decrypt(evaluator.mul(op2, op1)))
+    )
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/torch/tensors/test_fv.py" startline="552" endline="570" pcid="729">
+def test_fv_sub_cipher_plain(int1, int2):
+    ctx = Context(EncryptionParams(1024, CoeffModulus().create(1024, [30, 30]), 1024))
+    keys = KeyGenerator(ctx).keygen()
+    encoder = IntegerEncoder(ctx)
+    encryptor = Encryptor(ctx, keys[1])  # keys[1] = public_key
+    decryptor = Decryptor(ctx, keys[0])  # keys[0] = secret_key
+    evaluator = Evaluator(ctx)
+
+    op1 = encryptor.encrypt(encoder.encode(int1))
+    op2 = encoder.encode(int2)
+
+    assert (
+        int1 - int2
+        == encoder.decode(decryptor.decrypt(evaluator._sub_cipher_plain(op1, op2)))
+        == encoder.decode(decryptor.decrypt(evaluator.sub(op1, op2)))
+        == encoder.decode(decryptor.decrypt(evaluator.sub(op2, op1)))
+    )
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/torch/tensors/test_fv.py" startline="531" endline="548" pcid="728">
+def test_fv_sub_cipher_cipher(int1, int2):
+    ctx = Context(EncryptionParams(1024, CoeffModulus().create(1024, [30, 30]), 1024))
+    keys = KeyGenerator(ctx).keygen()
+    encoder = IntegerEncoder(ctx)
+    encryptor = Encryptor(ctx, keys[1])  # keys[1] = public_key
+    decryptor = Decryptor(ctx, keys[0])  # keys[0] = secret_key
+    evaluator = Evaluator(ctx)
+
+    op1 = encryptor.encrypt(encoder.encode(int1))
+    op2 = encryptor.encrypt(encoder.encode(int2))
+    assert (
+        int1 - int2
+        == encoder.decode(decryptor.decrypt(evaluator._sub_cipher_cipher(op1, op2)))
+        == encoder.decode(decryptor.decrypt(evaluator.sub(op1, op2)))
+        == -encoder.decode(decryptor.decrypt(evaluator.sub(op2, op1)))
+    )
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/torch/tensors/test_fv.py" startline="480" endline="498" pcid="725">
+def test_fv_add_cipher_plain(int1, int2):
+    ctx = Context(EncryptionParams(1024, CoeffModulus().create(1024, [30, 30]), 1024))
+    keys = KeyGenerator(ctx).keygen()
+    encoder = IntegerEncoder(ctx)
+    encryptor = Encryptor(ctx, keys[1])  # keys[1] = public_key
+    decryptor = Decryptor(ctx, keys[0])  # keys[0] = secret_key
+    evaluator = Evaluator(ctx)
+
+    op1 = encryptor.encrypt(encoder.encode(int1))
+    op2 = encoder.encode(int2)
+
+    assert (
+        int1 + int2
+        == encoder.decode(decryptor.decrypt(evaluator._add_cipher_plain(op1, op2)))
+        == encoder.decode(decryptor.decrypt(evaluator.add(op1, op2)))
+        == encoder.decode(decryptor.decrypt(evaluator.add(op2, op1)))
+    )
+
+
+</source>
+</class>
+
+<class classid="20" nclones="2" nlines="11" similarity="81">
+<source file="systems/PySyft-0.2.8/test/torch/tensors/test_fv.py" startline="502" endline="515" pcid="726">
+def test_fv_add_plain_plain(int1, int2):
+    ctx = Context(EncryptionParams(1024, CoeffModulus().create(1024, [30, 30]), 1024))
+    encoder = IntegerEncoder(ctx)
+    evaluator = Evaluator(ctx)
+    op1 = encoder.encode(int1)
+    op2 = encoder.encode(int2)
+    assert (
+        int1 + int2
+        == encoder.decode(evaluator._add_plain_plain(op1, op2))
+        == encoder.decode(evaluator.add(op1, op2))
+        == encoder.decode(evaluator.add(op2, op1))
+    )
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/torch/tensors/test_fv.py" startline="646" endline="658" pcid="732">
+def test_fv_mul_plain_plain(int1, int2):
+    ctx = Context(EncryptionParams(64, CoeffModulus().create(64, [40]), 64))
+    encoder = IntegerEncoder(ctx)
+    evaluator = Evaluator(ctx)
+
+    op1 = encoder.encode(int1)
+    op2 = encoder.encode(int2)
+    assert (
+        int1 * int2
+        == encoder.decode(evaluator._mul_plain_plain(op1, op2))
+        == encoder.decode(evaluator.mul(op1, op2))
+        == encoder.decode(evaluator._mul_plain_plain(op2, op1))
+    )
+</source>
+</class>
+
+<class classid="21" nclones="2" nlines="12" similarity="75">
+<source file="systems/PySyft-0.2.8/test/torch/tensors/test_parameter.py" startline="24" endline="41" pcid="735">
+def test_param_inplace_send_get(workers):
+    tensor = torch.tensor([1.0, -1.0, 3.0, 4.0])
+    param = Parameter(data=tensor.clone())
+    param_ptr = param.send_(workers["bob"])
+
+    assert param_ptr.id == param.id
+    assert id(param_ptr) == id(param)
+
+    param_back = param_ptr.get_()
+
+    assert param_back.id == param_ptr.id
+    assert param_back.id == param.id
+    assert id(param_back) == id(param_ptr)
+    assert id(param_back) == id(param)
+
+    assert (param_back.data == tensor).all()
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/generic/pointers/test_pointer_tensor.py" startline="125" endline="143" pcid="1034">
+def test_inplace_send_get(workers):
+    bob = workers["bob"]
+
+    tensor = torch.tensor([1.0, -1.0, 3.0, 4.0])
+    tensor_ptr = tensor.send_(bob)
+
+    assert tensor_ptr.id == tensor.id
+    assert id(tensor_ptr) == id(tensor)
+
+    tensor_back = tensor_ptr.get_()
+
+    assert tensor_back.id == tensor_ptr.id
+    assert tensor_back.id == tensor.id
+    assert id(tensor_back) == id(tensor)
+    assert id(tensor_back) == id(tensor)
+
+    assert (tensor_back == tensor).all()
+
+
+</source>
+</class>
+
+<class classid="22" nclones="2" nlines="14" similarity="75">
+<source file="systems/PySyft-0.2.8/test/torch/hook/test_hook.py" startline="17" endline="32" pcid="773">
+def test_cuda():  # pragma: no cover
+    class Net(torch.nn.Module):
+        def __init__(self):
+            super(Net, self).__init__()
+            self.fc1 = torch.nn.Linear(2, 3)
+
+        def forward(self, x):
+            x = torch.nn.functional.relu(self.fc1(x))
+            return x
+
+    model = Net()
+    assert model.fc1.weight.is_cuda is False
+    model = model.cuda()
+    assert model.fc1.weight.is_cuda is True
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/torch/hook/test_hook.py" startline="34" endline="53" pcid="776">
+def test_data():  # pragma: no cover
+    class Net(torch.nn.Module):
+        def __init__(self):
+            super(Net, self).__init__()
+            self.fc1 = torch.nn.Linear(2, 3)
+
+        def forward(self, x):
+            x = torch.nn.functional.relu(self.fc1(x))
+            return x
+
+    model = Net()
+    input = torch.tensor([2.0, 4.0])
+    out_cpu = model(input)
+    assert model.fc1.weight.is_cuda is False
+    model = model.cuda()
+    assert model.fc1.weight.is_cuda is True
+    out_cuda = model(input.cuda())
+    assert (out_cpu - out_cuda.cpu() < 1e-3).all()
+
+
+</source>
+</class>
+
+<class classid="23" nclones="2" nlines="24" similarity="75">
+<source file="systems/PySyft-0.2.8/test/torch/federated/test_utils.py" startline="29" endline="60" pcid="792">
+def test_add_model():
+    class Net(th.nn.Module):
+        def __init__(self):
+            super(Net, self).__init__()
+            self.fc1 = th.nn.Linear(2, 2)
+
+    weight1 = th.tensor([1.0, 2.0, 3.0, 4.0])
+    weight2 = th.tensor([11.0, 22.0, 33.0, 44.0])
+
+    bias1 = th.tensor([-1.0, -2.0])
+    bias2 = th.tensor([1.0, 2.0])
+
+    net1 = Net()
+    params1 = net1.named_parameters()
+    dict_params1 = dict(params1)
+    with th.no_grad():
+        dict_params1["fc1.weight"].set_(weight1)
+        dict_params1["fc1.bias"].set_(bias1)
+
+    net2 = Net()
+    params2 = net2.named_parameters()
+    dict_params2 = dict(params2)
+    with th.no_grad():
+        dict_params2["fc1.weight"].set_(weight2)
+        dict_params2["fc1.bias"].set_(bias2)
+
+    new_model = utils.add_model(net1, net2)
+
+    assert (new_model.fc1.weight.data == (weight1 + weight2)).all()
+    assert (new_model.fc1.bias.data == (bias1 + bias2)).all()
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/torch/federated/test_utils.py" startline="62" endline="93" pcid="794">
+def test_add_model_cuda():  # pragma: no cover
+    class Net(th.nn.Module):
+        def __init__(self):
+            super(Net, self).__init__()
+            self.fc1 = th.nn.Linear(2, 2)
+
+    weight1 = th.tensor([1.0, 2.0, 3.0, 4.0]).cuda()
+    weight2 = th.tensor([11.0, 22.0, 33.0, 44.0]).cuda()
+
+    bias1 = th.tensor([-1.0, -2.0]).cuda()
+    bias2 = th.tensor([1.0, 2.0]).cuda()
+
+    net1 = Net().to(th.device("cuda"))
+    params1 = net1.named_parameters()
+    dict_params1 = dict(params1)
+    with th.no_grad():
+        dict_params1["fc1.weight"].set_(weight1)
+        dict_params1["fc1.bias"].set_(bias1)
+
+    net2 = Net().cuda()
+    params2 = net2.named_parameters()
+    dict_params2 = dict(params2)
+    with th.no_grad():
+        dict_params2["fc1.weight"].set_(weight2)
+        dict_params2["fc1.bias"].set_(bias2)
+
+    new_model = utils.add_model(net1, net2)
+
+    assert (new_model.fc1.weight.data == (weight1 + weight2)).all()
+    assert (new_model.fc1.bias.data == (bias1 + bias2)).all()
+
+
+</source>
+</class>
+
+<class classid="24" nclones="3" nlines="14" similarity="70">
+<source file="systems/PySyft-0.2.8/test/torch/federated/test_dataset.py" startline="43" endline="66" pcid="804">
+def test_federated_dataset(workers):
+    bob = workers["bob"]
+    alice = workers["alice"]
+
+    alice_base_dataset = BaseDataset(th.tensor([3, 4, 5, 6]), th.tensor([3, 4, 5, 6]))
+    datasets = [
+        BaseDataset(th.tensor([1, 2]), th.tensor([1, 2])).send(bob),
+        alice_base_dataset.send(alice),
+    ]
+
+    fed_dataset = sy.FederatedDataset(datasets)
+
+    assert fed_dataset.workers == ["bob", "alice"]
+    assert len(fed_dataset) == 6
+
+    alice_remote_data = fed_dataset.get_dataset("alice")
+    assert (alice_remote_data.data == alice_base_dataset.data).all()
+    assert alice_remote_data[2] == (5, 5)
+    assert len(alice_remote_data) == 4
+    assert len(fed_dataset) == 2
+
+    assert isinstance(fed_dataset.__str__(), str)
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/torch/federated/test_dataset.py" startline="122" endline="137" pcid="808">
+def test_get_dataset(workers):
+    bob = workers["bob"]
+    alice = workers["alice"]
+
+    alice_base_dataset = BaseDataset(th.tensor([3, 4, 5, 6]), th.tensor([3, 4, 5, 6]))
+    datasets = [
+        BaseDataset(th.tensor([1, 2]), th.tensor([1, 2])).send(bob),
+        alice_base_dataset.send(alice),
+    ]
+    fed_dataset = sy.FederatedDataset(datasets)
+    dataset = fed_dataset.get_dataset("alice")
+
+    assert len(fed_dataset) == 2
+    assert len(dataset) == 4
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/torch/federated/test_dataset.py" startline="138" endline="153" pcid="809">
+def test_illegal_get(workers):
+    """
+    test getting error message when calling .get() on a
+    dataset that's a part of fedratedDataset object
+    """
+    bob = workers["bob"]
+    alice = workers["alice"]
+
+    alice_base_dataset = BaseDataset(th.tensor([3, 4, 5, 6]), th.tensor([3, 4, 5, 6]))
+    datasets = [
+        BaseDataset(th.tensor([1, 2]), th.tensor([1, 2])).send(bob),
+        alice_base_dataset.send(alice),
+    ]
+    fed_dataset = sy.FederatedDataset(datasets)
+    with pytest.raises(ValueError):
+        fed_dataset["alice"].get()
+</source>
+</class>
+
+<class classid="25" nclones="6" nlines="13" similarity="71">
+<source file="systems/PySyft-0.2.8/test/torch/mpc/test_multiparty_nn.py" startline="43" endline="59" pcid="828">
+def test_share_convert(workers):
+    alice, bob, charlie, james = (
+        workers["alice"],
+        workers["bob"],
+        workers["charlie"],
+        workers["james"],
+    )
+    tensorA = (
+        torch.tensor([10, 20, 30])
+        .share(alice, bob, charlie, crypto_provider=james, dtype="long")
+        .child
+    )
+    tensorB = securenn.share_convert(tensorA)
+
+    assert (tensorA.get() == tensorB.get()).all()
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/torch/mpc/test_multiparty_nn.py" startline="126" endline="142" pcid="833">
+def test_maxpool(workers):
+    alice, bob, charlie, james = (
+        workers["alice"],
+        workers["bob"],
+        workers["charlie"],
+        workers["james"],
+    )
+    tensorA = (
+        torch.tensor([[0, 1, 8, 3, 4]])
+        .share(alice, bob, charlie, crypto_provider=james, dtype="long")
+        .child
+    )
+    v, i = securenn.maxpool(tensorA)
+    assert (v.get() == torch.tensor([[8]])).all()
+    assert (i.get() == torch.tensor([[2]])).all()
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/torch/mpc/test_multiparty_nn.py" startline="143" endline="156" pcid="834">
+def test_maxpool_deriv(workers):
+    alice, bob, charlie, james = (
+        workers["alice"],
+        workers["bob"],
+        workers["charlie"],
+        workers["james"],
+    )
+    tensorA = (
+        torch.tensor([[0, 1, 8, 3]])
+        .share(alice, bob, charlie, crypto_provider=james, dtype="long")
+        .child
+    )
+    deriv = securenn.maxpool_deriv(tensorA)
+    assert (deriv.get() == torch.tensor([[0, 0, 1, 0]])).all()
+</source>
+<source file="systems/PySyft-0.2.8/test/torch/mpc/test_multiparty_nn.py" startline="75" endline="89" pcid="830">
+def test_relu_deriv(workers):
+    alice, bob, charlie, james = (
+        workers["alice"],
+        workers["bob"],
+        workers["charlie"],
+        workers["james"],
+    )
+    tensorA = (
+        torch.tensor([-10, 0, 10])
+        .share(alice, bob, charlie, crypto_provider=james, dtype="long")
+        .child
+    )
+    assert (securenn.relu_deriv(tensorA).get() == torch.tensor([0, 1, 1])).all()
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/torch/mpc/test_multiparty_nn.py" startline="90" endline="104" pcid="831">
+def test_relu(workers):
+    alice, bob, charlie, james = (
+        workers["alice"],
+        workers["bob"],
+        workers["charlie"],
+        workers["james"],
+    )
+    tensorA = (
+        torch.tensor([-10, 0, 10])
+        .share(alice, bob, charlie, crypto_provider=james, dtype="long")
+        .child
+    )
+    assert (securenn.relu(tensorA).get() == torch.tensor([0, 0, 10])).all()
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/torch/mpc/test_multiparty_nn.py" startline="60" endline="74" pcid="829">
+def test_msb(workers):
+    alice, bob, charlie, james = (
+        workers["alice"],
+        workers["bob"],
+        workers["charlie"],
+        workers["james"],
+    )
+    tensorA = (
+        torch.tensor([-10, 0, 10])
+        .share(alice, bob, charlie, crypto_provider=james, dtype="custom", field=2 ** 60 - 1)
+        .child
+    )
+    assert (securenn.msb(tensorA).get() == torch.tensor([1, 0, 0])).all()
+
+
+</source>
+</class>
+
+<class classid="26" nclones="2" nlines="18" similarity="72">
+<source file="systems/PySyft-0.2.8/test/serde/protobuf/test_protobuf_serde.py" startline="29" endline="59" pcid="842">
+def test_protobuf_serde_tensor_roundtrip(str_dtype):
+    """Checks that tensors passed through serialization-deserialization stay same"""
+
+    def compare(roundtrip, original):
+        assert type(roundtrip) == torch.Tensor
+        assert roundtrip.dtype == original.dtype
+
+        # PyTorch doesn't implement equality checking for bfloat16, so convert to float
+        if original.dtype == torch.bfloat16:
+            roundtrip = roundtrip.float()
+            original = original.float()
+
+        # PyTorch doesn't implement equality checking for float16, so use numpy
+        assert numpy.array_equal(roundtrip.data.numpy(), original.data.numpy())
+        return True
+
+    serde_worker = syft.hook.local_worker
+    original_framework = serde_worker.framework
+    serde_worker.framework = None
+
+    tensor = torch.rand([10, 10]) * 16
+    tensor = tensor.to(TORCH_STR_DTYPE[str_dtype])
+
+    protobuf_tensor = protobuf.serde._bufferize(serde_worker, tensor)
+    roundtrip_tensor = protobuf.serde._unbufferize(serde_worker, protobuf_tensor)
+
+    serde_worker.framework = original_framework
+
+    assert compare(roundtrip_tensor, tensor) is True
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/serde/protobuf/test_protobuf_serde.py" startline="62" endline="88" pcid="844">
+def test_protobuf_serde_tensor_roundtrip_quantized(str_dtype):
+    """Checks that tensors passed through serialization-deserialization stay same"""
+
+    def compare(roundtrip, original):
+        assert type(roundtrip) == torch.Tensor
+        assert roundtrip.dtype == original.dtype
+        roundtrip_np = roundtrip.dequantize().numpy()
+        original_np = original.dequantize().numpy()
+        # PyTorch does implement equality checking for float tensors, but
+        # quantized tensors may not be exactly the same after a round trip
+        # plus dequantizing so use numpy close checking with a tolerance
+        assert numpy.allclose(roundtrip_np, original_np, atol=2 / original.q_scale())
+        return True
+
+    serde_worker = syft.hook.local_worker
+    original_framework = serde_worker.framework
+    serde_worker.framework = None
+
+    tensor = torch.rand([10, 10]) * 16
+    tensor = torch.quantize_per_tensor(tensor, 0.1, 10, TORCH_STR_DTYPE[str_dtype])
+
+    protobuf_tensor = protobuf.serde._bufferize(serde_worker, tensor)
+    roundtrip_tensor = protobuf.serde._unbufferize(serde_worker, protobuf_tensor)
+
+    serde_worker.framework = original_framework
+
+    assert compare(roundtrip_tensor, tensor) is True
+</source>
+</class>
+
+<class classid="27" nclones="2" nlines="20" similarity="90">
+<source file="systems/PySyft-0.2.8/test/crypten/test_context.py" startline="37" endline="70" pcid="872">
+def test_context_plan(workers):
+    # alice and bob
+    n_workers = 2
+
+    alice = workers["alice"]
+    bob = workers["bob"]
+
+    alice_tensor_ptr = th.tensor([42, 53, 3, 2]).tag("crypten_data").send(alice)
+    bob_tensor_ptr = th.tensor([101, 32, 29, 2]).tag("crypten_data").send(bob)
+
+    @run_multiworkers([alice, bob], master_addr="127.0.0.1")
+    @sy.func2plan()
+    def plan_func(model=None, crypten=crypten):  # pragma: no cover
+        alice_tensor = crypten.load("crypten_data", 0)
+        bob_tensor = crypten.load("crypten_data", 1)
+
+        crypt = alice_tensor + bob_tensor
+        result = crypt.get_plain_text()
+        return result
+
+    return_values = plan_func()
+
+    expected_value = th.tensor([143, 85, 32, 4])
+
+    # A toy function is ran at each party, and they should all decrypt
+    # a tensor with value [143, 85]
+    for rank in range(n_workers):
+        assert th.all(
+            return_values[rank] == expected_value
+        ), "Crypten party with rank {} don't match expected value {} != {}".format(
+            rank, return_values[rank], expected_value
+        )
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/crypten/test_context.py" startline="71" endline="103" pcid="874">
+def test_context_jail(workers):
+    # alice and bob
+    n_workers = 2
+
+    alice = workers["alice"]
+    bob = workers["bob"]
+
+    alice_tensor_ptr = th.tensor([42, 53, 3, 2]).tag("crypten_data").send(alice)
+    bob_tensor_ptr = th.tensor([101, 32, 29, 2]).tag("crypten_data").send(bob)
+
+    @run_multiworkers([alice, bob], master_addr="127.0.0.1")
+    def jail_func(crypten=crypten):  # pragma: no cover
+        alice_tensor = crypten.load("crypten_data", 0)
+        bob_tensor = crypten.load("crypten_data", 1)
+
+        crypt = alice_tensor + bob_tensor
+        result = crypt.get_plain_text()
+        return result
+
+    return_values = jail_func()
+
+    expected_value = th.tensor([143, 85, 32, 4])
+
+    # A toy function is ran at each party, and they should all decrypt
+    # a tensor with value [143, 85]
+    for rank in range(n_workers):
+        assert th.all(
+            return_values[rank] == expected_value
+        ), "Crypten party with rank {} don't match expected value {} != {}".format(
+            rank, return_values[rank], expected_value
+        )
+
+
+</source>
+</class>
+
+<class classid="28" nclones="2" nlines="18" similarity="88">
+<source file="systems/PySyft-0.2.8/test/crypten/test_context.py" startline="104" endline="130" pcid="876">
+def test_context_jail_with_model(workers):
+    dummy_input = th.empty(1, 1, 28, 28)
+    pytorch_model = ExampleNet()
+
+    alice = workers["alice"]
+    bob = workers["bob"]
+
+    alice_tensor_ptr = th.tensor(dummy_input).tag("crypten_data").send(alice)
+
+    @run_multiworkers(
+        [alice, bob], master_addr="127.0.0.1", model=pytorch_model, dummy_input=dummy_input
+    )
+    def run_encrypted_eval():  # pragma: no cover
+        rank = crypten.communicator.get().get_rank()
+        t = crypten.load("crypten_data", 0)
+
+        model.encrypt()  # noqa: F821
+        out = model(t)  # noqa: F821
+        model.decrypt()  # noqa: F821
+        out = out.get_plain_text()
+        return model, out  # noqa: F821
+
+    result = run_encrypted_eval()
+    # compare out
+    assert th.all(result[0][1] == result[1][1])
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/crypten/test_context.py" startline="210" endline="235" pcid="886">
+def test_context_plan_with_model(workers):
+    dummy_input = th.empty(1, 1, 28, 28)
+    pytorch_model = ExampleNet()
+
+    alice = workers["alice"]
+    bob = workers["bob"]
+
+    alice_tensor_ptr = th.tensor(dummy_input).tag("crypten_data").send(alice)
+
+    @run_multiworkers(
+        [alice, bob], master_addr="127.0.0.1", model=pytorch_model, dummy_input=dummy_input
+    )
+    @sy.func2plan()
+    def plan_func_model(model=None, crypten=crypten):  # noqa: F821
+        t = crypten.load("crypten_data", 0)
+
+        model.encrypt()
+        out = model(t)
+        model.decrypt()
+        out = out.get_plain_text()
+        return model, out
+
+    result = plan_func_model()
+    assert th.all(result[0][1] == result[1][1])
+
+
+</source>
+</class>
+
+<class classid="29" nclones="2" nlines="19" similarity="73">
+<source file="systems/PySyft-0.2.8/test/generic/test_id_provider.py" startline="8" endline="36" pcid="940">
+def test_pop_no_given_ids(hook):
+    provider = id_provider.IdProvider()
+    values = [10, 4, 15, 4, 2, 0]
+
+    orig_func = id_provider.create_random_id
+    mocked_random_numbers = mock.Mock()
+    mocked_random_numbers.side_effect = values
+    id_provider.create_random_id = mocked_random_numbers
+
+    val = provider.pop()
+    assert val == values[0]
+
+    val = provider.pop()
+    assert val == values[1]
+
+    val = provider.pop()
+    assert val == values[2]
+
+    # values[3] is skipped, as value already used.
+
+    val = provider.pop()
+    assert val == values[4]
+
+    val = provider.pop()
+    assert val == values[5]
+
+    id_provider.create_random_id = orig_func
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/generic/test_id_provider.py" startline="37" endline="66" pcid="941">
+def test_pop_with_given_ids(hook):
+    given_ids = [4, 15, 2]
+    provider = id_provider.IdProvider(given_ids=given_ids.copy())
+    values = [10, 4, 15, 4, 2, 0]
+
+    orig_func = id_provider.create_random_id
+    mocked_random_numbers = mock.Mock()
+    mocked_random_numbers.side_effect = values
+    id_provider.create_random_id = mocked_random_numbers
+
+    val = provider.pop()
+    assert val == given_ids[-1]
+
+    val = provider.pop()
+    assert val == given_ids[-2]
+
+    val = provider.pop()
+    assert val == given_ids[-3]
+
+    val = provider.pop()
+    assert val == values[0]
+
+    # values[1, 2, 3, 4] are skipped, as value already used.
+
+    val = provider.pop()
+    assert val == values[5]
+
+    id_provider.create_random_id = orig_func
+
+
+</source>
+</class>
+
+<class classid="30" nclones="2" nlines="11" similarity="100">
+<source file="systems/PySyft-0.2.8/test/generic/frameworks/test_attributes.py" startline="9" endline="26" pcid="947">
+def test_remote(workers, return_value):
+    alice = workers["alice"]
+
+    x = th.tensor([1.0])
+    expected = my_awesome_computation(x)
+
+    p = x.send(alice)
+    args = (p,)
+    results = remote(my_awesome_computation, location=alice)(
+        *args, return_value=return_value, return_arity=2
+    )
+
+    if not return_value:
+        results = tuple(result.get() for result in results)
+
+    assert results == expected
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/generic/frameworks/test_attributes.py" startline="28" endline="48" pcid="948">
+def test_remote_wrong_arity(workers, return_value):
+    """
+    Identical to test_remote except the use didn't set return_arity to
+    be the correct number of return values.
+    Here it should be 2, not 1.
+    """
+    alice = workers["alice"]
+
+    x = th.tensor([1.0])
+    expected = my_awesome_computation(x)
+
+    p = x.send(alice)
+    args = (p,)
+    results = remote(my_awesome_computation, location=alice)(
+        *args, return_value=return_value, return_arity=1
+    )
+
+    if not return_value:
+        results = tuple(result.get() for result in results)
+
+    assert results == expected
+</source>
+</class>
+
+<class classid="31" nclones="2" nlines="16" similarity="75">
+<source file="systems/PySyft-0.2.8/test/generic/test_gc.py" startline="58" endline="99" pcid="961">
+def test_explicit_garbage_collect_double_pointer(workers):
+    """Tests whether deleting a pointer to a pointer garbage collects
+    the remote object too"""
+
+    alice, bob = workers["alice"], workers["bob"]
+
+    # create tensor
+    x = torch.Tensor([1, 2])
+
+    # send tensor to bob and then pointer to alice
+    x_ptr = x.send(bob)
+    x_ptr_ptr = x_ptr.send(alice)
+
+    # ensure bob has tensor
+    assert x.id in bob.object_store._objects
+
+    # delete pointer to pointer to tensor, which should automatically
+    # garbage collect the remote object on Bob's machine
+    del x_ptr_ptr
+
+    # ensure bob's object was garbage collected
+    assert x.id not in bob.object_store._objects
+    # ensure alice's object was garbage collected
+    assert x_ptr.id not in workers["alice"].object_store._objects
+
+    # Chained version
+    x = torch.Tensor([1, 2])
+    x_id = x.id
+
+    # send tensor to bob and then pointer to alice
+    # overwriting variable names at sending in the test, is on purpose,
+    # to be sure nothing weird happens when people do this
+    x = x.send(bob).send(alice)
+
+    # ensure bob has tensor
+    assert x_id in bob.object_store._objects
+    # delete pointer to pointer to tensor
+    del x
+    # ensure bob's object was garbage collected
+    assert x_id not in bob.object_store._objects
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/generic/test_gc.py" startline="122" endline="166" pcid="963">
+def test_implicit_garbage_collect_double_pointer(workers):
+    """Tests whether GCing a pointer to a pointer garbage collects
+    the remote object too"""
+
+    alice, bob = workers["alice"], workers["bob"]
+
+    # create tensor
+    x = torch.Tensor([1, 2])
+
+    # send tensor to bob and then pointer to alice
+    x_ptr = x.send(bob)
+    x_ptr_ptr = x_ptr.send(alice)
+
+    # ensure bob has tensor
+    assert x.id in bob.object_store._objects
+    # ensure alice has tensor
+    assert x_ptr.id in alice.object_store._objects
+
+    # delete pointer to pointer to tensor, which should automatically
+    # garbage collect the remote object on Bob's machine
+    x_ptr_ptr = "asdf"
+
+    # ensure bob's object was garbage collected
+    assert x.id not in bob.object_store._objects
+    # ensure alice's object was garbage collected
+    assert x_ptr.id not in alice.object_store._objects
+
+    # Chained version
+    x = torch.Tensor([1, 2])
+    x_id = x.id
+    # send tensor to bob and then pointer to alice
+    # overwriting variable names at sending in the test, is on purpose,
+    # to be sure nothing weird happens when people do this
+    x = x.send(bob).send(alice)
+
+    # ensure bob has tensor
+    assert x_id in bob.object_store._objects
+
+    # delete pointer to pointer to tensor
+    x = "asdf"
+
+    # ensure bob's object was garbage collected
+    assert x_id not in bob.object_store._objects
+
+
+</source>
+</class>
+
+<class classid="32" nclones="2" nlines="13" similarity="92">
+<source file="systems/PySyft-0.2.8/test/generic/test_functions.py" startline="5" endline="25" pcid="969">
+def test_combine_pointers(workers):
+    """
+    Ensure that the sy.combine_pointers works as expected
+    """
+
+    bob = workers["bob"]
+    alice = workers["alice"]
+
+    x = th.tensor([1, 2, 3, 4, 5]).send(bob)
+    y = th.tensor([1, 2, 3, 4, 5]).send(alice)
+
+    a = sy.combine_pointers(*[x, y])
+    b = a + a
+
+    c = b.get(sum_results=True)
+    assert (c == th.tensor([4, 8, 12, 16, 20])).all()
+
+    b = a + a
+    c = b.get(sum_results=False)
+    assert len(c) == 2
+    assert (c[0] == th.tensor([2, 4, 6, 8, 10])).all
+</source>
+<source file="systems/PySyft-0.2.8/test/generic/pointers/test_pointer_tensor.py" startline="339" endline="361" pcid="1041">
+def test_combine_pointers(workers):
+    """
+    Ensure that the sy.combine_pointers works as expected
+    """
+
+    bob = workers["bob"]
+    alice = workers["alice"]
+
+    x = th.tensor([1, 2, 3, 4, 5]).send(bob)
+    y = th.tensor([1, 2, 3, 4, 5]).send(alice)
+
+    a = x.combine(y)
+    b = a + a
+
+    c = b.get(sum_results=True)
+    assert (c == th.tensor([4, 8, 12, 16, 20])).all()
+
+    b = a + a
+    c = b.get(sum_results=False)
+    assert len(c) == 2
+    assert (c[0] == th.tensor([2, 4, 6, 8, 10])).all
+
+
+</source>
+</class>
+
+<class classid="33" nclones="2" nlines="30" similarity="73">
+<source file="systems/PySyft-0.2.8/test/generic/test_autograd.py" startline="299" endline="338" pcid="998">
+def test_backward_for_linear_model_on_fix_prec_params_with_autograd():
+    """
+    Test .backward() on Fixed Precision parameters with mixed operations
+    """
+    x = torch.tensor([[1.0, 2], [1.0, 2]]).fix_prec()
+    target = torch.tensor([[1.0], [1.0]]).fix_prec()
+    model = nn.Linear(2, 1)
+    model.weight = nn.Parameter(torch.tensor([[-1.0, 2]]))
+    model.bias = nn.Parameter(torch.tensor([-1.0]))
+    model.fix_precision()
+
+    x = syft.AutogradTensor().on(x)
+    target = syft.AutogradTensor().on(target)
+    model.weight = syft.AutogradTensor().on(model.weight)
+    model.bias = syft.AutogradTensor().on(model.bias)
+
+    output = model(x)
+    loss = ((output - target) ** 2).sum()
+    one = torch.ones(loss.shape).fix_prec()
+    one = syft.AutogradTensor().on(one)
+    loss.backward(one)
+
+    weight_grad = model.weight.grad.float_precision()
+    bias_grad = model.bias.grad.float_precision()
+
+    x = torch.tensor([[1.0, 2], [1.0, 2]])
+    target = torch.tensor([[1.0], [1.0]])
+    model = nn.Linear(2, 1)
+    model.weight = nn.Parameter(torch.tensor([[-1.0, 2]]))
+    model.bias = nn.Parameter(torch.tensor([-1.0]))
+
+    output = model(x)
+    loss = ((output - target) ** 2).sum()
+
+    one = torch.ones(loss.shape)
+    loss.backward(one)
+    assert (model.weight.grad == weight_grad).all()
+    assert (model.bias.grad == bias_grad).all()
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/generic/test_autograd.py" startline="462" endline="503" pcid="1003">
+def test_backward_for_linear_model_on_additive_shared_with_autograd(workers):
+    """
+    Test .backward() on Additive Shared tensors with mixed operations
+    """
+    bob, alice, james = workers["bob"], workers["alice"], workers["james"]
+
+    x = torch.tensor([[1.0, 2], [1.0, 2]]).fix_prec().share(bob, alice, crypto_provider=james)
+    target = torch.tensor([[1.0], [1.0]]).fix_prec().share(bob, alice, crypto_provider=james)
+    model = nn.Linear(2, 1)
+    model.weight = nn.Parameter(torch.tensor([[-1.0, 2]]))
+    model.bias = nn.Parameter(torch.tensor([-1.0]))
+    model.fix_precision().share(bob, alice, crypto_provider=james)
+
+    x = syft.AutogradTensor().on(x)
+    target = syft.AutogradTensor().on(target)
+    model.weight = syft.AutogradTensor().on(model.weight)
+    model.bias = syft.AutogradTensor().on(model.bias)
+
+    output = model(x)
+    loss = ((output - target) ** 2).sum()
+    one = torch.ones(loss.shape).fix_prec().share(bob, alice, crypto_provider=james)
+    one = syft.AutogradTensor().on(one)
+    loss.backward(one)
+
+    weight_grad = model.weight.grad.get().float_precision()
+    bias_grad = model.bias.grad.get().float_precision()
+
+    x = torch.tensor([[1.0, 2], [1.0, 2]])
+    target = torch.tensor([[1.0], [1.0]])
+    model = nn.Linear(2, 1)
+    model.weight = nn.Parameter(torch.tensor([[-1.0, 2]]))
+    model.bias = nn.Parameter(torch.tensor([-1.0]))
+
+    output = model(x)
+    loss = ((output - target) ** 2).sum()
+
+    one = torch.ones(loss.shape)
+    loss.backward(one)
+    assert (model.weight.grad == weight_grad).all()
+    assert (model.bias.grad == bias_grad).all()
+
+
+</source>
+</class>
+
+<class classid="34" nclones="3" nlines="11" similarity="81">
+<source file="systems/PySyft-0.2.8/test/generic/pointers/test_pointer_tensor.py" startline="408" endline="429" pcid="1046">
+def test_fix_prec_on_pointer_tensor(workers):
+    """
+    Ensure .fix_precision() works as expected.
+    Also check that fix_precision() is not inplace.
+    """
+    bob = workers["bob"]
+
+    tensor = torch.tensor([1, 2, 3, 4.0])
+    ptr = tensor.send(bob)
+
+    ptr_fp = ptr.fix_precision()
+
+    remote_tensor = bob.object_store.get_obj(ptr.id_at_location)
+    remote_fp_tensor = bob.object_store.get_obj(ptr_fp.id_at_location)
+
+    # check that fix_precision is not inplace
+    assert (remote_tensor == tensor).all()
+
+    assert isinstance(ptr.child, PointerTensor)
+    assert isinstance(remote_fp_tensor.child, FixedPrecisionTensor)
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/generic/pointers/test_pointer_tensor.py" startline="430" endline="449" pcid="1047">
+def test_fix_prec_on_pointer_of_pointer(workers):
+    """
+    Ensure .fix_precision() works along a chain of pointers.
+    """
+    bob = workers["bob"]
+    alice = workers["alice"]
+
+    tensor = torch.tensor([1, 2, 3, 4.0])
+    ptr = tensor.send(bob)
+    ptr = ptr.send(alice)
+
+    ptr = ptr.fix_precision()
+
+    alice_tensor = alice.object_store.get_obj(ptr.id_at_location)
+    remote_tensor = bob.object_store.get_obj(alice_tensor.id_at_location)
+
+    assert isinstance(ptr.child, PointerTensor)
+    assert isinstance(remote_tensor.child, FixedPrecisionTensor)
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/generic/pointers/test_pointer_tensor.py" startline="467" endline="487" pcid="1049">
+def test_float_prec_on_pointer_of_pointer(workers):
+    """
+    Ensure .float_precision() works along a chain of pointers.
+    """
+    bob = workers["bob"]
+    alice = workers["alice"]
+
+    tensor = torch.tensor([1, 2, 3, 4.0])
+    ptr = tensor.send(bob)
+    ptr = ptr.send(alice)
+    ptr = ptr.fix_precision()
+
+    ptr = ptr.float_precision()
+
+    alice_tensor = alice.object_store.get_obj(ptr.id_at_location)
+    remote_tensor = bob.object_store.get_obj(alice_tensor.id_at_location)
+
+    assert isinstance(ptr.child, PointerTensor)
+    assert isinstance(remote_tensor, torch.Tensor)
+
+
+</source>
+</class>
+
+<class classid="35" nclones="2" nlines="13" similarity="85">
+<source file="systems/PySyft-0.2.8/test/generic/pointers/test_pointer_tensor.py" startline="522" endline="543" pcid="1052">
+def test_setting_back_grad_to_origin_after_send(workers):
+    """
+    Calling .backward() on a tensor sent using `.send(..., requires_grad=True)`
+    should update the origin tensor gradient
+    """
+    me = workers["me"]
+    alice = workers["alice"]
+
+    with me.registration_enabled():
+        x = th.tensor([1.0, 2.0, 3, 4, 5], requires_grad=True)
+        y = x + x
+        me.register_obj(y)  # registration on the local worker is sometimes buggy
+
+        y_ptr = y.send(alice, requires_grad=True)
+        z_ptr = y_ptr * 2
+
+        z = z_ptr.sum()
+        z.backward()
+
+        assert (x.grad == th.tensor([4.0, 4.0, 4.0, 4.0, 4.0])).all()
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/generic/pointers/test_pointer_tensor.py" startline="544" endline="567" pcid="1053">
+def test_setting_back_grad_to_origin_after_move(workers):
+    """
+    Calling .backward() on a tensor moved using `.move(..., requires_grad=True)`
+    should update the origin tensor gradient
+    """
+    me = workers["me"]
+    bob = workers["bob"]
+    alice = workers["alice"]
+
+    with me.registration_enabled():
+        x = th.tensor([1.0, 2.0, 3, 4, 5], requires_grad=True)
+        y = x + x
+        me.register_obj(y)  # registration on the local worker is sometimes buggy
+
+        y_ptr = y.send(alice, requires_grad=True)
+        z_ptr = y_ptr * 2
+
+        z_ptr2 = z_ptr.move(bob, requires_grad=True)
+        z = z_ptr2.sum()
+        z.backward()
+
+        assert (x.grad == th.tensor([4.0, 4.0, 4.0, 4.0, 4.0])).all()
+
+
+</source>
+</class>
+
+<class classid="36" nclones="2" nlines="16" similarity="75">
+<source file="systems/PySyft-0.2.8/test/generic/pointers/test_pointer_plan.py" startline="32" endline="56" pcid="1062">
+def test_search_plan(hook, workers):
+
+    alice, me = workers["alice"], workers["me"]
+    me.is_client_worker = False
+
+    @sy.func2plan(args_shape=[(1,)], state=(th.tensor([1.0]),))
+    def plan(x, state):
+        (bias,) = state.read()
+        return x + bias
+
+    plan.send(alice)
+    id_at_location = plan.id
+
+    plan_ptr = me.request_search([id_at_location], location=alice)[0]
+
+    assert isinstance(plan_ptr, PointerPlan)
+
+    x = th.tensor([1.0]).send(alice)
+    ptr = plan_ptr(x)
+
+    assert (ptr.get() == th.tensor([2.0])).all()
+
+    me.is_client_worker = True
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/generic/pointers/test_pointer_plan.py" startline="57" endline="81" pcid="1064">
+def test_get_plan(workers):
+    alice, me = workers["alice"], workers["me"]
+    me.is_client_worker = False
+
+    @sy.func2plan(args_shape=[(1,)], state=(th.tensor([1.0]),))
+    def plan(x, state):
+        (bias,) = state.read()
+        return x + bias
+
+    plan.send(alice)
+    id_at_location = plan.id
+    plan_ptr = me.request_search([id_at_location], location=alice)[0]
+
+    plan = plan_ptr.get()
+
+    assert isinstance(plan, Plan)
+
+    x = th.tensor([1.0])
+    res = plan(x)
+
+    assert (res == th.tensor([2.0])).all()
+
+    me.is_client_worker = True
+
+
+</source>
+</class>
+
+<class classid="37" nclones="3" nlines="12" similarity="75">
+<source file="systems/PySyft-0.2.8/test/notebooks/test_notebooks.py" startline="89" endline="102" pcid="1070">
+def test_notebooks_basic(isolated_filesystem, notebook):
+    """Test Notebooks in the tutorial root folder."""
+    notebook = notebook.split("/")[-1]
+    list_name = Path("examples/tutorials/") / notebook
+    tested_notebooks.append(str(list_name))
+    res = pm.execute_notebook(
+        notebook,
+        "/dev/null",
+        parameters={"epochs": 1, "n_test_batches": 5, "n_train_items": 64, "n_test_items": 64},
+        timeout=300,
+    )
+    assert isinstance(res, nbformat.notebooknode.NotebookNode)
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/notebooks/test_notebooks.py" startline="107" endline="121" pcid="1071">
+def test_notebooks_basic_translations(isolated_filesystem, translated_notebook):  # pragma: no cover
+    """Test Notebooks in the tutorial translations folder."""
+    notebook = "/".join(translated_notebook.split("/")[-2:])
+    notebook = f"translations/{notebook}"
+    list_name = Path(f"examples/tutorials/{notebook}")
+    tested_notebooks.append(str(list_name))
+    res = pm.execute_notebook(
+        notebook,
+        "/dev/null",
+        parameters={"epochs": 1, "n_test_batches": 5, "n_train_items": 64, "n_test_items": 64},
+        timeout=400,
+    )
+    assert isinstance(res, nbformat.notebooknode.NotebookNode)
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/notebooks/test_notebooks.py" startline="126" endline="146" pcid="1072">
+def test_notebooks_basic_translations_diff(
+    isolated_filesystem, translated_notebook
+):  # pragma: no cover
+    """
+    Test Notebooks in the tutorial translations folder if they have been
+    modified in the current pull request. This test should not consider any
+    notebooks locally. It should be used on Github Actions.
+    """
+    notebook = "/".join(translated_notebook.split("/")[-2:])
+    notebook = f"translations/{notebook}"
+    list_name = Path(f"examples/tutorials/{notebook}")
+    tested_notebooks.append(str(list_name))
+    res = pm.execute_notebook(
+        notebook,
+        "/dev/null",
+        parameters={"epochs": 1, "n_test_batches": 5, "n_train_items": 64, "n_test_items": 64},
+        timeout=300,
+    )
+    assert isinstance(res, nbformat.notebooknode.NotebookNode)
+
+
+</source>
+</class>
+
+<class classid="38" nclones="2" nlines="18" similarity="72">
+<source file="systems/PySyft-0.2.8/test/workers/test_websocket_worker.py" startline="107" endline="132" pcid="1083">
+def test_list_objects_remote(hook, start_remote_worker):
+    server, remote_proxy = start_remote_worker(id="fed-list-objects", hook=hook, port=8765)
+    remote_proxy.clear_objects()
+
+    x = torch.tensor([1, 2, 3]).send(remote_proxy)
+
+    res = remote_proxy.list_tensors_remote()
+
+    res_dict = eval(res.replace("tensor", "torch.tensor"))
+    assert len(res_dict) == 1
+
+    y = torch.tensor([4, 5, 6]).send(remote_proxy)
+    res = remote_proxy.list_tensors_remote()
+    res_dict = eval(res.replace("tensor", "torch.tensor"))
+    assert len(res_dict) == 2
+
+    # delete x before terminating the websocket connection
+    del x
+    del y
+    time.sleep(0.1)
+    remote_proxy.close()
+    time.sleep(0.1)
+    remote_proxy.remove_worker_from_local_worker_registry()
+    server.terminate()
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/workers/test_websocket_worker.py" startline="133" endline="158" pcid="1084">
+def test_objects_count_remote(hook, start_remote_worker):
+    server, remote_proxy = start_remote_worker(id="fed-count-objects", hook=hook, port=8764)
+    remote_proxy.clear_objects()
+
+    x = torch.tensor([1, 2, 3]).send(remote_proxy)
+
+    nr_objects = remote_proxy.tensors_count_remote()
+    assert nr_objects == 1
+
+    y = torch.tensor([4, 5, 6]).send(remote_proxy)
+    nr_objects = remote_proxy.tensors_count_remote()
+    assert nr_objects == 2
+
+    x.get()
+    nr_objects = remote_proxy.tensors_count_remote()
+    assert nr_objects == 1
+
+    # delete remote object before terminating the websocket connection
+    del y
+    time.sleep(0.1)
+    remote_proxy.close()
+    time.sleep(0.1)
+    remote_proxy.remove_worker_from_local_worker_registry()
+    server.terminate()
+
+
+</source>
+</class>
+
+<class classid="39" nclones="2" nlines="10" similarity="100">
+<source file="systems/PySyft-0.2.8/test/workers/test_base.py" startline="106" endline="121" pcid="1095">
+def test_send_command_allow_list(hook, workers):
+    bob = workers["bob"]
+    allow_listed_methods = {
+        "torch": {"tensor": [1, 2, 3], "rand": (2, 3), "randn": (2, 3), "zeros": (2, 3)}
+    }
+
+    for framework, methods in allow_listed_methods.items():
+        attr = getattr(bob.remote, framework)
+
+        for method, inp in methods.items():
+            x = getattr(attr, method)(inp)
+
+            if "rand" not in method:
+                assert (x.get() == getattr(th, method)(inp)).all()
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/workers/test_virtual.py" startline="242" endline="257" pcid="1107">
+def test_send_command_allow_list(hook, workers):
+    bob = workers["bob"]
+    allow_listed_methods = {
+        "torch": {"tensor": [1, 2, 3], "rand": (2, 3), "randn": (2, 3), "zeros": (2, 3)}
+    }
+
+    for framework, methods in allow_listed_methods.items():
+        attr = getattr(bob.remote, framework)
+
+        for method, inp in methods.items():
+            x = getattr(attr, method)(inp)
+
+            if "rand" not in method:
+                assert (x.get() == getattr(torch, method)(inp)).all()
+
+
+</source>
+</class>
+
+<class classid="40" nclones="2" nlines="13" similarity="84">
+<source file="systems/PySyft-0.2.8/test/execution/test_plan.py" startline="92" endline="108" pcid="1143">
+def test_plan_execute_locally_ambiguous_output(workers):
+    bob, alice = workers["bob"], workers["alice"]
+
+    @sy.func2plan(args_shape=[(1,)])
+    def serde_plan(x):
+        x = x + x
+        y = x * 2
+        return x
+
+    serde_plan_simplified = serde._simplify(bob, serde_plan)
+    serde_plan_detailed = serde._detail(bob, serde_plan_simplified)
+    t = th.tensor([2.3])
+    expected = serde_plan(t)
+    actual = serde_plan_detailed(t)
+    assert actual == expected
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/execution/test_plan.py" startline="193" endline="210" pcid="1153">
+def test_plan_fixed_len_loop(workers):
+    bob, alice = workers["bob"], workers["alice"]
+
+    @sy.func2plan(args_shape=[(1,)])
+    def serde_plan(x):
+        for i in range(10):
+            x = x + 1
+        return x
+
+    serde_plan_simplified = serde._simplify(bob, serde_plan)
+    serde_plan_detailed = serde._detail(bob, serde_plan_simplified)
+
+    t = th.tensor([1.0])
+    expected = serde_plan_detailed(t)
+    actual = serde_plan_detailed(t)
+    assert actual == expected
+
+
+</source>
+</class>
+
+<class classid="41" nclones="2" nlines="15" similarity="86">
+<source file="systems/PySyft-0.2.8/test/execution/test_plan.py" startline="254" endline="276" pcid="1160">
+def test_plan_multiple_send(workers):
+    bob, alice = workers["bob"], workers["alice"]
+
+    @sy.func2plan(args_shape=[(1,)])
+    def plan_abs(data):
+        return data.abs()
+
+    plan_ptr = plan_abs.send(bob)
+    x_ptr = th.tensor([-1, 7, 3]).send(bob)
+    p = plan_ptr(x_ptr)
+    x_abs = p.get()
+
+    assert (x_abs == th.tensor([1, 7, 3])).all()
+
+    # Test get / send plan
+    plan_ptr = plan_abs.send(alice)
+
+    x_ptr = th.tensor([-1, 2, 3]).send(alice)
+    p = plan_ptr(x_ptr)
+    x_abs = p.get()
+    assert (x_abs == th.tensor([1, 2, 3])).all()
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/execution/test_plan.py" startline="324" endline="342" pcid="1165">
+def test_multiple_workers(workers):
+    bob, alice = workers["bob"], workers["alice"]
+
+    @sy.func2plan(args_shape=[(1,)])
+    def plan_abs(data):
+        return data.abs()
+
+    plan_ptr = plan_abs.send(bob, alice)
+    x_ptr = th.tensor([-1, 7, 3]).send(bob)
+    p = plan_ptr(x_ptr)
+    x_abs = p.get()
+    assert (x_abs == th.tensor([1, 7, 3])).all()
+
+    x_ptr = th.tensor([-1, 9, 3]).send(alice)
+    p = plan_ptr(x_ptr)
+    x_abs = p.get()
+    assert (x_abs == th.tensor([1, 9, 3])).all()
+
+
+</source>
+</class>
+
+<class classid="42" nclones="2" nlines="15" similarity="86">
+<source file="systems/PySyft-0.2.8/test/execution/test_plan.py" startline="717" endline="736" pcid="1196">
+def test_plan_list(hook):
+    x11 = th.tensor([-1, 2.0])
+    x12 = th.tensor([1, -2.0])
+
+    @sy.func2plan()
+    def plan_list(data, x):
+        y = data[0] + data[1]
+        z = data[0] + x
+        return y + z
+
+    device_1 = sy.VirtualWorker(hook, id="test_plan_list", data=(x11, x12))
+
+    plan_list.build([th.tensor([1, 2]), th.tensor([2, 3])], th.tensor([0, 0]))
+    pointer_to_plan = plan_list.send(device_1)
+    pointer_to_data_1 = x11.send(device_1)
+    pointer_to_data_2 = x12.send(device_1)
+    result = pointer_to_plan([pointer_to_data_1, pointer_to_data_2], th.tensor([1, 1]))
+    assert (result.get() == th.tensor([0, 3])).all()
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/execution/test_plan.py" startline="737" endline="758" pcid="1198">
+def test_plan_tuple(hook):
+    x11 = th.tensor([-1, 2.0])
+    x12 = th.tensor([1, -2.0])
+
+    @sy.func2plan()
+    def plan_tuple(data, x):
+        y = data[0] + data[1]
+        z = data[0] + x
+        return y + z
+
+    device_1 = sy.VirtualWorker(hook, id="test_plan_tuple", data=(x11, x12))
+
+    plan_tuple.build((th.tensor([1, 2]), th.tensor([2, 3])), th.tensor([0, 0]))
+    pointer_to_plan = plan_tuple.send(device_1)
+
+    pointer_to_data_1 = x11.send(device_1)
+    pointer_to_data_2 = x12.send(device_1)
+
+    result = pointer_to_plan((pointer_to_data_1, pointer_to_data_2), th.tensor([1, 1]))
+    assert (result.get() == th.tensor([0, 3])).all()
+
+
+</source>
+</class>
+
+<class classid="43" nclones="2" nlines="26" similarity="100">
+<source file="systems/PySyft-0.2.8/test/execution/test_plan.py" startline="829" endline="865" pcid="1204">
+def test_plan_type_error(hook):
+    x1 = th.tensor([-1, 2.0])
+    x2 = th.tensor([1, -2.0])
+
+    @sy.func2plan()
+    def plan_type_err(dic):
+        return dic["k1"]["kk2"]
+
+    dummy_build = {
+        "k1": {
+            "kk1": [(th.tensor([0, 0]), 1), [th.tensor([0, 0]), 2.5]],
+            "kk2": th.tensor([0, 0]),
+        },
+        "k2": [th.tensor([-1, 2]), "dummy_str"],
+    }
+
+    device_1 = sy.VirtualWorker(hook, id="test_nested_structure", data=(x1, x2))
+    plan_type_err.build(dummy_build)
+
+    pointer_to_data_1 = x1.send(device_1)
+    pointer_to_data_2 = x2.send(device_1)
+
+    call_build = {
+        "k1": {"kk1": [(pointer_to_data_1, 1.5), [pointer_to_data_1, True]], "kk2": "warn"},
+        "k2": [pointer_to_data_1, pointer_to_data_2],
+    }
+
+    pointer_to_plan = plan_type_err.send(device_1)
+    with pytest.raises(TypeError) as e:
+        _ = pointer_to_plan(call_build)
+
+    assert str(e.value) == (
+        "Plan plan_type_err element 1 of element 0 of key kk1 of key k1 of element 0 of "
+        "input has type int, while being built with type float."
+    )
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/execution/test_plan.py" startline="944" endline="980" pcid="1212">
+def test_plan_key_error(hook):
+    x1 = th.tensor([-1, 2.0])
+    x2 = th.tensor([1, -2.0])
+
+    @sy.func2plan()
+    def plan_type_warn(dic):
+        return dic["k1"]["kk2"]
+
+    dummy_build = {
+        "k1": {
+            "kk1": [(th.tensor([0, 0]), 1), [th.tensor([0, 0]), 2.5]],
+            "kk2": th.tensor([0, 0]),
+        },
+        "k2": [th.tensor([-1, 2]), "dummy_str"],
+    }
+
+    device_1 = sy.VirtualWorker(hook, id="test_nested_structure", data=(x1, x2))
+    plan_type_warn.build(dummy_build)
+
+    pointer_to_data_1 = x1.send(device_1)
+    pointer_to_data_2 = x2.send(device_1)
+
+    call_build = {
+        "k1": {"kk1_wrong": [(pointer_to_data_1, 1.5), [pointer_to_data_1, True]], "kk2": "warn"},
+        "k2": [pointer_to_data_1, pointer_to_data_2],
+    }
+
+    pointer_to_plan = plan_type_warn.send(device_1)
+    with pytest.raises(KeyError) as e:
+        _ = pointer_to_plan(call_build)
+
+    assert str(e.value) == (
+        "'Plan plan_type_warn key k1 of element 0 of input does not provide the key kk1, "
+        "while being build with that key.'"
+    )
+
+
+</source>
+</class>
+
+<class classid="44" nclones="2" nlines="13" similarity="84">
+<source file="systems/PySyft-0.2.8/test/execution/test_plan.py" startline="897" endline="919" pcid="1208">
+def test_wrong_type_err(hook):
+    @sy.func2plan()
+    def plan_wrong_type_err(x):
+        return x
+
+    device_1 = sy.VirtualWorker(hook, id="test_nested_structure")
+
+    call_build = [True, 5]
+    dummy_build = ((th.tensor([1, 2, 3]), True),)
+
+    plan_wrong_type_err.build(dummy_build)
+
+    pointer_to_plan = plan_wrong_type_err.send(device_1)
+
+    with pytest.raises(TypeError) as e:
+        pointer_to_plan(call_build)
+
+    assert str(e.value) == (
+        "Plan plan_wrong_type_err element 0 of input has type tuple, while being "
+        "built with type list."
+    )
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/execution/test_plan.py" startline="920" endline="943" pcid="1210">
+def test_wrong_size_dict(hook):
+    @sy.func2plan()
+    def plan_wrong_size_dict(x):
+        return x
+
+    device_1 = sy.VirtualWorker(hook, id="test_nested_structure")
+
+    dummy_build = {"k1": True, "k2": False}
+
+    call_build = {"k1": True, "k2": False, "k3": 1}
+
+    plan_wrong_size_dict.build(dummy_build)
+
+    pointer_to_plan = plan_wrong_size_dict.send(device_1)
+
+    with pytest.raises(TypeError) as e:
+        pointer_to_plan(call_build)
+
+    assert str(e.value) == (
+        "Plan plan_wrong_size_dict element 0 of input has length 3, while being "
+        "build with length 2."
+    )
+
+
+</source>
+</class>
+
+<class classid="45" nclones="2" nlines="25" similarity="74">
+<source file="systems/PySyft-0.2.8/test/execution/test_state.py" startline="124" endline="164" pcid="1241">
+def test_fetch_stateful_plan(hook, is_func2plan, workers):
+
+    if is_func2plan:
+
+        @sy.func2plan(args_shape=[(1,)], state=(th.tensor([1.0]),))
+        def plan(data, state):
+            (bias,) = state.read()
+            return data * bias
+
+    else:
+
+        class Net(sy.Plan):
+            def __init__(self):
+                super(Net, self).__init__()
+                self.fc1 = nn.Linear(1, 1)
+
+            def forward(self, x):
+                return self.fc1(x)
+
+        plan = Net()
+        plan.build(th.tensor([1.2]))
+
+    alice = workers["alice"]
+    plan_ptr = plan.send(alice)
+
+    # Fetch plan
+    fetched_plan = plan.owner.fetch_plan(plan_ptr.id_at_location, alice)
+
+    # Execute it locally
+    x = th.tensor([-1.26])
+    assert th.all(th.eq(fetched_plan(x), plan(x)))
+    # assert fetched_plan.state.state_placeholders != plan.state.state_placeholders #TODO
+
+    # Make sure fetched_plan is using the actions
+    assert fetched_plan.forward is None
+    assert fetched_plan.is_built
+
+    # Make sure plan is using the blueprint: forward
+    assert plan.forward is not None
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/execution/test_state.py" startline="166" endline="213" pcid="1245">
+def test_fetch_stateful_plan_remote(hook, is_func2plan, start_remote_worker):
+
+    server, remote_proxy = start_remote_worker(
+        id=f"test_fetch_stateful_plan_remote_{is_func2plan}", hook=hook, port=8802
+    )
+
+    if is_func2plan:
+
+        @sy.func2plan(args_shape=[(1,)], state=(th.tensor([3.0]),))
+        def plan(data, state):
+            (bias,) = state.read()
+            return data * bias
+
+    else:
+
+        class Net(sy.Plan):
+            def __init__(self):
+                super(Net, self).__init__()
+                self.fc1 = nn.Linear(1, 1)
+
+            def forward(self, x):
+                return self.fc1(x)
+
+        plan = Net()
+        plan.build(th.tensor([1.2]))
+
+    x = th.tensor([-1.26])
+    expected = plan(x)
+    plan_ptr = plan.send(remote_proxy)
+
+    # Fetch plan
+    fetched_plan = plan.owner.fetch_plan(plan_ptr.id_at_location, remote_proxy)
+
+    # Execute it locally
+    assert th.all(th.eq(fetched_plan(x), expected))
+    # assert fetched_plan.state.state_placeholders != plan.state.state_placeholders #TODO
+
+    # Make sure fetched_plan is using the actions
+    assert fetched_plan.forward is None
+    assert fetched_plan.is_built
+
+    # Make sure plan is using the blueprint: forward
+    assert plan.forward is not None
+
+    remote_proxy.close()
+    server.terminate()
+
+
+</source>
+</class>
+
+<class classid="46" nclones="9" nlines="11" similarity="75">
+<source file="systems/PySyft-0.2.8/test/execution/test_protocol.py" startline="36" endline="50" pcid="1263">
+def test_trace_communication_actions_send():
+    @sy.func2protocol(roles=["alice", "bob"], args_shape={"alice": ((1,),)})
+    def protocol(alice, bob):
+        tensor = alice.torch.tensor([1])
+
+        tensor.send(bob.worker)
+        return tensor
+
+    traced_actions = protocol.roles["alice"].actions
+
+    assert protocol.is_built
+    assert len(traced_actions) == 2
+    assert "send" in (action.name for action in traced_actions)
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/execution/test_protocol.py" startline="99" endline="115" pcid="1271">
+def test_trace_communication_actions_share():
+    @sy.func2protocol(roles=["alice", "bob"], args_shape={"alice": ((1,),)})
+    def protocol(alice, bob):
+        tensor = alice.torch.tensor([1])
+
+        ptr = tensor.send(bob.worker)
+        ptr = ptr.fix_prec()
+        res = ptr.share(alice.worker, bob.worker)
+        return res
+
+    traced_actions = protocol.roles["alice"].actions
+
+    assert protocol.is_built
+    assert len(traced_actions) == 4
+    assert "share" in (action.name for action in traced_actions)
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/execution/test_protocol.py" startline="165" endline="180" pcid="1279">
+def test_trace_communication_actions_remote_get():
+    @sy.func2protocol(roles=["alice", "bob"], args_shape={"alice": ((1,),)})
+    def protocol(alice, bob):
+        tensor = alice.torch.tensor([1])
+
+        ptr = tensor.send(bob.worker).send(alice.worker)
+        res = ptr.remote_get()
+        return res
+
+    traced_actions = protocol.roles["alice"].actions
+
+    assert protocol.is_built
+    assert len(traced_actions) == 4
+    assert "remote_get" in (action.name for action in traced_actions)
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/execution/test_protocol.py" startline="83" endline="98" pcid="1269">
+def test_trace_communication_actions_move():
+    @sy.func2protocol(roles=["alice", "bob"], args_shape={"alice": ((1,),)})
+    def protocol(alice, bob):
+        tensor = alice.torch.tensor([1])
+
+        ptr = tensor.send(bob.worker)
+        res = ptr.move(alice.worker)
+        return res
+
+    traced_actions = protocol.roles["alice"].actions
+
+    assert protocol.is_built
+    assert len(traced_actions) == 3
+    assert "move" in (action.name for action in traced_actions)
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/execution/test_protocol.py" startline="116" endline="132" pcid="1273">
+def test_trace_communication_actions_share_():
+    @sy.func2protocol(roles=["alice", "bob"], args_shape={"alice": ((1,),)})
+    def protocol(alice, bob):
+        tensor = alice.torch.tensor([1])
+
+        ptr = tensor.send(bob.worker)
+        ptr = ptr.fix_prec()
+        res = ptr.share_(alice.worker, bob.worker)
+        return res
+
+    traced_actions = protocol.roles["alice"].actions
+
+    assert protocol.is_built
+    assert len(traced_actions) == 4
+    assert "share_" in (action.name for action in traced_actions)
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/execution/test_protocol.py" startline="67" endline="82" pcid="1267">
+def test_trace_communication_actions_ptr_send():
+    @sy.func2protocol(roles=["alice", "bob"], args_shape={"alice": ((1,),)})
+    def protocol(alice, bob):
+        tensor = alice.torch.tensor([1])
+
+        ptr = tensor.send(bob.worker)
+        res = ptr.send(alice.worker)
+        return res
+
+    traced_actions = protocol.roles["alice"].actions
+
+    assert protocol.is_built
+    assert len(traced_actions) == 3
+    assert "send" in (action.name for action in traced_actions)
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/execution/test_protocol.py" startline="133" endline="148" pcid="1275">
+def test_trace_communication_actions_remote_send():
+    @sy.func2protocol(roles=["alice", "bob"], args_shape={"alice": ((1,),)})
+    def protocol(alice, bob):
+        tensor = alice.torch.tensor([1])
+
+        ptr = tensor.send(bob.worker)
+        res = ptr.remote_send(alice.worker)
+        return res
+
+    traced_actions = protocol.roles["alice"].actions
+
+    assert protocol.is_built
+    assert len(traced_actions) == 3
+    assert "remote_send" in (action.name for action in traced_actions)
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/execution/test_protocol.py" startline="149" endline="164" pcid="1277">
+def test_trace_communication_actions_mid_get():
+    @sy.func2protocol(roles=["alice", "bob"], args_shape={"alice": ((1,),)})
+    def protocol(alice, bob):
+        tensor = alice.torch.tensor([1])
+
+        ptr = tensor.send(bob.worker)
+        res = ptr.mid_get()
+        return res
+
+    traced_actions = protocol.roles["alice"].actions
+
+    assert protocol.is_built
+    assert len(traced_actions) == 3
+    assert "mid_get" in (action.name for action in traced_actions)
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/execution/test_protocol.py" startline="51" endline="66" pcid="1265">
+def test_trace_communication_actions_get():
+    @sy.func2protocol(roles=["alice", "bob"], args_shape={"alice": ((1,),)})
+    def protocol(alice, bob):
+        tensor = alice.torch.tensor([1])
+
+        ptr = tensor.send(bob.worker)
+        res = ptr.get()
+        return res
+
+    traced_actions = protocol.roles["alice"].actions
+
+    assert protocol.is_built
+    assert len(traced_actions) == 3
+    assert "get" in (action.name for action in traced_actions)
+
+
+</source>
+</class>
+
+<class classid="47" nclones="2" nlines="14" similarity="100">
+<source file="systems/PySyft-0.2.8/test/execution/test_role.py" startline="9" endline="29" pcid="1298">
+def test_register_computation_action():
+    role = Role()
+    placeholder = PlaceHolder()
+    target = torch.ones([1])
+
+    action = ("__add__", target, (), {})
+
+    role.register_action((action, placeholder), ComputationAction)
+
+    assert len(role.actions) == 1
+
+    registered = role.actions[0]
+
+    assert isinstance(registered, ComputationAction)
+    assert registered.name == "__add__"
+    assert registered.target == target
+    assert registered.args == ()
+    assert registered.kwargs == {}
+    assert registered.return_ids == (placeholder.id,)
+
+
+</source>
+<source file="systems/PySyft-0.2.8/test/execution/test_role.py" startline="30" endline="51" pcid="1299">
+def test_register_communication_action():
+    role = Role()
+    placeholder = PlaceHolder()
+    target = torch.ones([1])
+
+    action = ("get", target, (), {})
+
+    role.register_action((action, placeholder), CommunicationAction)
+
+    assert len(role.actions) == 1
+
+    registered = role.actions[0]
+
+    assert isinstance(registered, CommunicationAction)
+    assert registered.name == "get"
+    assert registered.target == target
+    assert registered.args == ()
+    assert registered.kwargs == {}
+
+    assert registered.return_ids == (placeholder.id,)
+
+
+</source>
+</class>
+
+<class classid="48" nclones="2" nlines="12" similarity="100">
+<source file="systems/PySyft-0.2.8/examples/tutorials/grid/federated_learning/spam_prediction/handcrafted_GRU.py" startline="8" endline="27" pcid="1301">
+    def __init__(self, input_size, hidden_size, bias=True):
+        super(GRUCell, self).__init__()
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.bias = bias
+
+        # reset gate
+        self.fc_ir = nn.Linear(input_size, hidden_size, bias=bias)
+        self.fc_hr = nn.Linear(hidden_size, hidden_size, bias=bias)
+
+        # update gate
+        self.fc_iz = nn.Linear(input_size, hidden_size, bias=bias)
+        self.fc_hz = nn.Linear(hidden_size, hidden_size, bias=bias)
+
+        # new gate
+        self.fc_in = nn.Linear(input_size, hidden_size, bias=bias)
+        self.fc_hn = nn.Linear(hidden_size, hidden_size, bias=bias)
+
+        self.init_parameters()
+
+</source>
+<source file="systems/PySyft-0.2.8/examples/tutorials/advanced/federated_sms_spam_prediction/handcrafted_GRU.py" startline="8" endline="27" pcid="1314">
+    def __init__(self, input_size, hidden_size, bias=True):
+        super(GRUCell, self).__init__()
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.bias = bias
+
+        # reset gate
+        self.fc_ir = nn.Linear(input_size, hidden_size, bias=bias)
+        self.fc_hr = nn.Linear(hidden_size, hidden_size, bias=bias)
+
+        # update gate
+        self.fc_iz = nn.Linear(input_size, hidden_size, bias=bias)
+        self.fc_hz = nn.Linear(hidden_size, hidden_size, bias=bias)
+
+        # new gate
+        self.fc_in = nn.Linear(input_size, hidden_size, bias=bias)
+        self.fc_hn = nn.Linear(hidden_size, hidden_size, bias=bias)
+
+        self.init_parameters()
+
+</source>
+</class>
+
+<class classid="49" nclones="2" nlines="13" similarity="100">
+<source file="systems/PySyft-0.2.8/examples/tutorials/grid/federated_learning/spam_prediction/handcrafted_GRU.py" startline="33" endline="52" pcid="1303">
+    def forward(self, x, h):
+
+        x = x.view(-1, x.shape[1])
+
+        i_r = self.fc_ir(x)
+        h_r = self.fc_hr(h)
+        i_z = self.fc_iz(x)
+        h_z = self.fc_hz(h)
+        i_n = self.fc_in(x)
+        h_n = self.fc_hn(h)
+
+        resetgate = F.sigmoid(i_r + h_r)
+        inputgate = F.sigmoid(i_z + h_z)
+        newgate = F.tanh(i_n + (resetgate * h_n))
+
+        hy = newgate + inputgate * (h - newgate)
+
+        return hy
+
+
+</source>
+<source file="systems/PySyft-0.2.8/examples/tutorials/advanced/federated_sms_spam_prediction/handcrafted_GRU.py" startline="33" endline="52" pcid="1316">
+    def forward(self, x, h):
+
+        x = x.view(-1, x.shape[1])
+
+        i_r = self.fc_ir(x)
+        h_r = self.fc_hr(h)
+        i_z = self.fc_iz(x)
+        h_z = self.fc_hz(h)
+        i_n = self.fc_in(x)
+        h_n = self.fc_hn(h)
+
+        resetgate = F.sigmoid(i_r + h_r)
+        inputgate = F.sigmoid(i_z + h_z)
+        newgate = F.tanh(i_n + (resetgate * h_n))
+
+        hy = newgate + inputgate * (h - newgate)
+
+        return hy
+
+
+</source>
+</class>
+
+<class classid="50" nclones="2" nlines="11" similarity="100">
+<source file="systems/PySyft-0.2.8/examples/tutorials/grid/federated_learning/spam_prediction/handcrafted_GRU.py" startline="54" endline="72" pcid="1304">
+    def __init__(
+        self, vocab_size, output_size=1, embedding_dim=50, hidden_dim=10, bias=True, dropout=0.2
+    ):
+        super(GRU, self).__init__()
+
+        self.hidden_dim = hidden_dim
+        self.output_size = output_size
+
+        # Dropout layer
+        self.dropout = nn.Dropout(p=dropout)
+        # Embedding layer
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        # GRU Cell
+        self.gru_cell = GRUCell(embedding_dim, hidden_dim)
+        # Fully-connected layer
+        self.fc = nn.Linear(hidden_dim, output_size)
+        # Sigmoid layer
+        self.sigmoid = nn.Sigmoid()
+
+</source>
+<source file="systems/PySyft-0.2.8/examples/tutorials/advanced/federated_sms_spam_prediction/handcrafted_GRU.py" startline="54" endline="72" pcid="1317">
+    def __init__(
+        self, vocab_size, output_size=1, embedding_dim=50, hidden_dim=10, bias=True, dropout=0.2
+    ):
+        super(GRU, self).__init__()
+
+        self.hidden_dim = hidden_dim
+        self.output_size = output_size
+
+        # Dropout layer
+        self.dropout = nn.Dropout(p=dropout)
+        # Embedding layer
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        # GRU Cell
+        self.gru_cell = GRUCell(embedding_dim, hidden_dim)
+        # Fully-connected layer
+        self.fc = nn.Linear(hidden_dim, output_size)
+        # Sigmoid layer
+        self.sigmoid = nn.Sigmoid()
+
+</source>
+</class>
+
+<class classid="51" nclones="2" nlines="11" similarity="100">
+<source file="systems/PySyft-0.2.8/examples/tutorials/grid/federated_learning/spam_prediction/handcrafted_GRU.py" startline="73" endline="96" pcid="1305">
+    def forward(self, x, h):
+
+        batch_size = x.shape[0]
+
+        # Deal with cases were the current batch_size is different from general batch_size
+        # It occurrs at the end of iteration with the Dataloaders
+        if h.shape[0] != batch_size:
+            h = h[:batch_size, :].contiguous()
+
+        # Apply embedding
+        x = self.embedding(x)
+
+        # GRU cells
+        for t in range(x.shape[1]):
+            h = self.gru_cell(x[:, t, :], h)
+
+        # Output corresponds to the last hidden state
+        out = h.contiguous().view(-1, self.hidden_dim)
+
+        # Dropout and fully-connected layers
+        out = self.dropout(out)
+        sig_out = self.sigmoid(self.fc(out))
+
+        return sig_out, h
+</source>
+<source file="systems/PySyft-0.2.8/examples/tutorials/advanced/federated_sms_spam_prediction/handcrafted_GRU.py" startline="73" endline="96" pcid="1318">
+    def forward(self, x, h):
+
+        batch_size = x.shape[0]
+
+        # Deal with cases were the current batch_size is different from general batch_size
+        # It occurrs at the end of iteration with the Dataloaders
+        if h.shape[0] != batch_size:
+            h = h[:batch_size, :].contiguous()
+
+        # Apply embedding
+        x = self.embedding(x)
+
+        # GRU cells
+        for t in range(x.shape[1]):
+            h = self.gru_cell(x[:, t, :], h)
+
+        # Output corresponds to the last hidden state
+        out = h.contiguous().view(-1, self.hidden_dim)
+
+        # Dropout and fully-connected layers
+        out = self.dropout(out)
+        sig_out = self.sigmoid(self.fc(out))
+
+        return sig_out, h
+</source>
+</class>
+
+</clones>

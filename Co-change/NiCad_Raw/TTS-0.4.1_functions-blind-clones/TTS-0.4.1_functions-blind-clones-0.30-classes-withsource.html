@@ -1,0 +1,3302 @@
+<html>
+<head>
+    <title>NiCad6 Clone Report</title>
+    <style type="text/css">
+        body {font-family:sans-serif;}
+        table {background-color:white; border:0px; padding:0px; border-spacing:4px; width:auto; margin-left:30px; margin-right:auto;}
+        td {background-color:rgba(192,212,238,0.8); border:0px; padding:8px; width:auto; vertical-align:top; border-radius:8px}
+        pre {background-color:white; padding:4px;}
+        a {color:darkblue;}
+    </style>
+</head>
+<body>
+<h2>NiCad6 Clone Report</h2>
+<table>
+<tr style="font-size:14pt">
+<td><b>System:</b> &nbsp; TTS-0.4.1</td>
+<td><b>Clone pairs:</b> &nbsp; 50</td>
+<td><b>Clone classes:</b> &nbsp; 30</td>
+</tr>
+<tr style="font-size:12pt">
+<td style="background-color:white">Clone type: &nbsp; 3-2</td>
+<td style="background-color:white">Granularity: &nbsp; functions-blind</td>
+<td style="background-color:white">Max diff threshold: &nbsp; 30%</td>
+<td style="background-color:white">Clone size: &nbsp; 10 - 2500 lines</td>
+<td style="background-color:white">Total functions-blind: &nbsp; 886</td>
+</tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 1:</b> &nbsp; 2 fragments, nominal size 19 lines, similarity 89%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag19')" href="javascript:;">
+TTS-0.4.1/tests/aux_tests/test_speaker_encoder.py: 15-43
+</a>
+<div class="mid" id="frag19" style="display:none"><pre>
+    def test_in_out(self):
+        dummy_input = T.rand(4, 20, 80)  # B x T x D
+        dummy_hidden = [T.rand(2, 4, 128), T.rand(2, 4, 128)]
+        model = LSTMSpeakerEncoder(input_dim=80, proj_dim=256, lstm_dim=768, num_lstm_layers=3)
+        # computing d vectors
+        output = model.forward(dummy_input)
+        assert output.shape[0] == 4
+        assert output.shape[1] == 256
+        output = model.inference(dummy_input)
+        assert output.shape[0] == 4
+        assert output.shape[1] == 256
+        # compute d vectors by passing LSTM hidden
+        # output = model.forward(dummy_input, dummy_hidden)
+        # assert output.shape[0] == 4
+        # assert output.shape[1] == 20
+        # assert output.shape[2] == 256
+        # check normalization
+        output_norm = T.nn.functional.normalize(output, dim=1, p=2)
+        assert_diff = (output_norm - output).sum().item()
+        assert output.type() == "torch.FloatTensor"
+        assert abs(assert_diff) &lt; 1e-4, f" [!] output_norm has wrong values - {assert_diff}"
+        # compute d for a given batch
+        dummy_input = T.rand(1, 240, 80)  # B x T x D
+        output = model.compute_embedding(dummy_input, num_frames=160, num_eval=5)
+        assert output.shape[0] == 1
+        assert output.shape[1] == 256
+        assert len(output.shape) == 2
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag20')" href="javascript:;">
+TTS-0.4.1/tests/aux_tests/test_speaker_encoder.py: 46-70
+</a>
+<div class="mid" id="frag20" style="display:none"><pre>
+    def test_in_out(self):
+        dummy_input = T.rand(4, 20, 80)  # B x T x D
+        dummy_hidden = [T.rand(2, 4, 128), T.rand(2, 4, 128)]
+        model = ResNetSpeakerEncoder(input_dim=80, proj_dim=256)
+        # computing d vectors
+        output = model.forward(dummy_input)
+        assert output.shape[0] == 4
+        assert output.shape[1] == 256
+        output = model.forward(dummy_input, l2_norm=True)
+        assert output.shape[0] == 4
+        assert output.shape[1] == 256
+
+        # check normalization
+        output_norm = T.nn.functional.normalize(output, dim=1, p=2)
+        assert_diff = (output_norm - output).sum().item()
+        assert output.type() == "torch.FloatTensor"
+        assert abs(assert_diff) &lt; 1e-4, f" [!] output_norm has wrong values - {assert_diff}"
+        # compute d for a given batch
+        dummy_input = T.rand(1, 240, 80)  # B x T x D
+        output = model.compute_embedding(dummy_input, num_frames=160, num_eval=10)
+        assert output.shape[0] == 1
+        assert output.shape[1] == 256
+        assert len(output.shape) == 2
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 2:</b> &nbsp; 2 fragments, nominal size 20 lines, similarity 85%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag21')" href="javascript:;">
+TTS-0.4.1/tests/aux_tests/test_speaker_encoder.py: 73-98
+</a>
+<div class="mid" id="frag21" style="display:none"><pre>
+    def test_in_out(self):
+        # check random input
+        dummy_input = T.rand(4, 5, 64)  # num_speaker x num_utterance x dim
+        loss = GE2ELoss(loss_method="softmax")
+        output = loss.forward(dummy_input)
+        assert output.item() &gt;= 0.0
+        # check all zeros
+        dummy_input = T.ones(4, 5, 64)  # num_speaker x num_utterance x dim
+        loss = GE2ELoss(loss_method="softmax")
+        output = loss.forward(dummy_input)
+        assert output.item() &gt;= 0.0
+        # check speaker loss with orthogonal d-vectors
+        dummy_input = T.empty(3, 64)
+        dummy_input = T.nn.init.orthogonal_(dummy_input)
+        dummy_input = T.cat(
+            [
+                dummy_input[0].repeat(5, 1, 1).transpose(0, 1),
+                dummy_input[1].repeat(5, 1, 1).transpose(0, 1),
+                dummy_input[2].repeat(5, 1, 1).transpose(0, 1),
+            ]
+        )  # num_speaker x num_utterance x dim
+        loss = GE2ELoss(loss_method="softmax")
+        output = loss.forward(dummy_input)
+        assert output.item() &lt; 0.005
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag22')" href="javascript:;">
+TTS-0.4.1/tests/aux_tests/test_speaker_encoder.py: 101-128
+</a>
+<div class="mid" id="frag22" style="display:none"><pre>
+    def test_in_out(self):
+        # check random input
+        dummy_input = T.rand(4, 5, 64)  # num_speaker x num_utterance x dim
+        loss = AngleProtoLoss()
+        output = loss.forward(dummy_input)
+        assert output.item() &gt;= 0.0
+
+        # check all zeros
+        dummy_input = T.ones(4, 5, 64)  # num_speaker x num_utterance x dim
+        loss = AngleProtoLoss()
+        output = loss.forward(dummy_input)
+        assert output.item() &gt;= 0.0
+
+        # check speaker loss with orthogonal d-vectors
+        dummy_input = T.empty(3, 64)
+        dummy_input = T.nn.init.orthogonal_(dummy_input)
+        dummy_input = T.cat(
+            [
+                dummy_input[0].repeat(5, 1, 1).transpose(0, 1),
+                dummy_input[1].repeat(5, 1, 1).transpose(0, 1),
+                dummy_input[2].repeat(5, 1, 1).transpose(0, 1),
+            ]
+        )  # num_speaker x num_utterance x dim
+        loss = AngleProtoLoss()
+        output = loss.forward(dummy_input)
+        assert output.item() &lt; 0.005
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 3:</b> &nbsp; 3 fragments, nominal size 10 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag25')" href="javascript:;">
+TTS-0.4.1/tests/aux_tests/test_extract_tts_spectrograms.py: 15-31
+</a>
+<div class="mid" id="frag25" style="display:none"><pre>
+    def test_GlowTTS():
+        # set paths
+        config_path = os.path.join(get_tests_input_path(), "test_glow_tts.json")
+        checkpoint_path = os.path.join(get_tests_output_path(), "checkpoint_test.pth.tar")
+        output_path = os.path.join(get_tests_output_path(), "output_extract_tts_spectrograms/")
+        # load config
+        c = load_config(config_path)
+        # create model
+        model = setup_model(c)
+        # save model
+        torch.save({"model": model.state_dict()}, checkpoint_path)
+        # run test
+        run_cli(
+            f'CUDA_VISIBLE_DEVICES="" python TTS/bin/extract_tts_spectrograms.py --config_path "{config_path}" --checkpoint_path "{checkpoint_path}" --output_path "{output_path}"'
+        )
+        run_cli(f'rm -rf "{output_path}" "{checkpoint_path}"')
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag27')" href="javascript:;">
+TTS-0.4.1/tests/aux_tests/test_extract_tts_spectrograms.py: 51-66
+</a>
+<div class="mid" id="frag27" style="display:none"><pre>
+    def test_Tacotron():
+        # set paths
+        config_path = os.path.join(get_tests_input_path(), "test_tacotron_config.json")
+        checkpoint_path = os.path.join(get_tests_output_path(), "checkpoint_test.pth.tar")
+        output_path = os.path.join(get_tests_output_path(), "output_extract_tts_spectrograms/")
+        # load config
+        c = load_config(config_path)
+        # create model
+        model = setup_model(c)
+        # save model
+        torch.save({"model": model.state_dict()}, checkpoint_path)
+        # run test
+        run_cli(
+            f'CUDA_VISIBLE_DEVICES="" python TTS/bin/extract_tts_spectrograms.py --config_path "{config_path}" --checkpoint_path "{checkpoint_path}" --output_path "{output_path}"'
+        )
+        run_cli(f'rm -rf "{output_path}" "{checkpoint_path}"')
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag26')" href="javascript:;">
+TTS-0.4.1/tests/aux_tests/test_extract_tts_spectrograms.py: 33-49
+</a>
+<div class="mid" id="frag26" style="display:none"><pre>
+    def test_Tacotron2():
+        # set paths
+        config_path = os.path.join(get_tests_input_path(), "test_tacotron2_config.json")
+        checkpoint_path = os.path.join(get_tests_output_path(), "checkpoint_test.pth.tar")
+        output_path = os.path.join(get_tests_output_path(), "output_extract_tts_spectrograms/")
+        # load config
+        c = load_config(config_path)
+        # create model
+        model = setup_model(c)
+        # save model
+        torch.save({"model": model.state_dict()}, checkpoint_path)
+        # run test
+        run_cli(
+            f'CUDA_VISIBLE_DEVICES="" python TTS/bin/extract_tts_spectrograms.py --config_path "{config_path}" --checkpoint_path "{checkpoint_path}" --output_path "{output_path}"'
+        )
+        run_cli(f'rm -rf "{output_path}" "{checkpoint_path}"')
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 4:</b> &nbsp; 6 fragments, nominal size 42 lines, similarity 70%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag29')" href="javascript:;">
+TTS-0.4.1/tests/tts_tests/test_tacotron_model.py: 34-83
+</a>
+<div class="mid" id="frag29" style="display:none"><pre>
+    def test_train_step():
+        config = config_global.copy()
+        config.use_speaker_embedding = False
+        config.num_speakers = 1
+
+        input_dummy = torch.randint(0, 24, (8, 128)).long().to(device)
+        input_lengths = torch.randint(100, 129, (8,)).long().to(device)
+        input_lengths[-1] = 128
+        mel_spec = torch.rand(8, 30, config.audio["num_mels"]).to(device)
+        linear_spec = torch.rand(8, 30, config.audio["fft_size"] // 2 + 1).to(device)
+        mel_lengths = torch.randint(20, 30, (8,)).long().to(device)
+        mel_lengths[-1] = mel_spec.size(1)
+        stop_targets = torch.zeros(8, 30, 1).float().to(device)
+
+        for idx in mel_lengths:
+            stop_targets[:, int(idx.item()) :, 0] = 1.0
+
+        stop_targets = stop_targets.view(input_dummy.shape[0], stop_targets.size(1) // config.r, -1)
+        stop_targets = (stop_targets.sum(2) &gt; 0.0).unsqueeze(2).float().squeeze()
+
+        criterion = L1LossMasked(seq_len_norm=False).to(device)
+        criterion_st = nn.BCEWithLogitsLoss().to(device)
+        model = Tacotron(config).to(device)  # FIXME: missing num_speakers parameter to Tacotron ctor
+        model.train()
+        print(" &gt; Num parameters for Tacotron model:%s" % (count_parameters(model)))
+        model_ref = copy.deepcopy(model)
+        count = 0
+        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+            assert (param - param_ref).sum() == 0, param
+            count += 1
+        optimizer = optim.Adam(model.parameters(), lr=config.lr)
+        for _ in range(5):
+            outputs = model.forward(input_dummy, input_lengths, mel_spec, mel_lengths)
+            optimizer.zero_grad()
+            loss = criterion(outputs["decoder_outputs"], mel_spec, mel_lengths)
+            stop_loss = criterion_st(outputs["stop_tokens"], stop_targets)
+            loss = loss + criterion(outputs["model_outputs"], linear_spec, mel_lengths) + stop_loss
+            loss.backward()
+            optimizer.step()
+        # check parameter changes
+        count = 0
+        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+            # ignore pre-higway layer since it works conditional
+            # if count not in [145, 59]:
+            assert (param != param_ref).any(), "param {} with shape {} not updated!! \n{}\n{}".format(
+                count, param.shape, param, param_ref
+            )
+            count += 1
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag32')" href="javascript:;">
+TTS-0.4.1/tests/tts_tests/test_tacotron_model.py: 253-309
+</a>
+<div class="mid" id="frag32" style="display:none"><pre>
+    def test_train_step():
+        config = config_global.copy()
+        config.use_d_vector_file = True
+
+        config.use_gst = True
+        config.gst = GSTConfig()
+
+        input_dummy = torch.randint(0, 24, (8, 128)).long().to(device)
+        input_lengths = torch.randint(100, 129, (8,)).long().to(device)
+        input_lengths[-1] = 128
+        mel_spec = torch.rand(8, 30, config.audio["num_mels"]).to(device)
+        linear_spec = torch.rand(8, 30, config.audio["fft_size"] // 2 + 1).to(device)
+        mel_lengths = torch.randint(20, 30, (8,)).long().to(device)
+        mel_lengths[-1] = mel_spec.size(1)
+        stop_targets = torch.zeros(8, 30, 1).float().to(device)
+        speaker_embeddings = torch.rand(8, 55).to(device)
+
+        for idx in mel_lengths:
+            stop_targets[:, int(idx.item()) :, 0] = 1.0
+
+        stop_targets = stop_targets.view(input_dummy.shape[0], stop_targets.size(1) // config.r, -1)
+        stop_targets = (stop_targets.sum(2) &gt; 0.0).unsqueeze(2).float().squeeze()
+
+        criterion = L1LossMasked(seq_len_norm=False).to(device)
+        criterion_st = nn.BCEWithLogitsLoss().to(device)
+        config.d_vector_dim = 55
+        model = Tacotron(config).to(device)  # FIXME: missing num_speakers parameter to Tacotron ctor
+        model.train()
+        print(" &gt; Num parameters for Tacotron model:%s" % (count_parameters(model)))
+        model_ref = copy.deepcopy(model)
+        count = 0
+        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+            assert (param - param_ref).sum() == 0, param
+            count += 1
+        optimizer = optim.Adam(model.parameters(), lr=config.lr)
+        for _ in range(5):
+            outputs = model.forward(
+                input_dummy, input_lengths, mel_spec, mel_lengths, aux_input={"d_vectors": speaker_embeddings}
+            )
+            optimizer.zero_grad()
+            loss = criterion(outputs["decoder_outputs"], mel_spec, mel_lengths)
+            stop_loss = criterion_st(outputs["stop_tokens"], stop_targets)
+            loss = loss + criterion(outputs["model_outputs"], linear_spec, mel_lengths) + stop_loss
+            loss.backward()
+            optimizer.step()
+        # check parameter changes
+        count = 0
+        for name_param, param_ref in zip(model.named_parameters(), model_ref.parameters()):
+            # ignore pre-higway layer since it works conditional
+            # if count not in [145, 59]:
+            name, param = name_param
+            if name == "gst_layer.encoder.recurrence.weight_hh_l0":
+                continue
+            assert (param != param_ref).any(), "param {} with shape {} not updated!! \n{}\n{}".format(
+                count, param.shape, param, param_ref
+            )
+            count += 1
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag55')" href="javascript:;">
+TTS-0.4.1/tests/tts_tests/test_tacotron2_model.py: 85-139
+</a>
+<div class="mid" id="frag55" style="display:none"><pre>
+    def test_train_step():
+        config = config_global.copy()
+        config.use_speaker_embedding = True
+        config.num_speakers = 5
+
+        input_dummy = torch.randint(0, 24, (8, 128)).long().to(device)
+        input_lengths = torch.randint(100, 128, (8,)).long().to(device)
+        input_lengths = torch.sort(input_lengths, descending=True)[0]
+        mel_spec = torch.rand(8, 30, config.audio["num_mels"]).to(device)
+        mel_postnet_spec = torch.rand(8, 30, config.audio["num_mels"]).to(device)
+        mel_lengths = torch.randint(20, 30, (8,)).long().to(device)
+        mel_lengths[0] = 30
+        stop_targets = torch.zeros(8, 30, 1).float().to(device)
+        speaker_ids = torch.randint(0, 5, (8,)).long().to(device)
+
+        for idx in mel_lengths:
+            stop_targets[:, int(idx.item()) :, 0] = 1.0
+
+        stop_targets = stop_targets.view(input_dummy.shape[0], stop_targets.size(1) // config.r, -1)
+        stop_targets = (stop_targets.sum(2) &gt; 0.0).unsqueeze(2).float().squeeze()
+
+        criterion = MSELossMasked(seq_len_norm=False).to(device)
+        criterion_st = nn.BCEWithLogitsLoss().to(device)
+        config.d_vector_dim = 55
+        model = Tacotron2(config).to(device)
+        model.train()
+        model_ref = copy.deepcopy(model)
+        count = 0
+        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+            assert (param - param_ref).sum() == 0, param
+            count += 1
+        optimizer = optim.Adam(model.parameters(), lr=config.lr)
+        for _ in range(5):
+            outputs = model.forward(
+                input_dummy, input_lengths, mel_spec, mel_lengths, aux_input={"speaker_ids": speaker_ids}
+            )
+            assert torch.sigmoid(outputs["stop_tokens"]).data.max() &lt;= 1.0
+            assert torch.sigmoid(outputs["stop_tokens"]).data.min() &gt;= 0.0
+            optimizer.zero_grad()
+            loss = criterion(outputs["decoder_outputs"], mel_spec, mel_lengths)
+            stop_loss = criterion_st(outputs["stop_tokens"], stop_targets)
+            loss = loss + criterion(outputs["model_outputs"], mel_postnet_spec, mel_lengths) + stop_loss
+            loss.backward()
+            optimizer.step()
+        # check parameter changes
+        count = 0
+        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+            # ignore pre-higway layer since it works conditional
+            # if count not in [145, 59]:
+            assert (param != param_ref).any(), "param {} with shape {} not updated!! \n{}\n{}".format(
+                count, param.shape, param, param_ref
+            )
+            count += 1
+
+
+</pre></div>
+</td>
+</tr><tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag54')" href="javascript:;">
+TTS-0.4.1/tests/tts_tests/test_tacotron2_model.py: 30-80
+</a>
+<div class="mid" id="frag54" style="display:none"><pre>
+    def test_train_step(self):  # pylint: disable=no-self-use
+        config = config_global.copy()
+        config.use_speaker_embedding = False
+        config.num_speakers = 1
+
+        input_dummy = torch.randint(0, 24, (8, 128)).long().to(device)
+        input_lengths = torch.randint(100, 128, (8,)).long().to(device)
+        input_lengths = torch.sort(input_lengths, descending=True)[0]
+        mel_spec = torch.rand(8, 30, config.audio["num_mels"]).to(device)
+        mel_postnet_spec = torch.rand(8, 30, config.audio["num_mels"]).to(device)
+        mel_lengths = torch.randint(20, 30, (8,)).long().to(device)
+        mel_lengths[0] = 30
+        stop_targets = torch.zeros(8, 30, 1).float().to(device)
+
+        for idx in mel_lengths:
+            stop_targets[:, int(idx.item()) :, 0] = 1.0
+
+        stop_targets = stop_targets.view(input_dummy.shape[0], stop_targets.size(1) // config.r, -1)
+        stop_targets = (stop_targets.sum(2) &gt; 0.0).unsqueeze(2).float().squeeze()
+
+        criterion = MSELossMasked(seq_len_norm=False).to(device)
+        criterion_st = nn.BCEWithLogitsLoss().to(device)
+        model = Tacotron2(config).to(device)
+        model.train()
+        model_ref = copy.deepcopy(model)
+        count = 0
+        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+            assert (param - param_ref).sum() == 0, param
+            count += 1
+        optimizer = optim.Adam(model.parameters(), lr=config.lr)
+        for i in range(5):
+            outputs = model.forward(input_dummy, input_lengths, mel_spec, mel_lengths)
+            assert torch.sigmoid(outputs["stop_tokens"]).data.max() &lt;= 1.0
+            assert torch.sigmoid(outputs["stop_tokens"]).data.min() &gt;= 0.0
+            optimizer.zero_grad()
+            loss = criterion(outputs["decoder_outputs"], mel_spec, mel_lengths)
+            stop_loss = criterion_st(outputs["stop_tokens"], stop_targets)
+            loss = loss + criterion(outputs["model_outputs"], mel_postnet_spec, mel_lengths) + stop_loss
+            loss.backward()
+            optimizer.step()
+        # check parameter changes
+        count = 0
+        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+            # ignore pre-higway layer since it works conditional
+            # if count not in [145, 59]:
+            assert (param != param_ref).any(), "param {} with shape {} not updated!! \n{}\n{}".format(
+                count, param.shape, param, param_ref
+            )
+            count += 1
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag30')" href="javascript:;">
+TTS-0.4.1/tests/tts_tests/test_tacotron_model.py: 86-139
+</a>
+<div class="mid" id="frag30" style="display:none"><pre>
+    def test_train_step():
+        config = config_global.copy()
+        config.use_speaker_embedding = True
+        config.num_speakers = 5
+
+        input_dummy = torch.randint(0, 24, (8, 128)).long().to(device)
+        input_lengths = torch.randint(100, 129, (8,)).long().to(device)
+        input_lengths[-1] = 128
+        mel_spec = torch.rand(8, 30, config.audio["num_mels"]).to(device)
+        linear_spec = torch.rand(8, 30, config.audio["fft_size"] // 2 + 1).to(device)
+        mel_lengths = torch.randint(20, 30, (8,)).long().to(device)
+        mel_lengths[-1] = mel_spec.size(1)
+        stop_targets = torch.zeros(8, 30, 1).float().to(device)
+        speaker_ids = torch.randint(0, 5, (8,)).long().to(device)
+
+        for idx in mel_lengths:
+            stop_targets[:, int(idx.item()) :, 0] = 1.0
+
+        stop_targets = stop_targets.view(input_dummy.shape[0], stop_targets.size(1) // config.r, -1)
+        stop_targets = (stop_targets.sum(2) &gt; 0.0).unsqueeze(2).float().squeeze()
+
+        criterion = L1LossMasked(seq_len_norm=False).to(device)
+        criterion_st = nn.BCEWithLogitsLoss().to(device)
+        config.d_vector_dim = 55
+        model = Tacotron(config).to(device)  # FIXME: missing num_speakers parameter to Tacotron ctor
+        model.train()
+        print(" &gt; Num parameters for Tacotron model:%s" % (count_parameters(model)))
+        model_ref = copy.deepcopy(model)
+        count = 0
+        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+            assert (param - param_ref).sum() == 0, param
+            count += 1
+        optimizer = optim.Adam(model.parameters(), lr=config.lr)
+        for _ in range(5):
+            outputs = model.forward(
+                input_dummy, input_lengths, mel_spec, mel_lengths, aux_input={"speaker_ids": speaker_ids}
+            )
+            optimizer.zero_grad()
+            loss = criterion(outputs["decoder_outputs"], mel_spec, mel_lengths)
+            stop_loss = criterion_st(outputs["stop_tokens"], stop_targets)
+            loss = loss + criterion(outputs["model_outputs"], linear_spec, mel_lengths) + stop_loss
+            loss.backward()
+            optimizer.step()
+        # check parameter changes
+        count = 0
+        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+            # ignore pre-higway layer since it works conditional
+            # if count not in [145, 59]:
+            assert (param != param_ref).any(), "param {} with shape {} not updated!! \n{}\n{}".format(
+                count, param.shape, param, param_ref
+            )
+            count += 1
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag57')" href="javascript:;">
+TTS-0.4.1/tests/tts_tests/test_tacotron2_model.py: 267-324
+</a>
+<div class="mid" id="frag57" style="display:none"><pre>
+    def test_train_step():
+
+        config = config_global.copy()
+        config.use_d_vector_file = True
+
+        config.use_gst = True
+        config.gst = GSTConfig()
+
+        input_dummy = torch.randint(0, 24, (8, 128)).long().to(device)
+        input_lengths = torch.randint(100, 128, (8,)).long().to(device)
+        input_lengths = torch.sort(input_lengths, descending=True)[0]
+        mel_spec = torch.rand(8, 30, config.audio["num_mels"]).to(device)
+        mel_postnet_spec = torch.rand(8, 30, config.audio["num_mels"]).to(device)
+        mel_lengths = torch.randint(20, 30, (8,)).long().to(device)
+        mel_lengths[0] = 30
+        stop_targets = torch.zeros(8, 30, 1).float().to(device)
+        speaker_embeddings = torch.rand(8, 55).to(device)
+
+        for idx in mel_lengths:
+            stop_targets[:, int(idx.item()) :, 0] = 1.0
+
+        stop_targets = stop_targets.view(input_dummy.shape[0], stop_targets.size(1) // config.r, -1)
+        stop_targets = (stop_targets.sum(2) &gt; 0.0).unsqueeze(2).float().squeeze()
+        criterion = MSELossMasked(seq_len_norm=False).to(device)
+        criterion_st = nn.BCEWithLogitsLoss().to(device)
+        config.d_vector_dim = 55
+        model = Tacotron2(config).to(device)
+        model.train()
+        model_ref = copy.deepcopy(model)
+        count = 0
+        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+            assert (param - param_ref).sum() == 0, param
+            count += 1
+        optimizer = optim.Adam(model.parameters(), lr=config.lr)
+        for i in range(5):
+            outputs = model.forward(
+                input_dummy, input_lengths, mel_spec, mel_lengths, aux_input={"d_vectors": speaker_embeddings}
+            )
+            assert torch.sigmoid(outputs["stop_tokens"]).data.max() &lt;= 1.0
+            assert torch.sigmoid(outputs["stop_tokens"]).data.min() &gt;= 0.0
+            optimizer.zero_grad()
+            loss = criterion(outputs["decoder_outputs"], mel_spec, mel_lengths)
+            stop_loss = criterion_st(outputs["stop_tokens"], stop_targets)
+            loss = loss + criterion(outputs["model_outputs"], mel_postnet_spec, mel_lengths) + stop_loss
+            loss.backward()
+            optimizer.step()
+        # check parameter changes
+        count = 0
+        for name_param, param_ref in zip(model.named_parameters(), model_ref.parameters()):
+            # ignore pre-higway layer since it works conditional
+            # if count not in [145, 59]:
+            name, param = name_param
+            if name == "gst_layer.encoder.recurrence.weight_hh_l0":
+                continue
+            assert (param != param_ref).any(), "param {} with shape {} not updated!! \n{}\n{}".format(
+                count, param.shape, param, param_ref
+            )
+            count += 1
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 5:</b> &nbsp; 2 fragments, nominal size 90 lines, similarity 77%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag31')" href="javascript:;">
+TTS-0.4.1/tests/tts_tests/test_tacotron_model.py: 142-250
+</a>
+<div class="mid" id="frag31" style="display:none"><pre>
+    def test_train_step():
+        config = config_global.copy()
+        config.use_speaker_embedding = True
+        config.num_speakers = 10
+        config.use_gst = True
+        config.gst = GSTConfig()
+        # with random gst mel style
+        input_dummy = torch.randint(0, 24, (8, 128)).long().to(device)
+        input_lengths = torch.randint(100, 129, (8,)).long().to(device)
+        input_lengths[-1] = 128
+        mel_spec = torch.rand(8, 120, config.audio["num_mels"]).to(device)
+        linear_spec = torch.rand(8, 120, config.audio["fft_size"] // 2 + 1).to(device)
+        mel_lengths = torch.randint(20, 120, (8,)).long().to(device)
+        mel_lengths[-1] = 120
+        stop_targets = torch.zeros(8, 120, 1).float().to(device)
+        speaker_ids = torch.randint(0, 5, (8,)).long().to(device)
+
+        for idx in mel_lengths:
+            stop_targets[:, int(idx.item()) :, 0] = 1.0
+
+        stop_targets = stop_targets.view(input_dummy.shape[0], stop_targets.size(1) // config.r, -1)
+        stop_targets = (stop_targets.sum(2) &gt; 0.0).unsqueeze(2).float().squeeze()
+
+        criterion = L1LossMasked(seq_len_norm=False).to(device)
+        criterion_st = nn.BCEWithLogitsLoss().to(device)
+        config.use_gst = True
+        config.gst = GSTConfig()
+        model = Tacotron(config).to(device)  # FIXME: missing num_speakers parameter to Tacotron ctor
+        model.train()
+        # print(model)
+        print(" &gt; Num parameters for Tacotron GST model:%s" % (count_parameters(model)))
+        model_ref = copy.deepcopy(model)
+        count = 0
+        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+            assert (param - param_ref).sum() == 0, param
+            count += 1
+        optimizer = optim.Adam(model.parameters(), lr=config.lr)
+        for _ in range(10):
+            outputs = model.forward(
+                input_dummy, input_lengths, mel_spec, mel_lengths, aux_input={"speaker_ids": speaker_ids}
+            )
+            optimizer.zero_grad()
+            loss = criterion(outputs["decoder_outputs"], mel_spec, mel_lengths)
+            stop_loss = criterion_st(outputs["stop_tokens"], stop_targets)
+            loss = loss + criterion(outputs["model_outputs"], linear_spec, mel_lengths) + stop_loss
+            loss.backward()
+            optimizer.step()
+        # check parameter changes
+        count = 0
+        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+            # ignore pre-higway layer since it works conditional
+            assert (param != param_ref).any(), "param {} with shape {} not updated!! \n{}\n{}".format(
+                count, param.shape, param, param_ref
+            )
+            count += 1
+
+        # with file gst style
+        mel_spec = (
+            torch.FloatTensor(ap.melspectrogram(ap.load_wav(WAV_FILE)))[:, :120].unsqueeze(0).transpose(1, 2).to(device)
+        )
+        mel_spec = mel_spec.repeat(8, 1, 1)
+
+        input_dummy = torch.randint(0, 24, (8, 128)).long().to(device)
+        input_lengths = torch.randint(100, 129, (8,)).long().to(device)
+        input_lengths[-1] = 128
+        linear_spec = torch.rand(8, mel_spec.size(1), config.audio["fft_size"] // 2 + 1).to(device)
+        mel_lengths = torch.randint(20, mel_spec.size(1), (8,)).long().to(device)
+        mel_lengths[-1] = mel_spec.size(1)
+        stop_targets = torch.zeros(8, mel_spec.size(1), 1).float().to(device)
+        speaker_ids = torch.randint(0, 5, (8,)).long().to(device)
+
+        for idx in mel_lengths:
+            stop_targets[:, int(idx.item()) :, 0] = 1.0
+
+        stop_targets = stop_targets.view(input_dummy.shape[0], stop_targets.size(1) // config.r, -1)
+        stop_targets = (stop_targets.sum(2) &gt; 0.0).unsqueeze(2).float().squeeze()
+
+        criterion = L1LossMasked(seq_len_norm=False).to(device)
+        criterion_st = nn.BCEWithLogitsLoss().to(device)
+        model = Tacotron(config).to(device)  # FIXME: missing num_speakers parameter to Tacotron ctor
+        model.train()
+        # print(model)
+        print(" &gt; Num parameters for Tacotron GST model:%s" % (count_parameters(model)))
+        model_ref = copy.deepcopy(model)
+        count = 0
+        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+            assert (param - param_ref).sum() == 0, param
+            count += 1
+        optimizer = optim.Adam(model.parameters(), lr=config.lr)
+        for _ in range(10):
+            outputs = model.forward(
+                input_dummy, input_lengths, mel_spec, mel_lengths, aux_input={"speaker_ids": speaker_ids}
+            )
+            optimizer.zero_grad()
+            loss = criterion(outputs["decoder_outputs"], mel_spec, mel_lengths)
+            stop_loss = criterion_st(outputs["stop_tokens"], stop_targets)
+            loss = loss + criterion(outputs["model_outputs"], linear_spec, mel_lengths) + stop_loss
+            loss.backward()
+            optimizer.step()
+        # check parameter changes
+        count = 0
+        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+            # ignore pre-higway layer since it works conditional
+            assert (param != param_ref).any(), "param {} with shape {} not updated!! \n{}\n{}".format(
+                count, param.shape, param, param_ref
+            )
+            count += 1
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag56')" href="javascript:;">
+TTS-0.4.1/tests/tts_tests/test_tacotron2_model.py: 144-262
+</a>
+<div class="mid" id="frag56" style="display:none"><pre>
+    def test_train_step(self):
+        # with random gst mel style
+        config = config_global.copy()
+        config.use_speaker_embedding = True
+        config.num_speakers = 10
+        config.use_gst = True
+        config.gst = GSTConfig()
+
+        input_dummy = torch.randint(0, 24, (8, 128)).long().to(device)
+        input_lengths = torch.randint(100, 128, (8,)).long().to(device)
+        input_lengths = torch.sort(input_lengths, descending=True)[0]
+        mel_spec = torch.rand(8, 30, config.audio["num_mels"]).to(device)
+        mel_postnet_spec = torch.rand(8, 30, config.audio["num_mels"]).to(device)
+        mel_lengths = torch.randint(20, 30, (8,)).long().to(device)
+        mel_lengths[0] = 30
+        stop_targets = torch.zeros(8, 30, 1).float().to(device)
+        speaker_ids = torch.randint(0, 5, (8,)).long().to(device)
+
+        for idx in mel_lengths:
+            stop_targets[:, int(idx.item()) :, 0] = 1.0
+
+        stop_targets = stop_targets.view(input_dummy.shape[0], stop_targets.size(1) // config.r, -1)
+        stop_targets = (stop_targets.sum(2) &gt; 0.0).unsqueeze(2).float().squeeze()
+
+        criterion = MSELossMasked(seq_len_norm=False).to(device)
+        criterion_st = nn.BCEWithLogitsLoss().to(device)
+        config.use_gst = True
+        config.gst = GSTConfig()
+        model = Tacotron2(config).to(device)
+        model.train()
+        model_ref = copy.deepcopy(model)
+        count = 0
+        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+            assert (param - param_ref).sum() == 0, param
+            count += 1
+        optimizer = optim.Adam(model.parameters(), lr=config.lr)
+        for i in range(10):
+            outputs = model.forward(
+                input_dummy, input_lengths, mel_spec, mel_lengths, aux_input={"speaker_ids": speaker_ids}
+            )
+            assert torch.sigmoid(outputs["stop_tokens"]).data.max() &lt;= 1.0
+            assert torch.sigmoid(outputs["stop_tokens"]).data.min() &gt;= 0.0
+            optimizer.zero_grad()
+            loss = criterion(outputs["decoder_outputs"], mel_spec, mel_lengths)
+            stop_loss = criterion_st(outputs["stop_tokens"], stop_targets)
+            loss = loss + criterion(outputs["model_outputs"], mel_postnet_spec, mel_lengths) + stop_loss
+            loss.backward()
+            optimizer.step()
+        # check parameter changes
+        count = 0
+        for name_param, param_ref in zip(model.named_parameters(), model_ref.parameters()):
+            # ignore pre-higway layer since it works conditional
+            # if count not in [145, 59]:
+            name, param = name_param
+            if name == "gst_layer.encoder.recurrence.weight_hh_l0":
+                # print(param.grad)
+                continue
+            assert (param != param_ref).any(), "param {} {} with shape {} not updated!! \n{}\n{}".format(
+                name, count, param.shape, param, param_ref
+            )
+            count += 1
+
+        # with file gst style
+        mel_spec = (
+            torch.FloatTensor(ap.melspectrogram(ap.load_wav(WAV_FILE)))[:, :30].unsqueeze(0).transpose(1, 2).to(device)
+        )
+        mel_spec = mel_spec.repeat(8, 1, 1)
+        input_dummy = torch.randint(0, 24, (8, 128)).long().to(device)
+        input_lengths = torch.randint(100, 128, (8,)).long().to(device)
+        input_lengths = torch.sort(input_lengths, descending=True)[0]
+        mel_postnet_spec = torch.rand(8, 30, config.audio["num_mels"]).to(device)
+        mel_lengths = torch.randint(20, 30, (8,)).long().to(device)
+        mel_lengths[0] = 30
+        stop_targets = torch.zeros(8, 30, 1).float().to(device)
+        speaker_ids = torch.randint(0, 5, (8,)).long().to(device)
+
+        for idx in mel_lengths:
+            stop_targets[:, int(idx.item()) :, 0] = 1.0
+
+        stop_targets = stop_targets.view(input_dummy.shape[0], stop_targets.size(1) // config.r, -1)
+        stop_targets = (stop_targets.sum(2) &gt; 0.0).unsqueeze(2).float().squeeze()
+
+        criterion = MSELossMasked(seq_len_norm=False).to(device)
+        criterion_st = nn.BCEWithLogitsLoss().to(device)
+        model = Tacotron2(config).to(device)
+        model.train()
+        model_ref = copy.deepcopy(model)
+        count = 0
+        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+            assert (param - param_ref).sum() == 0, param
+            count += 1
+        optimizer = optim.Adam(model.parameters(), lr=config.lr)
+        for i in range(10):
+            outputs = model.forward(
+                input_dummy, input_lengths, mel_spec, mel_lengths, aux_input={"speaker_ids": speaker_ids}
+            )
+            assert torch.sigmoid(outputs["stop_tokens"]).data.max() &lt;= 1.0
+            assert torch.sigmoid(outputs["stop_tokens"]).data.min() &gt;= 0.0
+            optimizer.zero_grad()
+            loss = criterion(outputs["decoder_outputs"], mel_spec, mel_lengths)
+            stop_loss = criterion_st(outputs["stop_tokens"], stop_targets)
+            loss = loss + criterion(outputs["model_outputs"], mel_postnet_spec, mel_lengths) + stop_loss
+            loss.backward()
+            optimizer.step()
+        # check parameter changes
+        count = 0
+        for name_param, param_ref in zip(model.named_parameters(), model_ref.parameters()):
+            # ignore pre-higway layer since it works conditional
+            # if count not in [145, 59]:
+            name, param = name_param
+            if name == "gst_layer.encoder.recurrence.weight_hh_l0":
+                # print(param.grad)
+                continue
+            assert (param != param_ref).any(), "param {} {} with shape {} not updated!! \n{}\n{}".format(
+                name, count, param.shape, param, param_ref
+            )
+            count += 1
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 6:</b> &nbsp; 2 fragments, nominal size 23 lines, similarity 83%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag36')" href="javascript:;">
+TTS-0.4.1/tests/tts_tests/test_tacotron2_tf_model.py: 42-73
+</a>
+<div class="mid" id="frag36" style="display:none"><pre>
+    def test_train_step(self):
+        """test forward pass"""
+        (
+            chars_seq,
+            chars_seq_lengths,
+            mel_spec,
+            mel_postnet_spec,
+            mel_lengths,
+            stop_targets,
+            speaker_ids,
+        ) = self.generate_dummy_inputs()
+
+        for idx in mel_lengths:
+            stop_targets[:, int(idx.item()) :, 0] = 1.0
+
+        stop_targets = stop_targets.view(chars_seq.shape[0], stop_targets.size(1) // c.r, -1)
+        stop_targets = (stop_targets.sum(2) &gt; 0.0).unsqueeze(2).float().squeeze()
+
+        model = Tacotron2(num_chars=24, r=c.r, num_speakers=5)
+        # training pass
+        output = model(chars_seq, chars_seq_lengths, mel_spec, training=True)
+
+        # check model output shapes
+        assert np.all(output[0].shape == mel_spec.shape)
+        assert np.all(output[1].shape == mel_spec.shape)
+        assert output[2].shape[2] == chars_seq.shape[1]
+        assert output[2].shape[1] == (mel_spec.shape[1] // model.decoder.r)
+        assert output[3].shape[1] == (mel_spec.shape[1] // model.decoder.r)
+
+        # inference pass
+        output = model(chars_seq, training=False)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag37')" href="javascript:;">
+TTS-0.4.1/tests/tts_tests/test_tacotron2_tf_model.py: 75-107
+</a>
+<div class="mid" id="frag37" style="display:none"><pre>
+    def test_forward_attention(
+        self,
+    ):
+        (
+            chars_seq,
+            chars_seq_lengths,
+            mel_spec,
+            mel_postnet_spec,
+            mel_lengths,
+            stop_targets,
+            speaker_ids,
+        ) = self.generate_dummy_inputs()
+
+        for idx in mel_lengths:
+            stop_targets[:, int(idx.item()) :, 0] = 1.0
+
+        stop_targets = stop_targets.view(chars_seq.shape[0], stop_targets.size(1) // c.r, -1)
+        stop_targets = (stop_targets.sum(2) &gt; 0.0).unsqueeze(2).float().squeeze()
+
+        model = Tacotron2(num_chars=24, r=c.r, num_speakers=5, forward_attn=True)
+        # training pass
+        output = model(chars_seq, chars_seq_lengths, mel_spec, training=True)
+
+        # check model output shapes
+        assert np.all(output[0].shape == mel_spec.shape)
+        assert np.all(output[1].shape == mel_spec.shape)
+        assert output[2].shape[2] == chars_seq.shape[1]
+        assert output[2].shape[1] == (mel_spec.shape[1] // model.decoder.r)
+        assert output[3].shape[1] == (mel_spec.shape[1] // model.decoder.r)
+
+        # inference pass
+        output = model(chars_seq, training=False)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 7:</b> &nbsp; 2 fragments, nominal size 47 lines, similarity 93%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag52')" href="javascript:;">
+TTS-0.4.1/tests/tts_tests/test_tacotron_layers.py: 91-153
+</a>
+<div class="mid" id="frag52" style="display:none"><pre>
+    def test_in_out(self):  # pylint: disable=no-self-use
+        # test input == target
+        layer = L1LossMasked(seq_len_norm=False)
+        dummy_input = T.ones(4, 8, 128).float()
+        dummy_target = T.ones(4, 8, 128).float()
+        dummy_length = (T.ones(4) * 8).long()
+        output = layer(dummy_input, dummy_target, dummy_length)
+        assert output.item() == 0.0
+
+        # test input != target
+        dummy_input = T.ones(4, 8, 128).float()
+        dummy_target = T.zeros(4, 8, 128).float()
+        dummy_length = (T.ones(4) * 8).long()
+        output = layer(dummy_input, dummy_target, dummy_length)
+        assert output.item() == 1.0, "1.0 vs {}".format(output.item())
+
+        # test if padded values of input makes any difference
+        dummy_input = T.ones(4, 8, 128).float()
+        dummy_target = T.zeros(4, 8, 128).float()
+        dummy_length = (T.arange(5, 9)).long()
+        mask = ((sequence_mask(dummy_length).float() - 1.0) * 100.0).unsqueeze(2)
+        output = layer(dummy_input + mask, dummy_target, dummy_length)
+        assert output.item() == 1.0, "1.0 vs {}".format(output.item())
+
+        dummy_input = T.rand(4, 8, 128).float()
+        dummy_target = dummy_input.detach()
+        dummy_length = (T.arange(5, 9)).long()
+        mask = ((sequence_mask(dummy_length).float() - 1.0) * 100.0).unsqueeze(2)
+        output = layer(dummy_input + mask, dummy_target, dummy_length)
+        assert output.item() == 0, "0 vs {}".format(output.item())
+
+        # seq_len_norm = True
+        # test input == target
+        layer = L1LossMasked(seq_len_norm=True)
+        dummy_input = T.ones(4, 8, 128).float()
+        dummy_target = T.ones(4, 8, 128).float()
+        dummy_length = (T.ones(4) * 8).long()
+        output = layer(dummy_input, dummy_target, dummy_length)
+        assert output.item() == 0.0
+
+        # test input != target
+        dummy_input = T.ones(4, 8, 128).float()
+        dummy_target = T.zeros(4, 8, 128).float()
+        dummy_length = (T.ones(4) * 8).long()
+        output = layer(dummy_input, dummy_target, dummy_length)
+        assert output.item() == 1.0, "1.0 vs {}".format(output.item())
+
+        # test if padded values of input makes any difference
+        dummy_input = T.ones(4, 8, 128).float()
+        dummy_target = T.zeros(4, 8, 128).float()
+        dummy_length = (T.arange(5, 9)).long()
+        mask = ((sequence_mask(dummy_length).float() - 1.0) * 100.0).unsqueeze(2)
+        output = layer(dummy_input + mask, dummy_target, dummy_length)
+        assert abs(output.item() - 1.0) &lt; 1e-5, "1.0 vs {}".format(output.item())
+
+        dummy_input = T.rand(4, 8, 128).float()
+        dummy_target = dummy_input.detach()
+        dummy_length = (T.arange(5, 9)).long()
+        mask = ((sequence_mask(dummy_length).float() - 1.0) * 100.0).unsqueeze(2)
+        output = layer(dummy_input + mask, dummy_target, dummy_length)
+        assert output.item() == 0, "0 vs {}".format(output.item())
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag53')" href="javascript:;">
+TTS-0.4.1/tests/tts_tests/test_tacotron_layers.py: 155-215
+</a>
+<div class="mid" id="frag53" style="display:none"><pre>
+    def test_in_out(self):  # pylint: disable=no-self-use
+        # test input == target
+        layer = SSIMLoss()
+        dummy_input = T.ones(4, 8, 128).float()
+        dummy_target = T.ones(4, 8, 128).float()
+        dummy_length = (T.ones(4) * 8).long()
+        output = layer(dummy_input, dummy_target, dummy_length)
+        assert output.item() == 0.0
+
+        # test input != target
+        dummy_input = T.ones(4, 8, 128).float()
+        dummy_target = T.zeros(4, 8, 128).float()
+        dummy_length = (T.ones(4) * 8).long()
+        output = layer(dummy_input, dummy_target, dummy_length)
+        assert abs(output.item() - 1.0) &lt; 1e-4, "1.0 vs {}".format(output.item())
+
+        # test if padded values of input makes any difference
+        dummy_input = T.ones(4, 8, 128).float()
+        dummy_target = T.zeros(4, 8, 128).float()
+        dummy_length = (T.arange(5, 9)).long()
+        mask = ((sequence_mask(dummy_length).float() - 1.0) * 100.0).unsqueeze(2)
+        output = layer(dummy_input + mask, dummy_target, dummy_length)
+        assert abs(output.item() - 1.0) &lt; 1e-4, "1.0 vs {}".format(output.item())
+
+        dummy_input = T.rand(4, 8, 128).float()
+        dummy_target = dummy_input.detach()
+        dummy_length = (T.arange(5, 9)).long()
+        mask = ((sequence_mask(dummy_length).float() - 1.0) * 100.0).unsqueeze(2)
+        output = layer(dummy_input + mask, dummy_target, dummy_length)
+        assert output.item() == 0, "0 vs {}".format(output.item())
+
+        # seq_len_norm = True
+        # test input == target
+        layer = L1LossMasked(seq_len_norm=True)
+        dummy_input = T.ones(4, 8, 128).float()
+        dummy_target = T.ones(4, 8, 128).float()
+        dummy_length = (T.ones(4) * 8).long()
+        output = layer(dummy_input, dummy_target, dummy_length)
+        assert output.item() == 0.0
+
+        # test input != target
+        dummy_input = T.ones(4, 8, 128).float()
+        dummy_target = T.zeros(4, 8, 128).float()
+        dummy_length = (T.ones(4) * 8).long()
+        output = layer(dummy_input, dummy_target, dummy_length)
+        assert output.item() == 1.0, "1.0 vs {}".format(output.item())
+
+        # test if padded values of input makes any difference
+        dummy_input = T.ones(4, 8, 128).float()
+        dummy_target = T.zeros(4, 8, 128).float()
+        dummy_length = (T.arange(5, 9)).long()
+        mask = ((sequence_mask(dummy_length).float() - 1.0) * 100.0).unsqueeze(2)
+        output = layer(dummy_input + mask, dummy_target, dummy_length)
+        assert abs(output.item() - 1.0) &lt; 1e-5, "1.0 vs {}".format(output.item())
+
+        dummy_input = T.rand(4, 8, 128).float()
+        dummy_target = dummy_input.detach()
+        dummy_length = (T.arange(5, 9)).long()
+        mask = ((sequence_mask(dummy_length).float() - 1.0) * 100.0).unsqueeze(2)
+        output = layer(dummy_input + mask, dummy_target, dummy_length)
+        assert output.item() == 0, "0 vs {}".format(output.item())
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 8:</b> &nbsp; 2 fragments, nominal size 12 lines, similarity 83%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag60')" href="javascript:;">
+TTS-0.4.1/tests/vocoder_tests/test_vocoder_pqmf.py: 14-26
+</a>
+<div class="mid" id="frag60" style="display:none"><pre>
+def test_pqmf():
+    w, sr = load(WAV_FILE)
+
+    layer = PQMF(N=4, taps=62, cutoff=0.15, beta=9.0)
+    w, sr = load(WAV_FILE)
+    w2 = torch.from_numpy(w[None, None, :])
+    b2 = layer.analysis(w2)
+    w2_ = layer.synthesis(b2)
+
+    print(w2_.max())
+    print(w2_.min())
+    print(w2_.mean())
+    sf.write(os.path.join(get_tests_output_path(), "pqmf_output.wav"), w2_.flatten().detach(), sr)
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag73')" href="javascript:;">
+TTS-0.4.1/tests/vocoder_tests/test_vocoder_tf_pqmf.py: 18-31
+</a>
+<div class="mid" id="frag73" style="display:none"><pre>
+def test_pqmf():
+    w, sr = load(WAV_FILE)
+
+    layer = PQMF(N=4, taps=62, cutoff=0.15, beta=9.0)
+    w, sr = load(WAV_FILE)
+    w2 = tf.convert_to_tensor(w[None, None, :])
+    b2 = layer.analysis(w2)
+    w2_ = layer.synthesis(b2)
+    w2_ = w2.numpy()
+
+    print(w2_.max())
+    print(w2_.min())
+    print(w2_.mean())
+    sf.write(os.path.join(get_tests_output_path(), "tf_pqmf_output.wav"), w2_.flatten(), sr)
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 9:</b> &nbsp; 2 fragments, nominal size 18 lines, similarity 78%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag66')" href="javascript:;">
+TTS-0.4.1/tests/vocoder_tests/test_vocoder_parallel_wavegan_discriminator.py: 10-27
+</a>
+<div class="mid" id="frag66" style="display:none"><pre>
+def test_pwgan_disciminator():
+    model = ParallelWaveganDiscriminator(
+        in_channels=1,
+        out_channels=1,
+        kernel_size=3,
+        num_layers=10,
+        conv_channels=64,
+        dilation_factor=1,
+        nonlinear_activation="LeakyReLU",
+        nonlinear_activation_params={"negative_slope": 0.2},
+        bias=True,
+    )
+    dummy_x = torch.rand((4, 1, 64 * 256))
+    output = model(dummy_x)
+    assert np.all(output.shape == (4, 1, 64 * 256))
+    model.remove_weight_norm()
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag67')" href="javascript:;">
+TTS-0.4.1/tests/vocoder_tests/test_vocoder_parallel_wavegan_discriminator.py: 28-46
+</a>
+<div class="mid" id="frag67" style="display:none"><pre>
+def test_redisual_pwgan_disciminator():
+    model = ResidualParallelWaveganDiscriminator(
+        in_channels=1,
+        out_channels=1,
+        kernel_size=3,
+        num_layers=30,
+        stacks=3,
+        res_channels=64,
+        gate_channels=128,
+        skip_channels=64,
+        dropout=0.0,
+        bias=True,
+        nonlinear_activation="LeakyReLU",
+        nonlinear_activation_params={"negative_slope": 0.2},
+    )
+    dummy_x = torch.rand((4, 1, 64 * 256))
+    output = model(dummy_x)
+    assert np.all(output.shape == (4, 1, 64 * 256))
+    model.remove_weight_norm()
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 10:</b> &nbsp; 2 fragments, nominal size 16 lines, similarity 93%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag116')" href="javascript:;">
+TTS-0.4.1/TTS/speaker_encoder/models/lstm.py: 76-102
+</a>
+<div class="mid" id="frag116" style="display:none"><pre>
+    def compute_embedding(self, x, num_frames=250, num_eval=10, return_mean=True):
+        """
+        Generate embeddings for a batch of utterances
+        x: 1xTxD
+        """
+        max_len = x.shape[1]
+
+        if max_len &lt; num_frames:
+            num_frames = max_len
+
+        offsets = np.linspace(0, max_len - num_frames, num=num_eval)
+
+        frames_batch = []
+        for offset in offsets:
+            offset = int(offset)
+            end_offset = int(offset + num_frames)
+            frames = x[:, offset:end_offset]
+            frames_batch.append(frames)
+
+        frames_batch = torch.cat(frames_batch, dim=0)
+        embeddings = self.inference(frames_batch)
+
+        if return_mean:
+            embeddings = torch.mean(embeddings, dim=0, keepdim=True)
+
+        return embeddings
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag128')" href="javascript:;">
+TTS-0.4.1/TTS/speaker_encoder/models/resnet.py: 178-204
+</a>
+<div class="mid" id="frag128" style="display:none"><pre>
+    def compute_embedding(self, x, num_frames=250, num_eval=10, return_mean=True):
+        """
+        Generate embeddings for a batch of utterances
+        x: 1xTxD
+        """
+        max_len = x.shape[1]
+
+        if max_len &lt; num_frames:
+            num_frames = max_len
+
+        offsets = np.linspace(0, max_len - num_frames, num=num_eval)
+
+        frames_batch = []
+        for offset in offsets:
+            offset = int(offset)
+            end_offset = int(offset + num_frames)
+            frames = x[:, offset:end_offset]
+            frames_batch.append(frames)
+
+        frames_batch = torch.cat(frames_batch, dim=0)
+        embeddings = self.forward(frames_batch, l2_norm=True)
+
+        if return_mean:
+            embeddings = torch.mean(embeddings, dim=0, keepdim=True)
+
+        return embeddings
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 11:</b> &nbsp; 2 fragments, nominal size 14 lines, similarity 78%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag143')" href="javascript:;">
+TTS-0.4.1/TTS/speaker_encoder/utils/generic_utils.py: 186-203
+</a>
+<div class="mid" id="frag143" style="display:none"><pre>
+def save_checkpoint(model, optimizer, criterion, model_loss, out_path, current_step, epoch):
+    checkpoint_path = "checkpoint_{}.pth.tar".format(current_step)
+    checkpoint_path = os.path.join(out_path, checkpoint_path)
+    print(" | | &gt; Checkpoint saving : {}".format(checkpoint_path))
+
+    new_state_dict = model.state_dict()
+    state = {
+        "model": new_state_dict,
+        "optimizer": optimizer.state_dict() if optimizer is not None else None,
+        "criterion": criterion.state_dict(),
+        "step": current_step,
+        "epoch": epoch,
+        "loss": model_loss,
+        "date": datetime.date.today().strftime("%B %d, %Y"),
+    }
+    save_fsspec(state, checkpoint_path)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag151')" href="javascript:;">
+TTS-0.4.1/TTS/speaker_encoder/utils/io.py: 7-22
+</a>
+<div class="mid" id="frag151" style="display:none"><pre>
+def save_checkpoint(model, optimizer, model_loss, out_path, current_step):
+    checkpoint_path = "checkpoint_{}.pth.tar".format(current_step)
+    checkpoint_path = os.path.join(out_path, checkpoint_path)
+    print(" | | &gt; Checkpoint saving : {}".format(checkpoint_path))
+
+    new_state_dict = model.state_dict()
+    state = {
+        "model": new_state_dict,
+        "optimizer": optimizer.state_dict() if optimizer is not None else None,
+        "step": current_step,
+        "loss": model_loss,
+        "date": datetime.date.today().strftime("%B %d, %Y"),
+    }
+    save_fsspec(state, checkpoint_path)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 12:</b> &nbsp; 2 fragments, nominal size 17 lines, similarity 87%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag144')" href="javascript:;">
+TTS-0.4.1/TTS/speaker_encoder/utils/generic_utils.py: 204-220
+</a>
+<div class="mid" id="frag144" style="display:none"><pre>
+def save_best_model(model, optimizer, criterion, model_loss, best_loss, out_path, current_step):
+    if model_loss &lt; best_loss:
+        new_state_dict = model.state_dict()
+        state = {
+            "model": new_state_dict,
+            "optimizer": optimizer.state_dict(),
+            "criterion": criterion.state_dict(),
+            "step": current_step,
+            "loss": model_loss,
+            "date": datetime.date.today().strftime("%B %d, %Y"),
+        }
+        best_loss = model_loss
+        bestmodel_path = "best_model.pth.tar"
+        bestmodel_path = os.path.join(out_path, bestmodel_path)
+        print("\n &gt; BEST MODEL ({0:.5f}) : {1:}".format(model_loss, bestmodel_path))
+        save_fsspec(state, bestmodel_path)
+    return best_loss
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag152')" href="javascript:;">
+TTS-0.4.1/TTS/speaker_encoder/utils/io.py: 23-38
+</a>
+<div class="mid" id="frag152" style="display:none"><pre>
+def save_best_model(model, optimizer, model_loss, best_loss, out_path, current_step):
+    if model_loss &lt; best_loss:
+        new_state_dict = model.state_dict()
+        state = {
+            "model": new_state_dict,
+            "optimizer": optimizer.state_dict(),
+            "step": current_step,
+            "loss": model_loss,
+            "date": datetime.date.today().strftime("%B %d, %Y"),
+        }
+        best_loss = model_loss
+        bestmodel_path = "best_model.pth.tar"
+        bestmodel_path = os.path.join(out_path, bestmodel_path)
+        print("\n &gt; BEST MODEL ({0:.5f}) : {1:}".format(model_loss, bestmodel_path))
+        save_fsspec(state, bestmodel_path)
+    return best_loss
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 13:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 75%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag160')" href="javascript:;">
+TTS-0.4.1/TTS/speaker_encoder/losses.py: 75-89
+</a>
+<div class="mid" id="frag160" style="display:none"><pre>
+    def embed_loss_softmax(self, dvecs, cos_sim_matrix):
+        """
+        Calculates the loss on each embedding $L(e_{ji})$ by taking softmax
+        """
+        N, M, _ = dvecs.shape
+        L = []
+        for j in range(N):
+            L_row = []
+            for i in range(M):
+                L_row.append(-F.log_softmax(cos_sim_matrix[j, i], 0)[j])
+            L_row = torch.stack(L_row)
+            L.append(L_row)
+        return torch.stack(L)
+
+    # pylint: disable=R0201
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag161')" href="javascript:;">
+TTS-0.4.1/TTS/speaker_encoder/losses.py: 90-105
+</a>
+<div class="mid" id="frag161" style="display:none"><pre>
+    def embed_loss_contrast(self, dvecs, cos_sim_matrix):
+        """
+        Calculates the loss on each embedding $L(e_{ji})$ by contrast loss with closest centroid
+        """
+        N, M, _ = dvecs.shape
+        L = []
+        for j in range(N):
+            L_row = []
+            for i in range(M):
+                centroids_sigmoids = torch.sigmoid(cos_sim_matrix[j, i])
+                excl_centroids_sigmoids = torch.cat((centroids_sigmoids[:j], centroids_sigmoids[j + 1 :]))
+                L_row.append(1.0 - torch.sigmoid(cos_sim_matrix[j, i, j]) + torch.max(excl_centroids_sigmoids))
+            L_row = torch.stack(L_row)
+            L.append(L_row)
+        return torch.stack(L)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 14:</b> &nbsp; 2 fragments, nominal size 63 lines, similarity 92%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag184')" href="javascript:;">
+TTS-0.4.1/TTS/tts/models/tacotron.py: 27-111
+</a>
+<div class="mid" id="frag184" style="display:none"><pre>
+    def __init__(self, config: Coqpit, speaker_manager: SpeakerManager = None):
+        super().__init__(config)
+
+        self.speaker_manager = speaker_manager
+        chars, self.config, _ = self.get_characters(config)
+        config.num_chars = self.num_chars = len(chars)
+
+        # pass all config fields to `self`
+        # for fewer code change
+        for key in config:
+            setattr(self, key, config[key])
+
+        # set speaker embedding channel size for determining `in_channels` for the connected layers.
+        # `init_multispeaker` needs to be called once more in training to initialize the speaker embedding layer based
+        # on the number of speakers infered from the dataset.
+        if self.use_speaker_embedding or self.use_d_vector_file:
+            self.init_multispeaker(config)
+            self.decoder_in_features += self.embedded_speaker_dim  # add speaker embedding dim
+
+        if self.use_gst:
+            self.decoder_in_features += self.gst.gst_embedding_dim
+
+        # embedding layer
+        self.embedding = nn.Embedding(self.num_chars, 256, padding_idx=0)
+        self.embedding.weight.data.normal_(0, 0.3)
+
+        # base model layers
+        self.encoder = Encoder(self.encoder_in_features)
+        self.decoder = Decoder(
+            self.decoder_in_features,
+            self.decoder_output_dim,
+            self.r,
+            self.memory_size,
+            self.attention_type,
+            self.windowing,
+            self.attention_norm,
+            self.prenet_type,
+            self.prenet_dropout,
+            self.use_forward_attn,
+            self.transition_agent,
+            self.forward_attn_mask,
+            self.location_attn,
+            self.attention_heads,
+            self.separate_stopnet,
+            self.max_decoder_steps,
+        )
+        self.postnet = PostCBHG(self.decoder_output_dim)
+        self.last_linear = nn.Linear(self.postnet.cbhg.gru_features * 2, self.out_channels)
+
+        # setup prenet dropout
+        self.decoder.prenet.dropout_at_inference = self.prenet_dropout_at_inference
+
+        # global style token layers
+        if self.gst and self.use_gst:
+            self.gst_layer = GST(
+                num_mel=self.decoder_output_dim,
+                num_heads=self.gst.gst_num_heads,
+                num_style_tokens=self.gst.gst_num_style_tokens,
+                gst_embedding_dim=self.gst.gst_embedding_dim,
+            )
+
+        # backward pass decoder
+        if self.bidirectional_decoder:
+            self._init_backward_decoder()
+        # setup DDC
+        if self.double_decoder_consistency:
+            self.coarse_decoder = Decoder(
+                self.decoder_in_features,
+                self.decoder_output_dim,
+                self.ddc_r,
+                self.memory_size,
+                self.attention_type,
+                self.windowing,
+                self.attention_norm,
+                self.prenet_type,
+                self.prenet_dropout,
+                self.use_forward_attn,
+                self.transition_agent,
+                self.forward_attn_mask,
+                self.location_attn,
+                self.attention_heads,
+                self.separate_stopnet,
+                self.max_decoder_steps,
+            )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag192')" href="javascript:;">
+TTS-0.4.1/TTS/tts/models/tacotron2.py: 43-123
+</a>
+<div class="mid" id="frag192" style="display:none"><pre>
+    def __init__(self, config: Coqpit, speaker_manager: SpeakerManager = None):
+        super().__init__(config)
+
+        self.speaker_manager = speaker_manager
+        chars, self.config, _ = self.get_characters(config)
+        config.num_chars = len(chars)
+        self.decoder_output_dim = config.out_channels
+
+        # pass all config fields to `self`
+        # for fewer code change
+        for key in config:
+            setattr(self, key, config[key])
+
+        # init multi-speaker layers
+        if self.use_speaker_embedding or self.use_d_vector_file:
+            self.init_multispeaker(config)
+            self.decoder_in_features += self.embedded_speaker_dim  # add speaker embedding dim
+
+        if self.use_gst:
+            self.decoder_in_features += self.gst.gst_embedding_dim
+
+        # embedding layer
+        self.embedding = nn.Embedding(self.num_chars, 512, padding_idx=0)
+
+        # base model layers
+        self.encoder = Encoder(self.encoder_in_features)
+
+        self.decoder = Decoder(
+            self.decoder_in_features,
+            self.decoder_output_dim,
+            self.r,
+            self.attention_type,
+            self.attention_win,
+            self.attention_norm,
+            self.prenet_type,
+            self.prenet_dropout,
+            self.use_forward_attn,
+            self.transition_agent,
+            self.forward_attn_mask,
+            self.location_attn,
+            self.attention_heads,
+            self.separate_stopnet,
+            self.max_decoder_steps,
+        )
+        self.postnet = Postnet(self.out_channels)
+
+        # setup prenet dropout
+        self.decoder.prenet.dropout_at_inference = self.prenet_dropout_at_inference
+
+        # global style token layers
+        if self.gst and self.use_gst:
+            self.gst_layer = GST(
+                num_mel=self.decoder_output_dim,
+                num_heads=self.gst.gst_num_heads,
+                num_style_tokens=self.gst.gst_num_style_tokens,
+                gst_embedding_dim=self.gst.gst_embedding_dim,
+            )
+
+        # backward pass decoder
+        if self.bidirectional_decoder:
+            self._init_backward_decoder()
+        # setup DDC
+        if self.double_decoder_consistency:
+            self.coarse_decoder = Decoder(
+                self.decoder_in_features,
+                self.decoder_output_dim,
+                self.ddc_r,
+                self.attention_type,
+                self.attention_win,
+                self.attention_norm,
+                self.prenet_type,
+                self.prenet_dropout,
+                self.use_forward_attn,
+                self.transition_agent,
+                self.forward_attn_mask,
+                self.location_attn,
+                self.attention_heads,
+                self.separate_stopnet,
+                self.max_decoder_steps,
+            )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 15:</b> &nbsp; 2 fragments, nominal size 42 lines, similarity 88%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag185')" href="javascript:;">
+TTS-0.4.1/TTS/tts/models/tacotron.py: 112-179
+</a>
+<div class="mid" id="frag185" style="display:none"><pre>
+    def forward(  # pylint: disable=dangerous-default-value
+        self, text, text_lengths, mel_specs=None, mel_lengths=None, aux_input={"speaker_ids": None, "d_vectors": None}
+    ):
+        """
+        Shapes:
+            text: [B, T_in]
+            text_lengths: [B]
+            mel_specs: [B, T_out, C]
+            mel_lengths: [B]
+            aux_input: 'speaker_ids': [B, 1] and  'd_vectors':[B, C]
+        """
+        aux_input = self._format_aux_input(aux_input)
+        outputs = {"alignments_backward": None, "decoder_outputs_backward": None}
+        inputs = self.embedding(text)
+        input_mask, output_mask = self.compute_masks(text_lengths, mel_lengths)
+        # B x T_in x encoder_in_features
+        encoder_outputs = self.encoder(inputs)
+        # sequence masking
+        encoder_outputs = encoder_outputs * input_mask.unsqueeze(2).expand_as(encoder_outputs)
+        # global style token
+        if self.gst and self.use_gst:
+            # B x gst_dim
+            encoder_outputs = self.compute_gst(encoder_outputs, mel_specs)
+        # speaker embedding
+        if self.use_speaker_embedding or self.use_d_vector_file:
+            if not self.use_d_vector_file:
+                # B x 1 x speaker_embed_dim
+                embedded_speakers = self.speaker_embedding(aux_input["speaker_ids"])[:, None]
+            else:
+                # B x 1 x speaker_embed_dim
+                embedded_speakers = torch.unsqueeze(aux_input["d_vectors"], 1)
+            encoder_outputs = self._concat_speaker_embedding(encoder_outputs, embedded_speakers)
+        # decoder_outputs: B x decoder_in_features x T_out
+        # alignments: B x T_in x encoder_in_features
+        # stop_tokens: B x T_in
+        decoder_outputs, alignments, stop_tokens = self.decoder(encoder_outputs, mel_specs, input_mask)
+        # sequence masking
+        if output_mask is not None:
+            decoder_outputs = decoder_outputs * output_mask.unsqueeze(1).expand_as(decoder_outputs)
+        # B x T_out x decoder_in_features
+        postnet_outputs = self.postnet(decoder_outputs)
+        # sequence masking
+        if output_mask is not None:
+            postnet_outputs = postnet_outputs * output_mask.unsqueeze(2).expand_as(postnet_outputs)
+        # B x T_out x posnet_dim
+        postnet_outputs = self.last_linear(postnet_outputs)
+        # B x T_out x decoder_in_features
+        decoder_outputs = decoder_outputs.transpose(1, 2).contiguous()
+        if self.bidirectional_decoder:
+            decoder_outputs_backward, alignments_backward = self._backward_pass(mel_specs, encoder_outputs, input_mask)
+            outputs["alignments_backward"] = alignments_backward
+            outputs["decoder_outputs_backward"] = decoder_outputs_backward
+        if self.double_decoder_consistency:
+            decoder_outputs_backward, alignments_backward = self._coarse_decoder_pass(
+                mel_specs, encoder_outputs, alignments, input_mask
+            )
+            outputs["alignments_backward"] = alignments_backward
+            outputs["decoder_outputs_backward"] = decoder_outputs_backward
+        outputs.update(
+            {
+                "model_outputs": postnet_outputs,
+                "decoder_outputs": decoder_outputs,
+                "alignments": alignments,
+                "stop_tokens": stop_tokens,
+            }
+        )
+        return outputs
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag194')" href="javascript:;">
+TTS-0.4.1/TTS/tts/models/tacotron2.py: 131-199
+</a>
+<div class="mid" id="frag194" style="display:none"><pre>
+    def forward(  # pylint: disable=dangerous-default-value
+        self, text, text_lengths, mel_specs=None, mel_lengths=None, aux_input={"speaker_ids": None, "d_vectors": None}
+    ):
+        """Forward pass for training with Teacher Forcing.
+
+        Shapes:
+            text: :math:`[B, T_in]`
+            text_lengths: :math:`[B]`
+            mel_specs: :math:`[B, T_out, C]`
+            mel_lengths: :math:`[B]`
+            aux_input: 'speaker_ids': :math:`[B, 1]` and  'd_vectors': :math:`[B, C]`
+        """
+        aux_input = self._format_aux_input(aux_input)
+        outputs = {"alignments_backward": None, "decoder_outputs_backward": None}
+        # compute mask for padding
+        # B x T_in_max (boolean)
+        input_mask, output_mask = self.compute_masks(text_lengths, mel_lengths)
+        # B x D_embed x T_in_max
+        embedded_inputs = self.embedding(text).transpose(1, 2)
+        # B x T_in_max x D_en
+        encoder_outputs = self.encoder(embedded_inputs, text_lengths)
+        if self.gst and self.use_gst:
+            # B x gst_dim
+            encoder_outputs = self.compute_gst(encoder_outputs, mel_specs)
+
+        if self.use_speaker_embedding or self.use_d_vector_file:
+            if not self.use_d_vector_file:
+                # B x 1 x speaker_embed_dim
+                embedded_speakers = self.speaker_embedding(aux_input["speaker_ids"])[:, None]
+            else:
+                # B x 1 x speaker_embed_dim
+                embedded_speakers = torch.unsqueeze(aux_input["d_vectors"], 1)
+            encoder_outputs = self._concat_speaker_embedding(encoder_outputs, embedded_speakers)
+
+        encoder_outputs = encoder_outputs * input_mask.unsqueeze(2).expand_as(encoder_outputs)
+
+        # B x mel_dim x T_out -- B x T_out//r x T_in -- B x T_out//r
+        decoder_outputs, alignments, stop_tokens = self.decoder(encoder_outputs, mel_specs, input_mask)
+        # sequence masking
+        if mel_lengths is not None:
+            decoder_outputs = decoder_outputs * output_mask.unsqueeze(1).expand_as(decoder_outputs)
+        # B x mel_dim x T_out
+        postnet_outputs = self.postnet(decoder_outputs)
+        postnet_outputs = decoder_outputs + postnet_outputs
+        # sequence masking
+        if output_mask is not None:
+            postnet_outputs = postnet_outputs * output_mask.unsqueeze(1).expand_as(postnet_outputs)
+        # B x T_out x mel_dim -- B x T_out x mel_dim -- B x T_out//r x T_in
+        decoder_outputs, postnet_outputs, alignments = self.shape_outputs(decoder_outputs, postnet_outputs, alignments)
+        if self.bidirectional_decoder:
+            decoder_outputs_backward, alignments_backward = self._backward_pass(mel_specs, encoder_outputs, input_mask)
+            outputs["alignments_backward"] = alignments_backward
+            outputs["decoder_outputs_backward"] = decoder_outputs_backward
+        if self.double_decoder_consistency:
+            decoder_outputs_backward, alignments_backward = self._coarse_decoder_pass(
+                mel_specs, encoder_outputs, alignments, input_mask
+            )
+            outputs["alignments_backward"] = alignments_backward
+            outputs["decoder_outputs_backward"] = decoder_outputs_backward
+        outputs.update(
+            {
+                "model_outputs": postnet_outputs,
+                "decoder_outputs": decoder_outputs,
+                "alignments": alignments,
+                "stop_tokens": stop_tokens,
+            }
+        )
+        return outputs
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 16:</b> &nbsp; 2 fragments, nominal size 27 lines, similarity 76%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag186')" href="javascript:;">
+TTS-0.4.1/TTS/tts/models/tacotron.py: 181-212
+</a>
+<div class="mid" id="frag186" style="display:none"><pre>
+    def inference(self, text_input, aux_input=None):
+        aux_input = self._format_aux_input(aux_input)
+        inputs = self.embedding(text_input)
+        encoder_outputs = self.encoder(inputs)
+        if self.gst and self.use_gst:
+            # B x gst_dim
+            encoder_outputs = self.compute_gst(encoder_outputs, aux_input["style_mel"], aux_input["d_vectors"])
+        if self.num_speakers &gt; 1:
+            if not self.use_d_vector_file:
+                # B x 1 x speaker_embed_dim
+                embedded_speakers = self.speaker_embedding(aux_input["speaker_ids"])
+                # reshape embedded_speakers
+                if embedded_speakers.ndim == 1:
+                    embedded_speakers = embedded_speakers[None, None, :]
+                elif embedded_speakers.ndim == 2:
+                    embedded_speakers = embedded_speakers[None, :]
+            else:
+                # B x 1 x speaker_embed_dim
+                embedded_speakers = torch.unsqueeze(aux_input["d_vectors"], 1)
+            encoder_outputs = self._concat_speaker_embedding(encoder_outputs, embedded_speakers)
+        decoder_outputs, alignments, stop_tokens = self.decoder.inference(encoder_outputs)
+        postnet_outputs = self.postnet(decoder_outputs)
+        postnet_outputs = self.last_linear(postnet_outputs)
+        decoder_outputs = decoder_outputs.transpose(1, 2)
+        outputs = {
+            "model_outputs": postnet_outputs,
+            "decoder_outputs": decoder_outputs,
+            "alignments": alignments,
+            "stop_tokens": stop_tokens,
+        }
+        return outputs
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag195')" href="javascript:;">
+TTS-0.4.1/TTS/tts/models/tacotron2.py: 201-240
+</a>
+<div class="mid" id="frag195" style="display:none"><pre>
+    def inference(self, text, aux_input=None):
+        """Forward pass for inference with no Teacher-Forcing.
+
+        Shapes:
+           text: :math:`[B, T_in]`
+           text_lengths: :math:`[B]`
+        """
+        aux_input = self._format_aux_input(aux_input)
+        embedded_inputs = self.embedding(text).transpose(1, 2)
+        encoder_outputs = self.encoder.inference(embedded_inputs)
+
+        if self.gst and self.use_gst:
+            # B x gst_dim
+            encoder_outputs = self.compute_gst(encoder_outputs, aux_input["style_mel"], aux_input["d_vectors"])
+
+        if self.num_speakers &gt; 1:
+            if not self.use_d_vector_file:
+                embedded_speakers = self.speaker_embedding(aux_input["speaker_ids"])[None]
+                # reshape embedded_speakers
+                if embedded_speakers.ndim == 1:
+                    embedded_speakers = embedded_speakers[None, None, :]
+                elif embedded_speakers.ndim == 2:
+                    embedded_speakers = embedded_speakers[None, :]
+            else:
+                embedded_speakers = aux_input["d_vectors"]
+
+            encoder_outputs = self._concat_speaker_embedding(encoder_outputs, embedded_speakers)
+
+        decoder_outputs, alignments, stop_tokens = self.decoder.inference(encoder_outputs)
+        postnet_outputs = self.postnet(decoder_outputs)
+        postnet_outputs = decoder_outputs + postnet_outputs
+        decoder_outputs, postnet_outputs, alignments = self.shape_outputs(decoder_outputs, postnet_outputs, alignments)
+        outputs = {
+            "model_outputs": postnet_outputs,
+            "decoder_outputs": decoder_outputs,
+            "alignments": alignments,
+            "stop_tokens": stop_tokens,
+        }
+        return outputs
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 17:</b> &nbsp; 2 fragments, nominal size 43 lines, similarity 93%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag187')" href="javascript:;">
+TTS-0.4.1/TTS/tts/models/tacotron.py: 213-272
+</a>
+<div class="mid" id="frag187" style="display:none"><pre>
+    def train_step(self, batch, criterion):
+        """Perform a single training step by fetching the right set if samples from the batch.
+
+        Args:
+            batch ([type]): [description]
+            criterion ([type]): [description]
+        """
+        text_input = batch["text_input"]
+        text_lengths = batch["text_lengths"]
+        mel_input = batch["mel_input"]
+        mel_lengths = batch["mel_lengths"]
+        linear_input = batch["linear_input"]
+        stop_targets = batch["stop_targets"]
+        stop_target_lengths = batch["stop_target_lengths"]
+        speaker_ids = batch["speaker_ids"]
+        d_vectors = batch["d_vectors"]
+
+        # forward pass model
+        outputs = self.forward(
+            text_input,
+            text_lengths,
+            mel_input,
+            mel_lengths,
+            aux_input={"speaker_ids": speaker_ids, "d_vectors": d_vectors},
+        )
+
+        # set the [alignment] lengths wrt reduction factor for guided attention
+        if mel_lengths.max() % self.decoder.r != 0:
+            alignment_lengths = (
+                mel_lengths + (self.decoder.r - (mel_lengths.max() % self.decoder.r))
+            ) // self.decoder.r
+        else:
+            alignment_lengths = mel_lengths // self.decoder.r
+
+        aux_input = {"speaker_ids": speaker_ids, "d_vectors": d_vectors}
+        outputs = self.forward(text_input, text_lengths, mel_input, mel_lengths, aux_input)
+
+        # compute loss
+        with autocast(enabled=False):  # use float32 for the criterion
+            loss_dict = criterion(
+                outputs["model_outputs"].float(),
+                outputs["decoder_outputs"].float(),
+                mel_input.float(),
+                linear_input.float(),
+                outputs["stop_tokens"].float(),
+                stop_targets.float(),
+                stop_target_lengths,
+                mel_lengths,
+                None if outputs["decoder_outputs_backward"] is None else outputs["decoder_outputs_backward"].float(),
+                outputs["alignments"].float(),
+                alignment_lengths,
+                None if outputs["alignments_backward"] is None else outputs["alignments_backward"].float(),
+                text_lengths,
+            )
+
+        # compute alignment error (the lower the better )
+        align_error = 1 - alignment_diagonal_score(outputs["alignments"])
+        loss_dict["align_error"] = align_error
+        return outputs, loss_dict
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag196')" href="javascript:;">
+TTS-0.4.1/TTS/tts/models/tacotron2.py: 241-299
+</a>
+<div class="mid" id="frag196" style="display:none"><pre>
+    def train_step(self, batch: Dict, criterion: torch.nn.Module):
+        """A single training step. Forward pass and loss computation.
+
+        Args:
+            batch ([Dict]): A dictionary of input tensors.
+            criterion ([type]): Callable criterion to compute model loss.
+        """
+        text_input = batch["text_input"]
+        text_lengths = batch["text_lengths"]
+        mel_input = batch["mel_input"]
+        mel_lengths = batch["mel_lengths"]
+        stop_targets = batch["stop_targets"]
+        stop_target_lengths = batch["stop_target_lengths"]
+        speaker_ids = batch["speaker_ids"]
+        d_vectors = batch["d_vectors"]
+
+        # forward pass model
+        outputs = self.forward(
+            text_input,
+            text_lengths,
+            mel_input,
+            mel_lengths,
+            aux_input={"speaker_ids": speaker_ids, "d_vectors": d_vectors},
+        )
+
+        # set the [alignment] lengths wrt reduction factor for guided attention
+        if mel_lengths.max() % self.decoder.r != 0:
+            alignment_lengths = (
+                mel_lengths + (self.decoder.r - (mel_lengths.max() % self.decoder.r))
+            ) // self.decoder.r
+        else:
+            alignment_lengths = mel_lengths // self.decoder.r
+
+        aux_input = {"speaker_ids": speaker_ids, "d_vectors": d_vectors}
+        outputs = self.forward(text_input, text_lengths, mel_input, mel_lengths, aux_input)
+
+        # compute loss
+        with autocast(enabled=False):  # use float32 for the criterion
+            loss_dict = criterion(
+                outputs["model_outputs"].float(),
+                outputs["decoder_outputs"].float(),
+                mel_input.float(),
+                None,
+                outputs["stop_tokens"].float(),
+                stop_targets.float(),
+                stop_target_lengths,
+                mel_lengths,
+                None if outputs["decoder_outputs_backward"] is None else outputs["decoder_outputs_backward"].float(),
+                outputs["alignments"].float(),
+                alignment_lengths,
+                None if outputs["alignments_backward"] is None else outputs["alignments_backward"].float(),
+                text_lengths,
+            )
+
+        # compute alignment error (the lower the better )
+        align_error = 1 - alignment_diagonal_score(outputs["alignments"])
+        loss_dict["align_error"] = align_error
+        return outputs, loss_dict
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 18:</b> &nbsp; 2 fragments, nominal size 20 lines, similarity 72%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag188')" href="javascript:;">
+TTS-0.4.1/TTS/tts/models/tacotron.py: 273-301
+</a>
+<div class="mid" id="frag188" style="display:none"><pre>
+    def _create_logs(self, batch, outputs, ap):
+        postnet_outputs = outputs["model_outputs"]
+        decoder_outputs = outputs["decoder_outputs"]
+        alignments = outputs["alignments"]
+        alignments_backward = outputs["alignments_backward"]
+        mel_input = batch["mel_input"]
+        linear_input = batch["linear_input"]
+
+        pred_linear_spec = postnet_outputs[0].data.cpu().numpy()
+        pred_mel_spec = decoder_outputs[0].data.cpu().numpy()
+        gt_linear_spec = linear_input[0].data.cpu().numpy()
+        gt_mel_spec = mel_input[0].data.cpu().numpy()
+        align_img = alignments[0].data.cpu().numpy()
+
+        figures = {
+            "pred_linear_spec": plot_spectrogram(pred_linear_spec, ap, output_fig=False),
+            "real_linear_spec": plot_spectrogram(gt_linear_spec, ap, output_fig=False),
+            "pred_mel_spec": plot_spectrogram(pred_mel_spec, ap, output_fig=False),
+            "real_mel_spec": plot_spectrogram(gt_mel_spec, ap, output_fig=False),
+            "alignment": plot_alignment(align_img, output_fig=False),
+        }
+
+        if self.bidirectional_decoder or self.double_decoder_consistency:
+            figures["alignment_backward"] = plot_alignment(alignments_backward[0].data.cpu().numpy(), output_fig=False)
+
+        # Sample audio
+        audio = ap.inv_spectrogram(pred_linear_spec.T)
+        return figures, {"audio": audio}
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag197')" href="javascript:;">
+TTS-0.4.1/TTS/tts/models/tacotron2.py: 300-323
+</a>
+<div class="mid" id="frag197" style="display:none"><pre>
+    def _create_logs(self, batch, outputs, ap):
+        """Create dashboard log information."""
+        postnet_outputs = outputs["model_outputs"]
+        alignments = outputs["alignments"]
+        alignments_backward = outputs["alignments_backward"]
+        mel_input = batch["mel_input"]
+
+        pred_spec = postnet_outputs[0].data.cpu().numpy()
+        gt_spec = mel_input[0].data.cpu().numpy()
+        align_img = alignments[0].data.cpu().numpy()
+
+        figures = {
+            "prediction": plot_spectrogram(pred_spec, ap, output_fig=False),
+            "ground_truth": plot_spectrogram(gt_spec, ap, output_fig=False),
+            "alignment": plot_alignment(align_img, output_fig=False),
+        }
+
+        if self.bidirectional_decoder or self.double_decoder_consistency:
+            figures["alignment_backward"] = plot_alignment(alignments_backward[0].data.cpu().numpy(), output_fig=False)
+
+        # Sample audio
+        audio = ap.inv_melspectrogram(pred_spec.T)
+        return figures, {"audio": audio}
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 19:</b> &nbsp; 2 fragments, nominal size 32 lines, similarity 90%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag208')" href="javascript:;">
+TTS-0.4.1/TTS/tts/models/glow_tts.py: 179-226
+</a>
+<div class="mid" id="frag208" style="display:none"><pre>
+    def forward(
+        self, x, x_lengths, y, y_lengths=None, aux_input={"d_vectors": None, "speaker_ids": None}
+    ):  # pylint: disable=dangerous-default-value
+        """
+        Shapes:
+            - x: :math:`[B, T]`
+            - x_lenghts::math:`B`
+            - y: :math:`[B, T, C]`
+            - y_lengths::math:`B`
+            - g: :math:`[B, C] or B`
+        """
+        # [B, T, C] -&gt; [B, C, T]
+        y = y.transpose(1, 2)
+        y_max_length = y.size(2)
+        # norm speaker embeddings
+        g = self._speaker_embedding(aux_input)
+        # embedding pass
+        o_mean, o_log_scale, o_dur_log, x_mask = self.encoder(x, x_lengths, g=g)
+        # drop redisual frames wrt num_squeeze and set y_lengths.
+        y, y_lengths, y_max_length, attn = self.preprocess(y, y_lengths, y_max_length, None)
+        # create masks
+        y_mask = torch.unsqueeze(sequence_mask(y_lengths, y_max_length), 1).to(x_mask.dtype)
+        # [B, 1, T_en, T_de]
+        attn_mask = torch.unsqueeze(x_mask, -1) * torch.unsqueeze(y_mask, 2)
+        # decoder pass
+        z, logdet = self.decoder(y, y_mask, g=g, reverse=False)
+        # find the alignment path
+        with torch.no_grad():
+            o_scale = torch.exp(-2 * o_log_scale)
+            logp1 = torch.sum(-0.5 * math.log(2 * math.pi) - o_log_scale, [1]).unsqueeze(-1)  # [b, t, 1]
+            logp2 = torch.matmul(o_scale.transpose(1, 2), -0.5 * (z ** 2))  # [b, t, d] x [b, d, t'] = [b, t, t']
+            logp3 = torch.matmul((o_mean * o_scale).transpose(1, 2), z)  # [b, t, d] x [b, d, t'] = [b, t, t']
+            logp4 = torch.sum(-0.5 * (o_mean ** 2) * o_scale, [1]).unsqueeze(-1)  # [b, t, 1]
+            logp = logp1 + logp2 + logp3 + logp4  # [b, t, t']
+            attn = maximum_path(logp, attn_mask.squeeze(1)).unsqueeze(1).detach()
+        y_mean, y_log_scale, o_attn_dur = self.compute_outputs(attn, o_mean, o_log_scale, x_mask)
+        attn = attn.squeeze(1).permute(0, 2, 1)
+        outputs = {
+            "z": z.transpose(1, 2),
+            "logdet": logdet,
+            "y_mean": y_mean.transpose(1, 2),
+            "y_log_scale": y_log_scale.transpose(1, 2),
+            "alignments": attn,
+            "durations_log": o_dur_log.transpose(1, 2),
+            "total_durations_log": o_attn_dur.transpose(1, 2),
+        }
+        return outputs
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag209')" href="javascript:;">
+TTS-0.4.1/TTS/tts/models/glow_tts.py: 228-282
+</a>
+<div class="mid" id="frag209" style="display:none"><pre>
+    def inference_with_MAS(
+        self, x, x_lengths, y=None, y_lengths=None, aux_input={"d_vectors": None, "speaker_ids": None}
+    ):  # pylint: disable=dangerous-default-value
+        """
+        It's similar to the teacher forcing in Tacotron.
+        It was proposed in: https://arxiv.org/abs/2104.05557
+
+        Shapes:
+            - x: :math:`[B, T]`
+            - x_lenghts: :math:`B`
+            - y: :math:`[B, T, C]`
+            - y_lengths: :math:`B`
+            - g: :math:`[B, C] or B`
+        """
+        y = y.transpose(1, 2)
+        y_max_length = y.size(2)
+        # norm speaker embeddings
+        g = self._speaker_embedding(aux_input)
+        # embedding pass
+        o_mean, o_log_scale, o_dur_log, x_mask = self.encoder(x, x_lengths, g=g)
+        # drop redisual frames wrt num_squeeze and set y_lengths.
+        y, y_lengths, y_max_length, attn = self.preprocess(y, y_lengths, y_max_length, None)
+        # create masks
+        y_mask = torch.unsqueeze(sequence_mask(y_lengths, y_max_length), 1).to(x_mask.dtype)
+        attn_mask = torch.unsqueeze(x_mask, -1) * torch.unsqueeze(y_mask, 2)
+        # decoder pass
+        z, logdet = self.decoder(y, y_mask, g=g, reverse=False)
+        # find the alignment path between z and encoder output
+        o_scale = torch.exp(-2 * o_log_scale)
+        logp1 = torch.sum(-0.5 * math.log(2 * math.pi) - o_log_scale, [1]).unsqueeze(-1)  # [b, t, 1]
+        logp2 = torch.matmul(o_scale.transpose(1, 2), -0.5 * (z ** 2))  # [b, t, d] x [b, d, t'] = [b, t, t']
+        logp3 = torch.matmul((o_mean * o_scale).transpose(1, 2), z)  # [b, t, d] x [b, d, t'] = [b, t, t']
+        logp4 = torch.sum(-0.5 * (o_mean ** 2) * o_scale, [1]).unsqueeze(-1)  # [b, t, 1]
+        logp = logp1 + logp2 + logp3 + logp4  # [b, t, t']
+        attn = maximum_path(logp, attn_mask.squeeze(1)).unsqueeze(1).detach()
+
+        y_mean, y_log_scale, o_attn_dur = self.compute_outputs(attn, o_mean, o_log_scale, x_mask)
+        attn = attn.squeeze(1).permute(0, 2, 1)
+
+        # get predited aligned distribution
+        z = y_mean * y_mask
+
+        # reverse the decoder and predict using the aligned distribution
+        y, logdet = self.decoder(z, y_mask, g=g, reverse=True)
+        outputs = {
+            "model_outputs": z.transpose(1, 2),
+            "logdet": logdet,
+            "y_mean": y_mean.transpose(1, 2),
+            "y_log_scale": y_log_scale.transpose(1, 2),
+            "alignments": attn,
+            "durations_log": o_dur_log.transpose(1, 2),
+            "total_durations_log": o_attn_dur.transpose(1, 2),
+        }
+        return outputs
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 20:</b> &nbsp; 2 fragments, nominal size 28 lines, similarity 86%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag217')" href="javascript:;">
+TTS-0.4.1/TTS/tts/models/glow_tts.py: 441-479
+</a>
+<div class="mid" id="frag217" style="display:none"><pre>
+    def test_run(self, assets: Dict) -&gt; Tuple[Dict, Dict]:
+        """Generic test run for `tts` models used by `Trainer`.
+
+        You can override this for a different behaviour.
+
+        Returns:
+            Tuple[Dict, Dict]: Test figures and audios to be projected to Tensorboard.
+        """
+        ap = assets["audio_processor"]
+        print(" | &gt; Synthesizing test sentences.")
+        test_audios = {}
+        test_figures = {}
+        test_sentences = self.config.test_sentences
+        aux_inputs = self._get_test_aux_input()
+        if len(test_sentences) == 0:
+            print(" | [!] No test sentences provided.")
+        else:
+            for idx, sen in enumerate(test_sentences):
+                outputs = synthesis(
+                    self,
+                    sen,
+                    self.config,
+                    "cuda" in str(next(self.parameters()).device),
+                    ap,
+                    speaker_id=aux_inputs["speaker_id"],
+                    d_vector=aux_inputs["d_vector"],
+                    style_wav=aux_inputs["style_wav"],
+                    enable_eos_bos_chars=self.config.enable_eos_bos_chars,
+                    use_griffin_lim=True,
+                    do_trim_silence=False,
+                )
+
+                test_audios["{}-audio".format(idx)] = outputs["wav"]
+                test_figures["{}-prediction".format(idx)] = plot_spectrogram(
+                    outputs["outputs"]["model_outputs"], ap, output_fig=False
+                )
+                test_figures["{}-alignment".format(idx)] = plot_alignment(outputs["alignments"], output_fig=False)
+        return test_figures, test_audios
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag230')" href="javascript:;">
+TTS-0.4.1/TTS/tts/models/base_tts.py: 302-341
+</a>
+<div class="mid" id="frag230" style="display:none"><pre>
+    def test_run(self, assets: Dict) -&gt; Tuple[Dict, Dict]:
+        """Generic test run for `tts` models used by `Trainer`.
+
+        You can override this for a different behaviour.
+
+        Args:
+            assets (dict): A dict of training assets. For `tts` models, it must include `{'audio_processor': ap}`.
+
+        Returns:
+            Tuple[Dict, Dict]: Test figures and audios to be projected to Tensorboard.
+        """
+        ap = assets["audio_processor"]
+        print(" | &gt; Synthesizing test sentences.")
+        test_audios = {}
+        test_figures = {}
+        test_sentences = self.config.test_sentences
+        aux_inputs = self._get_test_aux_input()
+        for idx, sen in enumerate(test_sentences):
+            outputs_dict = synthesis(
+                self,
+                sen,
+                self.config,
+                "cuda" in str(next(self.parameters()).device),
+                ap,
+                speaker_id=aux_inputs["speaker_id"],
+                d_vector=aux_inputs["d_vector"],
+                style_wav=aux_inputs["style_wav"],
+                enable_eos_bos_chars=self.config.enable_eos_bos_chars,
+                use_griffin_lim=True,
+                do_trim_silence=False,
+            )
+            test_audios["{}-audio".format(idx)] = outputs_dict["wav"]
+            test_figures["{}-prediction".format(idx)] = plot_spectrogram(
+                outputs_dict["outputs"]["model_outputs"], ap, output_fig=False
+            )
+            test_figures["{}-alignment".format(idx)] = plot_alignment(
+                outputs_dict["outputs"]["alignments"], output_fig=False
+            )
+        return test_figures, test_audios
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 21:</b> &nbsp; 3 fragments, nominal size 10 lines, similarity 70%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag299')" href="javascript:;">
+TTS-0.4.1/TTS/tts/tf/models/tacotron2.py: 71-82
+</a>
+<div class="mid" id="frag299" style="display:none"><pre>
+    def training(self, characters, text_lengths, frames):
+        B, T = shape_list(characters)
+        embedding_vectors = self.embedding(characters, training=True)
+        encoder_output = self.encoder(embedding_vectors, training=True)
+        decoder_states = self.decoder.build_decoder_initial_states(B, 512, T)
+        decoder_frames, stop_tokens, attentions = self.decoder(
+            encoder_output, decoder_states, frames, text_lengths, training=True
+        )
+        postnet_frames = self.postnet(decoder_frames, training=True)
+        output_frames = decoder_frames + postnet_frames
+        return decoder_frames, output_frames, attentions, stop_tokens
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag301')" href="javascript:;">
+TTS-0.4.1/TTS/tts/tf/models/tacotron2.py: 100-110
+</a>
+<div class="mid" id="frag301" style="display:none"><pre>
+    def inference_tflite(self, characters):
+        B, T = shape_list(characters)
+        embedding_vectors = self.embedding(characters, training=False)
+        encoder_output = self.encoder(embedding_vectors, training=False)
+        decoder_states = self.decoder.build_decoder_initial_states(B, 512, T)
+        decoder_frames, stop_tokens, attentions = self.decoder(encoder_output, decoder_states, training=False)
+        postnet_frames = self.postnet(decoder_frames, training=False)
+        output_frames = decoder_frames + postnet_frames
+        print(output_frames.shape)
+        return decoder_frames, output_frames, attentions, stop_tokens
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag300')" href="javascript:;">
+TTS-0.4.1/TTS/tts/tf/models/tacotron2.py: 83-93
+</a>
+<div class="mid" id="frag300" style="display:none"><pre>
+    def inference(self, characters):
+        B, T = shape_list(characters)
+        embedding_vectors = self.embedding(characters, training=False)
+        encoder_output = self.encoder(embedding_vectors, training=False)
+        decoder_states = self.decoder.build_decoder_initial_states(B, 512, T)
+        decoder_frames, stop_tokens, attentions = self.decoder(encoder_output, decoder_states, training=False)
+        postnet_frames = self.postnet(decoder_frames, training=False)
+        output_frames = decoder_frames + postnet_frames
+        print(output_frames.shape)
+        return decoder_frames, output_frames, attentions, stop_tokens
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 22:</b> &nbsp; 2 fragments, nominal size 13 lines, similarity 92%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag303')" href="javascript:;">
+TTS-0.4.1/TTS/tts/tf/utils/tflite.py: 5-23
+</a>
+<div class="mid" id="frag303" style="display:none"><pre>
+def convert_tacotron2_to_tflite(model, output_path=None, experimental_converter=True):
+    """Convert Tensorflow Tacotron2 model to TFLite. Save a binary file if output_path is
+    provided, else return TFLite model."""
+
+    concrete_function = model.inference_tflite.get_concrete_function()
+    converter = tf.lite.TFLiteConverter.from_concrete_functions([concrete_function])
+    converter.experimental_new_converter = experimental_converter
+    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
+    tflite_model = converter.convert()
+    print(f"Tflite Model size is {len(tflite_model) / (1024.0 * 1024.0)} MBs.")
+    if output_path is not None:
+        # same model binary if outputpath is provided
+        with fsspec.open(output_path, "wb") as f:
+            f.write(tflite_model)
+        return None
+    return tflite_model
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag796')" href="javascript:;">
+TTS-0.4.1/TTS/vocoder/tf/utils/tflite.py: 5-23
+</a>
+<div class="mid" id="frag796" style="display:none"><pre>
+def convert_melgan_to_tflite(model, output_path=None, experimental_converter=True):
+    """Convert Tensorflow MelGAN model to TFLite. Save a binary file if output_path is
+    provided, else return TFLite model."""
+
+    concrete_function = model.inference_tflite.get_concrete_function()
+    converter = tf.lite.TFLiteConverter.from_concrete_functions([concrete_function])
+    converter.experimental_new_converter = experimental_converter
+    converter.optimizations = []
+    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
+    tflite_model = converter.convert()
+    print(f"Tflite Model size is {len(tflite_model) / (1024.0 * 1024.0)} MBs.")
+    if output_path is not None:
+        # same model binary if outputpath is provided
+        with fsspec.open(output_path, "wb") as f:
+            f.write(tflite_model)
+        return None
+    return tflite_model
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 23:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag307')" href="javascript:;">
+TTS-0.4.1/TTS/tts/tf/utils/convert_torch_to_tf_utils.py: 32-45
+</a>
+<div class="mid" id="frag307" style="display:none"><pre>
+def convert_tf_name(tf_name):
+    """Convert certain patterns in TF layer names to Torch patterns"""
+    tf_name_tmp = tf_name
+    tf_name_tmp = tf_name_tmp.replace(":0", "")
+    tf_name_tmp = tf_name_tmp.replace("/forward_lstm/lstm_cell_1/recurrent_kernel", "/weight_hh_l0")
+    tf_name_tmp = tf_name_tmp.replace("/forward_lstm/lstm_cell_2/kernel", "/weight_ih_l1")
+    tf_name_tmp = tf_name_tmp.replace("/recurrent_kernel", "/weight_hh")
+    tf_name_tmp = tf_name_tmp.replace("/kernel", "/weight")
+    tf_name_tmp = tf_name_tmp.replace("/gamma", "/weight")
+    tf_name_tmp = tf_name_tmp.replace("/beta", "/bias")
+    tf_name_tmp = tf_name_tmp.replace("/", ".")
+    return tf_name_tmp
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag801')" href="javascript:;">
+TTS-0.4.1/TTS/vocoder/tf/utils/convert_torch_to_tf_utils.py: 10-23
+</a>
+<div class="mid" id="frag801" style="display:none"><pre>
+def convert_tf_name(tf_name):
+    """Convert certain patterns in TF layer names to Torch patterns"""
+    tf_name_tmp = tf_name
+    tf_name_tmp = tf_name_tmp.replace(":0", "")
+    tf_name_tmp = tf_name_tmp.replace("/forward_lstm/lstm_cell_1/recurrent_kernel", "/weight_hh_l0")
+    tf_name_tmp = tf_name_tmp.replace("/forward_lstm/lstm_cell_2/kernel", "/weight_ih_l1")
+    tf_name_tmp = tf_name_tmp.replace("/recurrent_kernel", "/weight_hh")
+    tf_name_tmp = tf_name_tmp.replace("/kernel", "/weight")
+    tf_name_tmp = tf_name_tmp.replace("/gamma", "/weight")
+    tf_name_tmp = tf_name_tmp.replace("/beta", "/bias")
+    tf_name_tmp = tf_name_tmp.replace("/", ".")
+    return tf_name_tmp
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 24:</b> &nbsp; 2 fragments, nominal size 10 lines, similarity 90%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag335')" href="javascript:;">
+TTS-0.4.1/TTS/tts/layers/vits/discriminator.py: 30-49
+</a>
+<div class="mid" id="frag335" style="display:none"><pre>
+    def forward(self, x):
+        """
+        Args:
+            x (Tensor): input waveform.
+
+        Returns:
+            Tensor: discriminator scores.
+            List[Tensor]: list of features from the convolutiona layers.
+        """
+        feat = []
+        for l in self.convs:
+            x = l(x)
+            x = torch.nn.functional.leaky_relu(x, 0.1)
+            feat.append(x)
+        x = self.conv_post(x)
+        feat.append(x)
+        x = torch.flatten(x, 1, -1)
+        return x, feat
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag665')" href="javascript:;">
+TTS-0.4.1/TTS/vocoder/models/hifigan_discriminator.py: 142-161
+</a>
+<div class="mid" id="frag665" style="display:none"><pre>
+    def forward(self, x):
+        """
+        Args:
+            x (Tensor): input waveform.
+
+        Returns:
+            Tensor: discriminator scores.
+            List[Tensor]: list of features from the convolutiona layers.
+        """
+        feat = []
+        for l in self.convs:
+            x = l(x)
+            x = F.leaky_relu(x, LRELU_SLOPE)
+            feat.append(x)
+        x = self.conv_post(x)
+        feat.append(x)
+        x = torch.flatten(x, 1, -1)
+        return x, feat
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 25:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 72%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag434')" href="javascript:;">
+TTS-0.4.1/TTS/tts/layers/tacotron/tacotron.py: 195-206
+</a>
+<div class="mid" id="frag434" style="display:none"><pre>
+    def __init__(self):
+        super().__init__()
+        self.cbhg = CBHG(
+            128,
+            K=16,
+            conv_bank_features=128,
+            conv_projections=[128, 128],
+            highway_features=128,
+            gru_features=128,
+            num_highways=4,
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag438')" href="javascript:;">
+TTS-0.4.1/TTS/tts/layers/tacotron/tacotron.py: 234-245
+</a>
+<div class="mid" id="frag438" style="display:none"><pre>
+    def __init__(self, mel_dim):
+        super().__init__()
+        self.cbhg = CBHG(
+            mel_dim,
+            K=8,
+            conv_bank_features=128,
+            conv_projections=[256, mel_dim],
+            highway_features=128,
+            gru_features=128,
+            num_highways=4,
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 26:</b> &nbsp; 2 fragments, nominal size 55 lines, similarity 70%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag440')" href="javascript:;">
+TTS-0.4.1/TTS/tts/layers/tacotron/tacotron.py: 278-336
+</a>
+<div class="mid" id="frag440" style="display:none"><pre>
+    def __init__(
+        self,
+        in_channels,
+        frame_channels,
+        r,
+        memory_size,
+        attn_type,
+        attn_windowing,
+        attn_norm,
+        prenet_type,
+        prenet_dropout,
+        forward_attn,
+        trans_agent,
+        forward_attn_mask,
+        location_attn,
+        attn_K,
+        separate_stopnet,
+        max_decoder_steps,
+    ):
+        super().__init__()
+        self.r_init = r
+        self.r = r
+        self.in_channels = in_channels
+        self.max_decoder_steps = max_decoder_steps
+        self.use_memory_queue = memory_size &gt; 0
+        self.memory_size = memory_size if memory_size &gt; 0 else r
+        self.frame_channels = frame_channels
+        self.separate_stopnet = separate_stopnet
+        self.query_dim = 256
+        # memory -&gt; |Prenet| -&gt; processed_memory
+        prenet_dim = frame_channels * self.memory_size if self.use_memory_queue else frame_channels
+        self.prenet = Prenet(prenet_dim, prenet_type, prenet_dropout, out_features=[256, 128])
+        # processed_inputs, processed_memory -&gt; |Attention| -&gt; Attention, attention, RNN_State
+        # attention_rnn generates queries for the attention mechanism
+        self.attention_rnn = nn.GRUCell(in_channels + 128, self.query_dim)
+        self.attention = init_attn(
+            attn_type=attn_type,
+            query_dim=self.query_dim,
+            embedding_dim=in_channels,
+            attention_dim=128,
+            location_attention=location_attn,
+            attention_location_n_filters=32,
+            attention_location_kernel_size=31,
+            windowing=attn_windowing,
+            norm=attn_norm,
+            forward_attn=forward_attn,
+            trans_agent=trans_agent,
+            forward_attn_mask=forward_attn_mask,
+            attn_K=attn_K,
+        )
+        # (processed_memory | attention context) -&gt; |Linear| -&gt; decoder_RNN_input
+        self.project_to_decoder_in = nn.Linear(256 + in_channels, 256)
+        # decoder_RNN_input -&gt; |RNN| -&gt; RNN_state
+        self.decoder_rnns = nn.ModuleList([nn.GRUCell(256, 256) for _ in range(2)])
+        # RNN_state -&gt; |Linear| -&gt; mel_spec
+        self.proj_to_mel = nn.Linear(256, frame_channels * self.r_init)
+        # learn init values instead of zero init.
+        self.stopnet = StopNet(256 + frame_channels * self.r_init)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag458')" href="javascript:;">
+TTS-0.4.1/TTS/tts/layers/tacotron/tacotron2.py: 143-211
+</a>
+<div class="mid" id="frag458" style="display:none"><pre>
+    def __init__(
+        self,
+        in_channels,
+        frame_channels,
+        r,
+        attn_type,
+        attn_win,
+        attn_norm,
+        prenet_type,
+        prenet_dropout,
+        forward_attn,
+        trans_agent,
+        forward_attn_mask,
+        location_attn,
+        attn_K,
+        separate_stopnet,
+        max_decoder_steps,
+    ):
+        super().__init__()
+        self.frame_channels = frame_channels
+        self.r_init = r
+        self.r = r
+        self.encoder_embedding_dim = in_channels
+        self.separate_stopnet = separate_stopnet
+        self.max_decoder_steps = max_decoder_steps
+        self.stop_threshold = 0.5
+
+        # model dimensions
+        self.query_dim = 1024
+        self.decoder_rnn_dim = 1024
+        self.prenet_dim = 256
+        self.attn_dim = 128
+        self.p_attention_dropout = 0.1
+        self.p_decoder_dropout = 0.1
+
+        # memory -&gt; |Prenet| -&gt; processed_memory
+        prenet_dim = self.frame_channels
+        self.prenet = Prenet(
+            prenet_dim, prenet_type, prenet_dropout, out_features=[self.prenet_dim, self.prenet_dim], bias=False
+        )
+
+        self.attention_rnn = nn.LSTMCell(self.prenet_dim + in_channels, self.query_dim, bias=True)
+
+        self.attention = init_attn(
+            attn_type=attn_type,
+            query_dim=self.query_dim,
+            embedding_dim=in_channels,
+            attention_dim=128,
+            location_attention=location_attn,
+            attention_location_n_filters=32,
+            attention_location_kernel_size=31,
+            windowing=attn_win,
+            norm=attn_norm,
+            forward_attn=forward_attn,
+            trans_agent=trans_agent,
+            forward_attn_mask=forward_attn_mask,
+            attn_K=attn_K,
+        )
+
+        self.decoder_rnn = nn.LSTMCell(self.query_dim + in_channels, self.decoder_rnn_dim, bias=True)
+
+        self.linear_projection = Linear(self.decoder_rnn_dim + in_channels, self.frame_channels * self.r_init)
+
+        self.stopnet = nn.Sequential(
+            nn.Dropout(0.1),
+            Linear(self.decoder_rnn_dim + self.frame_channels * self.r_init, 1, bias=True, init_gain="sigmoid"),
+        )
+        self.memory_truncated = None
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 27:</b> &nbsp; 2 fragments, nominal size 14 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag504')" href="javascript:;">
+TTS-0.4.1/TTS/tts/layers/losses.py: 21-54
+</a>
+<div class="mid" id="frag504" style="display:none"><pre>
+    def forward(self, x, target, length):
+        """
+        Args:
+            x: A Variable containing a FloatTensor of size
+                (batch, max_len, dim) which contains the
+                unnormalized probability for each class.
+            target: A Variable containing a LongTensor of size
+                (batch, max_len, dim) which contains the index of the true
+                class for each corresponding step.
+            length: A Variable containing a LongTensor of size (batch,)
+                which contains the length of each data in a batch.
+        Shapes:
+            x: B x T X D
+            target: B x T x D
+            length: B
+        Returns:
+            loss: An average loss value in range [0, 1] masked by the length.
+        """
+        # mask: (batch, max_len, 1)
+        target.requires_grad = False
+        mask = sequence_mask(sequence_length=length, max_len=target.size(1)).unsqueeze(2).float()
+        if self.seq_len_norm:
+            norm_w = mask / mask.sum(dim=1, keepdim=True)
+            out_weights = norm_w.div(target.shape[0] * target.shape[2])
+            mask = mask.expand_as(x)
+            loss = functional.l1_loss(x * mask, target * mask, reduction="none")
+            loss = loss.mul(out_weights.to(loss.device)).sum()
+        else:
+            mask = mask.expand_as(x)
+            loss = functional.l1_loss(x * mask, target * mask, reduction="sum")
+            loss = loss / mask.sum()
+        return loss
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag506')" href="javascript:;">
+TTS-0.4.1/TTS/tts/layers/losses.py: 60-93
+</a>
+<div class="mid" id="frag506" style="display:none"><pre>
+    def forward(self, x, target, length):
+        """
+        Args:
+            x: A Variable containing a FloatTensor of size
+                (batch, max_len, dim) which contains the
+                unnormalized probability for each class.
+            target: A Variable containing a LongTensor of size
+                (batch, max_len, dim) which contains the index of the true
+                class for each corresponding step.
+            length: A Variable containing a LongTensor of size (batch,)
+                which contains the length of each data in a batch.
+        Shapes:
+            - x: :math:`[B, T, D]`
+            - target: :math:`[B, T, D]`
+            - length: :math:`B`
+        Returns:
+            loss: An average loss value in range [0, 1] masked by the length.
+        """
+        # mask: (batch, max_len, 1)
+        target.requires_grad = False
+        mask = sequence_mask(sequence_length=length, max_len=target.size(1)).unsqueeze(2).float()
+        if self.seq_len_norm:
+            norm_w = mask / mask.sum(dim=1, keepdim=True)
+            out_weights = norm_w.div(target.shape[0] * target.shape[2])
+            mask = mask.expand_as(x)
+            loss = functional.mse_loss(x * mask, target * mask, reduction="none")
+            loss = loss.mul(out_weights.to(loss.device)).sum()
+        else:
+            mask = mask.expand_as(x)
+            loss = functional.mse_loss(x * mask, target * mask, reduction="sum")
+            loss = loss / mask.sum()
+        return loss
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 28:</b> &nbsp; 2 fragments, nominal size 38 lines, similarity 79%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag541')" href="javascript:;">
+TTS-0.4.1/TTS/bin/train_tts.py: 11-71
+</a>
+<div class="mid" id="frag541" style="display:none"><pre>
+def main():
+    """Run `tts` model training directly by a `config.json` file."""
+    # init trainer args
+    train_args = TrainingArgs()
+    parser = train_args.init_argparse(arg_prefix="")
+
+    # override trainer args from comman-line args
+    args, config_overrides = parser.parse_known_args()
+    train_args.parse_args(args)
+
+    # load config.json and register
+    if args.config_path or args.continue_path:
+        if args.config_path:
+            # init from a file
+            config = load_config(args.config_path)
+            if len(config_overrides) &gt; 0:
+                config.parse_known_args(config_overrides, relaxed_parser=True)
+        elif args.continue_path:
+            # continue from a prev experiment
+            config = load_config(os.path.join(args.continue_path, "config.json"))
+            if len(config_overrides) &gt; 0:
+                config.parse_known_args(config_overrides, relaxed_parser=True)
+        else:
+            # init from console args
+            from TTS.config.shared_configs import BaseTrainingConfig  # pylint: disable=import-outside-toplevel
+
+            config_base = BaseTrainingConfig()
+            config_base.parse_known_args(config_overrides)
+            config = register_config(config_base.model)()
+
+    # load training samples
+    train_samples, eval_samples = load_tts_samples(config.datasets, eval_split=True)
+
+    # setup audio processor
+    ap = AudioProcessor(**config.audio)
+
+    # init speaker manager
+    if config.use_speaker_embedding:
+        speaker_manager = SpeakerManager(data_items=train_samples + eval_samples)
+    elif config.use_d_vector_file:
+        speaker_manager = SpeakerManager(d_vectors_file_path=config.d_vector_file)
+    else:
+        speaker_manager = None
+
+    # init the model from config
+    model = setup_model(config, speaker_manager)
+
+    # init the trainer and 🚀
+    trainer = Trainer(
+        train_args,
+        config,
+        config.output_path,
+        model=model,
+        train_samples=train_samples,
+        eval_samples=eval_samples,
+        training_assets={"audio_processor": ap},
+        parse_command_line_args=False,
+    )
+    trainer.fit()
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag551')" href="javascript:;">
+TTS-0.4.1/TTS/bin/train_vocoder.py: 10-68
+</a>
+<div class="mid" id="frag551" style="display:none"><pre>
+def main():
+    """Run `tts` model training directly by a `config.json` file."""
+    # init trainer args
+    train_args = TrainingArgs()
+    parser = train_args.init_argparse(arg_prefix="")
+
+    # override trainer args from comman-line args
+    args, config_overrides = parser.parse_known_args()
+    train_args.parse_args(args)
+
+    # load config.json and register
+    if args.config_path or args.continue_path:
+        if args.config_path:
+            # init from a file
+            config = load_config(args.config_path)
+            if len(config_overrides) &gt; 0:
+                config.parse_known_args(config_overrides, relaxed_parser=True)
+        elif args.continue_path:
+            # continue from a prev experiment
+            config = load_config(os.path.join(args.continue_path, "config.json"))
+            if len(config_overrides) &gt; 0:
+                config.parse_known_args(config_overrides, relaxed_parser=True)
+        else:
+            # init from console args
+            from TTS.config.shared_configs import BaseTrainingConfig  # pylint: disable=import-outside-toplevel
+
+            config_base = BaseTrainingConfig()
+            config_base.parse_known_args(config_overrides)
+            config = register_config(config_base.model)()
+
+    # load training samples
+    if "feature_path" in config and config.feature_path:
+        # load pre-computed features
+        print(f" &gt; Loading features from: {config.feature_path}")
+        eval_samples, train_samples = load_wav_feat_data(config.data_path, config.feature_path, config.eval_split_size)
+    else:
+        # load data raw wav files
+        eval_samples, train_samples = load_wav_data(config.data_path, config.eval_split_size)
+
+    # setup audio processor
+    ap = AudioProcessor(**config.audio)
+
+    # init the model from config
+    model = setup_model(config)
+
+    # init the trainer and 🚀
+    trainer = Trainer(
+        train_args,
+        config,
+        config.output_path,
+        model=model,
+        train_samples=train_samples,
+        eval_samples=eval_samples,
+        training_assets={"audio_processor": ap},
+        parse_command_line_args=False,
+    )
+    trainer.fit()
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 29:</b> &nbsp; 3 fragments, nominal size 20 lines, similarity 95%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag702')" href="javascript:;">
+TTS-0.4.1/TTS/vocoder/models/multiband_melgan_generator.py: 8-28
+</a>
+<div class="mid" id="frag702" style="display:none"><pre>
+    def __init__(
+        self,
+        in_channels=80,
+        out_channels=4,
+        proj_kernel=7,
+        base_channels=384,
+        upsample_factors=(2, 8, 2, 2),
+        res_kernel=3,
+        num_res_blocks=3,
+    ):
+        super().__init__(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            proj_kernel=proj_kernel,
+            base_channels=base_channels,
+            upsample_factors=upsample_factors,
+            res_kernel=res_kernel,
+            num_res_blocks=num_res_blocks,
+        )
+        self.pqmf_layer = PQMF(N=4, taps=62, cutoff=0.15, beta=9.0)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag786')" href="javascript:;">
+TTS-0.4.1/TTS/vocoder/tf/models/multiband_melgan_generator.py: 10-30
+</a>
+<div class="mid" id="frag786" style="display:none"><pre>
+    def __init__(
+        self,
+        in_channels=80,
+        out_channels=4,
+        proj_kernel=7,
+        base_channels=384,
+        upsample_factors=(2, 8, 2, 2),
+        res_kernel=3,
+        num_res_blocks=3,
+    ):
+        super().__init__(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            proj_kernel=proj_kernel,
+            base_channels=base_channels,
+            upsample_factors=upsample_factors,
+            res_kernel=res_kernel,
+            num_res_blocks=num_res_blocks,
+        )
+        self.pqmf_layer = PQMF(N=4, taps=62, cutoff=0.15, beta=9.0)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag727')" href="javascript:;">
+TTS-0.4.1/TTS/vocoder/models/fullband_melgan_generator.py: 7-26
+</a>
+<div class="mid" id="frag727" style="display:none"><pre>
+    def __init__(
+        self,
+        in_channels=80,
+        out_channels=1,
+        proj_kernel=7,
+        base_channels=512,
+        upsample_factors=(2, 8, 2, 2),
+        res_kernel=3,
+        num_res_blocks=4,
+    ):
+        super().__init__(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            proj_kernel=proj_kernel,
+            base_channels=base_channels,
+            upsample_factors=upsample_factors,
+            res_kernel=res_kernel,
+            num_res_blocks=num_res_blocks,
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 30:</b> &nbsp; 2 fragments, nominal size 33 lines, similarity 82%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag764')" href="javascript:;">
+TTS-0.4.1/TTS/vocoder/datasets/gan_dataset.py: 18-58
+</a>
+<div class="mid" id="frag764" style="display:none"><pre>
+    def __init__(
+        self,
+        ap,
+        items,
+        seq_len,
+        hop_len,
+        pad_short,
+        conv_pad=2,
+        return_pairs=False,
+        is_training=True,
+        return_segments=True,
+        use_noise_augment=False,
+        use_cache=False,
+        verbose=False,
+    ):
+        super().__init__()
+        self.ap = ap
+        self.item_list = items
+        self.compute_feat = not isinstance(items[0], (tuple, list))
+        self.seq_len = seq_len
+        self.hop_len = hop_len
+        self.pad_short = pad_short
+        self.conv_pad = conv_pad
+        self.return_pairs = return_pairs
+        self.is_training = is_training
+        self.return_segments = return_segments
+        self.use_cache = use_cache
+        self.use_noise_augment = use_noise_augment
+        self.verbose = verbose
+
+        assert seq_len % hop_len == 0, " [!] seq_len has to be a multiple of hop_len."
+        self.feat_frame_len = seq_len // hop_len + (2 * conv_pad)
+
+        # map G and D instances
+        self.G_to_D_mappings = list(range(len(self.item_list)))
+        self.shuffle_mapping()
+
+        # cache acoustic features
+        if use_cache:
+            self.create_feature_cache()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag772')" href="javascript:;">
+TTS-0.4.1/TTS/vocoder/datasets/wavegrad_dataset.py: 19-54
+</a>
+<div class="mid" id="frag772" style="display:none"><pre>
+    def __init__(
+        self,
+        ap,
+        items,
+        seq_len,
+        hop_len,
+        pad_short,
+        conv_pad=2,
+        is_training=True,
+        return_segments=True,
+        use_noise_augment=False,
+        use_cache=False,
+        verbose=False,
+    ):
+
+        super().__init__()
+        self.ap = ap
+        self.item_list = items
+        self.seq_len = seq_len if return_segments else None
+        self.hop_len = hop_len
+        self.pad_short = pad_short
+        self.conv_pad = conv_pad
+        self.is_training = is_training
+        self.return_segments = return_segments
+        self.use_cache = use_cache
+        self.use_noise_augment = use_noise_augment
+        self.verbose = verbose
+
+        if return_segments:
+            assert seq_len % hop_len == 0, " [!] seq_len has to be a multiple of hop_len."
+        self.feat_frame_len = seq_len // hop_len + (2 * conv_pad)
+
+        # cache acoustic features
+        if use_cache:
+            self.create_feature_cache()
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<script language="JavaScript">
+function ShowHide(divId) { 
+    if(document.getElementById(divId).style.display == 'none') {
+        document.getElementById(divId).style.display='block';
+    } else { 
+        document.getElementById(divId).style.display = 'none';
+    } 
+}
+</script>
+</body>
+</html>

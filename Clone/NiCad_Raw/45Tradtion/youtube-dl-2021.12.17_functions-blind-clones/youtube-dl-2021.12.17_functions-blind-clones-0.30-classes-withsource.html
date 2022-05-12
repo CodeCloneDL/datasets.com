@@ -1,0 +1,1658 @@
+<html>
+<head>
+    <title>NiCad6 Clone Report</title>
+    <style type="text/css">
+        body {font-family:sans-serif;}
+        table {background-color:white; border:0px; padding:0px; border-spacing:4px; width:auto; margin-left:30px; margin-right:auto;}
+        td {background-color:rgba(192,212,238,0.8); border:0px; padding:8px; width:auto; vertical-align:top; border-radius:8px}
+        pre {background-color:white; padding:4px;}
+        a {color:darkblue;}
+    </style>
+</head>
+<body>
+<h2>NiCad6 Clone Report</h2>
+<table>
+<tr style="font-size:14pt">
+<td><b>System:</b> &nbsp; youtube-dl-2021.12.17</td>
+<td><b>Clone pairs:</b> &nbsp; 33</td>
+<td><b>Clone classes:</b> &nbsp; 20</td>
+</tr>
+<tr style="font-size:12pt">
+<td style="background-color:white">Clone type: &nbsp; 3-2</td>
+<td style="background-color:white">Granularity: &nbsp; functions-blind</td>
+<td style="background-color:white">Max diff threshold: &nbsp; 30%</td>
+<td style="background-color:white">Clone size: &nbsp; 10 - 2500 lines</td>
+<td style="background-color:white">Total functions-blind: &nbsp; 3405</td>
+</tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 1:</b> &nbsp; 3 fragments, nominal size 11 lines, similarity 72%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag426')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/postprocessor/ffmpeg.py: 549-566
+</a>
+<div class="mid" id="frag426" style="display:none"><pre>
+    def run(self, info):
+        stretched_ratio = info.get('stretched_ratio')
+        if stretched_ratio is None or stretched_ratio == 1:
+            return [], info
+
+        filename = info['filepath']
+        temp_filename = prepend_extension(filename, 'temp')
+
+        options = ['-c', 'copy', '-aspect', '%f' % stretched_ratio]
+        self._downloader.to_screen('[ffmpeg] Fixing aspect ratio in "%s"' % filename)
+        self.run_ffmpeg(filename, temp_filename, options)
+
+        os.remove(encodeFilename(filename))
+        os.rename(encodeFilename(temp_filename), encodeFilename(filename))
+
+        return [], info
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag427')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/postprocessor/ffmpeg.py: 568-584
+</a>
+<div class="mid" id="frag427" style="display:none"><pre>
+    def run(self, info):
+        if info.get('container') != 'm4a_dash':
+            return [], info
+
+        filename = info['filepath']
+        temp_filename = prepend_extension(filename, 'temp')
+
+        options = ['-c', 'copy', '-f', 'mp4']
+        self._downloader.to_screen('[ffmpeg] Correcting container in "%s"' % filename)
+        self.run_ffmpeg(filename, temp_filename, options)
+
+        os.remove(encodeFilename(filename))
+        os.rename(encodeFilename(temp_filename), encodeFilename(filename))
+
+        return [], info
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag428')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/postprocessor/ffmpeg.py: 586-599
+</a>
+<div class="mid" id="frag428" style="display:none"><pre>
+    def run(self, info):
+        filename = info['filepath']
+        if self.get_audio_codec(filename) == 'aac':
+            temp_filename = prepend_extension(filename, 'temp')
+
+            options = ['-c', 'copy', '-f', 'mp4', '-bsf:a', 'aac_adtstoasc']
+            self._downloader.to_screen('[ffmpeg] Fixing malformed AAC bitstream in "%s"' % filename)
+            self.run_ffmpeg(filename, temp_filename, options)
+
+            os.remove(encodeFilename(filename))
+            os.rename(encodeFilename(temp_filename), encodeFilename(filename))
+        return [], info
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 2:</b> &nbsp; 2 fragments, nominal size 44 lines, similarity 71%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag459')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/downloader/ism.py: 213-259
+</a>
+<div class="mid" id="frag459" style="display:none"><pre>
+    def real_download(self, filename, info_dict):
+        segments = info_dict['fragments'][:1] if self.params.get(
+            'test', False) else info_dict['fragments']
+
+        ctx = {
+            'filename': filename,
+            'total_frags': len(segments),
+        }
+
+        self._prepare_and_start_frag_download(ctx)
+
+        fragment_retries = self.params.get('fragment_retries', 0)
+        skip_unavailable_fragments = self.params.get('skip_unavailable_fragments', True)
+
+        track_written = False
+        frag_index = 0
+        for i, segment in enumerate(segments):
+            frag_index += 1
+            if frag_index &lt;= ctx['fragment_index']:
+                continue
+            count = 0
+            while count &lt;= fragment_retries:
+                try:
+                    success, frag_content = self._download_fragment(ctx, segment['url'], info_dict)
+                    if not success:
+                        return False
+                    if not track_written:
+                        tfhd_data = extract_box_data(frag_content, [b'moof', b'traf', b'tfhd'])
+                        info_dict['_download_params']['track_id'] = u32.unpack(tfhd_data[4:8])[0]
+                        write_piff_header(ctx['dest_stream'], info_dict['_download_params'])
+                        track_written = True
+                    self._append_fragment(ctx, frag_content)
+                    break
+                except compat_urllib_error.HTTPError as err:
+                    count += 1
+                    if count &lt;= fragment_retries:
+                        self.report_retry_fragment(err, frag_index, count, fragment_retries)
+            if count &gt; fragment_retries:
+                if skip_unavailable_fragments:
+                    self.report_skip_fragment(frag_index)
+                    continue
+                self.report_error('giving up after %s fragment retries' % fragment_retries)
+                return False
+
+        self._finish_frag_download(ctx)
+
+        return True
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag543')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/downloader/dash.py: 18-80
+</a>
+<div class="mid" id="frag543" style="display:none"><pre>
+    def real_download(self, filename, info_dict):
+        fragment_base_url = info_dict.get('fragment_base_url')
+        fragments = info_dict['fragments'][:1] if self.params.get(
+            'test', False) else info_dict['fragments']
+
+        ctx = {
+            'filename': filename,
+            'total_frags': len(fragments),
+        }
+
+        self._prepare_and_start_frag_download(ctx)
+
+        fragment_retries = self.params.get('fragment_retries', 0)
+        skip_unavailable_fragments = self.params.get('skip_unavailable_fragments', True)
+
+        frag_index = 0
+        for i, fragment in enumerate(fragments):
+            frag_index += 1
+            if frag_index &lt;= ctx['fragment_index']:
+                continue
+            # In DASH, the first segment contains necessary headers to
+            # generate a valid MP4 file, so always abort for the first segment
+            fatal = i == 0 or not skip_unavailable_fragments
+            count = 0
+            while count &lt;= fragment_retries:
+                try:
+                    fragment_url = fragment.get('url')
+                    if not fragment_url:
+                        assert fragment_base_url
+                        fragment_url = urljoin(fragment_base_url, fragment['path'])
+                    success, frag_content = self._download_fragment(ctx, fragment_url, info_dict)
+                    if not success:
+                        return False
+                    self._append_fragment(ctx, frag_content)
+                    break
+                except compat_urllib_error.HTTPError as err:
+                    # YouTube may often return 404 HTTP error for a fragment causing the
+                    # whole download to fail. However if the same fragment is immediately
+                    # retried with the same request data this usually succeeds (1-2 attempts
+                    # is usually enough) thus allowing to download the whole file successfully.
+                    # To be future-proof we will retry all fragments that fail with any
+                    # HTTP error.
+                    count += 1
+                    if count &lt;= fragment_retries:
+                        self.report_retry_fragment(err, frag_index, count, fragment_retries)
+                except DownloadError:
+                    # Don't retry fragment if error occurred during HTTP downloading
+                    # itself since it has own retry settings
+                    if not fatal:
+                        self.report_skip_fragment(frag_index)
+                        break
+                    raise
+
+            if count &gt; fragment_retries:
+                if not fatal:
+                    self.report_skip_fragment(frag_index)
+                    continue
+                self.report_error('giving up after %s fragment retries' % fragment_retries)
+                return False
+
+        self._finish_frag_download(ctx)
+
+        return True
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 3:</b> &nbsp; 2 fragments, nominal size 18 lines, similarity 75%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag496')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/downloader/external.py: 116-136
+</a>
+<div class="mid" id="frag496" style="display:none"><pre>
+    def _make_cmd(self, tmpfilename, info_dict):
+        cmd = [self.exe, '--location', '-o', tmpfilename]
+        for key, val in info_dict['http_headers'].items():
+            cmd += ['--header', '%s: %s' % (key, val)]
+        cmd += self._bool_option('--continue-at', 'continuedl', '-', '0')
+        cmd += self._valueless_option('--silent', 'noprogress')
+        cmd += self._valueless_option('--verbose', 'verbose')
+        cmd += self._option('--limit-rate', 'ratelimit')
+        retry = self._option('--retry', 'retries')
+        if len(retry) == 2:
+            if retry[1] in ('inf', 'infinite'):
+                retry[1] = '2147483647'
+            cmd += retry
+        cmd += self._option('--max-filesize', 'max_filesize')
+        cmd += self._option('--interface', 'source_address')
+        cmd += self._option('--proxy', 'proxy')
+        cmd += self._valueless_option('--insecure', 'nocheckcertificate')
+        cmd += self._configuration_args()
+        cmd += ['--', info_dict['url']]
+        return cmd
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag499')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/downloader/external.py: 163-180
+</a>
+<div class="mid" id="frag499" style="display:none"><pre>
+    def _make_cmd(self, tmpfilename, info_dict):
+        cmd = [self.exe, '-O', tmpfilename, '-nv', '--no-cookies']
+        for key, val in info_dict['http_headers'].items():
+            cmd += ['--header', '%s: %s' % (key, val)]
+        cmd += self._option('--limit-rate', 'ratelimit')
+        retry = self._option('--tries', 'retries')
+        if len(retry) == 2:
+            if retry[1] in ('inf', 'infinite'):
+                retry[1] = '0'
+            cmd += retry
+        cmd += self._option('--bind-address', 'source_address')
+        cmd += self._option('--proxy', 'proxy')
+        cmd += self._valueless_option('--no-check-certificate', 'nocheckcertificate')
+        cmd += self._configuration_args()
+        cmd += ['--', info_dict['url']]
+        return cmd
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 4:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 72%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag709')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/abcnews.py: 61-73
+</a>
+<div class="mid" id="frag709" style="display:none"><pre>
+    def _real_extract(self, url):
+        mobj = re.match(self._VALID_URL, url)
+        display_id = mobj.group('display_id')
+        video_id = mobj.group('id')
+        info_dict = self._extract_feed_info(
+            'http://abcnews.go.com/video/itemfeed?id=%s' % video_id)
+        info_dict.update({
+            'id': video_id,
+            'display_id': display_id,
+        })
+        return info_dict
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2317')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/lovehomeporn.py: 25-37
+</a>
+<div class="mid" id="frag2317" style="display:none"><pre>
+    def _real_extract(self, url):
+        mobj = re.match(self._VALID_URL, url)
+        video_id = mobj.group('id')
+        display_id = mobj.group('display_id')
+
+        info = self._extract_nuevo(
+            'http://lovehomeporn.com/media/nuevo/config.php?key=%s' % video_id,
+            video_id)
+        info.update({
+            'display_id': display_id,
+            'age_limit': 18
+        })
+        return info
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 5:</b> &nbsp; 6 fragments, nominal size 21 lines, similarity 70%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag807')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/ruhd.py: 21-45
+</a>
+<div class="mid" id="frag807" style="display:none"><pre>
+    def _real_extract(self, url):
+        video_id = self._match_id(url)
+        webpage = self._download_webpage(url, video_id)
+
+        video_url = self._html_search_regex(
+            r'&lt;param name="src" value="([^"]+)"', webpage, 'video url')
+        title = self._html_search_regex(
+            r'&lt;title&gt;([^&lt;]+)&amp;nbsp;&amp;nbsp; RUHD\.ru - Видео Высокого качества №1 в России!&lt;/title&gt;',
+            webpage, 'title')
+        description = self._html_search_regex(
+            r'(?s)&lt;div id="longdesc"&gt;(.+?)&lt;span id="showlink"&gt;',
+            webpage, 'description', fatal=False)
+        thumbnail = self._html_search_regex(
+            r'&lt;param name="previewImage" value="([^"]+)"',
+            webpage, 'thumbnail', fatal=False)
+        if thumbnail:
+            thumbnail = 'http://www.ruhd.ru' + thumbnail
+
+        return {
+            'id': video_id,
+            'url': video_url,
+            'title': title,
+            'description': description,
+            'thumbnail': thumbnail,
+        }
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1824')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/morningstar.py: 27-50
+</a>
+<div class="mid" id="frag1824" style="display:none"><pre>
+    def _real_extract(self, url):
+        mobj = re.match(self._VALID_URL, url)
+        video_id = mobj.group('id')
+
+        webpage = self._download_webpage(url, video_id)
+        title = self._html_search_regex(
+            r'&lt;h1 id="titleLink"&gt;(.*?)&lt;/h1&gt;', webpage, 'title')
+        video_url = self._html_search_regex(
+            r'&lt;input type="hidden" id="hidVideoUrl" value="([^"]+)"',
+            webpage, 'video URL')
+        thumbnail = self._html_search_regex(
+            r'&lt;input type="hidden" id="hidSnapshot" value="([^"]+)"',
+            webpage, 'thumbnail', fatal=False)
+        description = self._html_search_regex(
+            r'&lt;div id="mstarDeck".*?&gt;(.*?)&lt;/div&gt;',
+            webpage, 'description', fatal=False)
+
+        return {
+            'id': video_id,
+            'title': title,
+            'url': video_url,
+            'thumbnail': thumbnail,
+            'description': description,
+        }
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2705')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/sztvhu.py: 20-41
+</a>
+<div class="mid" id="frag2705" style="display:none"><pre>
+    def _real_extract(self, url):
+        video_id = self._match_id(url)
+        webpage = self._download_webpage(url, video_id)
+        video_file = self._search_regex(
+            r'file: "...:(.*?)",', webpage, 'video file')
+        title = self._html_search_regex(
+            r'&lt;meta name="title" content="([^"]*?) - [^-]*? - [^-]*?"',
+            webpage, 'video title')
+        description = self._html_search_regex(
+            r'&lt;meta name="description" content="([^"]*)"/&gt;',
+            webpage, 'video description', fatal=False)
+        thumbnail = self._og_search_thumbnail(webpage)
+
+        video_url = 'http://media.sztv.hu/vod/' + video_file
+
+        return {
+            'id': video_id,
+            'url': video_url,
+            'title': title,
+            'description': description,
+            'thumbnail': thumbnail,
+        }
+</pre></div>
+</td>
+</tr><tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2052')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/academicearth.py: 21-41
+</a>
+<div class="mid" id="frag2052" style="display:none"><pre>
+    def _real_extract(self, url):
+        playlist_id = self._match_id(url)
+
+        webpage = self._download_webpage(url, playlist_id)
+        title = self._html_search_regex(
+            r'&lt;h1 class="playlist-name"[^&gt;]*?&gt;(.*?)&lt;/h1&gt;', webpage, 'title')
+        description = self._html_search_regex(
+            r'&lt;p class="excerpt"[^&gt;]*?&gt;(.*?)&lt;/p&gt;',
+            webpage, 'description', fatal=False)
+        urls = re.findall(
+            r'&lt;li class="lecture-preview"&gt;\s*?&lt;a target="_blank" href="([^"]+)"&gt;',
+            webpage)
+        entries = [self.url_result(u) for u in urls]
+
+        return {
+            '_type': 'playlist',
+            'id': playlist_id,
+            'title': title,
+            'description': description,
+            'entries': entries,
+        }
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1338')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/echomsk.py: 21-46
+</a>
+<div class="mid" id="frag1338" style="display:none"><pre>
+    def _real_extract(self, url):
+        video_id = self._match_id(url)
+
+        webpage = self._download_webpage(url, video_id)
+
+        audio_url = self._search_regex(
+            r'&lt;a rel="mp3" href="([^"]+)"&gt;', webpage, 'audio URL')
+
+        title = self._html_search_regex(
+            r'&lt;a href="/programs/[^"]+" target="_blank"&gt;([^&lt;]+)&lt;/a&gt;',
+            webpage, 'title')
+
+        air_date = self._html_search_regex(
+            r'(?s)&lt;div class="date"&gt;(.+?)&lt;/div&gt;',
+            webpage, 'date', fatal=False, default=None)
+
+        if air_date:
+            air_date = re.sub(r'(\s)\1+', r'\1', air_date)
+            if air_date:
+                title = '%s - %s' % (title, air_date)
+
+        return {
+            'id': video_id,
+            'url': audio_url,
+            'title': title,
+        }
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1136')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/biobiochiletv.py: 61-86
+</a>
+<div class="mid" id="frag1136" style="display:none"><pre>
+    def _real_extract(self, url):
+        video_id = self._match_id(url)
+
+        webpage = self._download_webpage(url, video_id)
+
+        rudo_url = self._search_regex(
+            r'&lt;iframe[^&gt;]+src=(?P&lt;q1&gt;[\'"])(?P&lt;url&gt;(?:https?:)?//rudo\.video/vod/[0-9a-zA-Z]+)(?P=q1)',
+            webpage, 'embed URL', None, group='url')
+        if not rudo_url:
+            raise ExtractorError('No videos found')
+
+        title = remove_end(self._og_search_title(webpage), ' - BioBioChile TV')
+
+        thumbnail = self._og_search_thumbnail(webpage)
+        uploader = self._html_search_regex(
+            r'&lt;a[^&gt;]+href=["\'](?:https?://(?:busca|www)\.biobiochile\.cl)?/(?:lista/)?(?:author|autor)[^&gt;]+&gt;(.+?)&lt;/a&gt;',
+            webpage, 'uploader', fatal=False)
+
+        return {
+            '_type': 'url_transparent',
+            'url': rudo_url,
+            'id': video_id,
+            'title': title,
+            'thumbnail': thumbnail,
+            'uploader': uploader,
+        }
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 6:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 72%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag847')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/nonktube.py: 25-38
+</a>
+<div class="mid" id="frag847" style="display:none"><pre>
+    def _real_extract(self, url):
+        video_id = self._match_id(url)
+
+        webpage = self._download_webpage(url, video_id)
+
+        title = self._og_search_title(webpage)
+        info = self._parse_html5_media_entries(url, webpage, video_id)[0]
+
+        info.update({
+            'id': video_id,
+            'title': title,
+            'age_limit': 18,
+        })
+        return info
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1766')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/onet.py: 140-156
+</a>
+<div class="mid" id="frag1766" style="display:none"><pre>
+    def _real_extract(self, url):
+        mobj = re.match(self._VALID_URL, url)
+        display_id, video_id = mobj.group('display_id', 'id')
+
+        webpage = self._download_webpage(url, display_id)
+
+        mvp_id = self._search_mvp_id(webpage)
+
+        info_dict = self._extract_from_id(mvp_id, webpage)
+        info_dict.update({
+            'id': video_id,
+            'display_id': display_id,
+        })
+
+        return info_dict
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 7:</b> &nbsp; 2 fragments, nominal size 10 lines, similarity 77%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1022')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/cbc.py: 199-211
+</a>
+<div class="mid" id="frag1022" style="display:none"><pre>
+    def _real_extract(self, url):
+        video_id = self._match_id(url)
+        return {
+            '_type': 'url_transparent',
+            'ie_key': 'ThePlatform',
+            'url': smuggle_url(
+                'http://link.theplatform.com/s/ExhSPC/media/guid/2655402169/%s?mbr=true&amp;formats=MPEG4,FLV,MP3' % video_id, {
+                    'force_smil_url': True
+                }),
+            'id': video_id,
+        }
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2149')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/cnbc.py: 29-40
+</a>
+<div class="mid" id="frag2149" style="display:none"><pre>
+    def _real_extract(self, url):
+        video_id = self._match_id(url)
+        return {
+            '_type': 'url_transparent',
+            'ie_key': 'ThePlatform',
+            'url': smuggle_url(
+                'http://link.theplatform.com/s/gZWlPC/media/guid/2408950221/%s?mbr=true&amp;manifest=m3u' % video_id,
+                {'force_smil_url': True}),
+            'id': video_id,
+        }
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 8:</b> &nbsp; 3 fragments, nominal size 16 lines, similarity 75%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1099')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/twitch.py: 371-387
+</a>
+<div class="mid" id="frag1099" style="display:none"><pre>
+def _make_video_result(node):
+    assert isinstance(node, dict)
+    video_id = node.get('id')
+    if not video_id:
+        return
+    return {
+        '_type': 'url_transparent',
+        'ie_key': TwitchVodIE.ie_key(),
+        'id': video_id,
+        'url': 'https://www.twitch.tv/videos/%s' % video_id,
+        'title': node.get('title'),
+        'thumbnail': node.get('previewThumbnailURL'),
+        'duration': float_or_none(node.get('lengthSeconds')),
+        'view_count': int_or_none(node.get('viewCount')),
+    }
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1110')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/twitch.py: 684-700
+</a>
+<div class="mid" id="frag1110" style="display:none"><pre>
+    def _extract_entry(node):
+        assert isinstance(node, dict)
+        collection_id = node.get('id')
+        if not collection_id:
+            return
+        return {
+            '_type': 'url_transparent',
+            'ie_key': TwitchCollectionIE.ie_key(),
+            'id': collection_id,
+            'url': 'https://www.twitch.tv/collections/%s' % collection_id,
+            'title': node.get('title'),
+            'thumbnail': node.get('thumbnailURL'),
+            'duration': float_or_none(node.get('lengthSeconds')),
+            'timestamp': unified_timestamp(node.get('updatedAt')),
+            'view_count': int_or_none(node.get('viewCount')),
+        }
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1107')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/twitch.py: 630-647
+</a>
+<div class="mid" id="frag1107" style="display:none"><pre>
+    def _extract_entry(node):
+        assert isinstance(node, dict)
+        clip_url = url_or_none(node.get('url'))
+        if not clip_url:
+            return
+        return {
+            '_type': 'url_transparent',
+            'ie_key': TwitchClipsIE.ie_key(),
+            'id': node.get('id'),
+            'url': clip_url,
+            'title': node.get('title'),
+            'thumbnail': node.get('thumbnailURL'),
+            'duration': float_or_none(node.get('durationSeconds')),
+            'timestamp': unified_timestamp(node.get('createdAt')),
+            'view_count': int_or_none(node.get('viewCount')),
+            'language': node.get('language'),
+        }
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 9:</b> &nbsp; 2 fragments, nominal size 29 lines, similarity 70%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1234')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/scte.py: 20-56
+</a>
+<div class="mid" id="frag1234" style="display:none"><pre>
+    def _login(self):
+        username, password = self._get_login_info()
+        if username is None:
+            return
+
+        login_popup = self._download_webpage(
+            self._LOGIN_URL, None, 'Downloading login popup')
+
+        def is_logged(webpage):
+            return any(re.search(p, webpage) for p in (
+                r'class=["\']welcome\b', r'&gt;Sign Out&lt;'))
+
+        # already logged in
+        if is_logged(login_popup):
+            return
+
+        login_form = self._hidden_inputs(login_popup)
+
+        login_form.update({
+            'ctl01$TemplateBody$WebPartManager1$gwpciNewContactSignInCommon$ciNewContactSignInCommon$signInUserName': username,
+            'ctl01$TemplateBody$WebPartManager1$gwpciNewContactSignInCommon$ciNewContactSignInCommon$signInPassword': password,
+            'ctl01$TemplateBody$WebPartManager1$gwpciNewContactSignInCommon$ciNewContactSignInCommon$RememberMe': 'on',
+        })
+
+        response = self._download_webpage(
+            self._LOGIN_URL, None, 'Logging in',
+            data=urlencode_postdata(login_form))
+
+        if '|pageRedirect|' not in response and not is_logged(response):
+            error = self._html_search_regex(
+                r'(?s)&lt;[^&gt;]+class=["\']AsiError["\'][^&gt;]*&gt;(.+?)&lt;/',
+                response, 'error message', default=None)
+            if error:
+                raise ExtractorError('Unable to login: %s' % error, expected=True)
+            raise ExtractorError('Unable to log in')
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2895')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/udemy.py: 174-213
+</a>
+<div class="mid" id="frag2895" style="display:none"><pre>
+    def _login(self):
+        username, password = self._get_login_info()
+        if username is None:
+            return
+
+        login_popup = self._download_webpage(
+            self._LOGIN_URL, None, 'Downloading login popup')
+
+        def is_logged(webpage):
+            return any(re.search(p, webpage) for p in (
+                r'href=["\'](?:https://www\.udemy\.com)?/user/logout/',
+                r'&gt;Logout&lt;'))
+
+        # already logged in
+        if is_logged(login_popup):
+            return
+
+        login_form = self._form_hidden_inputs('login-form', login_popup)
+
+        login_form.update({
+            'email': username,
+            'password': password,
+        })
+
+        response = self._download_webpage(
+            self._LOGIN_URL, None, 'Logging in',
+            data=urlencode_postdata(login_form),
+            headers={
+                'Referer': self._ORIGIN_URL,
+                'Origin': self._ORIGIN_URL,
+            })
+
+        if not is_logged(response):
+            error = self._html_search_regex(
+                r'(?s)&lt;div[^&gt;]+class="form-errors[^"]*"&gt;(.+?)&lt;/div&gt;',
+                response, 'error message', default=None)
+            if error:
+                raise ExtractorError('Unable to login: %s' % error, expected=True)
+            raise ExtractorError('Unable to log in')
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 10:</b> &nbsp; 2 fragments, nominal size 19 lines, similarity 89%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1332')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/awaan.py: 77-99
+</a>
+<div class="mid" id="frag1332" style="display:none"><pre>
+    def _real_extract(self, url):
+        video_id = self._match_id(url)
+
+        video_data = self._download_json(
+            'http://admin.mangomolo.com/analytics/index.php/plus/video?id=%s' % video_id,
+            video_id, headers={'Origin': 'http://awaan.ae'})
+        info = self._parse_video_data(video_data, video_id, False)
+
+        embed_url = 'http://admin.mangomolo.com/analytics/index.php/customers/embed/video?' + compat_urllib_parse_urlencode({
+            'id': video_data['id'],
+            'user_id': video_data['user_id'],
+            'signature': video_data['signature'],
+            'countries': 'Q0M=',
+            'filter': 'DENY',
+        })
+        info.update({
+            '_type': 'url_transparent',
+            'url': embed_url,
+            'ie_key': 'MangomoloVideo',
+        })
+        return info
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1333')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/awaan.py: 119-141
+</a>
+<div class="mid" id="frag1333" style="display:none"><pre>
+    def _real_extract(self, url):
+        channel_id = self._match_id(url)
+
+        channel_data = self._download_json(
+            'http://admin.mangomolo.com/analytics/index.php/plus/getchanneldetails?channel_id=%s' % channel_id,
+            channel_id, headers={'Origin': 'http://awaan.ae'})
+        info = self._parse_video_data(channel_data, channel_id, True)
+
+        embed_url = 'http://admin.mangomolo.com/analytics/index.php/customers/embed/index?' + compat_urllib_parse_urlencode({
+            'id': base64.b64encode(channel_data['user_id'].encode()).decode(),
+            'channelid': base64.b64encode(channel_data['id'].encode()).decode(),
+            'signature': channel_data['signature'],
+            'countries': 'Q0M=',
+            'filter': 'DENY',
+        })
+        info.update({
+            '_type': 'url_transparent',
+            'url': embed_url,
+            'ie_key': 'MangomoloLive',
+        })
+        return info
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 11:</b> &nbsp; 2 fragments, nominal size 60 lines, similarity 85%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1639')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/orf.py: 420-489
+</a>
+<div class="mid" id="frag1639" style="display:none"><pre>
+    def _real_extract(self, url):
+        story_id = self._match_id(url)
+
+        webpage = self._download_webpage(
+            'http://iptv.orf.at/stories/%s' % story_id, story_id)
+
+        video_id = self._search_regex(
+            r'data-video(?:id)?="(\d+)"', webpage, 'video id')
+
+        data = self._download_json(
+            'http://bits.orf.at/filehandler/static-api/json/current/data.json?file=%s' % video_id,
+            video_id)[0]
+
+        duration = float_or_none(data['duration'], 1000)
+
+        video = data['sources']['default']
+        load_balancer_url = video['loadBalancerUrl']
+        abr = int_or_none(video.get('audioBitrate'))
+        vbr = int_or_none(video.get('bitrate'))
+        fps = int_or_none(video.get('videoFps'))
+        width = int_or_none(video.get('videoWidth'))
+        height = int_or_none(video.get('videoHeight'))
+        thumbnail = video.get('preview')
+
+        rendition = self._download_json(
+            load_balancer_url, video_id, transform_source=strip_jsonp)
+
+        f = {
+            'abr': abr,
+            'vbr': vbr,
+            'fps': fps,
+            'width': width,
+            'height': height,
+        }
+
+        formats = []
+        for format_id, format_url in rendition['redirect'].items():
+            if format_id == 'rtmp':
+                ff = f.copy()
+                ff.update({
+                    'url': format_url,
+                    'format_id': format_id,
+                })
+                formats.append(ff)
+            elif determine_ext(format_url) == 'f4m':
+                formats.extend(self._extract_f4m_formats(
+                    format_url, video_id, f4m_id=format_id))
+            elif determine_ext(format_url) == 'm3u8':
+                formats.extend(self._extract_m3u8_formats(
+                    format_url, video_id, 'mp4', m3u8_id=format_id))
+            else:
+                continue
+        self._sort_formats(formats)
+
+        title = remove_end(self._og_search_title(webpage), ' - iptv.ORF.at')
+        description = self._og_search_description(webpage)
+        upload_date = unified_strdate(self._html_search_meta(
+            'dc.date', webpage, 'upload date'))
+
+        return {
+            'id': video_id,
+            'title': title,
+            'description': description,
+            'duration': duration,
+            'thumbnail': thumbnail,
+            'upload_date': upload_date,
+            'formats': formats,
+        }
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1640')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/orf.py: 522-592
+</a>
+<div class="mid" id="frag1640" style="display:none"><pre>
+    def _real_extract(self, url):
+        story_id = self._match_id(url)
+        webpage = self._download_webpage(url, story_id)
+
+        entries = []
+        all_ids = orderedSet(re.findall(r'data-video(?:id)?="(\d+)"', webpage))
+        for idx, video_id in enumerate(all_ids):
+            data = self._download_json(
+                'http://bits.orf.at/filehandler/static-api/json/current/data.json?file=%s' % video_id,
+                video_id)[0]
+
+            duration = float_or_none(data['duration'], 1000)
+
+            video = data['sources']['q8c']
+            load_balancer_url = video['loadBalancerUrl']
+            abr = int_or_none(video.get('audioBitrate'))
+            vbr = int_or_none(video.get('bitrate'))
+            fps = int_or_none(video.get('videoFps'))
+            width = int_or_none(video.get('videoWidth'))
+            height = int_or_none(video.get('videoHeight'))
+            thumbnail = video.get('preview')
+
+            rendition = self._download_json(
+                load_balancer_url, video_id, transform_source=strip_jsonp)
+
+            f = {
+                'abr': abr,
+                'vbr': vbr,
+                'fps': fps,
+                'width': width,
+                'height': height,
+            }
+
+            formats = []
+            for format_id, format_url in rendition['redirect'].items():
+                if format_id == 'rtmp':
+                    ff = f.copy()
+                    ff.update({
+                        'url': format_url,
+                        'format_id': format_id,
+                    })
+                    formats.append(ff)
+                elif determine_ext(format_url) == 'f4m':
+                    formats.extend(self._extract_f4m_formats(
+                        format_url, video_id, f4m_id=format_id))
+                elif determine_ext(format_url) == 'm3u8':
+                    formats.extend(self._extract_m3u8_formats(
+                        format_url, video_id, 'mp4', m3u8_id=format_id))
+                else:
+                    continue
+            self._sort_formats(formats)
+
+            title = remove_end(self._og_search_title(webpage), ' - fm4.ORF.at')
+            if idx &gt;= 1:
+                # Titles are duplicates, make them unique
+                title += ' (' + str(idx + 1) + ')'
+            description = self._og_search_description(webpage)
+            upload_date = unified_strdate(self._html_search_meta(
+                'dc.date', webpage, 'upload date'))
+
+            entries.append({
+                'id': video_id,
+                'title': title,
+                'description': description,
+                'duration': duration,
+                'thumbnail': thumbnail,
+                'upload_date': upload_date,
+                'formats': formats,
+            })
+
+        return self.playlist_result(entries)
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 12:</b> &nbsp; 2 fragments, nominal size 15 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2348')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/common.py: 814-834
+</a>
+<div class="mid" id="frag2348" style="display:none"><pre>
+    def _download_xml_handle(
+            self, url_or_request, video_id, note='Downloading XML',
+            errnote='Unable to download XML', transform_source=None,
+            fatal=True, encoding=None, data=None, headers={}, query={},
+            expected_status=None):
+        """
+        Return a tuple (xml as an compat_etree_Element, URL handle).
+
+        See _download_webpage docstring for arguments specification.
+        """
+        res = self._download_webpage_handle(
+            url_or_request, video_id, note, errnote, fatal=fatal,
+            encoding=encoding, data=data, headers=headers, query=query,
+            expected_status=expected_status)
+        if res is False:
+            return res
+        xml_string, urlh = res
+        return self._parse_xml(
+            xml_string, video_id, transform_source=transform_source,
+            fatal=fatal), urlh
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2351')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/common.py: 864-884
+</a>
+<div class="mid" id="frag2351" style="display:none"><pre>
+    def _download_json_handle(
+            self, url_or_request, video_id, note='Downloading JSON metadata',
+            errnote='Unable to download JSON metadata', transform_source=None,
+            fatal=True, encoding=None, data=None, headers={}, query={},
+            expected_status=None):
+        """
+        Return a tuple (JSON object, URL handle).
+
+        See _download_webpage docstring for arguments specification.
+        """
+        res = self._download_webpage_handle(
+            url_or_request, video_id, note, errnote, fatal=fatal,
+            encoding=encoding, data=data, headers=headers, query=query,
+            expected_status=expected_status)
+        if res is False:
+            return res
+        json_string, urlh = res
+        return self._parse_json(
+            json_string, video_id, transform_source=transform_source,
+            fatal=fatal), urlh
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 13:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 90%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2350')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/common.py: 852-863
+</a>
+<div class="mid" id="frag2350" style="display:none"><pre>
+    def _parse_xml(self, xml_string, video_id, transform_source=None, fatal=True):
+        if transform_source:
+            xml_string = transform_source(xml_string)
+        try:
+            return compat_etree_fromstring(xml_string.encode('utf-8'))
+        except compat_xml_parse_error as ve:
+            errmsg = '%s: Failed to parse XML ' % video_id
+            if fatal:
+                raise ExtractorError(errmsg, cause=ve)
+            else:
+                self.report_warning(errmsg + str(ve))
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2353')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/common.py: 902-913
+</a>
+<div class="mid" id="frag2353" style="display:none"><pre>
+    def _parse_json(self, json_string, video_id, transform_source=None, fatal=True):
+        if transform_source:
+            json_string = transform_source(json_string)
+        try:
+            return json.loads(json_string)
+        except ValueError as ve:
+            errmsg = '%s: Failed to parse JSON ' % video_id
+            if fatal:
+                raise ExtractorError(errmsg, cause=ve)
+            else:
+                self.report_warning(errmsg + str(ve))
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 14:</b> &nbsp; 2 fragments, nominal size 12 lines, similarity 81%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2381')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/common.py: 1155-1170
+</a>
+<div class="mid" id="frag2381" style="display:none"><pre>
+    def _media_rating_search(self, html):
+        # See http://www.tjg-designs.com/WP/metadata-code-examples-adding-metadata-to-your-web-pages/
+        rating = self._html_search_meta('rating', html)
+
+        if not rating:
+            return None
+
+        RATING_TABLE = {
+            'safe for kids': 0,
+            'general': 8,
+            '14 years': 14,
+            'mature': 17,
+            'restricted': 19,
+        }
+        return RATING_TABLE.get(rating.lower())
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2382')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/common.py: 1171-1186
+</a>
+<div class="mid" id="frag2382" style="display:none"><pre>
+    def _family_friendly_search(self, html):
+        # See http://schema.org/VideoObject
+        family_friendly = self._html_search_meta(
+            'isFamilyFriendly', html, default=None)
+
+        if not family_friendly:
+            return None
+
+        RATING_TABLE = {
+            '1': 0,
+            'true': 0,
+            '0': 18,
+            'false': 18,
+        }
+        return RATING_TABLE.get(family_friendly.lower())
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 15:</b> &nbsp; 2 fragments, nominal size 13 lines, similarity 78%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2416')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/common.py: 2074-2089
+</a>
+<div class="mid" id="frag2416" style="display:none"><pre>
+    def _extract_mpd_formats(self, mpd_url, video_id, mpd_id=None, note=None, errnote=None, fatal=True, data=None, headers={}, query={}):
+        res = self._download_xml_handle(
+            mpd_url, video_id,
+            note=note or 'Downloading MPD manifest',
+            errnote=errnote or 'Failed to download MPD manifest',
+            fatal=fatal, data=data, headers=headers, query=query)
+        if res is False:
+            return []
+        mpd_doc, urlh = res
+        if mpd_doc is None:
+            return []
+        mpd_base_url = base_url(urlh.geturl())
+
+        return self._parse_mpd_formats(
+            mpd_doc, mpd_id, mpd_base_url, mpd_url)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2426')" href="javascript:;">
+youtube-dl-2021.12.17/youtube_dl/extractor/common.py: 2373-2386
+</a>
+<div class="mid" id="frag2426" style="display:none"><pre>
+    def _extract_ism_formats(self, ism_url, video_id, ism_id=None, note=None, errnote=None, fatal=True, data=None, headers={}, query={}):
+        res = self._download_xml_handle(
+            ism_url, video_id,
+            note=note or 'Downloading ISM manifest',
+            errnote=errnote or 'Failed to download ISM manifest',
+            fatal=fatal, data=data, headers=headers, query=query)
+        if res is False:
+            return []
+        ism_doc, urlh = res
+        if ism_doc is None:
+            return []
+
+        return self._parse_ism_formats(ism_doc, urlh.geturl(), ism_id)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 16:</b> &nbsp; 4 fragments, nominal size 12 lines, similarity 83%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag3005')" href="javascript:;">
+youtube-dl-2021.12.17/test/test_verbose_output.py: 17-29
+</a>
+<div class="mid" id="frag3005" style="display:none"><pre>
+    def test_private_info_arg(self):
+        outp = subprocess.Popen(
+            [
+                sys.executable, 'youtube_dl/__main__.py', '-v',
+                '--username', 'johnsmith@gmail.com',
+                '--password', 'secret',
+            ], cwd=rootDir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        sout, serr = outp.communicate()
+        self.assertTrue(b'--username' in serr)
+        self.assertTrue(b'johnsmith' not in serr)
+        self.assertTrue(b'--password' in serr)
+        self.assertTrue(b'secret' not in serr)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag3008')" href="javascript:;">
+youtube-dl-2021.12.17/test/test_verbose_output.py: 56-69
+</a>
+<div class="mid" id="frag3008" style="display:none"><pre>
+    def test_private_info_shortarg_eq(self):
+        outp = subprocess.Popen(
+            [
+                sys.executable, 'youtube_dl/__main__.py', '-v',
+                '-u=johnsmith@gmail.com',
+                '-p=secret',
+            ], cwd=rootDir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        sout, serr = outp.communicate()
+        self.assertTrue(b'-u' in serr)
+        self.assertTrue(b'johnsmith' not in serr)
+        self.assertTrue(b'-p' in serr)
+        self.assertTrue(b'secret' not in serr)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag3006')" href="javascript:;">
+youtube-dl-2021.12.17/test/test_verbose_output.py: 30-42
+</a>
+<div class="mid" id="frag3006" style="display:none"><pre>
+    def test_private_info_shortarg(self):
+        outp = subprocess.Popen(
+            [
+                sys.executable, 'youtube_dl/__main__.py', '-v',
+                '-u', 'johnsmith@gmail.com',
+                '-p', 'secret',
+            ], cwd=rootDir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        sout, serr = outp.communicate()
+        self.assertTrue(b'-u' in serr)
+        self.assertTrue(b'johnsmith' not in serr)
+        self.assertTrue(b'-p' in serr)
+        self.assertTrue(b'secret' not in serr)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag3007')" href="javascript:;">
+youtube-dl-2021.12.17/test/test_verbose_output.py: 43-55
+</a>
+<div class="mid" id="frag3007" style="display:none"><pre>
+    def test_private_info_eq(self):
+        outp = subprocess.Popen(
+            [
+                sys.executable, 'youtube_dl/__main__.py', '-v',
+                '--username=johnsmith@gmail.com',
+                '--password=secret',
+            ], cwd=rootDir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        sout, serr = outp.communicate()
+        self.assertTrue(b'--username' in serr)
+        self.assertTrue(b'johnsmith' not in serr)
+        self.assertTrue(b'--password' in serr)
+        self.assertTrue(b'secret' not in serr)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 17:</b> &nbsp; 2 fragments, nominal size 10 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag3012')" href="javascript:;">
+youtube-dl-2021.12.17/test/test_socks.py: 56-66
+</a>
+<div class="mid" id="frag3012" style="display:none"><pre>
+    def test_secondary_proxy_http(self):
+        params = self._check_params(['secondary_proxy', 'secondary_server_ip'])
+        if params is None:
+            return
+        ydl = FakeYDL()
+        req = compat_urllib_request.Request('http://yt-dl.org/ip')
+        req.add_header('Ytdl-request-proxy', params['secondary_proxy'])
+        self.assertEqual(
+            ydl.urlopen(req).read().decode('utf-8'),
+            params['secondary_server_ip'])
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag3013')" href="javascript:;">
+youtube-dl-2021.12.17/test/test_socks.py: 67-78
+</a>
+<div class="mid" id="frag3013" style="display:none"><pre>
+    def test_secondary_proxy_https(self):
+        params = self._check_params(['secondary_proxy', 'secondary_server_ip'])
+        if params is None:
+            return
+        ydl = FakeYDL()
+        req = compat_urllib_request.Request('https://yt-dl.org/ip')
+        req.add_header('Ytdl-request-proxy', params['secondary_proxy'])
+        self.assertEqual(
+            ydl.urlopen(req).read().decode('utf-8'),
+            params['secondary_server_ip'])
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 18:</b> &nbsp; 2 fragments, nominal size 13 lines, similarity 71%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag3116')" href="javascript:;">
+youtube-dl-2021.12.17/test/test_utils.py: 613-625
+</a>
+<div class="mid" id="frag3116" style="display:none"><pre>
+    def test_fix_xml_ampersands(self):
+        self.assertEqual(
+            fix_xml_ampersands('"&amp;x=y&amp;z=a'), '"&amp;amp;x=y&amp;amp;z=a')
+        self.assertEqual(
+            fix_xml_ampersands('"&amp;amp;x=y&amp;wrong;&amp;z=a'),
+            '"&amp;amp;x=y&amp;amp;wrong;&amp;amp;z=a')
+        self.assertEqual(
+            fix_xml_ampersands('&amp;amp;&amp;apos;&amp;gt;&amp;lt;&amp;quot;'),
+            '&amp;amp;&amp;apos;&amp;gt;&amp;lt;&amp;quot;')
+        self.assertEqual(
+            fix_xml_ampersands('&amp;#1234;&amp;#x1abC;'), '&amp;#1234;&amp;#x1abC;')
+        self.assertEqual(fix_xml_ampersands('&amp;#&amp;#'), '&amp;amp;#&amp;amp;#')
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag3138')" href="javascript:;">
+youtube-dl-2021.12.17/test/test_utils.py: 869-887
+</a>
+<div class="mid" id="frag3138" style="display:none"><pre>
+    def test_escape_url(self):
+        self.assertEqual(
+            escape_url('http://wowza.imust.org/srv/vod/telemb/new/UPLOAD/UPLOAD/20224_IncendieHavré_FD.mp4'),
+            'http://wowza.imust.org/srv/vod/telemb/new/UPLOAD/UPLOAD/20224_IncendieHavre%CC%81_FD.mp4'
+        )
+        self.assertEqual(
+            escape_url('http://www.ardmediathek.de/tv/Sturm-der-Liebe/Folge-2036-Zu-Mann-und-Frau-erklärt/Das-Erste/Video?documentId=22673108&amp;bcastId=5290'),
+            'http://www.ardmediathek.de/tv/Sturm-der-Liebe/Folge-2036-Zu-Mann-und-Frau-erkl%C3%A4rt/Das-Erste/Video?documentId=22673108&amp;bcastId=5290'
+        )
+        self.assertEqual(
+            escape_url('http://тест.рф/фрагмент'),
+            'http://xn--e1aybc.xn--p1ai/%D1%84%D1%80%D0%B0%D0%B3%D0%BC%D0%B5%D0%BD%D1%82'
+        )
+        self.assertEqual(
+            escape_url('http://тест.рф/абв?абв=абв#абв'),
+            'http://xn--e1aybc.xn--p1ai/%D0%B0%D0%B1%D0%B2?%D0%B0%D0%B1%D0%B2=%D0%B0%D0%B1%D0%B2#%D0%B0%D0%B1%D0%B2'
+        )
+        self.assertEqual(escape_url('http://vimeo.com/56015672#at=0'), 'http://vimeo.com/56015672#at=0')
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 19:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 83%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag3146')" href="javascript:;">
+youtube-dl-2021.12.17/test/test_utils.py: 1091-1103
+</a>
+<div class="mid" id="frag3146" style="display:none"><pre>
+    def test_parse_filesize(self):
+        self.assertEqual(parse_filesize(None), None)
+        self.assertEqual(parse_filesize(''), None)
+        self.assertEqual(parse_filesize('91 B'), 91)
+        self.assertEqual(parse_filesize('foobar'), None)
+        self.assertEqual(parse_filesize('2 MiB'), 2097152)
+        self.assertEqual(parse_filesize('5 GB'), 5000000000)
+        self.assertEqual(parse_filesize('1.2Tb'), 1200000000000)
+        self.assertEqual(parse_filesize('1.2tb'), 1200000000000)
+        self.assertEqual(parse_filesize('1,24 KB'), 1240)
+        self.assertEqual(parse_filesize('1,24 kb'), 1240)
+        self.assertEqual(parse_filesize('8.5 megabytes'), 8500000)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag3147')" href="javascript:;">
+youtube-dl-2021.12.17/test/test_utils.py: 1104-1114
+</a>
+<div class="mid" id="frag3147" style="display:none"><pre>
+    def test_parse_count(self):
+        self.assertEqual(parse_count(None), None)
+        self.assertEqual(parse_count(''), None)
+        self.assertEqual(parse_count('0'), 0)
+        self.assertEqual(parse_count('1000'), 1000)
+        self.assertEqual(parse_count('1.000'), 1000)
+        self.assertEqual(parse_count('1.1k'), 1100)
+        self.assertEqual(parse_count('1.1kk'), 1100000)
+        self.assertEqual(parse_count('1.1kk '), 1100000)
+        self.assertEqual(parse_count('1.1kk views'), 1100000)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 20:</b> &nbsp; 2 fragments, nominal size 26 lines, similarity 81%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag3309')" href="javascript:;">
+youtube-dl-2021.12.17/test/test_YoutubeDL.py: 148-177
+</a>
+<div class="mid" id="frag3309" style="display:none"><pre>
+    def test_format_selection_audio(self):
+        formats = [
+            {'format_id': 'audio-low', 'ext': 'webm', 'preference': 1, 'vcodec': 'none', 'url': TEST_URL},
+            {'format_id': 'audio-mid', 'ext': 'webm', 'preference': 2, 'vcodec': 'none', 'url': TEST_URL},
+            {'format_id': 'audio-high', 'ext': 'flv', 'preference': 3, 'vcodec': 'none', 'url': TEST_URL},
+            {'format_id': 'vid', 'ext': 'mp4', 'preference': 4, 'url': TEST_URL},
+        ]
+        info_dict = _make_result(formats)
+
+        ydl = YDL({'format': 'bestaudio'})
+        ydl.process_ie_result(info_dict.copy())
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_id'], 'audio-high')
+
+        ydl = YDL({'format': 'worstaudio'})
+        ydl.process_ie_result(info_dict.copy())
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_id'], 'audio-low')
+
+        formats = [
+            {'format_id': 'vid-low', 'ext': 'mp4', 'preference': 1, 'url': TEST_URL},
+            {'format_id': 'vid-high', 'ext': 'mp4', 'preference': 2, 'url': TEST_URL},
+        ]
+        info_dict = _make_result(formats)
+
+        ydl = YDL({'format': 'bestaudio/worstaudio/best'})
+        ydl.process_ie_result(info_dict.copy())
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_id'], 'vid-high')
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag3311')" href="javascript:;">
+youtube-dl-2021.12.17/test/test_YoutubeDL.py: 209-241
+</a>
+<div class="mid" id="frag3311" style="display:none"><pre>
+    def test_format_selection_video(self):
+        formats = [
+            {'format_id': 'dash-video-low', 'ext': 'mp4', 'preference': 1, 'acodec': 'none', 'url': TEST_URL},
+            {'format_id': 'dash-video-high', 'ext': 'mp4', 'preference': 2, 'acodec': 'none', 'url': TEST_URL},
+            {'format_id': 'vid', 'ext': 'mp4', 'preference': 3, 'url': TEST_URL},
+        ]
+        info_dict = _make_result(formats)
+
+        ydl = YDL({'format': 'bestvideo'})
+        ydl.process_ie_result(info_dict.copy())
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_id'], 'dash-video-high')
+
+        ydl = YDL({'format': 'worstvideo'})
+        ydl.process_ie_result(info_dict.copy())
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_id'], 'dash-video-low')
+
+        ydl = YDL({'format': 'bestvideo[format_id^=dash][format_id$=low]'})
+        ydl.process_ie_result(info_dict.copy())
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_id'], 'dash-video-low')
+
+        formats = [
+            {'format_id': 'vid-vcodec-dot', 'ext': 'mp4', 'preference': 1, 'vcodec': 'avc1.123456', 'acodec': 'none', 'url': TEST_URL},
+        ]
+        info_dict = _make_result(formats)
+
+        ydl = YDL({'format': 'bestvideo[vcodec=avc1.123456]'})
+        ydl.process_ie_result(info_dict.copy())
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_id'], 'vid-vcodec-dot')
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<script language="JavaScript">
+function ShowHide(divId) { 
+    if(document.getElementById(divId).style.display == 'none') {
+        document.getElementById(divId).style.display='block';
+    } else { 
+        document.getElementById(divId).style.display = 'none';
+    } 
+}
+</script>
+</body>
+</html>

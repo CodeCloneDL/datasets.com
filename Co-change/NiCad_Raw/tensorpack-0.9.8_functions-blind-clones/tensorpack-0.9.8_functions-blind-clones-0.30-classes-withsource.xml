@@ -1,0 +1,372 @@
+<clones>
+<systeminfo processor="nicad6" system="tensorpack-0.9.8" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="1525" npairs="9"/>
+<runinfo ncompares="37197" cputime="58186"/>
+<classinfo nclasses="9"/>
+
+<class classid="1" nclones="2" nlines="13" similarity="78">
+<source file="systems/tensorpack-0.9.8/tensorpack/dataflow/imgaug/_test.py" startline="94" endline="114" pcid="62">
+    def test_augmentors(self):
+        augmentors = self._get_augs()
+
+        img = _rand_image()
+        orig = img.copy()
+        tfms = augmentors.get_transform(img)
+
+        # test printing
+        print(augmentors)
+        print(tfms)
+
+        newimg = tfms.apply_image(img)
+        print(tfms)  # lazy ones will instantiate after the first apply
+
+        newimg2 = tfms.apply_image(orig)
+        self.assertTrue(np.allclose(newimg, newimg2))
+        self.assertEqual(newimg2.shape[0], 30)
+
+        coords = np.asarray([[0, 0], [10, 12]], dtype="float32")
+        tfms.apply_coords(coords)
+
+</source>
+<source file="systems/tensorpack-0.9.8/tensorpack/dataflow/imgaug/_test.py" startline="128" endline="141" pcid="64">
+    def test_legacy_augs_new_usage(self):
+        augmentors = self._get_augs_with_legacy()
+
+        img = _rand_image()
+        orig = img.copy()
+        tfms = augmentors.get_transform(img)
+        newimg = tfms.apply_image(img)
+        newimg2 = tfms.apply_image(orig)
+        self.assertTrue(np.allclose(newimg, newimg2))
+        self.assertEqual(newimg2.shape[0], 30)
+
+        coords = np.asarray([[0, 0], [10, 12]], dtype="float32")
+        tfms.apply_coords(coords)
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="10" similarity="100">
+<source file="systems/tensorpack-0.9.8/tensorpack/dataflow/imgaug/_test.py" startline="115" endline="127" pcid="63">
+    def test_legacy_usage(self):
+        augmentors = self._get_augs()
+
+        img = _rand_image()
+        orig = img.copy()
+        newimg, tfms = augmentors.augment_return_params(img)
+        newimg2 = augmentors.augment_with_params(orig, tfms)
+        self.assertTrue(np.allclose(newimg, newimg2))
+        self.assertEqual(newimg2.shape[0], 30)
+
+        coords = np.asarray([[0, 0], [10, 12]], dtype="float32")
+        augmentors.augment_coords(coords, tfms)
+
+</source>
+<source file="systems/tensorpack-0.9.8/tensorpack/dataflow/imgaug/_test.py" startline="142" endline="155" pcid="65">
+    def test_legacy_augs_legacy_usage(self):
+        augmentors = self._get_augs_with_legacy()
+
+        img = _rand_image()
+        orig = img.copy()
+        newimg, tfms = augmentors.augment_return_params(img)
+        newimg2 = augmentors.augment_with_params(orig, tfms)
+        self.assertTrue(np.allclose(newimg, newimg2))
+        self.assertEqual(newimg2.shape[0], 30)
+
+        coords = np.asarray([[0, 0], [10, 12]], dtype="float32")
+        augmentors.augment_coords(coords, tfms)
+
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="11" similarity="81">
+<source file="systems/tensorpack-0.9.8/tensorpack/dataflow/imgaug/imgproc.py" startline="150" endline="162" pcid="108">
+    def _augment(self, img, _):
+        img = img.astype('float32')
+        if self.all_channel:
+            mean = np.mean(img)
+            std = np.std(img)
+        else:
+            mean = np.mean(img, axis=(0, 1), keepdims=True)
+            std = np.std(img, axis=(0, 1), keepdims=True)
+        std = np.maximum(std, 1.0 / np.sqrt(np.prod(img.shape)))
+        img = (img - mean) / std
+        return img
+
+
+</source>
+<source file="systems/tensorpack-0.9.8/tensorpack/dataflow/imgaug/imgproc.py" startline="304" endline="313" pcid="124">
+    def _augment(self, img, _):
+        img = img.astype('float32')
+        if self.all_channel:
+            minimum = np.min(img)
+            maximum = np.max(img)
+        else:
+            minimum = np.min(img, axis=(0, 1), keepdims=True)
+            maximum = np.max(img, axis=(0, 1), keepdims=True)
+        img = (self.max - self.min) * (img - minimum) / (maximum - minimum) + self.min
+        return img
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="16" similarity="70">
+<source file="systems/tensorpack-0.9.8/tensorpack/models/batch_norm.py" startline="26" endline="47" pcid="389">
+def get_bn_variables(n_out, use_scale, use_bias, beta_init, gamma_init):
+    if use_bias:
+        beta = tf.get_variable('beta', [n_out], initializer=beta_init)
+    else:
+        beta = tf.zeros([n_out], name='beta')
+    if use_scale:
+        gamma = tf.get_variable('gamma', [n_out], initializer=gamma_init)
+    else:
+        gamma = tf.ones([n_out], name='gamma')
+    # x * gamma + beta
+
+    moving_mean = tf.get_variable('mean/EMA', [n_out],
+                                  initializer=tf.constant_initializer(), trainable=False)
+    moving_var = tf.get_variable('variance/EMA', [n_out],
+                                 initializer=tf.constant_initializer(1.0), trainable=False)
+
+    if get_current_tower_context().is_main_training_tower:
+        for v in [moving_mean, moving_var]:
+            tf.add_to_collection(tf.GraphKeys.MODEL_VARIABLES, v)
+    return beta, gamma, moving_mean, moving_var
+
+
+</source>
+<source file="systems/tensorpack-0.9.8/tensorpack/models/_old_batch_norm.py" startline="21" endline="38" pcid="411">
+def get_bn_variables(n_out, use_scale, use_bias, gamma_init):
+    if use_bias:
+        beta = tf.get_variable('beta', [n_out], initializer=tf.constant_initializer())
+    else:
+        beta = tf.zeros([n_out], name='beta')
+    if use_scale:
+        gamma = tf.get_variable('gamma', [n_out], initializer=gamma_init)
+    else:
+        gamma = tf.ones([n_out], name='gamma')
+    # x * gamma + beta
+
+    moving_mean = tf.get_variable('mean/EMA', [n_out],
+                                  initializer=tf.constant_initializer(), trainable=False)
+    moving_var = tf.get_variable('variance/EMA', [n_out],
+                                 initializer=tf.constant_initializer(1.0), trainable=False)
+    return beta, gamma, moving_mean, moving_var
+
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="11" similarity="100">
+<source file="systems/tensorpack-0.9.8/tensorpack/models/pool.py" startline="20" endline="35" pcid="414">
+def MaxPooling(
+        inputs,
+        pool_size,
+        strides=None,
+        padding='valid',
+        data_format='channels_last'):
+    """
+    Same as `tf.layers.MaxPooling2D`. Default strides is equal to pool_size.
+    """
+    if strides is None:
+        strides = pool_size
+    layer = tf.layers.MaxPooling2D(pool_size, strides, padding=padding, data_format=data_format)
+    ret = layer.apply(inputs, scope=tf.get_variable_scope())
+    return tf.identity(ret, name='output')
+
+
+</source>
+<source file="systems/tensorpack-0.9.8/tensorpack/models/pool.py" startline="40" endline="55" pcid="415">
+def AvgPooling(
+        inputs,
+        pool_size,
+        strides=None,
+        padding='valid',
+        data_format='channels_last'):
+    """
+    Same as `tf.layers.AveragePooling2D`. Default strides is equal to pool_size.
+    """
+    if strides is None:
+        strides = pool_size
+    layer = tf.layers.AveragePooling2D(pool_size, strides, padding=padding, data_format=data_format)
+    ret = layer.apply(inputs, scope=tf.get_variable_scope())
+    return tf.identity(ret, name='output')
+
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="16" similarity="81">
+<source file="systems/tensorpack-0.9.8/examples/GAN/Improved-WGAN.py" startline="28" endline="44" pcid="1090">
+    def discriminator(self, imgs):
+        nf = 64
+        with argscope(Conv2D, activation=tf.identity, kernel_size=4, strides=2):
+            l = (LinearWrap(imgs)
+                 .Conv2D('conv0', nf, activation=tf.nn.leaky_relu)
+                 .Conv2D('conv1', nf * 2)
+                 .LayerNorm('ln1')
+                 .tf.nn.leaky_relu()
+                 .Conv2D('conv2', nf * 4)
+                 .LayerNorm('ln2')
+                 .tf.nn.leaky_relu()
+                 .Conv2D('conv3', nf * 8)
+                 .LayerNorm('ln3')
+                 .tf.nn.leaky_relu()
+                 .FullyConnected('fct', 1, activation=tf.identity)())
+        return tf.reshape(l, [-1])
+
+</source>
+<source file="systems/tensorpack-0.9.8/examples/GAN/DCGAN.py" startline="61" endline="78" pcid="1096">
+    def discriminator(self, imgs):
+        """ return a (b, 1) logits"""
+        nf = 64
+        with argscope(Conv2D, kernel_size=4, strides=2):
+            l = (LinearWrap(imgs)
+                 .Conv2D('conv0', nf, activation=tf.nn.leaky_relu)
+                 .Conv2D('conv1', nf * 2)
+                 .BatchNorm('bn1')
+                 .tf.nn.leaky_relu()
+                 .Conv2D('conv2', nf * 4)
+                 .BatchNorm('bn2')
+                 .tf.nn.leaky_relu()
+                 .Conv2D('conv3', nf * 8)
+                 .BatchNorm('bn3')
+                 .tf.nn.leaky_relu()
+                 .FullyConnected('fct', 1)())
+        return l
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="15" similarity="73">
+<source file="systems/tensorpack-0.9.8/examples/keras/mnist-keras.py" startline="43" endline="58" pcid="1155">
+def get_keras_model():
+    with clear_tower0_name_scope():
+        M = keras.models.Sequential()
+        M.add(KL.Conv2D(32, 3, activation='relu', padding='same'))
+        M.add(KL.MaxPooling2D())
+        M.add(KL.Conv2D(32, 3, activation='relu', padding='same'))
+        M.add(KL.Conv2D(32, 3, activation='relu', padding='same'))
+        M.add(KL.MaxPooling2D())
+        M.add(KL.Conv2D(32, 3, padding='same', activation='relu'))
+        M.add(KL.Flatten())
+        M.add(KL.Dense(512, activation='relu', kernel_regularizer=keras.regularizers.l2(1e-5)))
+        M.add(KL.Dropout(rate=0.5))
+        M.add(KL.Dense(10, activation=None, kernel_regularizer=keras.regularizers.l2(1e-5)))
+    return M
+
+
+</source>
+<source file="systems/tensorpack-0.9.8/examples/keras/mnist-keras-v2.py" startline="34" endline="55" pcid="1162">
+    def model_func(image):
+        """
+        Keras model has to be created inside this function to be used with tensorpack.
+        """
+        M = keras.models.Sequential()
+        # input_tensor have to be used here for tensorpack trainer to function properly.
+        # Just use inputs[1], inputs[2] if you have multiple inputs.
+        M.add(KL.InputLayer(input_tensor=image))
+        M.add(KL.Conv2D(32, 3, activation='relu', padding='same'))
+        M.add(KL.MaxPooling2D())
+        M.add(KL.Conv2D(32, 3, activation='relu', padding='same'))
+        M.add(KL.Conv2D(32, 3, activation='relu', padding='same'))
+        M.add(KL.MaxPooling2D())
+        M.add(KL.Conv2D(32, 3, padding='same', activation='relu'))
+
+        M.add(KL.Flatten())
+        M.add(KL.Dense(512, activation='relu', kernel_regularizer=keras.regularizers.l2(1e-5)))
+        M.add(KL.Dropout(0.5))
+        M.add(KL.Dense(10, activation=None, kernel_regularizer=keras.regularizers.l2(1e-5)))
+        M.add(KL.Activation('softmax'))
+        return M
+
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="18" similarity="88">
+<source file="systems/tensorpack-0.9.8/examples/basics/svhn-digit-convnet.py" startline="68" endline="88" pcid="1382">
+def get_data():
+    d1 = dataset.SVHNDigit('train')
+    d2 = dataset.SVHNDigit('extra')
+    data_train = RandomMixData([d1, d2])
+    data_test = dataset.SVHNDigit('test', shuffle=False)
+
+    augmentors = [
+        imgaug.Resize((40, 40)),
+        imgaug.Brightness(30),
+        imgaug.Contrast((0.5, 1.5)),
+    ]
+    data_train = AugmentImageComponent(data_train, augmentors)
+    data_train = BatchData(data_train, 128)
+    data_train = MultiProcessRunner(data_train, 5, 5)
+
+    augmentors = [imgaug.Resize((40, 40))]
+    data_test = AugmentImageComponent(data_test, augmentors)
+    data_test = BatchData(data_test, 128, remainder=True)
+    return data_train, data_test
+
+
+</source>
+<source file="systems/tensorpack-0.9.8/examples/DisturbLabel/svhn-disturb.py" startline="21" endline="42" pcid="1520">
+def get_data():
+    d1 = dataset.SVHNDigit('train')
+    d2 = dataset.SVHNDigit('extra')
+    data_train = RandomMixData([d1, d2])
+    data_train = DisturbLabel(data_train, args.prob)
+    data_test = dataset.SVHNDigit('test')
+
+    augmentors = [
+        imgaug.Resize((40, 40)),
+        imgaug.Brightness(30),
+        imgaug.Contrast((0.5, 1.5)),
+    ]
+    data_train = AugmentImageComponent(data_train, augmentors)
+    data_train = BatchData(data_train, 128)
+    data_train = MultiProcessRunner(data_train, 5, 5)
+
+    augmentors = [imgaug.Resize((40, 40))]
+    data_test = AugmentImageComponent(data_test, augmentors)
+    data_test = BatchData(data_test, 128, remainder=True)
+    return data_train, data_test
+
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="11" similarity="72">
+<source file="systems/tensorpack-0.9.8/examples/basics/export-model.py" startline="127" endline="140" pcid="1392">
+def apply(model_path):
+    """Run inference from a training model checkpoint. """
+    pred_config = PredictConfig(
+        session_init=SmartInit(model_path),
+        model=Model(),
+        input_names=['input_img'],
+        output_names=['prediction_img'])
+
+    pred = OfflinePredictor(pred_config)
+    img = cv2.imread('lena.png')
+    prediction = pred([img])[0]
+    cv2.imwrite('applied_default.jpg', prediction[0])
+
+
+</source>
+<source file="systems/tensorpack-0.9.8/examples/basics/export-model.py" startline="141" endline="155" pcid="1393">
+def apply_inference_graph(model_path):
+    """Run inference from a different graph, which receives encoded images buffers. """
+    pred_config = PredictConfig(
+        session_init=SmartInit(model_path),
+        model=InferenceOnlyModel(),
+        input_names=['input_img_bytes'],
+        output_names=['prediction_img_bytes'])
+
+    pred = OfflinePredictor(pred_config)
+    buf = open('lena.png', 'rb').read()
+    prediction = pred([buf])[0]
+    with open('applied_inference_graph.png', 'wb') as f:
+        f.write(prediction[0])
+
+
+</source>
+</class>
+
+</clones>

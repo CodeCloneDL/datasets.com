@@ -1,0 +1,960 @@
+<clonepair1>
+<source file="systems/MONAI-0.8.1/tests/test_handler_stats.py" startline="26" endline="63" pcid="1383"></source>
+    def test_metrics_print(self):
+        log_stream = StringIO()
+        log_handler = logging.StreamHandler(log_stream)
+        log_handler.setLevel(logging.INFO)
+        key_to_handler = "test_logging"
+        key_to_print = "testing_metric"
+
+        # set up engine
+        def _train_func(engine, batch):
+            return [torch.tensor(0.0)]
+
+        engine = Engine(_train_func)
+
+        # set up dummy metric
+        @engine.on(Events.EPOCH_COMPLETED)
+        def _update_metric(engine):
+            current_metric = engine.state.metrics.get(key_to_print, 0.1)
+            engine.state.metrics[key_to_print] = current_metric + 0.1
+
+        # set up testing handler
+        logger = logging.getLogger(key_to_handler)
+        logger.setLevel(logging.INFO)
+        logger.addHandler(log_handler)
+        stats_handler = StatsHandler(name=key_to_handler)
+        stats_handler.attach(engine)
+
+        engine.run(range(3), max_epochs=2)
+
+        # check logging output
+        output_str = log_stream.getvalue()
+        log_handler.close()
+        has_key_word = re.compile(f".*{key_to_print}.*")
+        content_count = 0
+        for line in output_str.split("\n"):
+            if has_key_word.match(line):
+                content_count += 1
+        self.assertTrue(content_count > 0)
+
+</clonepair1>
+
+<clonepair1>
+<source file="systems/MONAI-0.8.1/tests/test_handler_stats.py" startline="64" endline="95" pcid="1386"></source>
+    def test_loss_print(self):
+        log_stream = StringIO()
+        log_handler = logging.StreamHandler(log_stream)
+        log_handler.setLevel(logging.INFO)
+        key_to_handler = "test_logging"
+        key_to_print = "myLoss"
+
+        # set up engine
+        def _train_func(engine, batch):
+            return [torch.tensor(0.0)]
+
+        engine = Engine(_train_func)
+
+        # set up testing handler
+        logger = logging.getLogger(key_to_handler)
+        logger.setLevel(logging.INFO)
+        logger.addHandler(log_handler)
+        stats_handler = StatsHandler(name=key_to_handler, tag_name=key_to_print)
+        stats_handler.attach(engine)
+
+        engine.run(range(3), max_epochs=2)
+
+        # check logging output
+        output_str = log_stream.getvalue()
+        log_handler.close()
+        has_key_word = re.compile(f".*{key_to_print}.*")
+        content_count = 0
+        for line in output_str.split("\n"):
+            if has_key_word.match(line):
+                content_count += 1
+        self.assertTrue(content_count > 0)
+
+</clonepair1>
+<clonepair2>
+<source file="systems/MONAI-0.8.1/tests/test_handler_stats.py" startline="26" endline="63" pcid="1383"></source>
+    def test_metrics_print(self):
+        log_stream = StringIO()
+        log_handler = logging.StreamHandler(log_stream)
+        log_handler.setLevel(logging.INFO)
+        key_to_handler = "test_logging"
+        key_to_print = "testing_metric"
+
+        # set up engine
+        def _train_func(engine, batch):
+            return [torch.tensor(0.0)]
+
+        engine = Engine(_train_func)
+
+        # set up dummy metric
+        @engine.on(Events.EPOCH_COMPLETED)
+        def _update_metric(engine):
+            current_metric = engine.state.metrics.get(key_to_print, 0.1)
+            engine.state.metrics[key_to_print] = current_metric + 0.1
+
+        # set up testing handler
+        logger = logging.getLogger(key_to_handler)
+        logger.setLevel(logging.INFO)
+        logger.addHandler(log_handler)
+        stats_handler = StatsHandler(name=key_to_handler)
+        stats_handler.attach(engine)
+
+        engine.run(range(3), max_epochs=2)
+
+        # check logging output
+        output_str = log_stream.getvalue()
+        log_handler.close()
+        has_key_word = re.compile(f".*{key_to_print}.*")
+        content_count = 0
+        for line in output_str.split("\n"):
+            if has_key_word.match(line):
+                content_count += 1
+        self.assertTrue(content_count > 0)
+
+</clonepair2>
+
+<clonepair2>
+<source file="systems/MONAI-0.8.1/tests/test_handler_stats.py" startline="96" endline="127" pcid="1388"></source>
+    def test_loss_dict(self):
+        log_stream = StringIO()
+        log_handler = logging.StreamHandler(log_stream)
+        log_handler.setLevel(logging.INFO)
+        key_to_handler = "test_logging"
+        key_to_print = "myLoss1"
+
+        # set up engine
+        def _train_func(engine, batch):
+            return [torch.tensor(0.0)]
+
+        engine = Engine(_train_func)
+
+        # set up testing handler
+        logger = logging.getLogger(key_to_handler)
+        logger.setLevel(logging.INFO)
+        logger.addHandler(log_handler)
+        stats_handler = StatsHandler(name=key_to_handler, output_transform=lambda x: {key_to_print: x[0]})
+        stats_handler.attach(engine)
+
+        engine.run(range(3), max_epochs=2)
+
+        # check logging output
+        output_str = log_stream.getvalue()
+        log_handler.close()
+        has_key_word = re.compile(f".*{key_to_print}.*")
+        content_count = 0
+        for line in output_str.split("\n"):
+            if has_key_word.match(line):
+                content_count += 1
+        self.assertTrue(content_count > 0)
+
+</clonepair2>
+<clonepair3>
+<source file="systems/MONAI-0.8.1/tests/test_data_statsd.py" startline="167" endline="195" pcid="551"></source>
+    def test_file(self, input_data, expected_print):
+        with tempfile.TemporaryDirectory() as tempdir:
+            filename = os.path.join(tempdir, "test_stats.log")
+            handler = logging.FileHandler(filename, mode="w")
+            handler.setLevel(logging.INFO)
+            name = "DataStats"
+            logger = logging.getLogger(name)
+            logger.addHandler(handler)
+            input_param = {
+                "keys": "img",
+                "prefix": "test data",
+                "data_shape": True,
+                "value_range": True,
+                "data_value": True,
+                "additional_info": np.mean,
+                "name": name,
+            }
+            transform = DataStatsd(**input_param)
+            _ = transform(input_data)
+            for h in logger.handlers[:]:
+                h.close()
+                logger.removeHandler(h)
+            del handler
+            with open(filename) as f:
+                content = f.read()
+            if sys.platform != "win32":
+                self.assertEqual(content, expected_print)
+
+
+</clonepair3>
+
+<clonepair3>
+<source file="systems/MONAI-0.8.1/tests/test_data_stats.py" startline="143" endline="170" pcid="99"></source>
+    def test_file(self, input_data, expected_print):
+        with tempfile.TemporaryDirectory() as tempdir:
+            filename = os.path.join(tempdir, "test_data_stats.log")
+            handler = logging.FileHandler(filename, mode="w")
+            handler.setLevel(logging.INFO)
+            name = "DataStats"
+            logger = logging.getLogger(name)
+            logger.addHandler(handler)
+            input_param = {
+                "prefix": "test data",
+                "data_type": True,
+                "data_shape": True,
+                "value_range": True,
+                "data_value": True,
+                "additional_info": np.mean,
+                "name": name,
+            }
+            transform = DataStats(**input_param)
+            _ = transform(input_data)
+            for h in logger.handlers[:]:
+                h.close()
+                logger.removeHandler(h)
+            with open(filename) as f:
+                content = f.read()
+            if sys.platform != "win32":
+                self.assertEqual(content, expected_print)
+
+
+</clonepair3>
+<clonepair4>
+<source file="systems/MONAI-0.8.1/tests/test_handler_stats.py" startline="64" endline="95" pcid="1386"></source>
+    def test_loss_print(self):
+        log_stream = StringIO()
+        log_handler = logging.StreamHandler(log_stream)
+        log_handler.setLevel(logging.INFO)
+        key_to_handler = "test_logging"
+        key_to_print = "myLoss"
+
+        # set up engine
+        def _train_func(engine, batch):
+            return [torch.tensor(0.0)]
+
+        engine = Engine(_train_func)
+
+        # set up testing handler
+        logger = logging.getLogger(key_to_handler)
+        logger.setLevel(logging.INFO)
+        logger.addHandler(log_handler)
+        stats_handler = StatsHandler(name=key_to_handler, tag_name=key_to_print)
+        stats_handler.attach(engine)
+
+        engine.run(range(3), max_epochs=2)
+
+        # check logging output
+        output_str = log_stream.getvalue()
+        log_handler.close()
+        has_key_word = re.compile(f".*{key_to_print}.*")
+        content_count = 0
+        for line in output_str.split("\n"):
+            if has_key_word.match(line):
+                content_count += 1
+        self.assertTrue(content_count > 0)
+
+</clonepair4>
+
+<clonepair4>
+<source file="systems/MONAI-0.8.1/tests/test_handler_stats.py" startline="96" endline="127" pcid="1388"></source>
+    def test_loss_dict(self):
+        log_stream = StringIO()
+        log_handler = logging.StreamHandler(log_stream)
+        log_handler.setLevel(logging.INFO)
+        key_to_handler = "test_logging"
+        key_to_print = "myLoss1"
+
+        # set up engine
+        def _train_func(engine, batch):
+            return [torch.tensor(0.0)]
+
+        engine = Engine(_train_func)
+
+        # set up testing handler
+        logger = logging.getLogger(key_to_handler)
+        logger.setLevel(logging.INFO)
+        logger.addHandler(log_handler)
+        stats_handler = StatsHandler(name=key_to_handler, output_transform=lambda x: {key_to_print: x[0]})
+        stats_handler.attach(engine)
+
+        engine.run(range(3), max_epochs=2)
+
+        # check logging output
+        output_str = log_stream.getvalue()
+        log_handler.close()
+        has_key_word = re.compile(f".*{key_to_print}.*")
+        content_count = 0
+        for line in output_str.split("\n"):
+            if has_key_word.match(line):
+                content_count += 1
+        self.assertTrue(content_count > 0)
+
+</clonepair4>
+<clonepair5>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="57" endline="77" pcid="604"></source>
+    def test_two_save_one_load(self):
+        net1 = torch.nn.PReLU()
+        optimizer = optim.SGD(net1.parameters(), lr=0.02)
+        data1 = net1.state_dict()
+        data1["weight"] = torch.tensor([0.1])
+        net1.load_state_dict(data1)
+        net2 = torch.nn.PReLU()
+        data2 = net2.state_dict()
+        data2["weight"] = torch.tensor([0.2])
+        net2.load_state_dict(data2)
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            save_dict = {"net": net1, "opt": optimizer}
+            CheckpointSaver(save_dir=tempdir, save_dict=save_dict, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/checkpoint_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=True).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["weight"], torch.tensor([0.1]))
+
+</clonepair5>
+
+<clonepair5>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="98" endline="119" pcid="606"></source>
+    def test_partial_under_load(self):
+        net1 = torch.nn.Sequential(*[torch.nn.PReLU(), torch.nn.PReLU()])
+        data1 = net1.state_dict()
+        data1["0.weight"] = torch.tensor([0.1])
+        data1["1.weight"] = torch.tensor([0.2])
+        net1.load_state_dict(data1)
+
+        net2 = torch.nn.Sequential(*[torch.nn.PReLU()])
+        data2 = net2.state_dict()
+        data2["0.weight"] = torch.tensor([0.3])
+        net2.load_state_dict(data2)
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            CheckpointSaver(save_dir=tempdir, save_dict={"net": net1}, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/net_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=False).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["0.weight"].cpu(), torch.tensor([0.1]))
+
+</clonepair5>
+<clonepair6>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="57" endline="77" pcid="604"></source>
+    def test_two_save_one_load(self):
+        net1 = torch.nn.PReLU()
+        optimizer = optim.SGD(net1.parameters(), lr=0.02)
+        data1 = net1.state_dict()
+        data1["weight"] = torch.tensor([0.1])
+        net1.load_state_dict(data1)
+        net2 = torch.nn.PReLU()
+        data2 = net2.state_dict()
+        data2["weight"] = torch.tensor([0.2])
+        net2.load_state_dict(data2)
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            save_dict = {"net": net1, "opt": optimizer}
+            CheckpointSaver(save_dir=tempdir, save_dict=save_dict, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/checkpoint_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=True).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["weight"], torch.tensor([0.1]))
+
+</clonepair6>
+
+<clonepair6>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="120" endline="141" pcid="607"></source>
+    def test_partial_over_load(self):
+        net1 = torch.nn.Sequential(*[torch.nn.PReLU()])
+        data1 = net1.state_dict()
+        data1["0.weight"] = torch.tensor([0.1])
+        net1.load_state_dict(data1)
+
+        net2 = torch.nn.Sequential(*[torch.nn.PReLU(), torch.nn.PReLU()])
+        data2 = net2.state_dict()
+        data2["0.weight"] = torch.tensor([0.2])
+        data2["1.weight"] = torch.tensor([0.3])
+        net2.load_state_dict(data2)
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            CheckpointSaver(save_dir=tempdir, save_dict={"net": net1}, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/net_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=False).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["0.weight"].cpu(), torch.tensor([0.1]))
+
+</clonepair6>
+<clonepair7>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="57" endline="77" pcid="604"></source>
+    def test_two_save_one_load(self):
+        net1 = torch.nn.PReLU()
+        optimizer = optim.SGD(net1.parameters(), lr=0.02)
+        data1 = net1.state_dict()
+        data1["weight"] = torch.tensor([0.1])
+        net1.load_state_dict(data1)
+        net2 = torch.nn.PReLU()
+        data2 = net2.state_dict()
+        data2["weight"] = torch.tensor([0.2])
+        net2.load_state_dict(data2)
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            save_dict = {"net": net1, "opt": optimizer}
+            CheckpointSaver(save_dir=tempdir, save_dict=save_dict, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/checkpoint_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=True).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["weight"], torch.tensor([0.1]))
+
+</clonepair7>
+
+<clonepair7>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="78" endline="97" pcid="605"></source>
+    def test_save_single_device_load_multi_devices(self):
+        net1 = torch.nn.PReLU()
+        data1 = net1.state_dict()
+        data1["weight"] = torch.tensor([0.1])
+        net1.load_state_dict(data1)
+        net2 = torch.nn.PReLU()
+        data2 = net2.state_dict()
+        data2["weight"] = torch.tensor([0.2])
+        net2.load_state_dict(data2)
+        net2 = torch.nn.DataParallel(net2)
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            CheckpointSaver(save_dir=tempdir, save_dict={"net": net1}, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/net_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=True).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["module.weight"].cpu(), torch.tensor([0.1]))
+
+</clonepair7>
+<clonepair8>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="98" endline="119" pcid="606"></source>
+    def test_partial_under_load(self):
+        net1 = torch.nn.Sequential(*[torch.nn.PReLU(), torch.nn.PReLU()])
+        data1 = net1.state_dict()
+        data1["0.weight"] = torch.tensor([0.1])
+        data1["1.weight"] = torch.tensor([0.2])
+        net1.load_state_dict(data1)
+
+        net2 = torch.nn.Sequential(*[torch.nn.PReLU()])
+        data2 = net2.state_dict()
+        data2["0.weight"] = torch.tensor([0.3])
+        net2.load_state_dict(data2)
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            CheckpointSaver(save_dir=tempdir, save_dict={"net": net1}, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/net_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=False).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["0.weight"].cpu(), torch.tensor([0.1]))
+
+</clonepair8>
+
+<clonepair8>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="120" endline="141" pcid="607"></source>
+    def test_partial_over_load(self):
+        net1 = torch.nn.Sequential(*[torch.nn.PReLU()])
+        data1 = net1.state_dict()
+        data1["0.weight"] = torch.tensor([0.1])
+        net1.load_state_dict(data1)
+
+        net2 = torch.nn.Sequential(*[torch.nn.PReLU(), torch.nn.PReLU()])
+        data2 = net2.state_dict()
+        data2["0.weight"] = torch.tensor([0.2])
+        data2["1.weight"] = torch.tensor([0.3])
+        net2.load_state_dict(data2)
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            CheckpointSaver(save_dir=tempdir, save_dict={"net": net1}, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/net_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=False).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["0.weight"].cpu(), torch.tensor([0.1]))
+
+</clonepair8>
+<clonepair9>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="78" endline="97" pcid="605"></source>
+    def test_save_single_device_load_multi_devices(self):
+        net1 = torch.nn.PReLU()
+        data1 = net1.state_dict()
+        data1["weight"] = torch.tensor([0.1])
+        net1.load_state_dict(data1)
+        net2 = torch.nn.PReLU()
+        data2 = net2.state_dict()
+        data2["weight"] = torch.tensor([0.2])
+        net2.load_state_dict(data2)
+        net2 = torch.nn.DataParallel(net2)
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            CheckpointSaver(save_dir=tempdir, save_dict={"net": net1}, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/net_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=True).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["module.weight"].cpu(), torch.tensor([0.1]))
+
+</clonepair9>
+
+<clonepair9>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="98" endline="119" pcid="606"></source>
+    def test_partial_under_load(self):
+        net1 = torch.nn.Sequential(*[torch.nn.PReLU(), torch.nn.PReLU()])
+        data1 = net1.state_dict()
+        data1["0.weight"] = torch.tensor([0.1])
+        data1["1.weight"] = torch.tensor([0.2])
+        net1.load_state_dict(data1)
+
+        net2 = torch.nn.Sequential(*[torch.nn.PReLU()])
+        data2 = net2.state_dict()
+        data2["0.weight"] = torch.tensor([0.3])
+        net2.load_state_dict(data2)
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            CheckpointSaver(save_dir=tempdir, save_dict={"net": net1}, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/net_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=False).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["0.weight"].cpu(), torch.tensor([0.1]))
+
+</clonepair9>
+<clonepair10>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="78" endline="97" pcid="605"></source>
+    def test_save_single_device_load_multi_devices(self):
+        net1 = torch.nn.PReLU()
+        data1 = net1.state_dict()
+        data1["weight"] = torch.tensor([0.1])
+        net1.load_state_dict(data1)
+        net2 = torch.nn.PReLU()
+        data2 = net2.state_dict()
+        data2["weight"] = torch.tensor([0.2])
+        net2.load_state_dict(data2)
+        net2 = torch.nn.DataParallel(net2)
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            CheckpointSaver(save_dir=tempdir, save_dict={"net": net1}, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/net_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=True).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["module.weight"].cpu(), torch.tensor([0.1]))
+
+</clonepair10>
+
+<clonepair10>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="120" endline="141" pcid="607"></source>
+    def test_partial_over_load(self):
+        net1 = torch.nn.Sequential(*[torch.nn.PReLU()])
+        data1 = net1.state_dict()
+        data1["0.weight"] = torch.tensor([0.1])
+        net1.load_state_dict(data1)
+
+        net2 = torch.nn.Sequential(*[torch.nn.PReLU(), torch.nn.PReLU()])
+        data2 = net2.state_dict()
+        data2["0.weight"] = torch.tensor([0.2])
+        data2["1.weight"] = torch.tensor([0.3])
+        net2.load_state_dict(data2)
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            CheckpointSaver(save_dir=tempdir, save_dict={"net": net1}, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/net_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=False).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["0.weight"].cpu(), torch.tensor([0.1]))
+
+</clonepair10>
+<clonepair11>
+<source file="systems/MONAI-0.8.1/monai/handlers/confusion_matrix.py" startline="24" endline="69" pcid="1553"></source>
+    def __init__(
+        self,
+        include_background: bool = True,
+        metric_name: str = "hit_rate",
+        compute_sample: bool = False,
+        reduction: Union[MetricReduction, str] = MetricReduction.MEAN,
+        output_transform: Callable = lambda x: x,
+        save_details: bool = True,
+    ) -> None:
+        """
+
+        Args:
+            include_background: whether to skip metric computation on the first channel of
+                the predicted output. Defaults to True.
+            metric_name: [``"sensitivity"``, ``"specificity"``, ``"precision"``, ``"negative predictive value"``,
+                ``"miss rate"``, ``"fall out"``, ``"false discovery rate"``, ``"false omission rate"``,
+                ``"prevalence threshold"``, ``"threat score"``, ``"accuracy"``, ``"balanced accuracy"``,
+                ``"f1 score"``, ``"matthews correlation coefficient"``, ``"fowlkes mallows index"``,
+                ``"informedness"``, ``"markedness"``]
+                Some of the metrics have multiple aliases (as shown in the wikipedia page aforementioned),
+                and you can also input those names instead.
+            compute_sample: when reducing, if ``True``, each sample's metric will be computed based on each confusion matrix first.
+                if ``False``, compute reduction on the confusion matrices first, defaults to ``False``.
+            reduction: define the mode to reduce metrics, will only execute reduction on `not-nan` values,
+                available reduction modes: {``"none"``, ``"mean"``, ``"sum"``, ``"mean_batch"``, ``"sum_batch"``,
+                ``"mean_channel"``, ``"sum_channel"``}, default to ``"mean"``. if "none", will not do reduction.
+            output_transform: callable to extract `y_pred` and `y` from `ignite.engine.state.output` then
+                construct `(y_pred, y)` pair, where `y_pred` and `y` can be `batch-first` Tensors or
+                lists of `channel-first` Tensors. the form of `(y_pred, y)` is required by the `update()`.
+                `engine.state` and `output_transform` inherit from the ignite concept:
+                https://pytorch.org/ignite/concepts.html#state, explanation and usage example are in the tutorial:
+                https://github.com/Project-MONAI/tutorials/blob/master/modules/batch_output_transform.ipynb.
+            save_details: whether to save metric computation details per image, for example: TP/TN/FP/FN of every image.
+                default to True, will save to `engine.state.metric_details` dict with the metric name as key.
+
+        See also:
+            :py:meth:`monai.metrics.confusion_matrix`
+        """
+        metric_fn = ConfusionMatrixMetric(
+            include_background=include_background,
+            metric_name=metric_name,
+            compute_sample=compute_sample,
+            reduction=reduction,
+        )
+        self.metric_name = metric_name
+        super().__init__(metric_fn=metric_fn, output_transform=output_transform, save_details=save_details)
+</clonepair11>
+
+<clonepair11>
+<source file="systems/MONAI-0.8.1/monai/handlers/hausdorff_distance.py" startline="24" endline="65" pcid="1502"></source>
+    def __init__(
+        self,
+        include_background: bool = False,
+        distance_metric: str = "euclidean",
+        percentile: Optional[float] = None,
+        directed: bool = False,
+        reduction: Union[MetricReduction, str] = MetricReduction.MEAN,
+        output_transform: Callable = lambda x: x,
+        save_details: bool = True,
+    ) -> None:
+        """
+
+        Args:
+            include_background: whether to include distance computation on the first channel of the predicted output.
+                Defaults to ``False``.
+            distance_metric: : [``"euclidean"``, ``"chessboard"``, ``"taxicab"``]
+                the metric used to compute surface distance. Defaults to ``"euclidean"``.
+            percentile: an optional float number between 0 and 100. If specified, the corresponding
+                percentile of the Hausdorff Distance rather than the maximum result will be achieved.
+                Defaults to ``None``.
+            directed: whether to calculate directed Hausdorff distance. Defaults to ``False``.
+            reduction: define the mode to reduce metrics, will only execute reduction on `not-nan` values,
+                available reduction modes: {``"none"``, ``"mean"``, ``"sum"``, ``"mean_batch"``, ``"sum_batch"``,
+                ``"mean_channel"``, ``"sum_channel"``}, default to ``"mean"``. if "none", will not do reduction.
+            output_transform: callable to extract `y_pred` and `y` from `ignite.engine.state.output` then
+                construct `(y_pred, y)` pair, where `y_pred` and `y` can be `batch-first` Tensors or
+                lists of `channel-first` Tensors. the form of `(y_pred, y)` is required by the `update()`.
+                `engine.state` and `output_transform` inherit from the ignite concept:
+                https://pytorch.org/ignite/concepts.html#state, explanation and usage example are in the tutorial:
+                https://github.com/Project-MONAI/tutorials/blob/master/modules/batch_output_transform.ipynb.
+            save_details: whether to save metric computation details per image, for example: hausdorff distance
+                of every image. default to True, will save to `engine.state.metric_details` dict with the metric name as key.
+
+        """
+        metric_fn = HausdorffDistanceMetric(
+            include_background=include_background,
+            distance_metric=distance_metric,
+            percentile=percentile,
+            directed=directed,
+            reduction=reduction,
+        )
+        super().__init__(metric_fn=metric_fn, output_transform=output_transform, save_details=save_details)
+</clonepair11>
+<clonepair12>
+<source file="systems/MONAI-0.8.1/monai/handlers/hausdorff_distance.py" startline="24" endline="65" pcid="1502"></source>
+    def __init__(
+        self,
+        include_background: bool = False,
+        distance_metric: str = "euclidean",
+        percentile: Optional[float] = None,
+        directed: bool = False,
+        reduction: Union[MetricReduction, str] = MetricReduction.MEAN,
+        output_transform: Callable = lambda x: x,
+        save_details: bool = True,
+    ) -> None:
+        """
+
+        Args:
+            include_background: whether to include distance computation on the first channel of the predicted output.
+                Defaults to ``False``.
+            distance_metric: : [``"euclidean"``, ``"chessboard"``, ``"taxicab"``]
+                the metric used to compute surface distance. Defaults to ``"euclidean"``.
+            percentile: an optional float number between 0 and 100. If specified, the corresponding
+                percentile of the Hausdorff Distance rather than the maximum result will be achieved.
+                Defaults to ``None``.
+            directed: whether to calculate directed Hausdorff distance. Defaults to ``False``.
+            reduction: define the mode to reduce metrics, will only execute reduction on `not-nan` values,
+                available reduction modes: {``"none"``, ``"mean"``, ``"sum"``, ``"mean_batch"``, ``"sum_batch"``,
+                ``"mean_channel"``, ``"sum_channel"``}, default to ``"mean"``. if "none", will not do reduction.
+            output_transform: callable to extract `y_pred` and `y` from `ignite.engine.state.output` then
+                construct `(y_pred, y)` pair, where `y_pred` and `y` can be `batch-first` Tensors or
+                lists of `channel-first` Tensors. the form of `(y_pred, y)` is required by the `update()`.
+                `engine.state` and `output_transform` inherit from the ignite concept:
+                https://pytorch.org/ignite/concepts.html#state, explanation and usage example are in the tutorial:
+                https://github.com/Project-MONAI/tutorials/blob/master/modules/batch_output_transform.ipynb.
+            save_details: whether to save metric computation details per image, for example: hausdorff distance
+                of every image. default to True, will save to `engine.state.metric_details` dict with the metric name as key.
+
+        """
+        metric_fn = HausdorffDistanceMetric(
+            include_background=include_background,
+            distance_metric=distance_metric,
+            percentile=percentile,
+            directed=directed,
+            reduction=reduction,
+        )
+        super().__init__(metric_fn=metric_fn, output_transform=output_transform, save_details=save_details)
+</clonepair12>
+
+<clonepair12>
+<source file="systems/MONAI-0.8.1/monai/handlers/surface_distance.py" startline="24" endline="61" pcid="1540"></source>
+    def __init__(
+        self,
+        include_background: bool = False,
+        symmetric: bool = False,
+        distance_metric: str = "euclidean",
+        reduction: Union[MetricReduction, str] = MetricReduction.MEAN,
+        output_transform: Callable = lambda x: x,
+        save_details: bool = True,
+    ) -> None:
+        """
+
+        Args:
+            include_background: whether to include distance computation on the first channel of the predicted output.
+                Defaults to ``False``.
+            symmetric: whether to calculate the symmetric average surface distance between
+                `seg_pred` and `seg_gt`. Defaults to ``False``.
+            distance_metric: : [``"euclidean"``, ``"chessboard"``, ``"taxicab"``]
+                the metric used to compute surface distance. Defaults to ``"euclidean"``.
+            reduction: define the mode to reduce metrics, will only execute reduction on `not-nan` values,
+                available reduction modes: {``"none"``, ``"mean"``, ``"sum"``, ``"mean_batch"``, ``"sum_batch"``,
+                ``"mean_channel"``, ``"sum_channel"``}, default to ``"mean"``. if "none", will not do reduction.
+            output_transform: callable to extract `y_pred` and `y` from `ignite.engine.state.output` then
+                construct `(y_pred, y)` pair, where `y_pred` and `y` can be `batch-first` Tensors or
+                lists of `channel-first` Tensors. the form of `(y_pred, y)` is required by the `update()`.
+                `engine.state` and `output_transform` inherit from the ignite concept:
+                https://pytorch.org/ignite/concepts.html#state, explanation and usage example are in the tutorial:
+                https://github.com/Project-MONAI/tutorials/blob/master/modules/batch_output_transform.ipynb.
+            save_details: whether to save metric computation details per image, for example: surface dice
+                of every image. default to True, will save to `engine.state.metric_details` dict with the metric name as key.
+
+        """
+        metric_fn = SurfaceDistanceMetric(
+            include_background=include_background,
+            symmetric=symmetric,
+            distance_metric=distance_metric,
+            reduction=reduction,
+        )
+        super().__init__(metric_fn=metric_fn, output_transform=output_transform, save_details=save_details)
+</clonepair12>
+<clonepair13>
+<source file="systems/MONAI-0.8.1/monai/metrics/surface_distance.py" startline="63" endline="93" pcid="1652"></source>
+    def _compute_tensor(self, y_pred: torch.Tensor, y: torch.Tensor):  # type: ignore
+        """
+        Args:
+            y_pred: input data to compute, typical segmentation model output.
+                It must be one-hot format and first dim is batch, example shape: [16, 3, 32, 32]. The values
+                should be binarized.
+            y: ground truth to compute the distance. It must be one-hot format and first dim is batch.
+                The values should be binarized.
+
+        Raises:
+            ValueError: when `y` is not a binarized tensor.
+            ValueError: when `y_pred` has less than three dimensions.
+        """
+        if not isinstance(y_pred, torch.Tensor) or not isinstance(y, torch.Tensor):
+            raise ValueError("y_pred and y must be PyTorch Tensor.")
+        if not torch.all(y_pred.byte() == y_pred):
+            warnings.warn("y_pred should be a binarized tensor.")
+        if not torch.all(y.byte() == y):
+            warnings.warn("y should be a binarized tensor.")
+        dims = y_pred.ndimension()
+        if dims < 3:
+            raise ValueError("y_pred should have at least three dimensions.")
+        # compute (BxC) for each channel for each batch
+        return compute_average_surface_distance(
+            y_pred=y_pred,
+            y=y,
+            include_background=self.include_background,
+            symmetric=self.symmetric,
+            distance_metric=self.distance_metric,
+        )
+
+</clonepair13>
+
+<clonepair13>
+<source file="systems/MONAI-0.8.1/monai/metrics/hausdorff_distance.py" startline="70" endline="101" pcid="1636"></source>
+    def _compute_tensor(self, y_pred: torch.Tensor, y: torch.Tensor):  # type: ignore
+        """
+        Args:
+            y_pred: input data to compute, typical segmentation model output.
+                It must be one-hot format and first dim is batch, example shape: [16, 3, 32, 32]. The values
+                should be binarized.
+            y: ground truth to compute the distance. It must be one-hot format and first dim is batch.
+                The values should be binarized.
+
+        Raises:
+            ValueError: when `y` is not a binarized tensor.
+            ValueError: when `y_pred` has less than three dimensions.
+        """
+        if not isinstance(y_pred, torch.Tensor) or not isinstance(y, torch.Tensor):
+            raise ValueError("y_pred and y must be PyTorch Tensor.")
+        if not torch.all(y_pred.byte() == y_pred):
+            warnings.warn("y_pred should be a binarized tensor.")
+        if not torch.all(y.byte() == y):
+            warnings.warn("y should be a binarized tensor.")
+        dims = y_pred.ndimension()
+        if dims < 3:
+            raise ValueError("y_pred should have at least three dimensions.")
+        # compute (BxC) for each channel for each batch
+        return compute_hausdorff_distance(
+            y_pred=y_pred,
+            y=y,
+            include_background=self.include_background,
+            distance_metric=self.distance_metric,
+            percentile=self.percentile,
+            directed=self.directed,
+        )
+
+</clonepair13>
+<clonepair14>
+<source file="systems/MONAI-0.8.1/monai/handlers/confusion_matrix.py" startline="24" endline="69" pcid="1553"></source>
+    def __init__(
+        self,
+        include_background: bool = True,
+        metric_name: str = "hit_rate",
+        compute_sample: bool = False,
+        reduction: Union[MetricReduction, str] = MetricReduction.MEAN,
+        output_transform: Callable = lambda x: x,
+        save_details: bool = True,
+    ) -> None:
+        """
+
+        Args:
+            include_background: whether to skip metric computation on the first channel of
+                the predicted output. Defaults to True.
+            metric_name: [``"sensitivity"``, ``"specificity"``, ``"precision"``, ``"negative predictive value"``,
+                ``"miss rate"``, ``"fall out"``, ``"false discovery rate"``, ``"false omission rate"``,
+                ``"prevalence threshold"``, ``"threat score"``, ``"accuracy"``, ``"balanced accuracy"``,
+                ``"f1 score"``, ``"matthews correlation coefficient"``, ``"fowlkes mallows index"``,
+                ``"informedness"``, ``"markedness"``]
+                Some of the metrics have multiple aliases (as shown in the wikipedia page aforementioned),
+                and you can also input those names instead.
+            compute_sample: when reducing, if ``True``, each sample's metric will be computed based on each confusion matrix first.
+                if ``False``, compute reduction on the confusion matrices first, defaults to ``False``.
+            reduction: define the mode to reduce metrics, will only execute reduction on `not-nan` values,
+                available reduction modes: {``"none"``, ``"mean"``, ``"sum"``, ``"mean_batch"``, ``"sum_batch"``,
+                ``"mean_channel"``, ``"sum_channel"``}, default to ``"mean"``. if "none", will not do reduction.
+            output_transform: callable to extract `y_pred` and `y` from `ignite.engine.state.output` then
+                construct `(y_pred, y)` pair, where `y_pred` and `y` can be `batch-first` Tensors or
+                lists of `channel-first` Tensors. the form of `(y_pred, y)` is required by the `update()`.
+                `engine.state` and `output_transform` inherit from the ignite concept:
+                https://pytorch.org/ignite/concepts.html#state, explanation and usage example are in the tutorial:
+                https://github.com/Project-MONAI/tutorials/blob/master/modules/batch_output_transform.ipynb.
+            save_details: whether to save metric computation details per image, for example: TP/TN/FP/FN of every image.
+                default to True, will save to `engine.state.metric_details` dict with the metric name as key.
+
+        See also:
+            :py:meth:`monai.metrics.confusion_matrix`
+        """
+        metric_fn = ConfusionMatrixMetric(
+            include_background=include_background,
+            metric_name=metric_name,
+            compute_sample=compute_sample,
+            reduction=reduction,
+        )
+        self.metric_name = metric_name
+        super().__init__(metric_fn=metric_fn, output_transform=output_transform, save_details=save_details)
+</clonepair14>
+
+<clonepair14>
+<source file="systems/MONAI-0.8.1/monai/handlers/surface_distance.py" startline="24" endline="61" pcid="1540"></source>
+    def __init__(
+        self,
+        include_background: bool = False,
+        symmetric: bool = False,
+        distance_metric: str = "euclidean",
+        reduction: Union[MetricReduction, str] = MetricReduction.MEAN,
+        output_transform: Callable = lambda x: x,
+        save_details: bool = True,
+    ) -> None:
+        """
+
+        Args:
+            include_background: whether to include distance computation on the first channel of the predicted output.
+                Defaults to ``False``.
+            symmetric: whether to calculate the symmetric average surface distance between
+                `seg_pred` and `seg_gt`. Defaults to ``False``.
+            distance_metric: : [``"euclidean"``, ``"chessboard"``, ``"taxicab"``]
+                the metric used to compute surface distance. Defaults to ``"euclidean"``.
+            reduction: define the mode to reduce metrics, will only execute reduction on `not-nan` values,
+                available reduction modes: {``"none"``, ``"mean"``, ``"sum"``, ``"mean_batch"``, ``"sum_batch"``,
+                ``"mean_channel"``, ``"sum_channel"``}, default to ``"mean"``. if "none", will not do reduction.
+            output_transform: callable to extract `y_pred` and `y` from `ignite.engine.state.output` then
+                construct `(y_pred, y)` pair, where `y_pred` and `y` can be `batch-first` Tensors or
+                lists of `channel-first` Tensors. the form of `(y_pred, y)` is required by the `update()`.
+                `engine.state` and `output_transform` inherit from the ignite concept:
+                https://pytorch.org/ignite/concepts.html#state, explanation and usage example are in the tutorial:
+                https://github.com/Project-MONAI/tutorials/blob/master/modules/batch_output_transform.ipynb.
+            save_details: whether to save metric computation details per image, for example: surface dice
+                of every image. default to True, will save to `engine.state.metric_details` dict with the metric name as key.
+
+        """
+        metric_fn = SurfaceDistanceMetric(
+            include_background=include_background,
+            symmetric=symmetric,
+            distance_metric=distance_metric,
+            reduction=reduction,
+        )
+        super().__init__(metric_fn=metric_fn, output_transform=output_transform, save_details=save_details)
+</clonepair14>
+<clonepair15>
+<source file="systems/MONAI-0.8.1/tests/test_handler_classification_saver.py" startline="45" endline="56" pcid="807"></source>
+            def _test_file(filename):
+                filepath = os.path.join(tempdir, filename)
+                self.assertTrue(os.path.exists(filepath))
+                with open(filepath) as f:
+                    reader = csv.reader(f, delimiter="\t")
+                    i = 0
+                    for row in reader:
+                        self.assertEqual(row[0], "testfile" + str(i))
+                        self.assertEqual(np.array(row[1:]).astype(np.float32), 0.0)
+                        i += 1
+                    self.assertEqual(i, 8)
+
+</clonepair15>
+
+<clonepair15>
+<source file="systems/MONAI-0.8.1/tests/test_save_classificationd.py" startline="88" endline="99" pcid="842"></source>
+            def _test_file(filename, count):
+                filepath = os.path.join(tempdir, filename)
+                self.assertTrue(os.path.exists(filepath))
+                with open(filepath) as f:
+                    reader = csv.reader(f, delimiter="\t")
+                    i = 0
+                    for row in reader:
+                        self.assertEqual(row[0], "testfile" + str(i))
+                        self.assertEqual(np.array(row[1:]).astype(np.float32), 0.0)
+                        i += 1
+                    self.assertEqual(i, count)
+
+</clonepair15>

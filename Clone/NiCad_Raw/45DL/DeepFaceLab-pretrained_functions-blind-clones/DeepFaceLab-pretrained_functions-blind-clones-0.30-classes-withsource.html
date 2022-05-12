@@ -1,0 +1,713 @@
+<html>
+<head>
+    <title>NiCad6 Clone Report</title>
+    <style type="text/css">
+        body {font-family:sans-serif;}
+        table {background-color:white; border:0px; padding:0px; border-spacing:4px; width:auto; margin-left:30px; margin-right:auto;}
+        td {background-color:rgba(192,212,238,0.8); border:0px; padding:8px; width:auto; vertical-align:top; border-radius:8px}
+        pre {background-color:white; padding:4px;}
+        a {color:darkblue;}
+    </style>
+</head>
+<body>
+<h2>NiCad6 Clone Report</h2>
+<table>
+<tr style="font-size:14pt">
+<td><b>System:</b> &nbsp; DeepFaceLab-pretrained</td>
+<td><b>Clone pairs:</b> &nbsp; 8</td>
+<td><b>Clone classes:</b> &nbsp; 7</td>
+</tr>
+<tr style="font-size:12pt">
+<td style="background-color:white">Clone type: &nbsp; 3-2</td>
+<td style="background-color:white">Granularity: &nbsp; functions-blind</td>
+<td style="background-color:white">Max diff threshold: &nbsp; 30%</td>
+<td style="background-color:white">Clone size: &nbsp; 10 - 2500 lines</td>
+<td style="background-color:white">Total functions-blind: &nbsp; 663</td>
+</tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 1:</b> &nbsp; 2 fragments, nominal size 72 lines, similarity 70%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag31')" href="javascript:;">
+DeepFaceLab-pretrained/models/Model_FANSeg/Model.py: 36-139
+</a>
+<div class="mid" id="frag31" style="display:none"><pre>
+    def on_initialize(self):
+        device_config = nn.getCurrentDeviceConfig()
+        nn.initialize(data_format="NHWC")
+        tf = nn.tf
+
+        device_config = nn.getCurrentDeviceConfig()
+        devices = device_config.devices
+
+        self.resolution = resolution = 256
+        self.face_type = FaceType.FULL
+         
+        place_model_on_cpu = len(devices) == 0
+        models_opt_device = '/CPU:0' if place_model_on_cpu else '/GPU:0'
+
+        bgr_shape = nn.get4Dshape(resolution,resolution,3)
+        mask_shape = nn.get4Dshape(resolution,resolution,1)
+ 
+        # Initializing model classes
+        self.model = TernausNet(f'FANSeg_{FaceType.toString(self.face_type)}', 
+                                 resolution, 
+                                 load_weights=not self.is_first_run(),
+                                 weights_file_root=self.get_model_root_path(),
+                                 training=True,
+                                 place_model_on_cpu=place_model_on_cpu,
+                                 optimizer=nn.RMSprop(lr=0.0001, lr_dropout=0.3 if self.options['lr_dropout'] else 1.0,name='opt') )
+                                 
+        if self.is_training:
+            # Adjust batch size for multiple GPU
+            gpu_count = max(1, len(devices) )
+            bs_per_gpu = max(1, self.get_batch_size() // gpu_count)
+            self.set_batch_size( gpu_count*bs_per_gpu)
+
+
+            # Compute losses per GPU
+            gpu_pred_list = []
+
+            gpu_losses = []
+            gpu_loss_gvs = []
+            
+            for gpu_id in range(gpu_count):
+                with tf.device( f'/GPU:{gpu_id}' if len(devices) != 0 else f'/CPU:0' ):
+
+                    with tf.device(f'/CPU:0'):
+                        # slice on CPU, otherwise all batch data will be transfered to GPU first
+                        batch_slice = slice( gpu_id*bs_per_gpu, (gpu_id+1)*bs_per_gpu )
+                        gpu_input_t       = self.model.input_t [batch_slice,:,:,:]
+                        gpu_target_t      = self.model.target_t [batch_slice,:,:,:]                        
+                        
+                    # process model tensors
+                    gpu_pred_logits_t, gpu_pred_t = self.model.net([gpu_input_t])                    
+                    gpu_pred_list.append(gpu_pred_t)
+ 
+                    gpu_loss = tf.reduce_mean( tf.nn.sigmoid_cross_entropy_with_logits(labels=gpu_target_t, logits=gpu_pred_logits_t), axis=[1,2,3])
+                    gpu_losses += [gpu_loss]
+
+                    gpu_loss_gvs += [ nn.gradients ( gpu_loss, self.model.net_weights ) ]
+
+
+            # Average losses and gradients, and create optimizer update ops
+            with tf.device (models_opt_device):
+                pred = nn.concat(gpu_pred_list, 0)                
+                loss = tf.reduce_mean(gpu_losses)
+                
+                loss_gv_op = self.model.opt.get_update_op (nn.average_gv_list (gpu_loss_gvs))
+  
+        
+            # Initializing training and view functions
+            def train(input_np, target_np):
+                l, _ = nn.tf_sess.run ( [loss, loss_gv_op], feed_dict={self.model.input_t :input_np, self.model.target_t :target_np })
+                return l
+            self.train = train
+
+            def view(input_np):
+                return nn.tf_sess.run ( [pred], feed_dict={self.model.input_t :input_np})
+            self.view = view
+
+            # initializing sample generators
+            training_data_src_path = self.training_data_src_path
+            training_data_dst_path = self.training_data_dst_path
+
+            cpu_count = min(multiprocessing.cpu_count(), 8)
+            src_generators_count = cpu_count // 2
+            dst_generators_count = cpu_count // 2
+            src_generators_count = int(src_generators_count * 1.5)
+
+            src_generator = SampleGeneratorFace(training_data_src_path, random_ct_samples_path=training_data_src_path, debug=self.is_debug(), batch_size=self.get_batch_size(),
+                                                sample_process_options=SampleProcessor.Options(random_flip=True),
+                                                output_sample_types = [ {'sample_type': SampleProcessor.SampleType.FACE_IMAGE,  'ct_mode':'lct', 'warp':True, 'transform':True, 'channel_type' : SampleProcessor.ChannelType.BGR,                                                            'face_type':self.face_type, 'random_motion_blur':(25, 5),  'random_gaussian_blur':(25,5), 'data_format':nn.data_format, 'resolution': resolution},
+                                                                        {'sample_type': SampleProcessor.SampleType.FACE_MASK,                    'warp':True, 'transform':True, 'channel_type' : SampleProcessor.ChannelType.G,   'face_mask_type' : SampleProcessor.FaceMaskType.FULL_FACE, 'face_type':self.face_type,                                                               'data_format':nn.data_format, 'resolution': resolution},
+                                                                        ],
+                                                generators_count=src_generators_count )
+                                                
+            dst_generator = SampleGeneratorFace(training_data_dst_path, debug=self.is_debug(), batch_size=self.get_batch_size(),
+                                                sample_process_options=SampleProcessor.Options(random_flip=True),
+                                                output_sample_types = [ {'sample_type': SampleProcessor.SampleType.FACE_IMAGE,  'warp':False, 'transform':True, 'channel_type' : SampleProcessor.ChannelType.BGR, 'face_type':self.face_type, 'data_format':nn.data_format, 'resolution': resolution},
+                                                                    ],
+                                                generators_count=dst_generators_count,
+                                                raise_on_no_data=False )
+            if not dst_generator.is_initialized():
+                io.log_info(f"\nTo view the model on unseen faces, place any aligned faces in {training_data_dst_path}.\n")
+                
+            self.set_training_data_generators ([src_generator, dst_generator])
+
+    #override
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag107')" href="javascript:;">
+DeepFaceLab-pretrained/models/Model_XSeg/Model.py: 24-132
+</a>
+<div class="mid" id="frag107" style="display:none"><pre>
+    def on_initialize(self):
+        device_config = nn.getCurrentDeviceConfig()
+        self.model_data_format = "NCHW" if len(device_config.devices) != 0 and not self.is_debug() else "NHWC"
+        nn.initialize(data_format=self.model_data_format)
+        tf = nn.tf
+
+        device_config = nn.getCurrentDeviceConfig()
+        devices = device_config.devices
+
+        self.resolution = resolution = 256
+        self.face_type = FaceType.WHOLE_FACE
+        
+        place_model_on_cpu = len(devices) == 0
+        models_opt_device = '/CPU:0' if place_model_on_cpu else '/GPU:0'
+
+        bgr_shape = nn.get4Dshape(resolution,resolution,3)
+        mask_shape = nn.get4Dshape(resolution,resolution,1)
+ 
+        # Initializing model classes
+        self.model = XSegNet(name=f'XSeg', 
+                               resolution=resolution, 
+                               load_weights=not self.is_first_run(),
+                               weights_file_root=self.get_model_root_path(),
+                               training=True,
+                               place_model_on_cpu=place_model_on_cpu,
+                               optimizer=nn.RMSprop(lr=0.0001, lr_dropout=0.3, name='opt'),
+                               data_format=nn.data_format)
+                                 
+        if self.is_training:
+            # Adjust batch size for multiple GPU
+            gpu_count = max(1, len(devices) )
+            bs_per_gpu = max(1, self.get_batch_size() // gpu_count)
+            self.set_batch_size( gpu_count*bs_per_gpu)
+
+
+            # Compute losses per GPU
+            gpu_pred_list = []
+
+            gpu_losses = []
+            gpu_loss_gvs = []
+            
+            for gpu_id in range(gpu_count):
+                with tf.device( f'/GPU:{gpu_id}' if len(devices) != 0 else f'/CPU:0' ):
+
+                    with tf.device(f'/CPU:0'):
+                        # slice on CPU, otherwise all batch data will be transfered to GPU first
+                        batch_slice = slice( gpu_id*bs_per_gpu, (gpu_id+1)*bs_per_gpu )
+                        gpu_input_t       = self.model.input_t [batch_slice,:,:,:]
+                        gpu_target_t      = self.model.target_t [batch_slice,:,:,:]                        
+                        
+                    # process model tensors
+                    gpu_pred_logits_t, gpu_pred_t = self.model.flow(gpu_input_t)                    
+                    gpu_pred_list.append(gpu_pred_t)
+ 
+                    gpu_loss = tf.reduce_mean( tf.nn.sigmoid_cross_entropy_with_logits(labels=gpu_target_t, logits=gpu_pred_logits_t), axis=[1,2,3])
+                    gpu_losses += [gpu_loss]
+
+                    gpu_loss_gvs += [ nn.gradients ( gpu_loss, self.model.get_weights() ) ]
+
+
+            # Average losses and gradients, and create optimizer update ops
+            with tf.device (models_opt_device):
+                pred = nn.concat(gpu_pred_list, 0)                
+                loss = tf.reduce_mean(gpu_losses)
+                
+                loss_gv_op = self.model.opt.get_update_op (nn.average_gv_list (gpu_loss_gvs))
+  
+        
+            # Initializing training and view functions
+            def train(input_np, target_np):
+                l, _ = nn.tf_sess.run ( [loss, loss_gv_op], feed_dict={self.model.input_t :input_np, self.model.target_t :target_np })
+                return l
+            self.train = train
+
+            def view(input_np):
+                return nn.tf_sess.run ( [pred], feed_dict={self.model.input_t :input_np})
+            self.view = view
+
+            # initializing sample generators
+            cpu_count = min(multiprocessing.cpu_count(), 8)
+            src_dst_generators_count = cpu_count // 2
+            src_generators_count = cpu_count // 2
+            dst_generators_count = cpu_count // 2
+            
+            
+            srcdst_generator = SampleGeneratorFaceXSeg([self.training_data_src_path, self.training_data_dst_path],
+                                                        debug=self.is_debug(),
+                                                        batch_size=self.get_batch_size(),
+                                                        resolution=resolution,
+                                                        face_type=self.face_type,
+                                                        generators_count=src_dst_generators_count, 
+                                                        data_format=nn.data_format)
+                                                                                    
+            src_generator = SampleGeneratorFace(self.training_data_src_path, debug=self.is_debug(), batch_size=self.get_batch_size(),
+                                                sample_process_options=SampleProcessor.Options(random_flip=False),
+                                                output_sample_types = [ {'sample_type': SampleProcessor.SampleType.FACE_IMAGE,  'warp':False, 'transform':False, 'channel_type' : SampleProcessor.ChannelType.BGR, 'border_replicate':False, 'face_type':self.face_type, 'data_format':nn.data_format, 'resolution': resolution},
+                                                                      ],
+                                                generators_count=src_generators_count,
+                                                raise_on_no_data=False )                                                     
+            dst_generator = SampleGeneratorFace(self.training_data_dst_path, debug=self.is_debug(), batch_size=self.get_batch_size(),
+                                                sample_process_options=SampleProcessor.Options(random_flip=False),
+                                                output_sample_types = [ {'sample_type': SampleProcessor.SampleType.FACE_IMAGE,  'warp':False, 'transform':False, 'channel_type' : SampleProcessor.ChannelType.BGR, 'border_replicate':False, 'face_type':self.face_type, 'data_format':nn.data_format, 'resolution': resolution},
+                                                                      ],
+                                                generators_count=dst_generators_count,
+                                                raise_on_no_data=False )
+                                                
+            self.set_training_data_generators ([srcdst_generator, src_generator, dst_generator])
+
+    #override
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 2:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 83%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag41')" href="javascript:;">
+DeepFaceLab-pretrained/models/Model_SAEHD/Model.py: 415-424
+</a>
+<div class="mid" id="frag41" style="display:none"><pre>
+                    src_D_src_dst_loss_gv_op = self.D_src_dst_opt.get_update_op (nn.average_gv_list(gpu_D_src_dst_loss_gvs) )
+
+
+            # Initializing training and view functions
+            def src_dst_train(warped_src, target_src, target_srcm_all, \
+                              warped_dst, target_dst, target_dstm_all):
+                s, d, _ = nn.tf_sess.run ( [ src_loss, dst_loss, src_dst_loss_gv_op],
+                                            feed_dict={self.warped_src :warped_src,
+                                                       self.target_src :target_src,
+                                                       self.target_srcm_all:target_srcm_all,
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag96')" href="javascript:;">
+DeepFaceLab-pretrained/models/Model_Quick96/Model.py: 169-180
+</a>
+<div class="mid" id="frag96" style="display:none"><pre>
+            def src_dst_train(warped_src, target_src, target_srcm, \
+                              warped_dst, target_dst, target_dstm):
+                s, d, _ = nn.tf_sess.run ( [ src_loss, dst_loss, src_dst_loss_gv_op],
+                                            feed_dict={self.warped_src :warped_src,
+                                                       self.target_src :target_src,
+                                                       self.target_srcm:target_srcm,
+                                                       self.warped_dst :warped_dst,
+                                                       self.target_dst :target_dst,
+                                                       self.target_dstm:target_dstm,
+                                                       })
+                s = np.mean(s)
+                d = np.mean(d)
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 3:</b> &nbsp; 2 fragments, nominal size 13 lines, similarity 71%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag251')" href="javascript:;">
+DeepFaceLab-pretrained/main.py: 28-42
+</a>
+<div class="mid" id="frag251" style="display:none"><pre>
+    def process_extract(arguments):
+        osex.set_process_lowest_prio()
+        from mainscripts import Extractor
+        Extractor.main( detector                = arguments.detector,
+                        input_path              = Path(arguments.input_dir),
+                        output_path             = Path(arguments.output_dir),
+                        output_debug            = arguments.output_debug,
+                        manual_fix              = arguments.manual_fix,
+                        manual_output_debug_fix = arguments.manual_output_debug_fix,
+                        manual_window_size      = arguments.manual_window_size,
+                        face_type               = arguments.face_type,
+                        cpu_only                = arguments.cpu_only,
+                        force_gpu_idxs          = [ int(x) for x in arguments.force_gpu_idxs.split(',') ] if arguments.force_gpu_idxs is not None else None,
+                      )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag259')" href="javascript:;">
+DeepFaceLab-pretrained/main.py: 211-222
+</a>
+<div class="mid" id="frag259" style="display:none"><pre>
+    def process_videoed_video_from_sequence(arguments):
+        osex.set_process_lowest_prio()
+        from mainscripts import VideoEd
+        VideoEd.video_from_sequence (input_dir      = arguments.input_dir,
+                                     output_file    = arguments.output_file,
+                                     reference_file = arguments.reference_file,
+                                     ext      = arguments.ext,
+                                     fps      = arguments.fps,
+                                     bitrate  = arguments.bitrate,
+                                     include_audio = arguments.include_audio,
+                                     lossless = arguments.lossless)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 4:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 72%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag376')" href="javascript:;">
+DeepFaceLab-pretrained/core/imagelib/filters.py: 41-55
+</a>
+<div class="mid" id="frag376" style="display:none"><pre>
+def apply_random_motion_blur( img, chance, mb_max_size, mask=None, rnd_state=None ):
+    if rnd_state is None:
+        rnd_state = np.random
+    
+    mblur_rnd_kernel = rnd_state.randint(mb_max_size)+1
+    mblur_rnd_deg    = rnd_state.randint(360)
+
+    result = img
+    if rnd_state.randint(100) &lt; np.clip(chance, 0, 100):
+        result = LinearMotionBlur (result, mblur_rnd_kernel, mblur_rnd_deg )
+        if mask is not None:
+            result = img*(1-mask) + result*mask
+        
+    return result
+    
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag377')" href="javascript:;">
+DeepFaceLab-pretrained/core/imagelib/filters.py: 56-69
+</a>
+<div class="mid" id="frag377" style="display:none"><pre>
+def apply_random_gaussian_blur( img, chance, kernel_max_size, mask=None, rnd_state=None ):
+    if rnd_state is None:
+        rnd_state = np.random
+        
+    result = img
+    if rnd_state.randint(100) &lt; np.clip(chance, 0, 100):
+        gblur_rnd_kernel = rnd_state.randint(kernel_max_size)*2+1
+        result = cv2.GaussianBlur(result, (gblur_rnd_kernel,)*2 , 0)
+        if mask is not None:
+            result = img*(1-mask) + result*mask
+            
+    return result
+    
+    
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 5:</b> &nbsp; 2 fragments, nominal size 14 lines, similarity 80%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag467')" href="javascript:;">
+DeepFaceLab-pretrained/core/leras/archis/DeepFakeArchi.py: 332-349
+</a>
+<div class="mid" id="frag467" style="display:none"><pre>
+
+                def forward(self, inp):
+                    z = inp
+
+                    x = self.upscale0(z)
+                    x = self.res0(x)
+                    x = self.upscale1(x)
+                    x = self.res1(x)
+                    x = self.upscale2(x)
+                    x = self.res2(x)
+                    x = self.upscale3(x)
+                    x = self.res3(x)
+
+                    m = self.upscalem0(z)
+                    m = self.upscalem1(m)
+                    m = self.upscalem2(m)
+                    m = self.upscalem3(m)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag485')" href="javascript:;">
+DeepFaceLab-pretrained/core/leras/archis/DeepFakeArchi.py: 468-482
+</a>
+<div class="mid" id="frag485" style="display:none"><pre>
+                    self.out_convm = nn.Conv2D( d_ch//2, 1, kernel_size=1, padding='SAME')
+
+                def forward(self, inp):
+                    z = inp
+                    x = self.upscale1 (z)
+                    x = self.res1     (x)
+                    x = self.upscale2 (x)
+                    x = self.res2     (x)
+                    x = self.upscale3 (x)
+                    x = self.res3     (x)
+
+                    y = self.upscalem1 (z)
+                    y = self.upscalem2 (y)
+                    y = self.upscalem3 (y)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 6:</b> &nbsp; 2 fragments, nominal size 13 lines, similarity 76%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag489')" href="javascript:;">
+DeepFaceLab-pretrained/core/leras/layers/BatchNorm2D.py: 26-41
+</a>
+<div class="mid" id="frag489" style="display:none"><pre>
+    def forward(self, x):
+        if nn.data_format == "NHWC":
+            shape = (1,1,1,self.dim)
+        else:
+            shape = (1,self.dim,1,1)
+
+        weight       = tf.reshape ( self.weight      , shape )
+        bias         = tf.reshape ( self.bias        , shape )
+        running_mean = tf.reshape ( self.running_mean, shape )
+        running_var  = tf.reshape ( self.running_var , shape )
+
+        x = (x - running_mean) / tf.sqrt( running_var + self.eps )
+        x *= weight
+        x += bias
+        return x
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag504')" href="javascript:;">
+DeepFaceLab-pretrained/core/leras/layers/InstanceNorm2D.py: 22-39
+</a>
+<div class="mid" id="frag504" style="display:none"><pre>
+    def forward(self, x):
+        if nn.data_format == "NHWC":
+            shape = (1,1,1,self.in_ch)
+        else:
+            shape = (1,self.in_ch,1,1)
+
+        weight       = tf.reshape ( self.weight      , shape )
+        bias         = tf.reshape ( self.bias        , shape )
+
+        x_mean = tf.reduce_mean(x, axis=nn.conv2d_spatial_axes, keepdims=True )
+        x_std  = tf.math.reduce_std(x, axis=nn.conv2d_spatial_axes, keepdims=True ) + 1e-5
+
+        x = (x - x_mean) / x_std
+        x *= weight
+        x += bias
+
+        return x
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 7:</b> &nbsp; 3 fragments, nominal size 34 lines, similarity 71%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag562')" href="javascript:;">
+DeepFaceLab-pretrained/core/interact/interact.py: 215-255
+</a>
+<div class="mid" id="frag562" style="display:none"><pre>
+    def input_number(self, s, default_value, valid_list=None, show_default_value=True, add_info=None, help_message=None):
+        if show_default_value and default_value is not None:
+            s = f"[{default_value}] {s}"
+
+        if add_info is not None or \
+           help_message is not None:
+            s += " ("
+
+        if add_info is not None:
+            s += f" {add_info}"
+        if help_message is not None:
+            s += " ?:help"
+
+        if add_info is not None or \
+           help_message is not None:
+            s += " )"
+
+        s += " : "
+
+        while True:
+            try:
+                inp = input(s)
+                if len(inp) == 0:
+                    result = default_value
+                    break
+
+                if help_message is not None and inp == '?':
+                    print (help_message)
+                    continue
+
+                i = float(inp)
+                if (valid_list is not None) and (i not in valid_list):
+                    result = default_value
+                    break
+                result = i
+                break
+            except:
+                result = default_value
+                break
+
+        print(result)
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag563')" href="javascript:;">
+DeepFaceLab-pretrained/core/interact/interact.py: 256-297
+</a>
+<div class="mid" id="frag563" style="display:none"><pre>
+        return result
+
+    def input_int(self, s, default_value, valid_list=None, add_info=None, show_default_value=True, help_message=None):
+        if show_default_value:
+            if len(s) != 0:
+                s = f"[{default_value}] {s}"
+            else:
+                s = f"[{default_value}]"
+
+        if add_info is not None or \
+           help_message is not None:
+            s += " ("
+
+        if add_info is not None:
+            s += f" {add_info}"
+        if help_message is not None:
+            s += " ?:help"
+
+        if add_info is not None or \
+           help_message is not None:
+            s += " )"
+
+        s += " : "
+
+        while True:
+            try:
+                inp = input(s)
+                if len(inp) == 0:
+                    raise ValueError("")
+
+                if help_message is not None and inp == '?':
+                    print (help_message)
+                    continue
+
+                i = int(inp)
+                if (valid_list is not None) and (i not in valid_list):
+                    result = default_value
+                    break
+                result = i
+                break
+            except:
+                result = default_value
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag565')" href="javascript:;">
+DeepFaceLab-pretrained/core/interact/interact.py: 320-371
+</a>
+<div class="mid" id="frag565" style="display:none"><pre>
+            except:
+                print ( "y" if default_value else "n" )
+                return default_value
+
+    def input_str(self, s, default_value=None, valid_list=None, show_default_value=True, help_message=None):
+        if show_default_value and default_value is not None:
+            s = f"[{default_value}] {s}"
+
+        if valid_list is not None or \
+           help_message is not None:
+            s += " ("
+
+        if valid_list is not None:
+            s += " " + "/".join(valid_list)
+
+        if help_message is not None:
+            s += " ?:help"
+
+        if valid_list is not None or \
+           help_message is not None:
+            s += " )"
+
+        s += " : "
+
+
+        while True:
+            try:
+                inp = input(s)
+
+                if len(inp) == 0:
+                    if default_value is None:
+                        print("")
+                        return None
+                    result = default_value
+                    break
+
+                if help_message is not None and inp == '?':
+                    print(help_message)
+                    continue
+
+                if valid_list is not None:
+                    if inp.lower() in valid_list:
+                        result = inp.lower()
+                        break
+                    if inp in valid_list:
+                        result = inp
+                        break
+                    continue
+
+                result = inp
+                break
+            except:
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<script language="JavaScript">
+function ShowHide(divId) { 
+    if(document.getElementById(divId).style.display == 'none') {
+        document.getElementById(divId).style.display='block';
+    } else { 
+        document.getElementById(divId).style.display = 'none';
+    } 
+}
+</script>
+</body>
+</html>

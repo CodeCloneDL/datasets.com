@@ -1,0 +1,166 @@
+<clones>
+<systeminfo processor="nicad6" system="sanic-21.12.1" granularity="functions-blind" threshold="0%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="615" npairs="5"/>
+<runinfo ncompares="602" cputime="41638"/>
+<classinfo nclasses="3"/>
+
+<class classid="1" nclones="2" nlines="15" similarity="100">
+<source file="systems/sanic-21.12.1/tests/test_keep_alive_timeout.py" startline="97" endline="118" pcid="237">
+def test_keep_alive_client_timeout():
+    """If the server keep-alive timeout is longer than the client
+    keep-alive timeout, client will try to create a new connection here."""
+    port = get_port()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    client = ReusableClient(
+        keep_alive_app_client_timeout, loop=loop, port=port
+    )
+    with client:
+        headers = {"Connection": "keep-alive"}
+        request, response = client.get("/1", headers=headers, timeout=1)
+
+        assert response.status == 200
+        assert response.text == "OK"
+        assert request.protocol.state["requests_count"] == 1
+
+        loop.run_until_complete(aio_sleep(2))
+        request, response = client.get("/1", timeout=1)
+        assert request.protocol.state["requests_count"] == 1
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_keep_alive_timeout.py" startline="123" endline="147" pcid="238">
+def test_keep_alive_server_timeout():
+    """If the client keep-alive timeout is longer than the server
+    keep-alive timeout, the client will either a 'Connection reset' error
+    _or_ a new connection. Depending on how the event-loop handles the
+    broken server connection."""
+    port = get_port()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    client = ReusableClient(
+        keep_alive_app_server_timeout, loop=loop, port=port
+    )
+    with client:
+        headers = {"Connection": "keep-alive"}
+        request, response = client.get("/1", headers=headers, timeout=60)
+
+        assert response.status == 200
+        assert response.text == "OK"
+        assert request.protocol.state["requests_count"] == 1
+
+        loop.run_until_complete(aio_sleep(3))
+        request, response = client.get("/1", timeout=60)
+
+        assert request.protocol.state["requests_count"] == 1
+
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="14" similarity="100">
+<source file="systems/sanic-21.12.1/tests/test_named_routes.py" startline="247" endline="265" pcid="304">
+def test_dynamic_named_route_regex():
+    app = Sanic("app")
+
+    @app.route("/folder/<folder_id:[A-Za-z0-9]{0,4}>", name="route_re")
+    async def handler(request, folder_id):
+        return text("OK")
+
+    route = app.router.routes_all[
+        (
+            "folder",
+            "<folder_id:[A-Za-z0-9]{0,4}>",
+        )
+    ]
+    assert route.name == "app.route_re"
+    assert app.url_for("route_re", folder_id="test") == "/folder/test"
+    with pytest.raises(URLBuildError):
+        app.url_for("handler")
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_named_routes.py" startline="266" endline="284" pcid="306">
+def test_dynamic_named_route_path():
+    app = Sanic("app")
+
+    @app.route("/<path:path>/info", name="route_dynamic_path")
+    async def handler(request, path):
+        return text("OK")
+
+    route = app.router.routes_all[
+        (
+            "<path:path>",
+            "info",
+        )
+    ]
+    assert route.name == "app.route_dynamic_path"
+    assert app.url_for("route_dynamic_path", path="path/1") == "/path/1/info"
+    with pytest.raises(URLBuildError):
+        app.url_for("handler")
+
+
+</source>
+</class>
+
+<class classid="3" nclones="3" nlines="13" similarity="100">
+<source file="systems/sanic-21.12.1/tests/test_static.py" startline="301" endline="317" pcid="527">
+def test_static_content_range_invalid_unit(
+    app, file_name, static_file_directory
+):
+    app.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+
+    unit = "bit"
+    headers = {"Range": f"{unit}=1-0"}
+    request, response = app.test_client.get("/testing.file", headers=headers)
+
+    assert response.status == 416
+    assert f"{unit} is not a valid Range Type" in response.text
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_static.py" startline="319" endline="335" pcid="528">
+def test_static_content_range_invalid_start(
+    app, file_name, static_file_directory
+):
+    app.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+
+    start = "start"
+    headers = {"Range": f"bytes={start}-0"}
+    request, response = app.test_client.get("/testing.file", headers=headers)
+
+    assert response.status == 416
+    assert f"'{start}' is invalid for Content Range" in response.text
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_static.py" startline="337" endline="353" pcid="529">
+def test_static_content_range_invalid_end(
+    app, file_name, static_file_directory
+):
+    app.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+
+    end = "end"
+    headers = {"Range": f"bytes=1-{end}"}
+    request, response = app.test_client.get("/testing.file", headers=headers)
+
+    assert response.status == 416
+    assert f"'{end}' is invalid for Content Range" in response.text
+
+
+</source>
+</class>
+
+</clones>

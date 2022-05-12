@@ -1,0 +1,1601 @@
+<html>
+<head>
+    <title>NiCad6 Clone Report</title>
+    <style type="text/css">
+        body {font-family:sans-serif;}
+        table {background-color:white; border:0px; padding:0px; border-spacing:4px; width:auto; margin-left:30px; margin-right:auto;}
+        td {background-color:rgba(192,212,238,0.8); border:0px; padding:8px; width:auto; vertical-align:top; border-radius:8px}
+        pre {background-color:white; padding:4px;}
+        a {color:darkblue;}
+    </style>
+</head>
+<body>
+<h2>NiCad6 Clone Report</h2>
+<table>
+<tr style="font-size:14pt">
+<td><b>System:</b> &nbsp; raster-vision-0.12.0</td>
+<td><b>Clone pairs:</b> &nbsp; 50</td>
+<td><b>Clone classes:</b> &nbsp; 19</td>
+</tr>
+<tr style="font-size:12pt">
+<td style="background-color:white">Clone type: &nbsp; 3-2</td>
+<td style="background-color:white">Granularity: &nbsp; functions-blind</td>
+<td style="background-color:white">Max diff threshold: &nbsp; 30%</td>
+<td style="background-color:white">Clone size: &nbsp; 10 - 2500 lines</td>
+<td style="background-color:white">Total functions-blind: &nbsp; 939</td>
+</tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 1:</b> &nbsp; 2 fragments, nominal size 56 lines, similarity 70%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag28')" href="javascript:;">
+raster-vision-0.12.0/rastervision_pytorch_backend/rastervision/pytorch_backend/examples/object_detection/xview.py: 15-76
+</a>
+<div class="mid" id="frag28" style="display:none"><pre>
+def get_config(runner, raw_uri, processed_uri, root_uri, test=False):
+    train_scene_info = get_scene_info(join(processed_uri, 'train-scenes.csv'))
+    val_scene_info = get_scene_info(join(processed_uri, 'val-scenes.csv'))
+    if test:
+        train_scene_info = train_scene_info[0:1]
+        val_scene_info = val_scene_info[0:1]
+
+    def make_scene(scene_info):
+        (raster_uri, label_uri) = scene_info
+        raster_uri = join(raw_uri, raster_uri)
+        label_uri = join(processed_uri, label_uri)
+
+        if test:
+            crop_uri = join(processed_uri, 'crops',
+                            os.path.basename(raster_uri))
+            save_image_crop(raster_uri, crop_uri, size=600, min_features=5)
+            raster_uri = crop_uri
+
+        id = os.path.splitext(os.path.basename(raster_uri))[0]
+
+        raster_source = RasterioSourceConfig(
+            uris=[raster_uri], channel_order=[0, 1, 2])
+
+        label_source = ObjectDetectionLabelSourceConfig(
+            vector_source=GeoJSONVectorSourceConfig(
+                uri=label_uri, default_class_id=0, ignore_crs_field=True))
+
+        return SceneConfig(
+            id=id, raster_source=raster_source, label_source=label_source)
+
+    train_scenes = [make_scene(info) for info in train_scene_info]
+    val_scenes = [make_scene(info) for info in val_scene_info]
+    class_config = ClassConfig(names=['vehicle'], colors=['red'])
+    chip_sz = 300
+    dataset = DatasetConfig(
+        class_config=class_config,
+        train_scenes=train_scenes,
+        validation_scenes=val_scenes)
+    chip_options = ObjectDetectionChipOptions(neg_ratio=1.0, ioa_thresh=0.8)
+    predict_options = ObjectDetectionPredictOptions(
+        merge_thresh=0.1, score_thresh=0.5)
+
+    backend = PyTorchObjectDetectionConfig(
+        model=ObjectDetectionModelConfig(backbone=Backbone.resnet50),
+        solver=SolverConfig(
+            lr=1e-4,
+            num_epochs=10,
+            test_num_epochs=2,
+            batch_sz=16,
+            one_cycle=True),
+        log_tensorboard=True,
+        run_tensorboard=False,
+        test_mode=test)
+
+    return ObjectDetectionConfig(
+        root_uri=root_uri,
+        dataset=dataset,
+        backend=backend,
+        train_chip_sz=chip_sz,
+        predict_chip_sz=chip_sz,
+        chip_options=chip_options,
+        predict_options=predict_options)
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag34')" href="javascript:;">
+raster-vision-0.12.0/rastervision_pytorch_backend/rastervision/pytorch_backend/examples/object_detection/cowc_potsdam.py: 15-82
+</a>
+<div class="mid" id="frag34" style="display:none"><pre>
+def get_config(runner, raw_uri, processed_uri, root_uri, test=False):
+    train_ids = [
+        '2_10', '2_11', '2_12', '2_14', '3_11', '3_13', '4_10', '5_10', '6_7',
+        '6_9'
+    ]
+    val_ids = ['2_13', '6_8', '3_10']
+
+    if test:
+        train_ids = train_ids[0:1]
+        val_ids = val_ids[0:1]
+
+    def make_scene(id):
+        raster_uri = join(raw_uri,
+                          '4_Ortho_RGBIR/top_potsdam_{}_RGBIR.tif'.format(id))
+        label_uri = join(processed_uri, 'labels', 'all',
+                         'top_potsdam_{}_RGBIR.json'.format(id))
+
+        if test:
+            crop_uri = join(processed_uri, 'crops',
+                            os.path.basename(raster_uri))
+            save_image_crop(
+                raster_uri,
+                crop_uri,
+                label_uri=label_uri,
+                size=1000,
+                min_features=5)
+            raster_uri = crop_uri
+
+        raster_source = RasterioSourceConfig(
+            uris=[raster_uri], channel_order=[0, 1, 2])
+
+        label_source = ObjectDetectionLabelSourceConfig(
+            vector_source=GeoJSONVectorSourceConfig(
+                uri=label_uri, default_class_id=0, ignore_crs_field=True))
+
+        return SceneConfig(
+            id=id, raster_source=raster_source, label_source=label_source)
+
+    class_config = ClassConfig(names=['vehicle'])
+    chip_sz = 300
+    dataset = DatasetConfig(
+        class_config=class_config,
+        train_scenes=[make_scene(id) for id in train_ids],
+        validation_scenes=[make_scene(id) for id in val_ids])
+    chip_options = ObjectDetectionChipOptions(neg_ratio=5.0, ioa_thresh=0.9)
+    predict_options = ObjectDetectionPredictOptions(
+        merge_thresh=0.5, score_thresh=0.9)
+
+    backend = PyTorchObjectDetectionConfig(
+        model=ObjectDetectionModelConfig(backbone=Backbone.resnet18),
+        solver=SolverConfig(
+            lr=1e-4,
+            num_epochs=10,
+            test_num_epochs=2,
+            batch_sz=16,
+            one_cycle=True),
+        log_tensorboard=True,
+        run_tensorboard=False,
+        test_mode=test)
+
+    return ObjectDetectionConfig(
+        root_uri=root_uri,
+        dataset=dataset,
+        backend=backend,
+        train_chip_sz=chip_sz,
+        predict_chip_sz=chip_sz,
+        chip_options=chip_options,
+        predict_options=predict_options)
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 2:</b> &nbsp; 2 fragments, nominal size 16 lines, similarity 93%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag135')" href="javascript:;">
+raster-vision-0.12.0/rastervision_pytorch_learner/rastervision/pytorch_learner/examples/classification.py: 11-27
+</a>
+<div class="mid" id="frag135" style="display:none"><pre>
+def get_config(runner, test=False):
+    base_uri = ('s3://raster-vision-lf-dev/learner/classification'
+                if runner == AWS_BATCH else '/opt/data/learner/classification')
+    root_uri = join(base_uri, 'output')
+    data_uri = join(base_uri, 'tiny-buildings.zip')
+
+    model = ModelConfig(backbone='resnet50')
+    solver = SolverConfig(lr=2e-4, num_epochs=3, batch_sz=8, one_cycle=True)
+    data = ClassificationDataConfig(
+        data_format='image_folder',
+        uri=data_uri,
+        img_sz=200,
+        labels=['building', 'no_building'])
+    learner = ClassificationLearnerConfig(
+        model=model, solver=solver, data=data, test_mode=test)
+    pipeline = LearnerPipelineConfig(root_uri=root_uri, learner=learner)
+    return pipeline
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag136')" href="javascript:;">
+raster-vision-0.12.0/rastervision_pytorch_learner/rastervision/pytorch_learner/examples/regression.py: 10-27
+</a>
+<div class="mid" id="frag136" style="display:none"><pre>
+def get_config(runner, test=False):
+    base_uri = ('s3://raster-vision-lf-dev/learner/regression'
+                if runner == AWS_BATCH else '/opt/data/learner/regression')
+    root_uri = join(base_uri, 'output')
+    data_uri = join(base_uri, 'tiny-buildings.zip')
+
+    model = RegressionModelConfig(backbone='resnet50')
+    solver = SolverConfig(lr=1e-4, num_epochs=10, batch_sz=8, one_cycle=True)
+    data = RegressionDataConfig(
+        data_format='image_csv',
+        uri=data_uri,
+        img_sz=200,
+        labels=['has_buildings'])
+    learner = RegressionLearnerConfig(
+        model=model, solver=solver, data=data, test_mode=test)
+
+    pipeline = LearnerPipelineConfig(root_uri=root_uri, learner=learner)
+    return pipeline
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 3:</b> &nbsp; 2 fragments, nominal size 33 lines, similarity 76%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag138')" href="javascript:;">
+raster-vision-0.12.0/rastervision_pytorch_learner/rastervision/pytorch_learner/classification_learner.py: 32-71
+</a>
+<div class="mid" id="frag138" style="display:none"><pre>
+    def _get_datasets(self, uri):
+        cfg = self.cfg
+        class_names = cfg.data.class_names
+
+        if cfg.data.data_format == ClassificationDataFormat.image_folder:
+            data_dirs = self.unzip_data(uri)
+
+        transform, aug_transform = self.get_data_transforms()
+
+        train_ds, valid_ds, test_ds = [], [], []
+        for data_dir in data_dirs:
+            train_dir = join(data_dir, 'train')
+            valid_dir = join(data_dir, 'valid')
+
+            if isdir(train_dir):
+                if cfg.overfit_mode:
+                    train_ds.append(
+                        AlbumentationsDataset(
+                            ImageFolder(train_dir, classes=class_names),
+                            transform=transform))
+                else:
+                    train_ds.append(
+                        AlbumentationsDataset(
+                            ImageFolder(train_dir, classes=class_names),
+                            transform=aug_transform))
+
+            if isdir(valid_dir):
+                valid_ds.append(
+                    AlbumentationsDataset(
+                        ImageFolder(valid_dir, classes=class_names),
+                        transform=transform))
+                test_ds.append(
+                    AlbumentationsDataset(
+                        ImageFolder(valid_dir, classes=class_names),
+                        transform=transform))
+
+        train_ds, valid_ds, test_ds = \
+            ConcatDataset(train_ds), ConcatDataset(valid_ds), ConcatDataset(test_ds)
+
+        return train_ds, valid_ds, test_ds
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag183')" href="javascript:;">
+raster-vision-0.12.0/rastervision_pytorch_learner/rastervision/pytorch_learner/regression_learner.py: 86-125
+</a>
+<div class="mid" id="frag183" style="display:none"><pre>
+    def _get_datasets(self, uri):
+        cfg = self.cfg
+        data_dirs = self.unzip_data(uri)
+        transform, aug_transform = self.get_data_transforms()
+
+        train_ds, valid_ds, test_ds = [], [], []
+        for data_dir in data_dirs:
+            train_dir = join(data_dir, 'train')
+            valid_dir = join(data_dir, 'valid')
+
+            if isdir(train_dir):
+                if cfg.overfit_mode:
+                    train_ds.append(
+                        AlbumentationsDataset(
+                            ImageRegressionDataset(train_dir,
+                                                   cfg.data.class_names),
+                            transform=transform))
+                else:
+                    train_ds.append(
+                        AlbumentationsDataset(
+                            ImageRegressionDataset(train_dir,
+                                                   cfg.data.class_names),
+                            transform=aug_transform))
+
+            if isdir(valid_dir):
+                valid_ds.append(
+                    AlbumentationsDataset(
+                        ImageRegressionDataset(valid_dir,
+                                               cfg.data.class_names),
+                        transform=transform))
+                test_ds.append(
+                    AlbumentationsDataset(
+                        ImageRegressionDataset(valid_dir,
+                                               cfg.data.class_names),
+                        transform=transform))
+
+        train_ds, valid_ds, test_ds = \
+            ConcatDataset(train_ds), ConcatDataset(valid_ds), ConcatDataset(test_ds)
+
+        return train_ds, valid_ds, test_ds
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 4:</b> &nbsp; 2 fragments, nominal size 15 lines, similarity 93%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag206')" href="javascript:;">
+raster-vision-0.12.0/tests/pytorch_learner/test_utils.py: 28-44
+</a>
+<div class="mid" id="frag206" style="display:none"><pre>
+    def test1(self):
+        label_names = ['a', 'b']
+        conf_mat = torch.tensor([[2., 0], [0, 2]])
+        metrics = compute_conf_mat_metrics(conf_mat, label_names)
+        exp_metrics = {
+            'avg_precision': 1.0,
+            'avg_recall': 1.0,
+            'avg_f1': 1.0,
+            'a_precision': 1.0,
+            'a_recall': 1.0,
+            'a_f1': 1.0,
+            'b_precision': 1.0,
+            'b_recall': 1.0,
+            'b_f1': 1.0
+        }
+        self.assertDictEqual(metrics, exp_metrics)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag207')" href="javascript:;">
+raster-vision-0.12.0/tests/pytorch_learner/test_utils.py: 45-61
+</a>
+<div class="mid" id="frag207" style="display:none"><pre>
+    def test2(self):
+        label_names = ['a', 'b']
+        conf_mat = torch.tensor([[0, 2.], [2, 0]])
+        metrics = compute_conf_mat_metrics(conf_mat, label_names)
+        exp_metrics = {
+            'avg_precision': 0.0,
+            'avg_recall': 0.0,
+            'avg_f1': 0.0,
+            'a_precision': 0.0,
+            'a_recall': 0.0,
+            'a_f1': 0.0,
+            'b_precision': 0.0,
+            'b_recall': 0.0,
+            'b_f1': 0.0
+        }
+        self.assertDictEqual(metrics, exp_metrics)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 5:</b> &nbsp; 3 fragments, nominal size 11 lines, similarity 81%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag226')" href="javascript:;">
+raster-vision-0.12.0/tests/pipeline/test_file_system.py: 136-150
+</a>
+<div class="mid" id="frag226" style="display:none"><pre>
+    def setUp(self):
+        # Setup mock S3 bucket.
+        self.mock_s3 = mock_s3()
+        self.mock_s3.start()
+        self.s3 = boto3.client('s3')
+        self.bucket_name = 'mock_bucket'
+        self.s3.create_bucket(Bucket=self.bucket_name)
+
+        self.content_str = 'hello'
+        self.file_name = 'hello.txt'
+        self.s3_path = 's3://{}/{}'.format(self.bucket_name, self.file_name)
+
+        self.tmp_dir = rv_config.get_tmp_dir()
+        self.local_path = os.path.join(self.tmp_dir.name, self.file_name)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag260')" href="javascript:;">
+raster-vision-0.12.0/tests/pipeline/test_file_system.py: 459-471
+</a>
+<div class="mid" id="frag260" style="display:none"><pre>
+    def setUp(self):
+        # Setup mock S3 bucket.
+        self.mock_s3 = mock_s3()
+        self.mock_s3.start()
+        self.s3 = boto3.client('s3')
+        self.bucket_name = 'mock_bucket'
+        self.s3.create_bucket(Bucket=self.bucket_name)
+
+        self.content_str = 'hello'
+        self.file_name = 'hello.txt'
+        self.tmp_dir = rv_config.get_tmp_dir()
+        self.cache_dir = os.path.join(self.tmp_dir.name, 'cache')
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag230')" href="javascript:;">
+raster-vision-0.12.0/tests/pipeline/test_file_system.py: 181-195
+</a>
+<div class="mid" id="frag230" style="display:none"><pre>
+    def setUp(self):
+        # Setup mock S3 bucket.
+        self.mock_s3 = mock_s3()
+        self.mock_s3.start()
+        self.s3 = boto3.client('s3')
+        self.bucket_name = 'mock_bucket'
+        self.s3.create_bucket(Bucket=self.bucket_name)
+
+        self.content_str = 'hello'
+        self.file_name = 'hello.txt'
+        self.s3_path = 's3://{}/{}'.format(self.bucket_name, self.file_name)
+
+        self.tmp_dir = rv_config.get_tmp_dir()
+        self.local_path = os.path.join(self.tmp_dir.name, self.file_name)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 6:</b> &nbsp; 3 fragments, nominal size 10 lines, similarity 70%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag236')" href="javascript:;">
+raster-vision-0.12.0/tests/pipeline/test_file_system.py: 242-255
+</a>
+<div class="mid" id="frag236" style="display:none"><pre>
+    def test_last_modified_s3(self):
+        path = os.path.join(self.tmp_dir.name, 'lorem', 'ipsum1.txt')
+        s3_path = 's3://{}/lorem1.txt'.format(self.bucket_name)
+        directory = os.path.dirname(path)
+        make_dir(directory, check_empty=False)
+
+        fs = FileSystem.get_file_system(s3_path, 'r')
+
+        str_to_file(self.lorem, path)
+        upload_or_copy(path, s3_path)
+        stamp = fs.last_modified(s3_path)
+
+        self.assertTrue(isinstance(stamp, datetime.datetime))
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag237')" href="javascript:;">
+raster-vision-0.12.0/tests/pipeline/test_file_system.py: 256-268
+</a>
+<div class="mid" id="frag237" style="display:none"><pre>
+    def test_list_paths_s3(self):
+        path = os.path.join(self.tmp_dir.name, 'lorem', 'ipsum.txt')
+        s3_path = 's3://{}/xxx/lorem.txt'.format(self.bucket_name)
+        s3_directory = 's3://{}/xxx/'.format(self.bucket_name)
+        directory = os.path.dirname(path)
+        make_dir(directory, check_empty=False)
+
+        str_to_file(self.lorem, path)
+        upload_or_copy(path, s3_path)
+
+        list_paths(s3_directory)
+        self.assertEqual(len(list_paths(s3_directory)), 1)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag246')" href="javascript:;">
+raster-vision-0.12.0/tests/pipeline/test_file_system.py: 350-362
+</a>
+<div class="mid" id="frag246" style="display:none"><pre>
+    def test_copy_to_local(self):
+        path1 = os.path.join(self.tmp_dir.name, 'lorem', 'ipsum.txt')
+        path2 = os.path.join(self.tmp_dir.name, 'yyy', 'ipsum.txt')
+        dir1 = os.path.dirname(path1)
+        dir2 = os.path.dirname(path2)
+        make_dir(dir1, check_empty=False)
+        make_dir(dir2, check_empty=False)
+
+        str_to_file(self.lorem, path1)
+
+        upload_or_copy(path1, path2)
+        self.assertEqual(len(list_paths(dir2)), 1)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 7:</b> &nbsp; 2 fragments, nominal size 10 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag243')" href="javascript:;">
+raster-vision-0.12.0/tests/pipeline/test_file_system.py: 313-325
+</a>
+<div class="mid" id="frag243" style="display:none"><pre>
+    def test_sync_from_dir_local(self):
+        path = os.path.join(self.tmp_dir.name, 'lorem', 'ipsum.txt')
+        src = os.path.dirname(path)
+        dst = os.path.join(self.tmp_dir.name, 'xxx')
+        make_dir(src, check_empty=False)
+        make_dir(dst, check_empty=False)
+
+        fs = FileSystem.get_file_system(path, 'r')
+        fs.write_bytes(path, bytes([0x00, 0x01]))
+        sync_from_dir(src, dst, delete=True)
+
+        self.assertEqual(len(list_paths(dst)), 1)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag245')" href="javascript:;">
+raster-vision-0.12.0/tests/pipeline/test_file_system.py: 337-349
+</a>
+<div class="mid" id="frag245" style="display:none"><pre>
+    def test_sync_to_dir_local(self):
+        path = os.path.join(self.tmp_dir.name, 'lorem', 'ipsum.txt')
+        src = os.path.dirname(path)
+        dst = os.path.join(self.tmp_dir.name, 'xxx')
+        make_dir(src, check_empty=False)
+        make_dir(dst, check_empty=False)
+
+        fs = FileSystem.get_file_system(path, 'r')
+        fs.write_bytes(path, bytes([0x00, 0x01]))
+        sync_to_dir(src, dst, delete=True)
+
+        self.assertEqual(len(list_paths(dst)), 1)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 8:</b> &nbsp; 2 fragments, nominal size 12 lines, similarity 83%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag265')" href="javascript:;">
+raster-vision-0.12.0/tests/core/data/label_source/test_semantic_segmentation_label_source.py: 11-22
+</a>
+<div class="mid" id="frag265" style="display:none"><pre>
+    def test_enough_target_pixels_true(self):
+        data = np.zeros((10, 10, 1), dtype=np.uint8)
+        data[4:, 4:, :] = 1
+        null_class_id = 2
+        raster_source = MockRasterSource([0], 1)
+        raster_source.set_raster(data)
+        label_source = SemanticSegmentationLabelSource(raster_source,
+                                                       null_class_id)
+        with label_source.activate():
+            extent = Box(0, 0, 10, 10)
+            self.assertTrue(label_source.enough_target_pixels(extent, 30, [1]))
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag266')" href="javascript:;">
+raster-vision-0.12.0/tests/core/data/label_source/test_semantic_segmentation_label_source.py: 23-35
+</a>
+<div class="mid" id="frag266" style="display:none"><pre>
+    def test_enough_target_pixels_false(self):
+        data = np.zeros((10, 10, 1), dtype=np.uint8)
+        data[7:, 7:, :] = 1
+        null_class_id = 2
+        raster_source = MockRasterSource([0], 1)
+        raster_source.set_raster(data)
+        label_source = SemanticSegmentationLabelSource(raster_source,
+                                                       null_class_id)
+        with label_source.activate():
+            extent = Box(0, 0, 10, 10)
+            self.assertFalse(
+                label_source.enough_target_pixels(extent, 30, [1]))
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 9:</b> &nbsp; 2 fragments, nominal size 15 lines, similarity 86%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag267')" href="javascript:;">
+raster-vision-0.12.0/tests/core/data/label_source/test_semantic_segmentation_label_source.py: 36-50
+</a>
+<div class="mid" id="frag267" style="display:none"><pre>
+    def test_get_labels(self):
+        data = np.zeros((10, 10, 1), dtype=np.uint8)
+        data[7:, 7:, 0] = 1
+        null_class_id = 2
+        raster_source = MockRasterSource([0], 1)
+        raster_source.set_raster(data)
+        label_source = SemanticSegmentationLabelSource(raster_source,
+                                                       null_class_id)
+        with label_source.activate():
+            window = Box.make_square(7, 7, 3)
+            labels = label_source.get_labels(window=window)
+            label_arr = labels.get_label_arr(window)
+            expected_label_arr = np.ones((3, 3))
+            np.testing.assert_array_equal(label_arr, expected_label_arr)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag268')" href="javascript:;">
+raster-vision-0.12.0/tests/core/data/label_source/test_semantic_segmentation_label_source.py: 51-66
+</a>
+<div class="mid" id="frag268" style="display:none"><pre>
+    def test_get_labels_off_edge(self):
+        data = np.zeros((10, 10, 1), dtype=np.uint8)
+        data[7:, 7:, 0] = 1
+        null_class_id = 2
+        raster_source = MockRasterSource([0], 1)
+        raster_source.set_raster(data)
+        label_source = SemanticSegmentationLabelSource(raster_source,
+                                                       null_class_id)
+        with label_source.activate():
+            window = Box.make_square(7, 7, 6)
+            labels = label_source.get_labels(window=window)
+            label_arr = labels.get_label_arr(window)
+            expected_label_arr = np.full((6, 6), 2)
+            expected_label_arr[0:3, 0:3] = 1
+            np.testing.assert_array_equal(label_arr, expected_label_arr)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 10:</b> &nbsp; 8 fragments, nominal size 10 lines, similarity 90%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag272')" href="javascript:;">
+raster-vision-0.12.0/tests/core/data/label_source/test_chip_classification_label_source.py: 75-87
+</a>
+<div class="mid" id="frag272" style="display:none"><pre>
+    def test_infer_cell1(self):
+        # More of box 1 is in cell.
+        cell = Box.make_square(0, 0, 3)
+        ioa_thresh = 0.5
+        use_intersection_over_cell = False
+        background_class_id = None
+        pick_min_class_id = False
+
+        class_id = infer_cell(cell, self.str_tree, ioa_thresh,
+                              use_intersection_over_cell, background_class_id,
+                              pick_min_class_id)
+        self.assertEqual(class_id, self.class_id1)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag276')" href="javascript:;">
+raster-vision-0.12.0/tests/core/data/label_source/test_chip_classification_label_source.py: 128-141
+</a>
+<div class="mid" id="frag276" style="display:none"><pre>
+    def test_infer_cell5(self):
+        # More of box1 in cell, using intersection_over_cell with the
+        # IOA high enough.
+        cell = Box.make_square(0, 0, 3)
+        ioa_thresh = 0.4
+        use_intersection_over_cell = True
+        background_class_id = None
+        pick_min_class_id = False
+
+        class_id = infer_cell(cell, self.str_tree, ioa_thresh,
+                              use_intersection_over_cell, background_class_id,
+                              pick_min_class_id)
+        self.assertEqual(class_id, self.class_id1)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag275')" href="javascript:;">
+raster-vision-0.12.0/tests/core/data/label_source/test_chip_classification_label_source.py: 114-127
+</a>
+<div class="mid" id="frag275" style="display:none"><pre>
+    def test_infer_cell4(self):
+        # Both boxes inside cell, but using intersection_over_cell,
+        # the IOA isn't high enough.
+        cell = Box.make_square(0, 0, 10)
+        ioa_thresh = 0.5
+        use_intersection_over_cell = True
+        background_class_id = None
+        pick_min_class_id = False
+
+        class_id = infer_cell(cell, self.str_tree, ioa_thresh,
+                              use_intersection_over_cell, background_class_id,
+                              pick_min_class_id)
+        self.assertEqual(class_id, None)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag277')" href="javascript:;">
+raster-vision-0.12.0/tests/core/data/label_source/test_chip_classification_label_source.py: 142-154
+</a>
+<div class="mid" id="frag277" style="display:none"><pre>
+    def test_infer_cell6(self):
+        # No boxes overlap enough, use background_class_id
+        cell = Box.make_square(0, 0, 10)
+        ioa_thresh = 0.5
+        use_intersection_over_cell = True
+        background_class_id = self.background_class_id
+        pick_min_class_id = False
+
+        class_id = infer_cell(cell, self.str_tree, ioa_thresh,
+                              use_intersection_over_cell, background_class_id,
+                              pick_min_class_id)
+        self.assertEqual(class_id, self.background_class_id)
+
+</pre></div>
+</td>
+</tr><tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag274')" href="javascript:;">
+raster-vision-0.12.0/tests/core/data/label_source/test_chip_classification_label_source.py: 101-113
+</a>
+<div class="mid" id="frag274" style="display:none"><pre>
+    def test_infer_cell3(self):
+        # Only box 2 is in cell, but IOA isn't high enough.
+        cell = Box.make_square(3, 3, 3)
+        ioa_thresh = 0.5
+        use_intersection_over_cell = False
+        background_class_id = None
+        pick_min_class_id = False
+
+        class_id = infer_cell(cell, self.str_tree, ioa_thresh,
+                              use_intersection_over_cell, background_class_id,
+                              pick_min_class_id)
+        self.assertEqual(class_id, None)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag273')" href="javascript:;">
+raster-vision-0.12.0/tests/core/data/label_source/test_chip_classification_label_source.py: 88-100
+</a>
+<div class="mid" id="frag273" style="display:none"><pre>
+    def test_infer_cell2(self):
+        # More of box 2 is in cell.
+        cell = Box.make_square(1, 1, 3)
+        ioa_thresh = 0.5
+        use_intersection_over_cell = False
+        background_class_id = None
+        pick_min_class_id = False
+
+        class_id = infer_cell(cell, self.str_tree, ioa_thresh,
+                              use_intersection_over_cell, background_class_id,
+                              pick_min_class_id)
+        self.assertEqual(class_id, self.class_id2)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag278')" href="javascript:;">
+raster-vision-0.12.0/tests/core/data/label_source/test_chip_classification_label_source.py: 155-167
+</a>
+<div class="mid" id="frag278" style="display:none"><pre>
+    def test_infer_cell7(self):
+        # Cell doesn't overlap with any boxes.
+        cell = Box.make_square(10, 10, 1)
+        ioa_thresh = 0.5
+        use_intersection_over_cell = True
+        background_class_id = None
+        pick_min_class_id = False
+
+        class_id = infer_cell(cell, self.str_tree, ioa_thresh,
+                              use_intersection_over_cell, background_class_id,
+                              pick_min_class_id)
+        self.assertEqual(class_id, None)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag279')" href="javascript:;">
+raster-vision-0.12.0/tests/core/data/label_source/test_chip_classification_label_source.py: 168-181
+</a>
+<div class="mid" id="frag279" style="display:none"><pre>
+    def test_infer_cell8(self):
+        # box2 overlaps more than box1, but using pick_min_class_id, so
+        # picks box1.
+        cell = Box.make_square(1, 1, 3)
+        ioa_thresh = 0.5
+        use_intersection_over_cell = False
+        background_class_id = None
+        pick_min_class_id = True
+
+        class_id = infer_cell(cell, self.str_tree, ioa_thresh,
+                              use_intersection_over_cell, background_class_id,
+                              pick_min_class_id)
+        self.assertEqual(class_id, self.class_id2)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 11:</b> &nbsp; 2 fragments, nominal size 14 lines, similarity 92%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag281')" href="javascript:;">
+raster-vision-0.12.0/tests/core/data/label_source/test_chip_classification_label_source.py: 209-226
+</a>
+<div class="mid" id="frag281" style="display:none"><pre>
+    def test_get_labels_small_extent(self):
+        # Extent only has enough of first box in it.
+        extent = Box.make_square(0, 0, 2)
+
+        config = ChipClassificationLabelSourceConfig(
+            vector_source=GeoJSONVectorSourceConfig(
+                uri=self.uri, default_class_id=None))
+        source = config.build(self.class_config, self.crs_transformer, extent,
+                              self.tmp_dir.name)
+        labels = source.get_labels()
+
+        cells = labels.get_cells()
+        self.assertEqual(len(cells), 1)
+        class_id = labels.get_cell_class_id(self.box1)
+        self.assertEqual(class_id, self.class_id1)
+        class_id = labels.get_cell_class_id(self.box2)
+        self.assertEqual(class_id, None)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag282')" href="javascript:;">
+raster-vision-0.12.0/tests/core/data/label_source/test_chip_classification_label_source.py: 227-245
+</a>
+<div class="mid" id="frag282" style="display:none"><pre>
+    def test_get_labels(self):
+        # Extent contains both boxes.
+        extent = Box.make_square(0, 0, 8)
+
+        config = ChipClassificationLabelSourceConfig(
+            vector_source=GeoJSONVectorSourceConfig(
+                uri=self.uri, default_class_id=None))
+        source = config.build(self.class_config, self.crs_transformer, extent,
+                              self.tmp_dir.name)
+        labels = source.get_labels()
+
+        cells = labels.get_cells()
+        self.assertEqual(len(cells), 2)
+        class_id = labels.get_cell_class_id(self.box1)
+        self.assertEqual(class_id, self.class_id1)
+        class_id = labels.get_cell_class_id(self.box2)
+        self.assertEqual(class_id, self.class_id2)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 12:</b> &nbsp; 2 fragments, nominal size 24 lines, similarity 91%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag293')" href="javascript:;">
+raster-vision-0.12.0/tests/core/data/raster_source/test_rasterio_source.py: 25-51
+</a>
+<div class="mid" id="frag293" style="display:none"><pre>
+    def test_nodata_val(self):
+        # make geotiff filled with ones and zeros with nodata == 1
+        img_path = join(self.tmp_dir, 'tmp.tif')
+        height = 100
+        width = 100
+        nb_channels = 3
+        with rasterio.open(
+                img_path,
+                'w',
+                driver='GTiff',
+                height=height,
+                width=width,
+                count=nb_channels,
+                dtype=np.uint8,
+                nodata=1) as img_dataset:
+            im = np.random.randint(0, 2, (height, width, nb_channels)).astype(
+                np.uint8)
+            for channel in range(nb_channels):
+                img_dataset.write(im[:, :, channel], channel + 1)
+
+        config = RasterioSourceConfig(uris=[img_path])
+        source = config.build(tmp_dir=self.tmp_dir)
+        with source.activate():
+            out_chip = source.get_image_array()
+            expected_out_chip = np.zeros((height, width, nb_channels))
+            np.testing.assert_equal(out_chip, expected_out_chip)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag294')" href="javascript:;">
+raster-vision-0.12.0/tests/core/data/raster_source/test_rasterio_source.py: 52-78
+</a>
+<div class="mid" id="frag294" style="display:none"><pre>
+    def test_mask(self):
+        # make geotiff filled with ones and zeros and mask the whole image
+        img_path = join(self.tmp_dir, 'tmp.tif')
+        height = 100
+        width = 100
+        nb_channels = 3
+        with rasterio.open(
+                img_path,
+                'w',
+                driver='GTiff',
+                height=height,
+                width=width,
+                count=nb_channels,
+                dtype=np.uint8) as img_dataset:
+            im = np.random.randint(0, 2, (height, width, nb_channels)).astype(
+                np.uint8)
+            for channel in range(nb_channels):
+                img_dataset.write(im[:, :, channel], channel + 1)
+            img_dataset.write_mask(np.zeros(im.shape[0:2]).astype(np.bool))
+
+        config = RasterioSourceConfig(uris=[img_path])
+        source = config.build(tmp_dir=self.tmp_dir)
+        with source.activate():
+            out_chip = source.get_image_array()
+            expected_out_chip = np.zeros((height, width, nb_channels))
+            np.testing.assert_equal(out_chip, expected_out_chip)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 13:</b> &nbsp; 2 fragments, nominal size 15 lines, similarity 93%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag297')" href="javascript:;">
+raster-vision-0.12.0/tests/core/data/raster_source/test_rasterio_source.py: 96-115
+</a>
+<div class="mid" id="frag297" style="display:none"><pre>
+    def test_shift_x(self):
+        # Specially-engineered image w/ one meter per pixel resolution
+        # in the x direction.
+        img_path = data_file_path('ones.tif')
+        channel_order = [0]
+
+        config = RasterioSourceConfig(
+            uris=[img_path],
+            channel_order=channel_order,
+            x_shift=1.0,
+            y_shift=0.0)
+        source = config.build(tmp_dir=self.tmp_dir)
+
+        with source.activate():
+            extent = source.get_extent()
+            data = source.get_chip(extent)
+            self.assertEqual(data.sum(), 2**16 - 256)
+            column = data[:, 255, 0]
+            self.assertEqual(column.sum(), 0)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag298')" href="javascript:;">
+raster-vision-0.12.0/tests/core/data/raster_source/test_rasterio_source.py: 116-135
+</a>
+<div class="mid" id="frag298" style="display:none"><pre>
+    def test_shift_y(self):
+        # Specially-engineered image w/ one meter per pixel resolution
+        # in the y direction.
+        img_path = data_file_path('ones.tif')
+        channel_order = [0]
+
+        config = RasterioSourceConfig(
+            uris=[img_path],
+            channel_order=channel_order,
+            x_shift=0.0,
+            y_shift=1.0)
+        source = config.build(tmp_dir=self.tmp_dir)
+
+        with source.activate():
+            extent = source.get_extent()
+            data = source.get_chip(extent)
+            self.assertEqual(data.sum(), 2**16 - 256)
+            row = data[0, :, 0]
+            self.assertEqual(row.sum(), 0)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 14:</b> &nbsp; 2 fragments, nominal size 12 lines, similarity 91%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag335')" href="javascript:;">
+raster-vision-0.12.0/tests/core/data/vector_source/test_geojson_vector_source.py: 124-139
+</a>
+<div class="mid" id="frag335" style="display:none"><pre>
+    def test_transform_geojson_line_buf(self):
+        geom = {'type': 'LineString', 'coordinates': [[10, 10], [10, 20]]}
+        geojson = self.geom_to_geojson(geom)
+
+        trans_geojson = self.transform_geojson(geojson, line_bufs={0: 5.0})
+        trans_geom = trans_geojson['features'][0]['geometry']
+        self.assertTrue(shape(geom).buffer(5.0).equals(shape(trans_geom)))
+
+        trans_geojson = self.transform_geojson(geojson, line_bufs={1: 5.0})
+        trans_geom = trans_geojson['features'][0]['geometry']
+        self.assertTrue(shape(geom).buffer(1.0).equals(shape(trans_geom)))
+
+        trans_geojson = self.transform_geojson(geojson, line_bufs={0: None})
+        trans_geom = trans_geojson['features'][0]['geometry']
+        self.assertTrue(shape(geom).equals(shape(trans_geom)))
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag336')" href="javascript:;">
+raster-vision-0.12.0/tests/core/data/vector_source/test_geojson_vector_source.py: 140-155
+</a>
+<div class="mid" id="frag336" style="display:none"><pre>
+    def test_transform_point_buf(self):
+        geom = {'type': 'Point', 'coordinates': [10, 10]}
+        geojson = self.geom_to_geojson(geom)
+
+        trans_geojson = self.transform_geojson(geojson, point_bufs={0: 5.0})
+        trans_geom = trans_geojson['features'][0]['geometry']
+        self.assertTrue(shape(geom).buffer(5.0).equals(shape(trans_geom)))
+
+        trans_geojson = self.transform_geojson(geojson, point_bufs={1: 5.0})
+        trans_geom = trans_geojson['features'][0]['geometry']
+        self.assertTrue(shape(geom).buffer(1.0).equals(shape(trans_geom)))
+
+        trans_geojson = self.transform_geojson(geojson, point_bufs={0: None})
+        trans_geom = trans_geojson['features'][0]['geometry']
+        self.assertTrue(shape(geom).equals(shape(trans_geom)))
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 15:</b> &nbsp; 2 fragments, nominal size 10 lines, similarity 90%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag401')" href="javascript:;">
+raster-vision-0.12.0/tests/core/evaluation/test_class_evaluation_item.py: 20-30
+</a>
+<div class="mid" id="frag401" style="display:none"><pre>
+    def test_merge_first_empty(self):
+        a = ClassEvaluationItem()
+        b = ClassEvaluationItem(
+            precision=1, recall=1, f1=1, count_error=0, gt_count=1)
+        a.merge(b)
+        self.assertEqual(a.precision, 1)
+        self.assertEqual(a.recall, 1)
+        self.assertEqual(a.f1, 1)
+        self.assertEqual(a.count_error, 0)
+        self.assertEqual(a.gt_count, 1)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag402')" href="javascript:;">
+raster-vision-0.12.0/tests/core/evaluation/test_class_evaluation_item.py: 31-41
+</a>
+<div class="mid" id="frag402" style="display:none"><pre>
+    def test_merge_second_empty(self):
+        a = ClassEvaluationItem(
+            precision=1, recall=1, f1=1, count_error=0, gt_count=1)
+        b = ClassEvaluationItem()
+        a.merge(b)
+        self.assertEqual(a.precision, 1)
+        self.assertEqual(a.recall, 1)
+        self.assertEqual(a.f1, 1)
+        self.assertEqual(a.count_error, 0)
+        self.assertEqual(a.gt_count, 1)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 16:</b> &nbsp; 3 fragments, nominal size 21 lines, similarity 76%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag408')" href="javascript:;">
+raster-vision-0.12.0/tests/core/evaluation/test_object_detection_evaluation.py: 36-60
+</a>
+<div class="mid" id="frag408" style="display:none"><pre>
+    def test_compute(self):
+        class_config = self.make_class_config()
+        eval = ObjectDetectionEvaluation(class_config)
+        gt_labels = self.make_ground_truth_labels()
+        pred_labels = self.make_predicted_labels()
+
+        eval.compute(gt_labels, pred_labels)
+        eval_item1 = eval.class_to_eval_item[0]
+        self.assertEqual(eval_item1.gt_count, 2)
+        self.assertEqual(eval_item1.precision, 1.0)
+        self.assertEqual(eval_item1.recall, 1.0)
+        self.assertEqual(eval_item1.f1, 1.0)
+
+        eval_item2 = eval.class_to_eval_item[1]
+        self.assertEqual(eval_item2.gt_count, 2)
+        self.assertEqual(eval_item2.precision, 1.0)
+        self.assertEqual(eval_item2.recall, 0.5)
+        self.assertEqual(eval_item2.f1, 2 / 3)
+
+        avg_item = eval.avg_item
+        self.assertEqual(avg_item.gt_count, 4)
+        self.assertAlmostEqual(avg_item.precision, 1.0)
+        self.assertEqual(avg_item.recall, 0.75)
+        self.assertAlmostEqual(avg_item.f1, 0.83, places=2)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag409')" href="javascript:;">
+raster-vision-0.12.0/tests/core/evaluation/test_object_detection_evaluation.py: 61-85
+</a>
+<div class="mid" id="frag409" style="display:none"><pre>
+    def test_compute_no_preds(self):
+        class_config = self.make_class_config()
+        eval = ObjectDetectionEvaluation(class_config)
+        gt_labels = self.make_ground_truth_labels()
+        pred_labels = ObjectDetectionLabels.make_empty()
+
+        eval.compute(gt_labels, pred_labels)
+        eval_item1 = eval.class_to_eval_item[0]
+        self.assertEqual(eval_item1.gt_count, 2)
+        self.assertEqual(eval_item1.precision, None)
+        self.assertEqual(eval_item1.recall, 0.0)
+        self.assertEqual(eval_item1.f1, None)
+
+        eval_item2 = eval.class_to_eval_item[1]
+        self.assertEqual(eval_item2.gt_count, 2)
+        self.assertEqual(eval_item2.precision, None)
+        self.assertEqual(eval_item2.recall, 0.0)
+        self.assertEqual(eval_item2.f1, None)
+
+        avg_item = eval.avg_item
+        self.assertEqual(avg_item.gt_count, 4)
+        self.assertEqual(avg_item.precision, 0.0)
+        self.assertEqual(avg_item.recall, 0.0)
+        self.assertEqual(avg_item.f1, 0.0)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag410')" href="javascript:;">
+raster-vision-0.12.0/tests/core/evaluation/test_object_detection_evaluation.py: 86-111
+</a>
+<div class="mid" id="frag410" style="display:none"><pre>
+    def test_compute_no_ground_truth(self):
+        class_config = self.make_class_config()
+        eval = ObjectDetectionEvaluation(class_config)
+        gt_labels = ObjectDetectionLabels.make_empty()
+        pred_labels = self.make_predicted_labels()
+
+        eval.compute(gt_labels, pred_labels)
+        eval_item1 = eval.class_to_eval_item[0]
+        self.assertEqual(eval_item1.gt_count, 0)
+        self.assertEqual(eval_item1.precision, None)
+        self.assertEqual(eval_item1.recall, None)
+        self.assertEqual(eval_item1.f1, None)
+
+        eval_item2 = eval.class_to_eval_item[1]
+        self.assertEqual(eval_item2.gt_count, 0)
+        self.assertEqual(eval_item2.precision, None)
+        self.assertEqual(eval_item2.recall, None)
+        self.assertEqual(eval_item2.f1, None)
+
+        avg_item = eval.avg_item
+        self.assertEqual(avg_item.gt_count, 0)
+        self.assertEqual(avg_item.precision, None)
+        self.assertEqual(avg_item.recall, None)
+        self.assertEqual(avg_item.f1, None)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 17:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 90%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag416')" href="javascript:;">
+raster-vision-0.12.0/tests/core/evaluation/test_semantic_segmentation_evaluator.py: 100-116
+</a>
+<div class="mid" id="frag416" style="display:none"><pre>
+    def test_vector_evaluator(self):
+        output_uri = join(self.tmp_dir.name, 'raster-out.json')
+        vector_output_uri = join(self.tmp_dir.name, 'vector-out.json')
+        scenes = [self.get_vector_scene(0), self.get_vector_scene(1)]
+        evaluator = SemanticSegmentationEvaluator(
+            self.class_config, output_uri, vector_output_uri)
+        evaluator.process(scenes, self.tmp_dir.name)
+        vector_eval_json = file_to_json(vector_output_uri)
+        exp_vector_eval_json = file_to_json(
+            data_file_path('expected-vector-eval.json'))
+
+        # NOTE:  The precision  and recall  values found  in the  file
+        # `expected-vector-eval.json`  are equal to fractions of  the
+        # form (n-1)/n for  n &lt;= 7 which  can be seen to  be (and have
+        # been manually verified to be) correct.
+        self.assertDictEqual(vector_eval_json, exp_vector_eval_json)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag417')" href="javascript:;">
+raster-vision-0.12.0/tests/core/evaluation/test_semantic_segmentation_evaluator.py: 117-134
+</a>
+<div class="mid" id="frag417" style="display:none"><pre>
+    def test_vector_evaluator_with_aoi(self):
+        output_uri = join(self.tmp_dir.name, 'raster-out.json')
+        vector_output_uri = join(self.tmp_dir.name, 'vector-out.json')
+        scenes = [self.get_vector_scene(0, use_aoi=True)]
+        evaluator = SemanticSegmentationEvaluator(
+            self.class_config, output_uri, vector_output_uri)
+        evaluator.process(scenes, self.tmp_dir.name)
+        vector_eval_json = file_to_json(vector_output_uri)
+        exp_vector_eval_json = file_to_json(
+            data_file_path('expected-vector-eval-with-aoi.json'))
+
+        # NOTE:  The precision  and recall  values found  in the  file
+        # `expected-vector-eval.json`  are equal to fractions of  the
+        # form (n-1)/n for  n &lt;= 7 which  can be seen to  be (and have
+        # been manually verified to be) correct.
+        self.assertDictEqual(vector_eval_json, exp_vector_eval_json)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 18:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 81%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag645')" href="javascript:;">
+raster-vision-0.12.0/rastervision_core/rastervision/core/data/label_store/chip_classification_geojson_store.py: 26-42
+</a>
+<div class="mid" id="frag645" style="display:none"><pre>
+    def save(self, labels):
+        """Save labels to URI if writable.
+
+        Note that if the grid is inferred from polygons, only the grid will be
+        written, not the original polygons.
+        """
+        boxes = labels.get_cells()
+        class_ids = labels.get_class_ids()
+        scores = list(labels.get_scores())
+        geojson = boxes_to_geojson(
+            boxes,
+            class_ids,
+            self.crs_transformer,
+            self.class_config,
+            scores=scores)
+        json_to_file(geojson, self.uri)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag656')" href="javascript:;">
+raster-vision-0.12.0/rastervision_core/rastervision/core/data/label_store/object_detection_geojson_store.py: 25-37
+</a>
+<div class="mid" id="frag656" style="display:none"><pre>
+    def save(self, labels):
+        """Save labels to URI."""
+        boxes = labels.get_boxes()
+        class_ids = labels.get_class_ids().tolist()
+        scores = labels.get_scores().tolist()
+        geojson = boxes_to_geojson(
+            boxes,
+            class_ids,
+            self.crs_transformer,
+            self.class_config,
+            scores=scores)
+        json_to_file(geojson, self.uri)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 19:</b> &nbsp; 2 fragments, nominal size 65 lines, similarity 86%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag796')" href="javascript:;">
+raster-vision-0.12.0/integration_tests/semantic_segmentation/config.py: 15-90
+</a>
+<div class="mid" id="frag796" style="display:none"><pre>
+def get_config(runner, root_uri, data_uri=None, full_train=False):
+    def get_path(part):
+        if full_train:
+            return join(data_uri, part)
+        else:
+            return join(dirname(__file__), part)
+
+    class_config = ClassConfig(names=['red', 'green'], colors=['red', 'green'])
+
+    def make_scene(id, img_path, label_path):
+        raster_source = RasterioSourceConfig(
+            channel_order=[0, 1, 2], uris=[img_path])
+        label_source = SemanticSegmentationLabelSourceConfig(
+            rgb_class_config=class_config,
+            raster_source=RasterioSourceConfig(uris=[label_path]))
+        label_store = SemanticSegmentationLabelStoreConfig(
+            rgb=True,
+            vector_output=[
+                PolygonVectorOutputConfig(class_id=0),
+                BuildingVectorOutputConfig(class_id=1)
+            ])
+
+        return SceneConfig(
+            id=id,
+            raster_source=raster_source,
+            label_source=label_source,
+            label_store=label_store)
+
+    if full_train:
+        model = SemanticSegmentationModelConfig(backbone=Backbone.resnet50)
+        solver = SolverConfig(
+            lr=1e-4,
+            num_epochs=300,
+            batch_sz=8,
+            one_cycle=True,
+            sync_interval=300)
+    else:
+        pretrained_uri = (
+            'https://github.com/azavea/raster-vision-data/releases/download/v0.12/'
+            'semantic-segmentation.pth')
+        model = SemanticSegmentationModelConfig(
+            backbone=Backbone.resnet50, init_weights=pretrained_uri)
+        solver = SolverConfig(
+            lr=1e-9,
+            num_epochs=1,
+            batch_sz=2,
+            one_cycle=True,
+            sync_interval=200)
+    backend = PyTorchSemanticSegmentationConfig(
+        model=model,
+        solver=solver,
+        log_tensorboard=False,
+        run_tensorboard=False,
+        augmentors=[])
+
+    scenes = [
+        make_scene('test-scene', get_path('scene/image.tif'),
+                   get_path('scene/labels.tif')),
+        make_scene('test-scene2', get_path('scene/image2.tif'),
+                   get_path('scene/labels2.tif'))
+    ]
+    dataset = DatasetConfig(
+        class_config=class_config,
+        train_scenes=scenes,
+        validation_scenes=scenes)
+
+    chip_options = SemanticSegmentationChipOptions(
+        window_method=SemanticSegmentationWindowMethod.sliding, stride=300)
+
+    return SemanticSegmentationConfig(
+        root_uri=root_uri,
+        dataset=dataset,
+        backend=backend,
+        train_chip_sz=300,
+        predict_chip_sz=300,
+        chip_options=chip_options)
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag814')" href="javascript:;">
+raster-vision-0.12.0/integration_tests/object_detection/config.py: 14-84
+</a>
+<div class="mid" id="frag814" style="display:none"><pre>
+def get_config(runner, root_uri, data_uri=None, full_train=False):
+    def get_path(part):
+        if full_train:
+            return join(data_uri, part)
+        else:
+            return join(dirname(__file__), part)
+
+    class_config = ClassConfig(
+        names=['car', 'building'], colors=['blue', 'red'])
+
+    def make_scene(scene_id, img_path, label_path):
+        raster_source = RasterioSourceConfig(
+            channel_order=[0, 1, 2], uris=[img_path])
+        label_source = ObjectDetectionLabelSourceConfig(
+            vector_source=GeoJSONVectorSourceConfig(
+                uri=label_path, default_class_id=None))
+        return SceneConfig(
+            id=scene_id,
+            raster_source=raster_source,
+            label_source=label_source)
+
+    if full_train:
+        model = ObjectDetectionModelConfig(backbone=Backbone.resnet18)
+        solver = SolverConfig(
+            lr=1e-4,
+            num_epochs=300,
+            batch_sz=8,
+            one_cycle=True,
+            sync_interval=300)
+    else:
+        pretrained_uri = (
+            'https://github.com/azavea/raster-vision-data/releases/download/v0.12/'
+            'object-detection.pth')
+        model = ObjectDetectionModelConfig(
+            backbone=Backbone.resnet18, init_weights=pretrained_uri)
+        solver = SolverConfig(
+            lr=1e-9,
+            num_epochs=1,
+            batch_sz=2,
+            one_cycle=True,
+            sync_interval=200)
+    backend = PyTorchObjectDetectionConfig(
+        model=model,
+        solver=solver,
+        log_tensorboard=False,
+        run_tensorboard=False,
+        augmentors=[])
+
+    scenes = [
+        make_scene('od_test', get_path('scene/image.tif'),
+                   get_path('scene/labels.json')),
+        make_scene('od_test-2', get_path('scene/image2.tif'),
+                   get_path('scene/labels2.json'))
+    ]
+    dataset = DatasetConfig(
+        class_config=class_config,
+        train_scenes=scenes,
+        validation_scenes=scenes)
+
+    chip_options = ObjectDetectionChipOptions(neg_ratio=1.0, ioa_thresh=1.0)
+    predict_options = ObjectDetectionPredictOptions(
+        merge_thresh=0.1, score_thresh=0.5)
+
+    return ObjectDetectionConfig(
+        root_uri=root_uri,
+        dataset=dataset,
+        backend=backend,
+        train_chip_sz=300,
+        predict_chip_sz=300,
+        chip_options=chip_options,
+        predict_options=predict_options)
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<script language="JavaScript">
+function ShowHide(divId) { 
+    if(document.getElementById(divId).style.display == 'none') {
+        document.getElementById(divId).style.display='block';
+    } else { 
+        document.getElementById(divId).style.display = 'none';
+    } 
+}
+</script>
+</body>
+</html>

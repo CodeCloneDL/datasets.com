@@ -1,0 +1,3977 @@
+<clones>
+<systeminfo processor="nicad6" system="torch-points3d-1.3.0" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="1434" npairs="127"/>
+<runinfo ncompares="48652" cputime="66176"/>
+<classinfo nclasses="48"/>
+
+<class classid="1" nclones="2" nlines="20" similarity="71">
+<source file="systems/torch-points3d-1.3.0/scripts/test_registration_scripts/save_feature.py" startline="98" endline="133" pcid="42">
+def main(cfg):
+    OmegaConf.set_struct(cfg, False)
+
+    # Get device
+    device = torch.device("cuda" if (torch.cuda.is_available() and cfg.training.cuda) else "cpu")
+    log.info("DEVICE : {}".format(device))
+
+    # Enable CUDNN BACKEND
+    torch.backends.cudnn.enabled = cfg.training.enable_cudnn
+
+    # Checkpoint
+    checkpoint = ModelCheckpoint(cfg.training.checkpoint_dir, cfg.model_name, cfg.training.weight_name, strict=True)
+
+    # Setup the dataset config
+    # Generic config
+
+    dataset = instantiate_dataset(cfg.data)
+    model = checkpoint.create_model(dataset, weight_name=cfg.training.weight_name)
+    log.info(model)
+    log.info("Model size = %i", sum(param.numel() for param in model.parameters() if param.requires_grad))
+
+    log.info(dataset)
+
+    model.eval()
+    if cfg.enable_dropout:
+        model.enable_dropout_in_eval()
+    model = model.to(device)
+
+    # Run training / evaluation
+    output_path = os.path.join(cfg.training.checkpoint_dir, cfg.data.name, "features")
+    if not os.path.exists(output_path):
+        os.makedirs(output_path, exist_ok=True)
+
+    run(model, dataset, device, output_path, cfg)
+
+
+</source>
+<source file="systems/torch-points3d-1.3.0/scripts/test_registration_scripts/evaluate.py" startline="212" endline="247" pcid="45">
+def main(cfg):
+    OmegaConf.set_struct(cfg, False)
+
+    # Get device
+    device = torch.device("cuda" if (torch.cuda.is_available() and cfg.training.cuda) else "cpu")
+    log.info("DEVICE : {}".format(device))
+
+    # Enable CUDNN BACKEND
+    torch.backends.cudnn.enabled = cfg.training.enable_cudnn
+
+    # Checkpoint
+    checkpoint = ModelCheckpoint(cfg.training.checkpoint_dir, cfg.model_name, cfg.training.weight_name, strict=True)
+
+    # Setup the dataset config
+    # Generic config
+
+    dataset = instantiate_dataset(cfg.data)
+    if not checkpoint.is_empty:
+        model = checkpoint.create_model(dataset, weight_name=cfg.training.weight_name)
+    else:
+        log.info("No Checkpoint for this model")
+        model = instantiate_model(copy.deepcopy(cfg), dataset)
+        model.set_pretrained_weights()
+    log.info(model)
+    log.info("Model size = %i", sum(param.numel() for param in model.parameters() if param.requires_grad))
+
+    log.info(dataset)
+
+    model.eval()
+    if cfg.enable_dropout:
+        model.enable_dropout_in_eval()
+    model = model.to(device)
+
+    run(model, dataset, device, cfg)
+
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="17" similarity="100">
+<source file="systems/torch-points3d-1.3.0/scripts/test_registration_scripts/misc.py" startline="4" endline="24" pcid="49">
+def read_gt_log(path):
+    """
+    read the gt.log of evaluation set of 3DMatch or ETH Dataset and parse it.
+    """
+    list_pair = []
+    list_mat = []
+    with open(path, "r") as f:
+        all_mat = f.readlines()
+    mat = np.zeros((4, 4))
+    for i in range(len(all_mat)):
+        if i % 5 == 0:
+            if i != 0:
+                list_mat.append(mat)
+            mat = np.zeros((4, 4))
+            list_pair.append(list(map(int, all_mat[i].split("\t")[:-1])))
+        else:
+            line = all_mat[i].split("\t")
+
+            mat[i % 5 - 1] = np.asarray(line[:4], dtype=np.float)
+    list_mat.append(mat)
+    return list_pair, list_mat
+</source>
+<source file="systems/torch-points3d-1.3.0/scripts/test_registration_scripts/descriptor_matcher.py" startline="17" endline="39" pcid="50">
+def read_gt_log(path):
+    """
+    read the gt.log of evaluation set of 3DMatch or ETH Dataset and parse it.
+    """
+    list_pair = []
+    list_mat = []
+    with open(path, "r") as f:
+        all_mat = f.readlines()
+    mat = np.zeros((4, 4))
+    for i in range(len(all_mat)):
+        if i % 5 == 0:
+            if i != 0:
+                list_mat.append(mat)
+            mat = np.zeros((4, 4))
+            list_pair.append(list(map(int, all_mat[i].split("\t")[:-1])))
+        else:
+            line = all_mat[i].split("\t")
+
+            mat[i % 5 - 1] = np.asarray(line[:4], dtype=np.float)
+    list_mat.append(mat)
+    return list_pair, list_mat
+
+
+</source>
+</class>
+
+<class classid="3" nclones="6" nlines="14" similarity="73">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/applications/rsconv.py" startline="122" endline="148" pcid="88">
+    def forward(self, data, *args, **kwargs):
+        """ This method does a forward on the Unet
+
+        Parameters:
+        -----------
+        data
+            A dictionary that contains the data itself and its metadata information. Should contain
+                x -- Features [B, N, C]
+                pos -- Points [B, N, 3]
+        """
+        self._set_input(data)
+        data = self.input
+        stack_down = [data]
+        for i in range(len(self.down_modules) - 1):
+            data = self.down_modules[i](data)
+            stack_down.append(data)
+        data = self.down_modules[-1](data)
+
+        if not isinstance(self.inner_modules[0], Identity):
+            stack_down.append(data)
+            data = self.inner_modules[0](data)
+
+        if self.has_mlp_head:
+            data.x = self.mlp(data.x)
+        return data
+
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/applications/kpconv.py" startline="121" endline="154" pcid="120">
+    def forward(self, data, *args, **kwargs):
+        """
+        Parameters
+        -----------
+        data:
+            A dictionary that contains the data itself and its metadata information. Should contain
+            - pos [N, 3]
+            - x [N, C]
+            - multiscale (optional) precomputed data for the down convolutions
+            - upsample (optional) precomputed data for the up convolutions
+
+        Returns
+        --------
+        data:
+            - pos [1, 3] - Dummy pos
+            - x [1, output_nc]
+        """
+        self._set_input(data)
+        data = self.input
+        stack_down = [data]
+        for i in range(len(self.down_modules) - 1):
+            data = self.down_modules[i](data)
+            stack_down.append(data)
+        data = self.down_modules[-1](data)
+
+        if not isinstance(self.inner_modules[0], Identity):
+            stack_down.append(data)
+            data = self.inner_modules[0](data)
+
+        if self.has_mlp_head:
+            data.x = self.mlp(data.x)
+        return data
+
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/applications/pointnet2.py" startline="154" endline="191" pcid="140">
+    def forward(self, data, *args, **kwargs):
+        """ This method does a forward on the Unet assuming symmetrical skip connections
+        Input --- D1 -- D2 -- I -- U1 -- U2 -- U3 -- output
+           |       |      |________|      |    |
+           |       |______________________|    |
+           |___________________________________|
+
+        Parameters:
+        -----------
+        data
+            A dictionary that contains the data itself and its metadata information. Should contain
+                x -- Features [B, N, C]
+                pos -- Points [B, N, 3]
+        """
+        self._set_input(data)
+        data = self.input
+        stack_down = [data]
+        for i in range(len(self.down_modules) - 1):
+            data = self.down_modules[i](data)
+            stack_down.append(data)
+        data = self.down_modules[-1](data)
+
+        if not isinstance(self.inner_modules[0], Identity):
+            stack_down.append(data)
+            data = self.inner_modules[0](data)
+
+        sampling_ids = self._collect_sampling_ids(stack_down)
+
+        for i in range(len(self.up_modules)):
+            data = self.up_modules[i]((data, stack_down.pop()))
+
+        for key, value in sampling_ids.items():
+            setattr(data, key, value)
+
+        if self.has_mlp_head:
+            data.x = self.mlp(data.x)
+
+        return data
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/applications/minkowski.py" startline="160" endline="196" pcid="100">
+    def forward(self, data, *args, **kwargs):
+        """Run forward pass.
+        Input --- D1 -- D2 -- D3 -- U1 -- U2 -- output
+                   |      |_________|     |
+                   |______________________|
+
+        Parameters
+        -----------
+        data
+            A SparseTensor that contains the data itself and its metadata information. Should contain
+                F -- Features [N, C]
+                coords -- Coords [N, 4]
+
+        Returns
+        --------
+        data:
+            - pos [N, 3] (coords or real pos if xyz is in data)
+            - x [N, output_nc]
+            - batch [N]
+        """
+        self._set_input(data)
+        data = self.input
+        stack_down = []
+        for i in range(len(self.down_modules) - 1):
+            data = self.down_modules[i](data)
+            stack_down.append(data)
+
+        data = self.down_modules[-1](data)
+        stack_down.append(None)
+        # TODO : Manage the inner module
+        for i in range(len(self.up_modules)):
+            data = self.up_modules[i](data, stack_down.pop())
+
+        out = Batch(x=data.F, pos=self.xyz, batch=data.C[:, 0])
+        if self.has_mlp_head:
+            out.x = self.mlp(out.x)
+        return out
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/applications/sparseconv3d.py" startline="170" endline="206" pcid="131">
+    def forward(self, data, *args, **kwargs):
+        """Run forward pass.
+        Input --- D1 -- D2 -- D3 -- U1 -- U2 -- output
+                   |      |_________|     |
+                   |______________________|
+
+        Parameters
+        -----------
+        data
+            A SparseTensor that contains the data itself and its metadata information. Should contain
+                F -- Features [N, C]
+                coords -- Coords [N, 4]
+
+        Returns
+        --------
+        data:
+            - pos [N, 3] (coords or real pos if xyz is in data)
+            - x [N, output_nc]
+            - batch [N]
+        """
+        self._set_input(data)
+        data = self.input
+        stack_down = []
+        for i in range(len(self.down_modules) - 1):
+            data = self.down_modules[i](data)
+            stack_down.append(data)
+
+        data = self.down_modules[-1](data)
+        stack_down.append(None)
+        # TODO : Manage the inner module
+        for i in range(len(self.up_modules)):
+            data = self.up_modules[i](data, stack_down.pop())
+
+        out = Batch(x=data.F, pos=self.xyz).to(self.device)
+        if self.has_mlp_head:
+            out.x = self.mlp(out.x)
+        return out
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/applications/pointnet2.py" startline="127" endline="152" pcid="139">
+    def forward(self, data, *args, **kwargs):
+        """
+        Parameters:
+        -----------
+        data
+            A dictionary that contains the data itself and its metadata information. Should contain
+                x -- Features [B, N, C]
+                pos -- Points [B, N, 3]
+        """
+        self._set_input(data)
+        data = self.input
+        stack_down = [data]
+        for i in range(len(self.down_modules) - 1):
+            data = self.down_modules[i](data)
+            stack_down.append(data)
+        data = self.down_modules[-1](data)
+
+        if not isinstance(self.inner_modules[0], Identity):
+            stack_down.append(data)
+            data = self.inner_modules[0](data)
+
+        if self.has_mlp_head:
+            data.x = self.mlp(data.x)
+        return data
+
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="12" similarity="83">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/applications/minkowski.py" startline="82" endline="95" pcid="94">
+    def __init__(self, model_config, model_type, dataset, modules, *args, **kwargs):
+        super(BaseMinkowski, self).__init__(model_config, model_type, dataset, modules)
+        self.weight_initialization()
+        default_output_nc = kwargs.get("default_output_nc", None)
+        if not default_output_nc:
+            default_output_nc = extract_output_nc(model_config)
+
+        self._output_nc = default_output_nc
+        self._has_mlp_head = False
+        if "output_nc" in kwargs:
+            self._has_mlp_head = True
+            self._output_nc = kwargs["output_nc"]
+            self.mlp = MLP([default_output_nc, self.output_nc], activation=torch.nn.LeakyReLU(0.2), bias=False)
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/applications/sparseconv3d.py" startline="94" endline="107" pcid="125">
+    def __init__(self, model_config, model_type, dataset, modules, *args, **kwargs):
+        super().__init__(model_config, model_type, dataset, modules)
+        self.weight_initialization()
+        default_output_nc = kwargs.get("default_output_nc", None)
+        if not default_output_nc:
+            default_output_nc = extract_output_nc(model_config)
+
+        self._output_nc = default_output_nc
+        self._has_mlp_head = False
+        if "output_nc" in kwargs:
+            self._has_mlp_head = True
+            self._output_nc = kwargs["output_nc"]
+            self.mlp = MLP([default_output_nc, self.output_nc], activation=torch.nn.ReLU(), bias=False)
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="11" similarity="100">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/applications/minkowski.py" startline="130" endline="158" pcid="99">
+    def forward(self, data, *args, **kwargs):
+        """
+        Parameters:
+        -----------
+        data
+            A SparseTensor that contains the data itself and its metadata information. Should contain
+                F -- Features [N, C]
+                coords -- Coords [N, 4]
+
+        Returns
+        --------
+        data:
+            - x [1, output_nc]
+
+        """
+        self._set_input(data)
+        data = self.input
+        for i in range(len(self.down_modules)):
+            data = self.down_modules[i](data)
+
+        out = Batch(x=data.F, batch=data.C[:, 0].long().to(data.F.device))
+        if not isinstance(self.inner_modules[0], Identity):
+            out = self.inner_modules[0](out)
+
+        if self.has_mlp_head:
+            out.x = self.mlp(out.x)
+        return out
+
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/applications/sparseconv3d.py" startline="140" endline="168" pcid="130">
+    def forward(self, data, *args, **kwargs):
+        """
+        Parameters:
+        -----------
+        data
+            A SparseTensor that contains the data itself and its metadata information. Should contain
+                F -- Features [N, C]
+                coords -- Coords [N, 4]
+
+        Returns
+        --------
+        data:
+            - x [1, output_nc]
+
+        """
+        self._set_input(data)
+        data = self.input
+        for i in range(len(self.down_modules)):
+            data = self.down_modules[i](data)
+
+        out = Batch(x=data.F, batch=data.C[:, 0].long().to(data.F.device))
+        if not isinstance(self.inner_modules[0], Identity):
+            out = self.inner_modules[0](out)
+
+        if self.has_mlp_head:
+            out.x = self.mlp(out.x)
+        return out
+
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="14" similarity="85">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/applications/kpconv.py" startline="76" endline="90" pcid="116">
+    def __init__(self, model_config, model_type, dataset, modules, *args, **kwargs):
+        super(BaseKPConv, self).__init__(model_config, model_type, dataset, modules)
+        try:
+            default_output_nc = extract_output_nc(model_config)
+        except:
+            default_output_nc = -1
+            log.warning("Could not resolve number of output channels")
+
+        self._output_nc = default_output_nc
+        self._has_mlp_head = False
+        if "output_nc" in kwargs:
+            self._has_mlp_head = True
+            self._output_nc = kwargs["output_nc"]
+            self.mlp = MLP([default_output_nc, self.output_nc], activation=torch.nn.LeakyReLU(0.2), bias=False)
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/applications/pointnet2.py" startline="89" endline="105" pcid="135">
+    def __init__(self, model_config, model_type, dataset, modules, *args, **kwargs):
+        super(BasePointnet2, self).__init__(model_config, model_type, dataset, modules)
+
+        try:
+            default_output_nc = extract_output_nc(model_config)
+        except:
+            default_output_nc = -1
+            log.warning("Could not resolve number of output channels")
+
+        self._has_mlp_head = False
+        self._output_nc = default_output_nc
+        if "output_nc" in kwargs:
+            self._has_mlp_head = True
+            self._output_nc = kwargs["output_nc"]
+            self.mlp = Seq()
+            self.mlp.append(Conv1D(default_output_nc, self._output_nc, bn=True, bias=False))
+
+</source>
+</class>
+
+<class classid="7" nclones="3" nlines="11" similarity="75">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/applications/sparseconv3d.py" startline="77" endline="90" pcid="124">
+    def _build_encoder(self):
+        if self._config:
+            model_config = self._config
+        else:
+            path_to_model = os.path.join(
+                PATH_TO_CONFIG,
+                "encoder_{}.yaml".format(self.num_layers),
+            )
+            model_config = OmegaConf.load(path_to_model)
+        ModelFactory.resolve_model(model_config, self.num_features, self._kwargs)
+        modules_lib = sys.modules[__name__]
+        return SparseConv3dEncoder(model_config, None, None, modules_lib, **self.kwargs)
+
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/applications/pointnet2.py" startline="71" endline="84" pcid="134">
+    def _build_encoder(self):
+        if self._config:
+            model_config = self._config
+        else:
+            path_to_model = os.path.join(
+                PATH_TO_CONFIG,
+                "encoder_{}_{}.yaml".format(self.num_layers, "ms" if self.kwargs["multiscale"] else "ss"),
+            )
+            model_config = OmegaConf.load(path_to_model)
+        ModelFactory.resolve_model(model_config, self.num_features, self._kwargs)
+        modules_lib = sys.modules[__name__]
+        return PointNet2Encoder(model_config, None, None, modules_lib, **self.kwargs)
+
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/applications/pointnet2.py" startline="59" endline="70" pcid="133">
+    def _build_unet(self):
+        if self._config:
+            model_config = self._config
+        else:
+            path_to_model = os.path.join(
+                PATH_TO_CONFIG, "unet_{}_{}.yaml".format(self.num_layers, "ms" if self.kwargs["multiscale"] else "ss")
+            )
+            model_config = OmegaConf.load(path_to_model)
+        ModelFactory.resolve_model(model_config, self.num_features, self._kwargs)
+        modules_lib = sys.modules[__name__]
+        return PointNet2Unet(model_config, None, None, modules_lib, **self.kwargs)
+
+</source>
+</class>
+
+<class classid="8" nclones="3" nlines="28" similarity="89">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/models/registration/spconv3d.py" startline="11" endline="47" pcid="160">
+    def __init__(self, option, model_type, dataset, modules):
+        FragmentBaseModel.__init__(self, option)
+        self.mode = option.loss_mode
+        self.normalize_feature = option.normalize_feature
+        self.loss_names = ["loss_reg", "loss"]
+        self.metric_loss_module, self.miner_module = FragmentBaseModel.get_metric_loss_and_miner(
+            getattr(option, "metric_loss", None), getattr(option, "miner", None)
+        )
+        # Unet
+        self.backbone = SparseConv3d(
+            "unet", dataset.feature_dimension, config=option.backbone, backend=option.get("backend", "minkowski")
+        )
+        # Last Layer
+        if option.mlp_cls is not None:
+            last_mlp_opt = option.mlp_cls
+            in_feat = last_mlp_opt.nn[0]
+            self.FC_layer = Seq()
+            for i in range(1, len(last_mlp_opt.nn)):
+                self.FC_layer.append(
+                    str(i),
+                    Sequential(
+                        *[
+                            Linear(in_feat, last_mlp_opt.nn[i], bias=False),
+                            FastBatchNorm1d(last_mlp_opt.nn[i], momentum=last_mlp_opt.bn_momentum),
+                            LeakyReLU(0.2),
+                        ]
+                    ),
+                )
+                in_feat = last_mlp_opt.nn[i]
+
+            if last_mlp_opt.dropout:
+                self.FC_layer.append(Dropout(p=last_mlp_opt.dropout))
+
+            self.FC_layer.append(Linear(in_feat, in_feat, bias=False))
+        else:
+            self.FC_layer = torch.nn.Identity()
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/models/registration/minkowski.py" startline="103" endline="136" pcid="171">
+    def __init__(self, option, model_type, dataset, modules):
+        UnwrappedUnetBasedModel.__init__(self, option, model_type, dataset, modules)
+        self.mode = option.loss_mode
+        self.normalize_feature = option.normalize_feature
+        self.loss_names = ["loss_reg", "loss"]
+        self.metric_loss_module, self.miner_module = FragmentBaseModel.get_metric_loss_and_miner(
+            getattr(option, "metric_loss", None), getattr(option, "miner", None)
+        )
+        # Last Layer
+
+        if option.mlp_cls is not None:
+            last_mlp_opt = option.mlp_cls
+            in_feat = last_mlp_opt.nn[0]
+            self.FC_layer = Seq()
+            for i in range(1, len(last_mlp_opt.nn)):
+                self.FC_layer.append(
+                    str(i),
+                    Sequential(
+                        *[
+                            Linear(in_feat, last_mlp_opt.nn[i], bias=False),
+                            FastBatchNorm1d(last_mlp_opt.nn[i], momentum=last_mlp_opt.bn_momentum),
+                            LeakyReLU(0.2),
+                        ]
+                    ),
+                )
+                in_feat = last_mlp_opt.nn[i]
+
+            if last_mlp_opt.dropout:
+                self.FC_layer.append(Dropout(p=last_mlp_opt.dropout))
+
+            self.FC_layer.append(Linear(in_feat, in_feat, bias=False))
+        else:
+            self.FC_layer = torch.nn.Identity()
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/models/registration/minkowski.py" startline="16" endline="49" pcid="165">
+    def __init__(self, option, model_type, dataset, modules):
+        FragmentBaseModel.__init__(self, option)
+        self.mode = option.loss_mode
+        self.normalize_feature = option.normalize_feature
+        self.loss_names = ["loss_reg", "loss"]
+        self.metric_loss_module, self.miner_module = FragmentBaseModel.get_metric_loss_and_miner(
+            getattr(option, "metric_loss", None), getattr(option, "miner", None)
+        )
+        # Last Layer
+
+        if option.mlp_cls is not None:
+            last_mlp_opt = option.mlp_cls
+            in_feat = last_mlp_opt.nn[0]
+            self.FC_layer = Seq()
+            for i in range(1, len(last_mlp_opt.nn)):
+                self.FC_layer.append(
+                    str(i),
+                    Sequential(
+                        *[
+                            Linear(in_feat, last_mlp_opt.nn[i], bias=False),
+                            FastBatchNorm1d(last_mlp_opt.nn[i], momentum=last_mlp_opt.bn_momentum),
+                            LeakyReLU(0.2),
+                        ]
+                    ),
+                )
+                in_feat = last_mlp_opt.nn[i]
+
+            if last_mlp_opt.dropout:
+                self.FC_layer.append(Dropout(p=last_mlp_opt.dropout))
+
+            self.FC_layer.append(Linear(in_feat, in_feat, bias=False))
+        else:
+            self.FC_layer = torch.nn.Identity()
+
+</source>
+</class>
+
+<class classid="9" nclones="3" nlines="12" similarity="75">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/models/registration/ms_svconv3d.py" startline="172" endline="185" pcid="184">
+    def apply_nn(self, input):
+        # inputs = self.compute_scales(input)
+        outputs = []
+        for i in range(len(self.unet)):
+            out = self.unet[i](input.clone())
+            out.x = out.x / (torch.norm(out.x, p=2, dim=1, keepdim=True) + 1e-20)
+            outputs.append(out)
+        x = torch.cat([o.x for o in outputs], 1)
+        out_feat = self.FC_layer(x)
+        if self.normalize_feature:
+            out_feat = out_feat / (torch.norm(out_feat, p=2, dim=1, keepdim=True) + 1e-20)
+        return out_feat
+
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/models/registration/ms_svconv3d.py" startline="239" endline="252" pcid="187">
+    def apply_nn(self, input):
+        # inputs = self.compute_scales(input)
+        outputs = []
+        for i in range(len(self.grid_size)):
+            self.unet.set_grid_size(self.grid_size[i])
+            out = self.unet(input.clone())
+            out.x = out.x / (torch.norm(out.x, p=2, dim=1, keepdim=True) + 1e-20)
+            outputs.append(out)
+        x = torch.cat([o.x for o in outputs], 1)
+        out_feat = self.FC_layer(x)
+        if self.normalize_feature:
+            out_feat = out_feat / (torch.norm(out_feat, p=2, dim=1, keepdim=True) + 1e-20)
+        return out_feat, outputs
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/models/segmentation/ms_svconv3d.py" startline="57" endline="71" pcid="232">
+    def apply_nn(self, input):
+
+        outputs = []
+        for i in range(len(self.grid_size)):
+            self.unet.set_grid_size(self.grid_size[i])
+            out = self.unet(input.clone())
+            out.x = out.x / (torch.norm(out.x, p=2, dim=1, keepdim=True) + 1e-20)
+            outputs.append(out)
+        x = torch.cat([o.x for o in outputs], 1)
+        out_feat = self.FC_layer(x)
+        if self.normalize_feature:
+            out_feat = out_feat / (torch.norm(out_feat, p=2, dim=1, keepdim=True) + 1e-20)
+        out_feat = self.head(out_feat)
+        return out_feat, outputs
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="23" similarity="100">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/models/segmentation/rsconv.py" startline="19" endline="49" pcid="223">
+    def __init__(self, option, model_type, dataset, modules):
+        # call the initialization method of UnwrappedUnetBasedModel
+        UnwrappedUnetBasedModel.__init__(self, option, model_type, dataset, modules)
+        self._num_classes = dataset.num_classes
+        self._weight_classes = dataset.weight_classes
+        self._use_category = getattr(option, "use_category", False)
+        if self._use_category:
+            if not dataset.class_to_segments:
+                raise ValueError(
+                    "The dataset needs to specify a class_to_segments property when using category information for segmentation"
+                )
+            self._num_categories = len(dataset.class_to_segments.keys())
+            log.info("Using category information for the predictions with %i categories", self._num_categories)
+        else:
+            self._num_categories = 0
+
+        # Last MLP
+        last_mlp_opt = copy.deepcopy(option.mlp_cls)
+
+        self.FC_layer = Seq()
+        last_mlp_opt.nn[0] += self._num_categories
+        for i in range(1, len(last_mlp_opt.nn)):
+            self.FC_layer.append(Conv1D(last_mlp_opt.nn[i - 1], last_mlp_opt.nn[i], bn=True, bias=False))
+        if last_mlp_opt.dropout:
+            self.FC_layer.append(torch.nn.Dropout(p=last_mlp_opt.dropout))
+
+        self.FC_layer.append(Conv1D(last_mlp_opt.nn[-1], self._num_classes, activation=None, bias=True, bn=False))
+        self.loss_names = ["loss_seg"]
+
+        self.visual_names = ["data_visual"]
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/models/segmentation/pointnet2.py" startline="35" endline="65" pcid="264">
+    def __init__(self, option, model_type, dataset, modules):
+        # call the initialization method of UnetBasedModel
+        UnetBasedModel.__init__(self, option, model_type, dataset, modules)
+        self._num_classes = dataset.num_classes
+        self._weight_classes = dataset.weight_classes
+        self._use_category = getattr(option, "use_category", False)
+        if self._use_category:
+            if not dataset.class_to_segments:
+                raise ValueError(
+                    "The dataset needs to specify a class_to_segments property when using category information for segmentation"
+                )
+            self._num_categories = len(dataset.class_to_segments.keys())
+            log.info("Using category information for the predictions with %i categories", self._num_categories)
+        else:
+            self._num_categories = 0
+
+        # Last MLP
+        last_mlp_opt = copy.deepcopy(option.mlp_cls)
+
+        self.FC_layer = Seq()
+        last_mlp_opt.nn[0] += self._num_categories
+        for i in range(1, len(last_mlp_opt.nn)):
+            self.FC_layer.append(Conv1D(last_mlp_opt.nn[i - 1], last_mlp_opt.nn[i], bn=True, bias=False))
+        if last_mlp_opt.dropout:
+            self.FC_layer.append(torch.nn.Dropout(p=last_mlp_opt.dropout))
+
+        self.FC_layer.append(Conv1D(last_mlp_opt.nn[-1], self._num_classes, activation=None, bias=True, bn=False))
+        self.loss_names = ["loss_seg"]
+
+        self.visual_names = ["data_visual"]
+
+</source>
+</class>
+
+<class classid="11" nclones="2" nlines="45" similarity="91">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/models/segmentation/kpconv.py" startline="23" endline="81" pcid="235">
+    def __init__(self, option, model_type, dataset, modules):
+        # Extract parameters from the dataset
+        self._num_classes = dataset.num_classes
+        self._weight_classes = dataset.weight_classes
+        self._use_category = getattr(option, "use_category", False)
+        if self._use_category:
+            if not dataset.class_to_segments:
+                raise ValueError(
+                    "The dataset needs to specify a class_to_segments property when using category information for segmentation"
+                )
+            self._class_to_seg = dataset.class_to_segments
+            self._num_categories = len(self._class_to_seg)
+            log.info("Using category information for the predictions with %i categories", self._num_categories)
+        else:
+            self._num_categories = 0
+
+        # Assemble encoder / decoder
+        UnwrappedUnetBasedModel.__init__(self, option, model_type, dataset, modules)
+
+        # Build final MLP
+        last_mlp_opt = option.mlp_cls
+        if self._use_category:
+            self.FC_layer = MultiHeadClassifier(
+                last_mlp_opt.nn[0],
+                self._class_to_seg,
+                dropout_proba=last_mlp_opt.dropout,
+                bn_momentum=last_mlp_opt.bn_momentum,
+            )
+        else:
+            in_feat = last_mlp_opt.nn[0] + self._num_categories
+            self.FC_layer = Sequential()
+            for i in range(1, len(last_mlp_opt.nn)):
+                self.FC_layer.add_module(
+                    str(i),
+                    Sequential(
+                        *[
+                            Linear(in_feat, last_mlp_opt.nn[i], bias=False),
+                            FastBatchNorm1d(last_mlp_opt.nn[i], momentum=last_mlp_opt.bn_momentum),
+                            LeakyReLU(0.2),
+                        ]
+                    ),
+                )
+                in_feat = last_mlp_opt.nn[i]
+
+            if last_mlp_opt.dropout:
+                self.FC_layer.add_module("Dropout", Dropout(p=last_mlp_opt.dropout))
+
+            self.FC_layer.add_module("Class", Lin(in_feat, self._num_classes, bias=False))
+            self.FC_layer.add_module("Softmax", nn.LogSoftmax(-1))
+        self.loss_names = ["loss_seg"]
+
+        self.lambda_reg = self.get_from_opt(option, ["loss_weights", "lambda_reg"])
+        if self.lambda_reg:
+            self.loss_names += ["loss_reg"]
+
+        self.lambda_internal_losses = self.get_from_opt(option, ["loss_weights", "lambda_internal_losses"])
+
+        self.visual_names = ["data_visual"]
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/models/segmentation/ppnet.py" startline="23" endline="76" pcid="254">
+    def __init__(self, option, model_type, dataset, modules):
+        # Extract parameters from the dataset
+        self._num_classes = dataset.num_classes
+        self._weight_classes = dataset.weight_classes
+        self._use_category = getattr(option, "use_category", False)
+        if self._use_category:
+            if not dataset.class_to_segments:
+                raise ValueError(
+                    "The dataset needs to specify a class_to_segments property when using category information for segmentation"
+                )
+            self._class_to_seg = dataset.class_to_segments
+            self._num_categories = len(self._class_to_seg)
+            log.info("Using category information for the predictions with %i categories", self._num_categories)
+        else:
+            self._num_categories = 0
+
+        # Assemble encoder / decoder
+        UnwrappedUnetBasedModel.__init__(self, option, model_type, dataset, modules)
+
+        # Build final MLP
+        last_mlp_opt = option.mlp_cls
+        if self._use_category:
+            self.FC_layer = MultiHeadClassifier(
+                last_mlp_opt.nn[0],
+                self._class_to_seg,
+                dropout_proba=last_mlp_opt.dropout,
+                bn_momentum=last_mlp_opt.bn_momentum,
+            )
+        else:
+            in_feat = last_mlp_opt.nn[0] + self._num_categories
+            self.FC_layer = Sequential()
+            for i in range(1, len(last_mlp_opt.nn)):
+                self.FC_layer.add_module(
+                    str(i),
+                    Sequential(
+                        *[
+                            Linear(in_feat, last_mlp_opt.nn[i], bias=False),
+                            FastBatchNorm1d(last_mlp_opt.nn[i], momentum=last_mlp_opt.bn_momentum),
+                            LeakyReLU(0.2),
+                        ]
+                    ),
+                )
+                in_feat = last_mlp_opt.nn[i]
+
+            if last_mlp_opt.dropout:
+                self.FC_layer.add_module("Dropout", Dropout(p=last_mlp_opt.dropout))
+
+            self.FC_layer.add_module("Class", Lin(in_feat, self._num_classes, bias=False))
+            self.FC_layer.add_module("Softmax", nn.LogSoftmax(-1))
+        self.loss_names = ["loss_seg"]
+
+        self.visual_names = ["data_visual"]
+        self.init_weights()
+
+</source>
+</class>
+
+<class classid="12" nclones="2" nlines="16" similarity="93">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/models/segmentation/kpconv.py" startline="82" endline="105" pcid="236">
+    def set_input(self, data, device):
+        """Unpack input data from the dataloader and perform necessary pre-processing steps.
+        Parameters:
+            input: a dictionary that contains the data itself and its metadata information.
+        """
+        data = data.to(device)
+        data.x = add_ones(data.pos, data.x, True)
+
+        if isinstance(data, MultiScaleBatch):
+            self.pre_computed = data.multiscale
+            self.upsample = data.upsample
+            del data.upsample
+            del data.multiscale
+        else:
+            self.upsample = None
+            self.pre_computed = None
+
+        self.input = data
+        self.labels = data.y
+        self.batch_idx = data.batch
+
+        if self._use_category:
+            self.category = data.category
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/models/segmentation/ppnet.py" startline="77" endline="99" pcid="255">
+    def set_input(self, data, device):
+        """Unpack input data from the dataloader and perform necessary pre-processing steps.
+        Parameters:
+            input: a dictionary that contains the data itself and its metadata information.
+        """
+        data = data.to(device)
+
+        if isinstance(data, MultiScaleBatch):
+            self.pre_computed = data.multiscale
+            self.upsample = data.upsample
+            del data.upsample
+            del data.multiscale
+        else:
+            self.upsample = None
+            self.pre_computed = None
+
+        self.input = data
+        self.labels = data.y
+        self.batch_idx = data.batch
+
+        if self._use_category:
+            self.category = data.category
+
+</source>
+</class>
+
+<class classid="13" nclones="2" nlines="27" similarity="100">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/models/segmentation/kpconv.py" startline="106" endline="141" pcid="237">
+    def forward(self, *args, **kwargs) -> Any:
+        """Run forward pass. This will be called by both functions <optimize_parameters> and <test>."""
+        stack_down = []
+
+        data = self.input
+        for i in range(len(self.down_modules) - 1):
+            data = self.down_modules[i](data, precomputed=self.pre_computed)
+            stack_down.append(data)
+
+        data = self.down_modules[-1](data, precomputed=self.pre_computed)
+        innermost = False
+
+        if not isinstance(self.inner_modules[0], Identity):
+            stack_down.append(data)
+            data = self.inner_modules[0](data)
+            innermost = True
+
+        for i in range(len(self.up_modules)):
+            if i == 0 and innermost:
+                data = self.up_modules[i]((data, stack_down.pop()))
+            else:
+                data = self.up_modules[i]((data, stack_down.pop()), precomputed=self.upsample)
+
+        last_feature = data.x
+        if self._use_category:
+            self.output = self.FC_layer(last_feature, self.category)
+        else:
+            self.output = self.FC_layer(last_feature)
+
+        if self.labels is not None:
+            self.compute_loss()
+
+        self.data_visual = self.input
+        self.data_visual.pred = torch.max(self.output, -1)[1]
+        return self.output
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/models/segmentation/ppnet.py" startline="100" endline="135" pcid="256">
+    def forward(self, *args, **kwargs) -> Any:
+        """Run forward pass. This will be called by both functions <optimize_parameters> and <test>."""
+        stack_down = []
+
+        data = self.input
+        for i in range(len(self.down_modules) - 1):
+            data = self.down_modules[i](data, precomputed=self.pre_computed)
+            stack_down.append(data)
+
+        data = self.down_modules[-1](data, precomputed=self.pre_computed)
+        innermost = False
+
+        if not isinstance(self.inner_modules[0], Identity):
+            stack_down.append(data)
+            data = self.inner_modules[0](data)
+            innermost = True
+
+        for i in range(len(self.up_modules)):
+            if i == 0 and innermost:
+                data = self.up_modules[i]((data, stack_down.pop()))
+            else:
+                data = self.up_modules[i]((data, stack_down.pop()), precomputed=self.upsample)
+
+        last_feature = data.x
+        if self._use_category:
+            self.output = self.FC_layer(last_feature, self.category)
+        else:
+            self.output = self.FC_layer(last_feature)
+
+        if self.labels is not None:
+            self.compute_loss()
+
+        self.data_visual = self.input
+        self.data_visual.pred = torch.max(self.output, -1)[1]
+        return self.output
+
+</source>
+</class>
+
+<class classid="14" nclones="3" nlines="16" similarity="100">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/models/base_architectures/unet.py" startline="198" endline="217" pcid="275">
+    def _fetch_arguments_from_list(self, opt, index):
+        """Fetch the arguments for a single convolution from multiple lists
+        of arguments - for models specified in the compact format.
+        """
+        args = {}
+        for o, v in opt.items():
+            name = str(o)
+            if is_list(v) and len(getattr(opt, o)) > 0:
+                if name[-1] == "s" and name not in SPECIAL_NAMES:
+                    name = name[:-1]
+                v_index = v[index]
+                if is_list(v_index):
+                    v_index = list(v_index)
+                args[name] = v_index
+            else:
+                if is_list(v):
+                    v = list(v)
+                args[name] = v
+        return args
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/models/base_architectures/unet.py" startline="456" endline="475" pcid="290">
+    def _fetch_arguments_from_list(self, opt, index):
+        """Fetch the arguments for a single convolution from multiple lists
+        of arguments - for models specified in the compact format.
+        """
+        args = {}
+        for o, v in opt.items():
+            name = str(o)
+            if is_list(v) and len(getattr(opt, o)) > 0:
+                if name[-1] == "s" and name not in SPECIAL_NAMES:
+                    name = name[:-1]
+                v_index = v[index]
+                if is_list(v_index):
+                    v_index = list(v_index)
+                args[name] = v_index
+            else:
+                if is_list(v):
+                    v = list(v)
+                args[name] = v
+        return args
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/models/base_architectures/backbone.py" startline="110" endline="129" pcid="299">
+    def _fetch_arguments_from_list(self, opt, index):
+        """Fetch the arguments for a single convolution from multiple lists
+        of arguments - for models specified in the compact format.
+        """
+        args = {}
+        for o, v in opt.items():
+            name = str(o)
+            if is_list(v) and len(getattr(opt, o)) > 0:
+                if name[-1] == "s" and name not in SPECIAL_NAMES:
+                    name = name[:-1]
+                v_index = v[index]
+                if is_list(v_index):
+                    v_index = list(v_index)
+                args[name] = v_index
+            else:
+                if is_list(v):
+                    v = list(v)
+                args[name] = v
+        return args
+
+</source>
+</class>
+
+<class classid="15" nclones="2" nlines="34" similarity="71">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/datasets/registration/kitti.py" startline="23" endline="57" pcid="367">
+    def __init__(self, root,
+                 mode='train',
+                 self_supervised=False,
+                 min_size_block=0.3,
+                 max_size_block=2,
+                 max_dist_overlap=0.01,
+                 max_time_distance=3,
+                 min_dist=10,
+                 transform=None,
+                 pre_transform=None,
+                 pre_filter=None,
+                 is_online_matching=False,
+                 num_pos_pairs=1024,
+                 ss_transform=None,
+                 min_points=300):
+        BaseKitti.__init__(self,
+                           root,
+                           mode,
+                           max_dist_overlap,
+                           max_time_distance,
+                           min_dist,
+                           transform,
+                           pre_transform,
+                           pre_filter)
+
+        self.path_match = osp.join(self.processed_dir, self.mode, "matches")
+        self.list_fragment = [f for f in os.listdir(self.path_match) if "matches" in f]
+        self.is_online_matching = is_online_matching
+        self.num_pos_pairs = num_pos_pairs
+        self.self_supervised = self_supervised
+        self.min_size_block = min_size_block
+        self.max_size_block = max_size_block
+        self.ss_transform = ss_transform
+        self.min_points = min_points
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/datasets/registration/modelnet.py" startline="32" endline="67" pcid="463">
+    def __init__(self, root,
+                 name_modelnet="10",
+                 min_size_block=0.3,
+                 max_size_block=2,
+                 max_dist_overlap=0.1,
+                 train=True,
+                 transform=None,
+                 pre_transform=None,
+                 pre_filter=None,
+                 num_pos_pairs=1024,
+                 ss_transform=None,
+                 min_points=500,
+                 use_fps=False
+    ):
+        SampledModelNet.__init__(self,
+                                 root,
+                                 name_modelnet,
+                                 train,
+                                 transform,
+                                 pre_transform,
+                                 pre_filter)
+        self.self_supervised = True # only self supervised is allowed for modelnet
+        self.is_online_matching = False
+        self.num_pos_pairs = num_pos_pairs
+        self.min_size_block = min_size_block
+        self.max_size_block = max_size_block
+        self.max_dist_overlap = max_dist_overlap
+        self.ss_transform = ss_transform
+        self.min_points = min_points
+        self.train = train
+        self.use_fps = use_fps
+        if(self.train):
+            self.name = "train"
+        else:
+            self.name = "test"
+
+</source>
+</class>
+
+<class classid="16" nclones="2" nlines="31" similarity="93">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/datasets/registration/test3dmatch.py" startline="75" endline="105" pcid="378">
+    def __init__(self, root,
+                 transform=None,
+                 pre_transform=None,
+                 pre_filter=None,
+                 verbose=False,
+                 debug=False,
+                 num_pos_pairs=200,
+                 max_dist_overlap=0.01,
+                 self_supervised=False,
+                 ss_transform=None,
+                 min_size_block=0.3,
+                 max_size_block=2,
+                 min_points=500,
+                 use_fps=False):
+        Base3DMatchTest.__init__(self, root=root,
+                                 transform=transform,
+                                 pre_transform=pre_transform,
+                                 pre_filter=pre_filter,
+                                 verbose=verbose, debug=debug,
+                                 max_dist_overlap=max_dist_overlap)
+        self.num_pos_pairs = num_pos_pairs
+        self.path_match = osp.join(self.processed_dir, "test", "matches")
+        self.list_fragment = [f for f in os.listdir(self.path_match) if "matches" in f]
+        self.self_supervised = self_supervised
+        self.ss_transform = ss_transform
+        self.is_online_matching = False
+        self.use_fps = use_fps
+        self.min_points = min_points
+        self.min_size_block = min_size_block
+        self.max_size_block = max_size_block
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/datasets/registration/testeth.py" startline="171" endline="203" pcid="431">
+    def __init__(self, root,
+                 transform=None,
+                 pre_transform=None,
+                 pre_filter=None,
+                 verbose=False,
+                 debug=False,
+                 num_pos_pairs=200,
+                 max_dist_overlap=0.01,
+                 self_supervised=False,
+                 ss_transform=None,
+                 min_size_block=0.3,
+                 max_size_block=2,
+                 min_points=500,
+                 use_fps=False):
+        self.name = "eth2"
+        self.url = "https://cloud.mines-paristech.fr/index.php/s/SuoVN4detclRoE6/download"
+        Base3DMatchTest.__init__(self, root=root,
+                                 transform=transform,
+                                 pre_transform=pre_transform,
+                                 pre_filter=pre_filter,
+                                 verbose=verbose, debug=debug,
+                                 max_dist_overlap=max_dist_overlap)
+        self.num_pos_pairs = num_pos_pairs
+        self.path_match = osp.join(self.processed_dir, "test", "matches")
+        self.list_fragment = [f for f in os.listdir(self.path_match) if "matches" in f]
+        self.self_supervised = self_supervised
+        self.ss_transform = ss_transform
+        self.is_online_matching = False
+        self.use_fps = use_fps
+        self.min_points = min_points
+        self.min_size_block = min_size_block
+        self.max_size_block = max_size_block
+
+</source>
+</class>
+
+<class classid="17" nclones="6" nlines="24" similarity="84">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/datasets/registration/test3dmatch.py" startline="119" endline="148" pcid="383">
+    def __init__(self, dataset_opt):
+        super().__init__(dataset_opt)
+        pre_transform = self.pre_transform
+        ss_transform = getattr(self, "ss_transform", None)
+        train_transform = self.train_transform
+        test_transform = self.test_transform
+
+        self.train_dataset = TestPair3DMatch(
+            root=self._data_path,
+            pre_transform=pre_transform,
+            transform=train_transform,
+            num_pos_pairs=dataset_opt.num_pos_pairs,
+            max_dist_overlap=dataset_opt.max_dist_overlap,
+            self_supervised=True,
+            min_size_block=dataset_opt.min_size_block,
+            max_size_block=dataset_opt.max_size_block,
+            ss_transform=ss_transform,
+            min_points=dataset_opt.min_points,
+            use_fps=dataset_opt.use_fps
+        )
+
+        self.test_dataset = TestPair3DMatch(
+                root=self._data_path,
+                pre_transform=pre_transform,
+                transform=test_transform,
+                num_pos_pairs=50,
+                max_dist_overlap=dataset_opt.max_dist_overlap,
+                self_supervised=False
+            )
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/datasets/registration/testkaist.py" startline="84" endline="111" pcid="414">
+    def __init__(self, dataset_opt):
+
+        super().__init__(dataset_opt)
+        pre_transform = self.pre_transform
+        train_transform = self.train_transform
+        ss_transform = getattr(self, "ss_transform", None)
+        test_transform = self.test_transform
+
+        # training is similar to test but only unsupervised training is allowed XD
+        self.train_dataset = TestPairKaist(
+            root=self._data_path,
+            pre_transform=pre_transform,
+            transform=train_transform,
+            max_dist_overlap=dataset_opt.max_dist_overlap,
+            self_supervised=True,
+            min_size_block=dataset_opt.min_size_block,
+            max_size_block=dataset_opt.max_size_block,
+            num_pos_pairs=dataset_opt.num_pos_pairs,
+            min_points=dataset_opt.min_points,
+            ss_transform=ss_transform,
+            use_fps=dataset_opt.use_fps)
+        self.test_dataset = TestPairKaist(
+            root=self._data_path,
+            pre_transform=pre_transform,
+            transform=test_transform,
+            max_dist_overlap=dataset_opt.max_dist_overlap,
+            num_pos_pairs=dataset_opt.num_pos_pairs,
+            self_supervised=False)
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/datasets/registration/testplanetary.py" startline="114" endline="142" pcid="462">
+    def __init__(self, dataset_opt):
+
+        super().__init__(dataset_opt)
+        pre_transform = self.pre_transform
+        train_transform = self.train_transform
+        ss_transform = getattr(self, "ss_transform", None)
+        test_transform = self.test_transform
+
+        # training is similar to test but only unsupervised training is allowed XD
+        self.train_dataset = TestPairPlanetary(
+            root=self._data_path,
+            pre_transform=pre_transform,
+            transform=train_transform,
+            max_dist_overlap=dataset_opt.max_dist_overlap,
+            self_supervised=True,
+            min_size_block=dataset_opt.min_size_block,
+            max_size_block=dataset_opt.max_size_block,
+            num_pos_pairs=dataset_opt.num_pos_pairs,
+            min_points=dataset_opt.min_points,
+            ss_transform=ss_transform,
+            use_fps=dataset_opt.use_fps
+        )
+        self.test_dataset = TestPairPlanetary(
+            root=self._data_path,
+            pre_transform=pre_transform,
+            transform=test_transform,
+            max_dist_overlap=dataset_opt.max_dist_overlap,
+            num_pos_pairs=dataset_opt.num_pos_pairs,
+            self_supervised=False)
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/datasets/registration/testeth.py" startline="234" endline="262" pcid="436">
+    def __init__(self, dataset_opt):
+        super().__init__(dataset_opt)
+        pre_transform = self.pre_transform
+        ss_transform = getattr(self, "ss_transform", None)
+        train_transform = self.train_transform
+        test_transform = self.test_transform
+
+        self.train_dataset = TestPairETH2(
+            root=self._data_path,
+            pre_transform=pre_transform,
+            transform=train_transform,
+            num_pos_pairs=dataset_opt.num_pos_pairs,
+            max_dist_overlap=dataset_opt.max_dist_overlap,
+            self_supervised=True,
+            min_size_block=dataset_opt.min_size_block,
+            max_size_block=dataset_opt.max_size_block,
+            ss_transform=ss_transform,
+            min_points=dataset_opt.min_points,
+            use_fps=dataset_opt.use_fps
+        )
+
+        self.test_dataset = TestPairETH2(
+                root=self._data_path,
+                pre_transform=pre_transform,
+                transform=test_transform,
+                num_pos_pairs=50,
+                max_dist_overlap=dataset_opt.max_dist_overlap,
+                self_supervised=False
+            )
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/datasets/registration/testeth.py" startline="139" endline="166" pcid="430">
+    def __init__(self, dataset_opt):
+
+        super().__init__(dataset_opt)
+        pre_transform = self.pre_transform
+        train_transform = self.train_transform
+        ss_transform = getattr(self, "ss_transform", None)
+        test_transform = self.test_transform
+
+        # training is similar to test but only unsupervised training is allowed XD
+        self.train_dataset = TestPairETH(root=self._data_path,
+                                         pre_transform=pre_transform,
+                                         transform=train_transform,
+                                         max_dist_overlap=dataset_opt.max_dist_overlap,
+                                         self_supervised=True,
+                                         min_size_block=dataset_opt.min_size_block,
+                                         max_size_block=dataset_opt.max_size_block,
+                                         num_pos_pairs=dataset_opt.num_pos_pairs,
+                                         min_points=dataset_opt.min_points,
+                                         ss_transform=ss_transform,
+                                         use_fps=dataset_opt.use_fps)
+        self.test_dataset = TestPairETH(root=self._data_path,
+                                        pre_transform=pre_transform,
+                                        transform=test_transform,
+                                        max_dist_overlap=dataset_opt.max_dist_overlap,
+                                        num_pos_pairs=dataset_opt.num_pos_pairs,
+                                        self_supervised=False)
+
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/datasets/registration/testtum.py" startline="91" endline="116" pcid="425">
+    def __init__(self, dataset_opt):
+
+        super().__init__(dataset_opt)
+        pre_transform = self.pre_transform
+        train_transform = self.train_transform
+        ss_transform = getattr(self, "ss_transform", None)
+        test_transform = self.test_transform
+
+        # training is similar to test but only unsupervised training is allowed XD
+        self.train_dataset = TestPairTUM(root=self._data_path,
+                                         pre_transform=pre_transform,
+                                         transform=train_transform,
+                                         max_dist_overlap=dataset_opt.max_dist_overlap,
+                                         self_supervised=True,
+                                         min_size_block=dataset_opt.min_size_block,
+                                         max_size_block=dataset_opt.max_size_block,
+                                         num_pos_pairs=dataset_opt.num_pos_pairs,
+                                         min_points=dataset_opt.min_points,
+                                         ss_transform=ss_transform,
+                                         use_fps=dataset_opt.use_fps)
+        self.test_dataset = TestPairTUM(root=self._data_path,
+                                        pre_transform=pre_transform,
+                                        transform=test_transform,
+                                        max_dist_overlap=dataset_opt.max_dist_overlap,
+                                        num_pos_pairs=dataset_opt.num_pos_pairs,
+                                        self_supervised=False)
+</source>
+</class>
+
+<class classid="18" nclones="4" nlines="29" similarity="96">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/datasets/registration/testkaist.py" startline="24" endline="53" pcid="411">
+    def __init__(self, root,
+                 transform=None,
+                 pre_transform=None,
+                 pre_filter=None,
+                 verbose=False,
+                 debug=False,
+                 num_pos_pairs=200,
+                 max_dist_overlap=0.01,
+                 self_supervised=False,
+                 min_size_block=2,
+                 max_size_block=3,
+                 min_points=500,
+                 ss_transform=None,
+                 use_fps=False):
+        self.link_pairs = "https://cloud.mines-paristech.fr/index.php/s/4cTpY4CKPAXFGk4/download"
+        BasePCRBTest.__init__(self,
+                              root=root,
+                              transform=transform,
+                              pre_transform=pre_transform,
+                              pre_filter=pre_filter,
+                              verbose=verbose, debug=debug,
+                              max_dist_overlap=max_dist_overlap,
+                              num_pos_pairs=num_pos_pairs,
+                              self_supervised=self_supervised,
+                              min_size_block=min_size_block,
+                              max_size_block=max_size_block,
+                              min_points=min_points,
+                              ss_transform=ss_transform,
+                              use_fps=use_fps)
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/datasets/registration/testplanetary.py" startline="36" endline="65" pcid="459">
+    def __init__(self, root,
+                 transform=None,
+                 pre_transform=None,
+                 pre_filter=None,
+                 verbose=False,
+                 debug=False,
+                 num_pos_pairs=200,
+                 max_dist_overlap=0.01,
+                 self_supervised=False,
+                 min_size_block=2,
+                 max_size_block=3,
+                 min_points=500,
+                 ss_transform=None,
+                 use_fps=False):
+        self.link_pairs = "https://cloud.mines-paristech.fr/index.php/s/7cqiTMIIqwvMOtA/download"
+        BasePCRBTest.__init__(self,
+                              root=root,
+                              transform=transform,
+                              pre_transform=pre_transform,
+                              pre_filter=pre_filter,
+                              verbose=verbose, debug=debug,
+                              max_dist_overlap=max_dist_overlap,
+                              num_pos_pairs=num_pos_pairs,
+                              self_supervised=self_supervised,
+                              min_size_block=min_size_block,
+                              max_size_block=max_size_block,
+                              min_points=min_points,
+                              ss_transform=ss_transform,
+                              use_fps=use_fps)
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/datasets/registration/testtum.py" startline="28" endline="58" pcid="422">
+    def __init__(self, root,
+                 transform=None,
+                 pre_transform=None,
+                 pre_filter=None,
+                 verbose=False,
+                 debug=False,
+                 num_pos_pairs=200,
+                 max_dist_overlap=0.01,
+                 self_supervised=False,
+                 min_size_block=2,
+                 max_size_block=3,
+                 min_points=500,
+                 ss_transform=None,
+                 use_fps=False):
+        self.link_pairs = "https://cloud.mines-paristech.fr/index.php/s/yjd20Ih9ExqLlHM/download"
+        BasePCRBTest.__init__(self,
+                              root=root,
+                              transform=transform,
+                              pre_transform=pre_transform,
+                              pre_filter=pre_filter,
+                              verbose=verbose, debug=debug,
+                              max_dist_overlap=max_dist_overlap,
+                              num_pos_pairs=num_pos_pairs,
+                              self_supervised=self_supervised,
+                              min_size_block=min_size_block,
+                              max_size_block=max_size_block,
+                              min_points=min_points,
+                              ss_transform=ss_transform,
+                              use_fps=use_fps,
+                              is_name_path_int=False)
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/datasets/registration/testeth.py" startline="65" endline="95" pcid="427">
+    def __init__(self, root,
+                 transform=None,
+                 pre_transform=None,
+                 pre_filter=None,
+                 verbose=False,
+                 debug=False,
+                 num_pos_pairs=200,
+                 max_dist_overlap=0.01,
+                 self_supervised=False,
+                 min_size_block=2,
+                 max_size_block=3,
+                 min_points=500,
+                 ss_transform=None,
+                 use_fps=False):
+        self.link_pairs = "https://cloud.mines-paristech.fr/index.php/s/aIRBieRybts3kEs/download"
+        self.link_pose = "https://cloud.mines-paristech.fr/index.php/s/U0F6CFKDCtXcAl7/download"
+        BasePCRBTest.__init__(self,
+                              root=root,
+                              transform=transform,
+                              pre_transform=pre_transform,
+                              pre_filter=pre_filter,
+                              verbose=verbose, debug=debug,
+                              max_dist_overlap=max_dist_overlap,
+                              num_pos_pairs=num_pos_pairs,
+                              self_supervised=self_supervised,
+                              min_size_block=min_size_block,
+                              max_size_block=max_size_block,
+                              min_points=min_points,
+                              ss_transform=ss_transform,
+                              use_fps=use_fps)
+
+</source>
+</class>
+
+<class classid="19" nclones="2" nlines="17" similarity="88">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/datasets/registration/testkaist.py" startline="54" endline="71" pcid="412">
+    def download(self):
+        folder = os.path.join(self.raw_dir, "test")
+        if files_exist([folder]):  # pragma: no cover
+            log.warning("already downloaded {}".format("test"))
+            return
+        else:
+            makedirs(folder)
+        log.info("Download elements in the file {}...".format(folder))
+        for name, url in self.DATASETS:
+            log.info(f'Downloading sequence {name}')
+            filename = os.path.join(folder,name+".zip")
+            gdown.download(url, filename, quiet=False)
+            with ZipFile(filename, 'r') as zip_obj:
+                zip_obj.extractall(folder)
+            os.remove(filename)
+
+        self.download_pairs(folder)
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/datasets/registration/testtum.py" startline="59" endline="78" pcid="423">
+    def download(self):
+        folder = os.path.join(self.raw_dir, "test")
+        if files_exist([folder]):  # pragma: no cover
+            log.warning("already downloaded {}".format("test"))
+            return
+        else:
+            makedirs(folder)
+        log.info("Download elements in the file {}...".format(folder))
+        for name, url in self.DATASETS:
+            dataset_folder = os.path.join(folder,name)
+            os.mkdir(dataset_folder)
+            log.info(f'Downloading sequence {name}')
+            filename = os.path.join(folder,name+".zip")
+            gdown.download(url, filename, quiet=False)
+            with ZipFile(filename, 'r') as zip_obj:
+                zip_obj.extractall(dataset_folder)
+            os.remove(filename)
+
+        self.download_pairs(folder)
+
+</source>
+</class>
+
+<class classid="20" nclones="2" nlines="14" similarity="92">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/datasets/registration/base_siamese_dataset.py" startline="42" endline="57" pcid="416">
+    def _get_collate_function(conv_type, is_multiscale, pre_collate_transform=None):
+        is_dense = ConvolutionFormatFactory.check_is_dense_format(conv_type)
+        if is_multiscale:
+            if conv_type.lower() == ConvolutionFormat.PARTIAL_DENSE.value.lower():
+                fn = PairMultiScaleBatch.from_data_list
+            else:
+                raise NotImplementedError(
+                    "MultiscaleTransform is activated and supported only for partial_dense format"
+                )
+        else:
+            if is_dense:
+                fn = DensePairBatch.from_data_list
+            else:
+                fn = PairBatch.from_data_list
+        return partial(BaseDataset._collate_fn, collate_fn=fn, pre_collate_transform=pre_collate_transform)
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/datasets/base_dataset.py" startline="160" endline="175" pcid="511">
+    def _get_collate_function(conv_type, is_multiscale, pre_collate_transform=None):
+        is_dense = ConvolutionFormatFactory.check_is_dense_format(conv_type)
+        if is_multiscale:
+            if conv_type.lower() == ConvolutionFormat.PARTIAL_DENSE.value.lower():
+                fn = MultiScaleBatch.from_data_list
+            else:
+                raise NotImplementedError(
+                    "MultiscaleTransform is activated and supported only for partial_dense format"
+                )
+        else:
+            if is_dense:
+                fn = SimpleBatch.from_data_list
+            else:
+                fn = torch_geometric.data.batch.Batch.from_data_list
+        return partial(BaseDataset._collate_fn, collate_fn=fn, pre_collate_transform=pre_collate_transform)
+
+</source>
+</class>
+
+<class classid="21" nclones="2" nlines="54" similarity="73">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/datasets/registration/general3dmatch.py" startline="22" endline="127" pcid="448">
+    def __init__(
+        self,
+        root,
+        radius_patch=0.3,
+        num_frame_per_fragment=50,
+        mode="train_small",
+        min_overlap_ratio=0.3,
+        max_overlap_ratio=1.0,
+        max_dist_overlap=0.01,
+        tsdf_voxel_size=0.02,
+        limit_size=700,
+        depth_thresh=6,
+        is_fine=True,
+        transform=None,
+        pre_transform=None,
+        pre_filter=None,
+        verbose=False,
+        debug=False,
+        num_random_pt=5000,
+        is_offline=False,
+        pre_transform_patch=None,
+    ):
+        r"""
+        Patch extracted from :the Princeton 3DMatch dataset\n
+        `"3DMatch: Learning Local Geometric Descriptors from RGB-D Reconstructions"
+        <https://arxiv.org/pdf/1603.08182.pdf>`_
+        paper, containing rgbd frames of the following dataset:
+        `" SUN3D: A Database of Big Spaces Reconstructed using SfM and Object Labels
+        "<http://sun3d.cs.princeton.edu/>`
+        `"Scene Coordinate Regression Forests for Camera Relocalization in RGB-D Images
+        "<https://www.microsoft.com/en-us/research/publication/scene-coordinate-regression-forests-for-camera-relocalization-in-rgb-d-images/>`
+        `"Unsupervised Feature Learning for 3D Scene Labeling
+        "<http://rgbd-dataset.cs.washington.edu/dataset/rgbd-scenes-v2/>`
+        `"BundleFusion: Real-time Globally Consistent 3D Reconstruction using Online
+        Surface Re-integration
+        "<http://graphics.stanford.edu/projects/bundlefusion/>`
+        `"Learning to Navigate the Energy Landscape
+        "<http://graphics.stanford.edu/projects/reloc/>`
+
+        Args:
+
+            root (string): Root directory where the dataset should be saved
+
+            radius_patch(float, optional): the size of the patch
+
+            num_frame_per_fragment (int, optional): indicate the number of frames
+                we use to build fragments. If it is equal to 0, then we don't
+                build fragments and use the raw frames.
+
+            mode (string, optional): If :obj:`True`, loads the training dataset,
+            otherwise the test dataset. (default: :obj:`True`)
+
+            min_overlap_ratio(float, optional): the minimum overlap we should have to match two fragments (overlap is the number of points in a fragment that matches in an other fragment divided by the number of points)
+
+            max_dist_overlap(float, optional): minimum distance to consider that a point match with an other.
+            tsdf_voxel_size(float, optional): the size of the tsdf voxel grid to perform fine RGBD fusion to create fine fragments
+            depth_thresh: threshold to remove depth pixel that are two far.
+
+            is_fine: fine mode for the fragment fusion
+
+            limit_size : limit the number of pixel at each direction to abvoid to heavy tsdf voxel
+
+            transform (callable, optional): A function/transform that takes in
+                an :obj:`torch_geometric.data.Data` object and returns a
+                transformed version. The data object will be transformed before
+                every access. (default: :obj:`None`)
+
+            pre_transform (callable, optional): A function/transform that takes in
+                an :obj:`torch_geometric.data.Data` object and returns a
+                transformed version. The data object will be transformed before
+                being saved to disk. (default: :obj:`None`)
+            pre_filter (callable, optional): A function that takes in an
+                :obj:`torch_geometric.data.Data` object and returns a boolean
+                value, indicating whether the data object should be included in the
+                final dataset. (default: :obj:`None`)
+            num_random_pt: number of point we select
+        """
+        self.is_patch = True
+        super(Patch3DMatch, self).__init__(
+            root,
+            num_frame_per_fragment,
+            mode,
+            min_overlap_ratio,
+            max_overlap_ratio,
+            max_dist_overlap,
+            tsdf_voxel_size,
+            limit_size,
+            depth_thresh,
+            is_fine,
+            transform,
+            pre_transform,
+            pre_filter,
+            verbose,
+            debug,
+            num_random_pt,
+            is_offline,
+            radius_patch,
+            pre_transform_patch,
+        )
+
+        self.radius_patch = radius_patch
+        self.is_offline = is_offline
+        self.path_data = osp.join(self.processed_dir, self.mode, "matches")
+        if self.is_offline:
+            self.path_data = osp.join(self.processed_dir, self.mode, "patches")
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/datasets/registration/general3dmatch.py" startline="229" endline="286" pcid="453">
+    def __init__(
+            self,
+            root,
+            num_frame_per_fragment=50,
+            mode="train_small",
+            min_overlap_ratio=0.3,
+            max_overlap_ratio=1.0,
+            max_dist_overlap=0.01,
+            tsdf_voxel_size=0.02,
+            limit_size=700,
+            depth_thresh=6,
+            is_fine=True,
+            transform=None,
+            pre_transform=None,
+            pre_transform_fragment=None,
+            pre_filter=None,
+            verbose=False,
+            debug=False,
+            is_online_matching=False,
+            num_pos_pairs=1024,
+            self_supervised=False,
+            min_size_block=0.3,
+            max_size_block=2,
+            ss_transform=None,
+            min_points=500,
+            use_fps=False
+    ):
+        self.is_patch = False
+        Base3DMatch.__init__(
+            self,
+            root,
+            num_frame_per_fragment,
+            mode,
+            min_overlap_ratio,
+            max_overlap_ratio,
+            max_dist_overlap,
+            tsdf_voxel_size,
+            limit_size,
+            depth_thresh,
+            is_fine,
+            transform,
+            pre_transform,
+            pre_transform_fragment,
+            pre_filter,
+            verbose,
+            debug,
+        )
+        self.path_match = osp.join(self.processed_dir, self.mode, "matches")
+        self.list_fragment = [f for f in os.listdir(self.path_match) if "matches" in f]
+        self.is_online_matching = is_online_matching
+        self.num_pos_pairs = num_pos_pairs
+        self.self_supervised = self_supervised
+        self.min_size_block = min_size_block
+        self.max_size_block = max_size_block
+        self.ss_transform = ss_transform
+        self.min_points = min_points
+        self.use_fps = use_fps
+
+</source>
+</class>
+
+<class classid="22" nclones="2" nlines="26" similarity="72">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/core/losses/__init__.py" startline="23" endline="61" pcid="663">
+def instantiate_loss_or_miner(option, mode="loss"):
+    """
+    create a loss from an OmegaConf dict such as
+    TripletMarginLoss.
+    params:
+        margin=0.1
+    It can also instantiate a miner to better learn a loss
+    """
+    class_ = getattr(option, "class", None)
+    try:
+        params = option.params
+    except KeyError:
+        params = None
+
+    try:
+        lparams = option.lparams
+    except KeyError:
+        lparams = None
+
+    if "loss" in mode:
+        cls = getattr(_custom_losses, class_, None)
+        if not cls:
+            cls = getattr(_torch_metric_learning_losses, class_, None)
+            if not cls:
+                raise ValueError("loss %s is nowhere to be found" % class_)
+    elif mode == "miner":
+        cls = getattr(_torch_metric_learning_miners, class_, None)
+        if not cls:
+            raise ValueError("miner %s is nowhere to be found" % class_)
+    else:
+        raise NotImplementedError("Cannot instantiate this mode {}".format(mode))
+
+    if params and lparams:
+        return cls(*lparams, **params)
+    if params:
+        return cls(**params)
+    if lparams:
+        return cls(*params)
+    return cls()
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/core/data_transform/__init__.py" startline="48" endline="81" pcid="881">
+def instantiate_transform(transform_option, attr="transform"):
+    """ Creates a transform from an OmegaConf dict such as
+    transform: GridSampling3D
+        params:
+            size: 0.01
+    """
+    tr_name = getattr(transform_option, attr, None)
+    try:
+        tr_params = transform_option.params
+    except KeyError:
+        tr_params = None
+    try:
+        lparams = transform_option.lparams
+    except KeyError:
+        lparams = None
+
+    cls = getattr(_custom_transforms, tr_name, None)
+    if not cls:
+        cls = getattr(_torch_geometric_transforms, tr_name, None)
+        if not cls:
+            raise ValueError("Transform %s is nowhere to be found" % tr_name)
+
+    if tr_params and lparams:
+        return cls(*lparams, **tr_params)
+
+    if tr_params:
+        return cls(**tr_params)
+
+    if lparams:
+        return cls(*lparams)
+
+    return cls()
+
+
+</source>
+</class>
+
+<class classid="23" nclones="2" nlines="12" similarity="71">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/core/base_conv/message_passing.py" startline="138" endline="156" pcid="675">
+    def forward(self, data, **kwargs):
+        batch_obj = Batch()
+        x, pos, batch = data.x, data.pos, data.batch
+        if pos is not None:
+            x = self.nn(torch.cat([x, pos], dim=1))
+        else:
+            x = self.nn(x)
+        x = self.pool(x, batch)
+        batch_obj.x = x
+        if pos is not None:
+            batch_obj.pos = pos.new_zeros((x.size(0), 3))
+        batch_obj.batch = torch.arange(x.size(0), device=batch.device)
+        copy_from_to(data, batch_obj)
+        return batch_obj
+
+
+#################### COMMON MODULE ########################
+
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/core/base_conv/partial_dense.py" startline="91" endline="102" pcid="690">
+    def forward(self, data, **kwargs):
+        batch_obj = Batch()
+        x, pos, batch = data.x, data.pos, data.batch
+        x = self.nn(torch.cat([x, pos], dim=1))
+        x = self.pool(x, batch)
+        batch_obj.x = x
+        batch_obj.pos = pos.new_zeros((x.size(0), 3))
+        batch_obj.batch = torch.arange(x.size(0), device=x.device)
+        copy_from_to(data, batch_obj)
+        return batch_obj
+
+
+</source>
+</class>
+
+<class classid="24" nclones="2" nlines="19" similarity="89">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/core/data_transform/transforms.py" startline="115" endline="145" pcid="739">
+    def _process(self, data):
+        if not hasattr(data, self.KDTREE_KEY):
+            tree = KDTree(np.asarray(data.pos), leaf_size=50)
+        else:
+            tree = getattr(data, self.KDTREE_KEY)
+
+        # The kdtree has bee attached to data for optimization reason.
+        # However, it won't be used for down the transform pipeline and should be removed before any collate func call.
+        if hasattr(data, self.KDTREE_KEY) and self._delattr_kd_tree:
+            delattr(data, self.KDTREE_KEY)
+
+        # apply grid sampling
+        grid_data = self._grid_sampling(data.clone())
+
+        datas = []
+        for grid_center in np.asarray(grid_data.pos):
+            pts = np.asarray(grid_center)[np.newaxis]
+
+            # Find closest point within the original data
+            ind = torch.LongTensor(tree.query(pts, k=1)[1][0])
+            grid_label = data.y[ind]
+
+            # Find neighbours within the original data
+            ind = torch.LongTensor(tree.query_radius(pts, r=self._radius)[0])
+            sampler = SphereSampling(self._radius, grid_center, align_origin=self._center)
+            new_data = sampler(data)
+            new_data.center_label = grid_label
+
+            datas.append(new_data)
+        return datas
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/core/data_transform/transforms.py" startline="183" endline="213" pcid="743">
+    def _process(self, data):
+        if not hasattr(data, self.KDTREE_KEY):
+            tree = KDTree(np.asarray(data.pos[:, :-1]), leaf_size=50)
+        else:
+            tree = getattr(data, self.KDTREE_KEY)
+
+        # The kdtree has bee attached to data for optimization reason.
+        # However, it won't be used for down the transform pipeline and should be removed before any collate func call.
+        if hasattr(data, self.KDTREE_KEY) and self._delattr_kd_tree:
+            delattr(data, self.KDTREE_KEY)
+
+        # apply grid sampling
+        grid_data = self._grid_sampling(data.clone())
+
+        datas = []
+        for grid_center in np.unique(grid_data.pos[:, :-1], axis=0):
+            pts = np.asarray(grid_center)[np.newaxis]
+
+            # Find closest point within the original data
+            ind = torch.LongTensor(tree.query(pts, k=1)[1][0])
+            grid_label = data.y[ind]
+
+            # Find neighbours within the original data
+            ind = torch.LongTensor(tree.query_radius(pts, r=self._radius)[0])
+            sampler = CylinderSampling(self._radius, grid_center, align_origin=self._center)
+            new_data = sampler(data)
+            new_data.center_label = grid_label
+
+            datas.append(new_data)
+        return datas
+
+</source>
+</class>
+
+<class classid="25" nclones="2" nlines="22" similarity="90">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/core/data_transform/transforms.py" startline="314" endline="337" pcid="755">
+    def __call__(self, data):
+        num_points = data.pos.shape[0]
+        if not hasattr(data, self.KDTREE_KEY):
+            tree = KDTree(np.asarray(data.pos), leaf_size=50)
+            setattr(data, self.KDTREE_KEY, tree)
+        else:
+            tree = getattr(data, self.KDTREE_KEY)
+
+        t_center = torch.FloatTensor(self._centre)
+        ind = torch.LongTensor(tree.query_radius(self._centre, r=self._radius)[0])
+        new_data = Data()
+        for key in set(data.keys):
+            if key == self.KDTREE_KEY:
+                continue
+            item = data[key]
+            if torch.is_tensor(item) and num_points == item.shape[0]:
+                item = item[ind]
+                if self._align_origin and key == "pos":  # Center the sphere.
+                    item -= t_center
+            elif torch.is_tensor(item):
+                item = item.clone()
+            setattr(new_data, key, item)
+        return new_data
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/core/data_transform/transforms.py" startline="368" endline="392" pcid="758">
+    def __call__(self, data):
+        num_points = data.pos.shape[0]
+        if not hasattr(data, self.KDTREE_KEY):
+            tree = KDTree(np.asarray(data.pos[:, :-1]), leaf_size=50)
+            setattr(data, self.KDTREE_KEY, tree)
+        else:
+            tree = getattr(data, self.KDTREE_KEY)
+
+        t_center = torch.FloatTensor(self._centre)
+        ind = torch.LongTensor(tree.query_radius(self._centre, r=self._radius)[0])
+
+        new_data = Data()
+        for key in set(data.keys):
+            if key == self.KDTREE_KEY:
+                continue
+            item = data[key]
+            if torch.is_tensor(item) and num_points == item.shape[0]:
+                item = item[ind]
+                if self._align_origin and key == "pos":  # Center the cylinder.
+                    item[:, :-1] -= t_center
+            elif torch.is_tensor(item):
+                item = item.clone()
+            setattr(new_data, key, item)
+        return new_data
+
+</source>
+</class>
+
+<class classid="26" nclones="2" nlines="30" similarity="87">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/RSConv/dense.py" startline="108" endline="144" pcid="995">
+    def __init__(
+        self,
+        npoint=None,
+        radii=None,
+        nsample=None,
+        down_conv_nn=None,
+        channel_raising_nn=None,
+        bn=True,
+        use_xyz=True,
+        activation=nn.ReLU(),
+        **kwargs
+    ):
+        assert len(radii) == len(nsample)
+        if len(radii) != len(down_conv_nn):
+            log.warn("The down_conv_nn has a different size as radii. Make sure of have SharedRSConv")
+        super(RSConvSharedMSGDown, self).__init__(
+            DenseFPSSampler(num_to_sample=npoint), DenseRadiusNeighbourFinder(radii, nsample), **kwargs
+        )
+
+        self.use_xyz = use_xyz
+        self.npoint = npoint
+        self.mlps = nn.ModuleList()
+
+        # https://github.com/Yochengliu/Relation-Shape-CNN/blob/6464eb8bb4efc686adec9da437112ef888e55684/utils/pointnet2_modules.py#L106
+        self._mapper = RSConvMapper(down_conv_nn, activation=activation, use_xyz=self.use_xyz)
+
+        self.mlp_out = Sequential(
+            *[
+                Conv1d(channel_raising_nn[0], channel_raising_nn[-1], kernel_size=1, stride=1, bias=True),
+                nn.BatchNorm1d(channel_raising_nn[-1]),
+                activation,
+            ]
+        )
+
+        for i in range(len(radii)):
+            self.mlps.append(SharedRSConv(self._mapper, radii[i]))
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/RSConv/dense.py" startline="401" endline="440" pcid="1006">
+    def __init__(
+        self,
+        npoint=None,
+        radii=None,
+        nsample=None,
+        down_conv_nn=None,
+        channel_raising_nn=None,
+        bn=True,
+        bias=True,
+        use_xyz=True,
+        activation=nn.ReLU(),
+        **kwargs
+    ):
+        assert len(radii) == len(nsample)
+        if len(radii) != len(down_conv_nn):
+            log.warning("The down_conv_nn has a different size as radii. Make sure to have sharedMLP")
+        super(RSConvMSGDown, self).__init__(
+            DenseFPSSampler(num_to_sample=npoint), DenseRadiusNeighbourFinder(radii, nsample), **kwargs
+        )
+
+        self.use_xyz = use_xyz
+        self.npoint = npoint
+        self.mlps = nn.ModuleList()
+
+        # https://github.com/Yochengliu/Relation-Shape-CNN/blob/6464eb8bb4efc686adec9da437112ef888e55684/utils/pointnet2_modules.py#L106
+
+        self.mlp_out = Sequential(
+            *[
+                Conv1d(channel_raising_nn[0], channel_raising_nn[-1], kernel_size=1, stride=1, bias=True),
+                nn.BatchNorm1d(channel_raising_nn[-1]),
+                activation,
+            ]
+        )
+
+        for i in range(len(radii)):
+            mapper = RSConvMapper(down_conv_nn, activation=activation, use_xyz=self.use_xyz)
+            self.mlps.append(SharedRSConv(mapper, radii[i]))
+
+        self._mapper = mapper
+
+</source>
+</class>
+
+<class classid="27" nclones="2" nlines="17" similarity="100">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/RSConv/dense.py" startline="145" endline="166" pcid="996">
+    def _prepare_features(self, x, pos, new_pos, idx):
+        new_pos_trans = pos.transpose(1, 2).contiguous()
+        grouped_pos_absolute = tp.grouping_operation(new_pos_trans, idx)  # (B, 3, npoint, nsample)
+        centroids = new_pos.transpose(1, 2).unsqueeze(-1)
+        grouped_pos_normalized = grouped_pos_absolute - centroids
+
+        if x is not None:
+            grouped_features = tp.grouping_operation(x, idx)
+            if self.use_xyz:
+                new_features = torch.cat(
+                    [grouped_pos_absolute, grouped_pos_normalized, grouped_features], dim=1
+                )  # (B, 3 + 3 + C, npoint, nsample)
+            else:
+                new_features = grouped_features
+        else:
+            assert self.use_xyz, "Cannot have not features and not use xyz as a feature!"
+            new_features = torch.cat(
+                [grouped_pos_absolute, grouped_pos_normalized], dim=1
+            )  # (B, 3 + 3 npoint, nsample)
+
+        return new_features, centroids
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/RSConv/dense.py" startline="441" endline="462" pcid="1007">
+    def _prepare_features(self, x, pos, new_pos, idx):
+        new_pos_trans = pos.transpose(1, 2).contiguous()
+        grouped_pos_absolute = tp.grouping_operation(new_pos_trans, idx)  # (B, 3, npoint, nsample)
+        centroids = new_pos.transpose(1, 2).unsqueeze(-1)
+        grouped_pos_normalized = grouped_pos_absolute - centroids
+
+        if x is not None:
+            grouped_features = tp.grouping_operation(x, idx)
+            if self.use_xyz:
+                new_features = torch.cat(
+                    [grouped_pos_absolute, grouped_pos_normalized, grouped_features], dim=1
+                )  # (B, 3 + 3 + C, npoint, nsample)
+            else:
+                new_features = grouped_features
+        else:
+            assert self.use_xyz, "Cannot have not features and not use xyz as a feature!"
+            new_features = torch.cat(
+                [grouped_pos_absolute, grouped_pos_normalized], dim=1
+            )  # (B, 3 + 3 npoint, nsample)
+
+        return new_features, centroids
+
+</source>
+</class>
+
+<class classid="28" nclones="2" nlines="38" similarity="70">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/KPConv/kernels.py" startline="37" endline="73" pcid="1038">
+    def __init__(
+        self,
+        num_inputs,
+        num_outputs,
+        point_influence,
+        n_kernel_points=15,
+        fixed="center",
+        KP_influence="linear",
+        aggregation_mode="sum",
+        dimension=3,
+        add_one=False,
+        **kwargs
+    ):
+        super(KPConvLayer, self).__init__()
+        self.kernel_radius = self._INFLUENCE_TO_RADIUS * point_influence
+        self.point_influence = point_influence
+        self.add_one = add_one
+        self.num_inputs = num_inputs + self.add_one * 1
+        self.num_outputs = num_outputs
+
+        self.KP_influence = KP_influence
+        self.n_kernel_points = n_kernel_points
+        self.aggregation_mode = aggregation_mode
+
+        # Initial kernel extent for this layer
+        K_points_numpy = load_kernels(
+            self.kernel_radius, n_kernel_points, num_kernels=1, dimension=dimension, fixed=fixed,
+        )
+
+        self.K_points = Parameter(
+            torch.from_numpy(K_points_numpy.reshape((n_kernel_points, dimension))).to(torch.float), requires_grad=False,
+        )
+
+        weights = torch.empty([n_kernel_points, self.num_inputs, num_outputs], dtype=torch.float)
+        torch.nn.init.xavier_normal_(weights)
+        self.weight = Parameter(weights)
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/KPConv/kernels.py" startline="129" endline="180" pcid="1041">
+    def __init__(
+        self,
+        num_inputs,
+        num_outputs,
+        point_influence,
+        n_kernel_points=15,
+        fixed="center",
+        KP_influence="linear",
+        aggregation_mode="sum",
+        dimension=3,
+        modulated=False,
+        loss_mode="fitting",
+        add_one=False,
+        **kwargs
+    ):
+        super(KPConvDeformableLayer, self).__init__()
+        self.kernel_radius = self._INFLUENCE_TO_RADIUS * point_influence
+        self.point_influence = point_influence
+        self.add_one = add_one
+        self.num_inputs = num_inputs + self.add_one * 1
+        self.num_outputs = num_outputs
+
+        self.KP_influence = KP_influence
+        self.n_kernel_points = n_kernel_points
+        self.aggregation_mode = aggregation_mode
+        self.modulated = modulated
+        self.internal_losses = {self.PERMISSIVE_LOSS_KEY: 0.0, self.FITTING_LOSS_KEY: 0.0, self.REPULSION_LOSS_KEY: 0.0}
+        self.loss_mode = loss_mode
+
+        # Initial kernel extent for this layer
+        K_points_numpy = load_kernels(
+            self.kernel_radius, n_kernel_points, num_kernels=1, dimension=dimension, fixed=fixed,
+        )
+        self.K_points = Parameter(
+            torch.from_numpy(K_points_numpy.reshape((n_kernel_points, dimension))).to(torch.float), requires_grad=False,
+        )
+
+        # Create independant weight for the first convolution and a bias term as no batch normalization happen
+        if modulated:
+            offset_dim = (dimension + 1) * self.n_kernel_points
+        else:
+            offset_dim = dimension * self.n_kernel_points
+        offset_weights = torch.empty([n_kernel_points, self.num_inputs, offset_dim], dtype=torch.float)
+        torch.nn.init.xavier_normal_(offset_weights)
+        self.offset_weights = Parameter(offset_weights)
+        self.offset_bias = Parameter(torch.zeros(offset_dim, dtype=torch.float))
+
+        # Main deformable weights
+        weights = torch.empty([n_kernel_points, self.num_inputs, num_outputs], dtype=torch.float)
+        torch.nn.init.xavier_normal_(weights)
+        self.weight = Parameter(weights)
+
+</source>
+</class>
+
+<class classid="29" nclones="3" nlines="42" similarity="81">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/MinkowskiEngine/resunet.py" startline="141" endline="195" pcid="1051">
+    def forward(self, x):
+        out_s1 = self.conv1(x)
+        out_s1 = self.norm1(out_s1)
+        out_s1 = self.block1(out_s1)
+        out = MEF.relu(out_s1)
+
+        out_s2 = self.conv2(out)
+        out_s2 = self.norm2(out_s2)
+        out_s2 = self.block2(out_s2)
+        out = MEF.relu(out_s2)
+
+        out_s4 = self.conv3(out)
+        out_s4 = self.norm3(out_s4)
+        out_s4 = self.block3(out_s4)
+        out = MEF.relu(out_s4)
+
+        out_s8 = self.conv4(out)
+        out_s8 = self.norm4(out_s8)
+        out_s8 = self.block4(out_s8)
+        out = MEF.relu(out_s8)
+
+        out = self.conv4_tr(out)
+        out = self.norm4_tr(out)
+        out = self.block4_tr(out)
+        out_s4_tr = MEF.relu(out)
+
+        out = ME.cat(out_s4_tr, out_s4)
+
+        out = self.conv3_tr(out)
+        out = self.norm3_tr(out)
+        out = self.block3_tr(out)
+        out_s2_tr = MEF.relu(out)
+
+        out = ME.cat(out_s2_tr, out_s2)
+
+        out = self.conv2_tr(out)
+        out = self.norm2_tr(out)
+        out = self.block2_tr(out)
+        out_s1_tr = MEF.relu(out)
+
+        out = ME.cat(out_s1_tr, out_s1)
+        out = self.conv1_tr(out)
+        out = MEF.relu(out)
+        out = self.final(out)
+
+        if self.normalize_feature:
+            return ME.SparseTensor(
+                out.F / torch.norm(out.F, p=2, dim=1, keepdim=True),
+                coordinate_map_key=out.coordinate_map_key,
+                coordinate_manager=out.coordinate_manager,
+            )
+        else:
+            return out
+
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/MinkowskiEngine/networks.py" startline="187" endline="247" pcid="1063">
+    def forward(self, x):
+        out = self.conv0p1s1(x)
+        out = self.bn0(out)
+        out_p1 = self.relu(out)
+
+        out = self.conv1p1s2(out_p1)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out_b1p2 = self.block1(out)
+
+        out = self.conv2p2s2(out_b1p2)
+        out = self.bn2(out)
+        out = self.relu(out)
+        out_b2p4 = self.block2(out)
+
+        out = self.conv3p4s2(out_b2p4)
+        out = self.bn3(out)
+        out = self.relu(out)
+        out_b3p8 = self.block3(out)
+
+        # tensor_stride=16
+        out = self.conv4p8s2(out_b3p8)
+        out = self.bn4(out)
+        out = self.relu(out)
+        out = self.block4(out)
+
+        # tensor_stride=8
+        out = self.convtr4p16s2(out)
+        out = self.bntr4(out)
+        out = self.relu(out)
+
+        out = ME.cat(out, out_b3p8)
+        out = self.block5(out)
+
+        # tensor_stride=4
+        out = self.convtr5p8s2(out)
+        out = self.bntr5(out)
+        out = self.relu(out)
+
+        out = ME.cat(out, out_b2p4)
+        out = self.block6(out)
+
+        # tensor_stride=2
+        out = self.convtr6p4s2(out)
+        out = self.bntr6(out)
+        out = self.relu(out)
+
+        out = ME.cat(out, out_b1p2)
+        out = self.block7(out)
+
+        # tensor_stride=1
+        out = self.convtr7p2s2(out)
+        out = self.bntr7(out)
+        out = self.relu(out)
+
+        out = ME.cat(out, out_p1)
+        out = self.block8(out)
+
+        return self.final(out)
+
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/MinkowskiEngine/res16unet.py" startline="450" endline="510" pcid="1108">
+    def forward(self, x):
+        out = self.conv0p1s1(x)
+        out = self.bn0(out)
+        out_p1 = self.relu(out)
+
+        out = self.conv1p1s2(out_p1)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out_b1p2 = self.block1(out)
+
+        out = self.conv2p2s2(out_b1p2)
+        out = self.bn2(out)
+        out = self.relu(out)
+        out_b2p4 = self.block2(out)
+
+        out = self.conv3p4s2(out_b2p4)
+        out = self.bn3(out)
+        out = self.relu(out)
+        out_b3p8 = self.block3(out)
+
+        # pixel_dist=16
+        out = self.conv4p8s2(out_b3p8)
+        out = self.bn4(out)
+        out = self.relu(out)
+        out = self.block4(out)
+
+        # pixel_dist=8
+        out = self.convtr4p16s2(out)
+        out = self.bntr4(out)
+        out = self.relu(out)
+
+        out = me.cat(out, out_b3p8)
+        out = self.block5(out)
+
+        # pixel_dist=4
+        out = self.convtr5p8s2(out)
+        out = self.bntr5(out)
+        out = self.relu(out)
+
+        out = me.cat(out, out_b2p4)
+        out = self.block6(out)
+
+        # pixel_dist=2
+        out = self.convtr6p4s2(out)
+        out = self.bntr6(out)
+        out = self.relu(out)
+
+        out = me.cat(out, out_b1p2)
+        out = self.block7(out)
+
+        # pixel_dist=1
+        out = self.convtr7p2s2(out)
+        out = self.bntr7(out)
+        out = self.relu(out)
+
+        out = me.cat(out, out_p1)
+        out = self.block8(out)
+
+        return self.final(out)
+
+
+</source>
+</class>
+
+<class classid="30" nclones="8" nlines="14" similarity="71">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/MinkowskiEngine/networks.py" startline="71" endline="89" pcid="1060">
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.pool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        x = self.conv5(x)
+        x = self.bn5(x)
+        x = self.relu(x)
+
+        x = self.glob_avg(x)
+        return self.final(x)
+
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/MinkowskiEngine/modules.py" startline="82" endline="104" pcid="1067">
+    def forward(self, x):
+        residual = x
+
+        out = self.conv1(x)
+        out = self.norm1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.norm2(out)
+        out = self.relu(out)
+
+        out = self.conv3(out)
+        out = self.norm3(out)
+
+        if self.downsample is not None:
+            residual = self.downsample(x)
+
+        out += residual
+        out = self.relu(out)
+
+        return out
+
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/MinkowskiEngine/res16unet.py" startline="95" endline="117" pcid="1098">
+    def forward(self, x):
+        residual = x
+
+        out = self.conv1(x)
+        out = self.norm1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.norm2(out)
+        out = self.relu(out)
+
+        out = self.conv3(out)
+        out = self.norm3(out)
+
+        if self.downsample is not None:
+            residual = self.downsample(x)
+
+        out += residual
+        out = self.relu(out)
+
+        return out
+
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/MinkowskiEngine/res16unet.py" startline="231" endline="245" pcid="1104">
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.pool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        x = self.final(x)
+        return x
+
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/MinkowskiEngine/modules.py" startline="345" endline="368" pcid="1080">
+    def forward(self, x):
+        residual = x
+
+        out = self.conv1(x)
+        out = self.norm1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.norm2(out)
+        out = self.relu(out)
+
+        out = self.conv3(out)
+        out = self.norm3(out)
+        out = self.se(out)
+
+        if self.downsample is not None:
+            residual = self.downsample(x)
+
+        out += residual
+        out = self.relu(out)
+
+        return out
+
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/MinkowskiEngine/res16unet.py" startline="36" endline="54" pcid="1096">
+    def forward(self, x):
+        residual = x
+
+        out = self.conv1(x)
+        out = self.norm1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.norm2(out)
+
+        if self.downsample is not None:
+            residual = self.downsample(x)
+
+        out += residual
+        out = self.relu(out)
+
+        return out
+
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/MinkowskiEngine/modules.py" startline="42" endline="60" pcid="1065">
+    def forward(self, x):
+        residual = x
+
+        out = self.conv1(x)
+        out = self.norm1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.norm2(out)
+
+        if self.downsample is not None:
+            residual = self.downsample(x)
+
+        out += residual
+        out = self.relu(out)
+
+        return out
+
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/MinkowskiEngine/modules.py" startline="304" endline="323" pcid="1078">
+    def forward(self, x):
+        residual = x
+
+        out = self.conv1(x)
+        out = self.norm1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.norm2(out)
+        out = self.se(out)
+
+        if self.downsample is not None:
+            residual = self.downsample(x)
+
+        out += residual
+        out = self.relu(out)
+
+        return out
+
+
+</source>
+</class>
+
+<class classid="31" nclones="2" nlines="36" similarity="88">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/MinkowskiEngine/modules.py" startline="177" endline="216" pcid="1071">
+    def __init__(
+        self,
+        down_conv_nn=[],
+        kernel_sizes=[],
+        strides=[],
+        dilations=[],
+        kernel_size=3,
+        stride=1,
+        dilation=1,
+        norm_layer=ME.MinkowskiBatchNorm,
+        activation=ME.MinkowskiReLU,
+        bn_momentum=0.1,
+        dimension=-1,
+        down_stride=2,
+        **kwargs
+    ):
+
+        super(ResnetBlockDown, self).__init__(
+            down_conv_nn[0],
+            down_conv_nn[1],
+            down_conv_nn[2],
+            kernel_sizes=kernel_sizes,
+            strides=strides,
+            dilations=dilations,
+            kernel_size=kernel_size,
+            stride=stride,
+            dilation=dilation,
+            norm_layer=norm_layer,
+            activation=activation,
+            bn_momentum=bn_momentum,
+            dimension=dimension,
+        )
+
+        self.downsample = nn.Sequential(
+            ME.MinkowskiConvolution(
+                down_conv_nn[0], down_conv_nn[2], kernel_size=2, stride=down_stride, dimension=dimension
+            ),
+            ME.MinkowskiBatchNorm(down_conv_nn[2]),
+        )
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/MinkowskiEngine/modules.py" startline="225" endline="264" pcid="1073">
+    def __init__(
+        self,
+        up_conv_nn=[],
+        kernel_sizes=[],
+        strides=[],
+        dilations=[],
+        kernel_size=3,
+        stride=1,
+        dilation=1,
+        norm_layer=ME.MinkowskiBatchNorm,
+        activation=ME.MinkowskiReLU,
+        bn_momentum=0.1,
+        dimension=-1,
+        up_stride=2,
+        skip=True,
+        **kwargs
+    ):
+
+        self.skip = skip
+
+        super(ResnetBlockUp, self).__init__(
+            up_conv_nn[0],
+            up_conv_nn[1],
+            up_conv_nn[2],
+            kernel_sizes=kernel_sizes,
+            strides=strides,
+            dilations=dilations,
+            kernel_size=kernel_size,
+            stride=stride,
+            dilation=dilation,
+            norm_layer=norm_layer,
+            activation=activation,
+            bn_momentum=bn_momentum,
+            dimension=dimension,
+        )
+
+        self.upsample = ME.MinkowskiConvolutionTranspose(
+            up_conv_nn[0], up_conv_nn[2], kernel_size=2, stride=up_stride, dimension=dimension
+        )
+
+</source>
+</class>
+
+<class classid="32" nclones="2" nlines="50" similarity="72">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/MinkowskiEngine/api_modules.py" startline="25" endline="75" pcid="1081">
+    def __init__(self, input_nc, output_nc, convolution, dimension=3):
+        ME.MinkowskiNetwork.__init__(self, dimension)
+        self.block = (
+            Seq()
+            .append(
+                convolution(
+                    in_channels=input_nc,
+                    out_channels=output_nc,
+                    kernel_size=3,
+                    stride=1,
+                    dilation=1,
+                    bias=False,
+                    dimension=dimension,
+                )
+            )
+            .append(ME.MinkowskiBatchNorm(output_nc))
+            .append(ME.MinkowskiReLU())
+            .append(
+                convolution(
+                    in_channels=output_nc,
+                    out_channels=output_nc,
+                    kernel_size=3,
+                    stride=1,
+                    dilation=1,
+                    bias=False,
+                    dimension=dimension,
+                )
+            )
+            .append(ME.MinkowskiBatchNorm(output_nc))
+            .append(ME.MinkowskiReLU())
+        )
+
+        if input_nc != output_nc:
+            self.downsample = (
+                Seq()
+                .append(
+                    convolution(
+                        in_channels=input_nc,
+                        out_channels=output_nc,
+                        kernel_size=1,
+                        stride=1,
+                        dilation=1,
+                        bias=False,
+                        dimension=dimension,
+                    )
+                )
+                .append(ME.MinkowskiBatchNorm(output_nc))
+            )
+        else:
+            self.downsample = None
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/MinkowskiEngine/api_modules.py" startline="90" endline="152" pcid="1083">
+    def __init__(self, input_nc, output_nc, convolution, dimension=3, reduction=4):
+        self.block = (
+            Seq()
+            .append(
+                convolution(
+                    in_channels=input_nc,
+                    out_channels=output_nc // reduction,
+                    kernel_size=1,
+                    stride=1,
+                    dilation=1,
+                    bias=False,
+                    dimension=dimension,
+                )
+            )
+            .append(ME.MinkowskiBatchNorm(output_nc // reduction))
+            .append(ME.MinkowskiReLU())
+            .append(
+                convolution(
+                    output_nc // reduction,
+                    output_nc // reduction,
+                    kernel_size=3,
+                    stride=1,
+                    dilation=1,
+                    bias=False,
+                    dimension=dimension,
+                )
+            )
+            .append(ME.MinkowskiBatchNorm(output_nc // reduction))
+            .append(ME.MinkowskiReLU())
+            .append(
+                convolution(
+                    output_nc // reduction,
+                    output_nc,
+                    kernel_size=1,
+                    stride=1,
+                    dilation=1,
+                    bias=False,
+                    dimension=dimension,
+                )
+            )
+            .append(ME.MinkowskiBatchNorm(output_nc))
+            .append(ME.MinkowskiReLU())
+        )
+
+        if input_nc != output_nc:
+            self.downsample = (
+                Seq()
+                .append(
+                    convolution(
+                        in_channels=input_nc,
+                        out_channels=output_nc,
+                        kernel_size=1,
+                        stride=1,
+                        dilation=1,
+                        bias=False,
+                        dimension=dimension,
+                    )
+                )
+                .append(ME.MinkowskiBatchNorm(output_nc))
+            )
+        else:
+            self.downsample = None
+
+</source>
+</class>
+
+<class classid="33" nclones="2" nlines="20" similarity="80">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/MinkowskiEngine/res16unet.py" startline="14" endline="35" pcid="1095">
+    def __init__(
+        self,
+        inplanes,
+        planes,
+        stride=1,
+        dilation=1,
+        downsample=None,
+        conv_type=ConvType.HYPERCUBE,
+        bn_momentum=0.1,
+        D=3,
+    ):
+        super(BasicBlockBase, self).__init__()
+
+        self.conv1 = conv(inplanes, planes, kernel_size=3, stride=stride, dilation=dilation, conv_type=conv_type, D=D)
+        self.norm1 = get_norm(self.NORM_TYPE, planes, D, bn_momentum=bn_momentum)
+        self.conv2 = conv(
+            planes, planes, kernel_size=3, stride=1, dilation=dilation, bias=False, conv_type=conv_type, D=D
+        )
+        self.norm2 = get_norm(self.NORM_TYPE, planes, D, bn_momentum=bn_momentum)
+        self.relu = MinkowskiReLU(inplace=True)
+        self.downsample = downsample
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/MinkowskiEngine/res16unet.py" startline="71" endline="94" pcid="1097">
+    def __init__(
+        self,
+        inplanes,
+        planes,
+        stride=1,
+        dilation=1,
+        downsample=None,
+        conv_type=ConvType.HYPERCUBE,
+        bn_momentum=0.1,
+        D=3,
+    ):
+        super(BottleneckBase, self).__init__()
+        self.conv1 = conv(inplanes, planes, kernel_size=1, D=D)
+        self.norm1 = get_norm(self.NORM_TYPE, planes, D, bn_momentum=bn_momentum)
+
+        self.conv2 = conv(planes, planes, kernel_size=3, stride=stride, dilation=dilation, conv_type=conv_type, D=D)
+        self.norm2 = get_norm(self.NORM_TYPE, planes, D, bn_momentum=bn_momentum)
+
+        self.conv3 = conv(planes, planes * self.expansion, kernel_size=1, D=D)
+        self.norm3 = get_norm(self.NORM_TYPE, planes * self.expansion, D, bn_momentum=bn_momentum)
+
+        self.relu = MinkowskiReLU(inplace=True)
+        self.downsample = downsample
+
+</source>
+</class>
+
+<class classid="34" nclones="2" nlines="16" similarity="82">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/MinkowskiEngine/common.py" startline="114" endline="132" pcid="1116">
+def conv(in_planes, out_planes, kernel_size, stride=1, dilation=1, bias=False, conv_type=ConvType.HYPERCUBE, D=-1):
+    assert D > 0, "Dimension must be a positive integer"
+    region_type, axis_types, kernel_size = convert_conv_type(conv_type, kernel_size, D)
+    kernel_generator = ME.KernelGenerator(
+        kernel_size, stride, dilation, region_type=region_type, axis_types=axis_types, dimension=D
+    )
+
+    return ME.MinkowskiConvolution(
+        in_channels=in_planes,
+        out_channels=out_planes,
+        kernel_size=kernel_size,
+        stride=stride,
+        dilation=dilation,
+        bias=bias,
+        kernel_generator=kernel_generator,
+        dimension=D,
+    )
+
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/MinkowskiEngine/common.py" startline="133" endline="153" pcid="1117">
+def conv_tr(
+    in_planes, out_planes, kernel_size, upsample_stride=1, dilation=1, bias=False, conv_type=ConvType.HYPERCUBE, D=-1
+):
+    assert D > 0, "Dimension must be a positive integer"
+    region_type, axis_types, kernel_size = convert_conv_type(conv_type, kernel_size, D)
+    kernel_generator = ME.KernelGenerator(
+        kernel_size, upsample_stride, dilation, region_type=region_type, axis_types=axis_types, dimension=D
+    )
+
+    return ME.MinkowskiConvolutionTranspose(
+        in_channels=in_planes,
+        out_channels=out_planes,
+        kernel_size=kernel_size,
+        stride=upsample_stride,
+        dilation=dilation,
+        bias=bias,
+        kernel_generator=kernel_generator,
+        dimension=D,
+    )
+
+
+</source>
+</class>
+
+<class classid="35" nclones="2" nlines="18" similarity="100">
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/SparseConv3d/nn/minkowski.py" startline="6" endline="25" pcid="1122">
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int = 3,
+        stride: int = 1,
+        dilation: int = 1,
+        bias: bool = False,
+    ) -> None:
+        super().__init__(
+            in_channels,
+            out_channels,
+            kernel_size=kernel_size,
+            stride=stride,
+            dilation=dilation,
+            bias=bias,
+            dimension=3,
+        )
+
+
+</source>
+<source file="systems/torch-points3d-1.3.0/torch_points3d/modules/SparseConv3d/nn/minkowski.py" startline="27" endline="46" pcid="1123">
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int = 3,
+        stride: int = 1,
+        dilation: int = 1,
+        bias: bool = False,
+    ) -> None:
+        super().__init__(
+            in_channels,
+            out_channels,
+            kernel_size=kernel_size,
+            stride=stride,
+            dilation=dilation,
+            bias=bias,
+            dimension=3,
+        )
+
+
+</source>
+</class>
+
+<class classid="36" nclones="3" nlines="20" similarity="72">
+<source file="systems/torch-points3d-1.3.0/test/test_visualization.py" startline="27" endline="49" pcid="1153">
+    def test_empty(self):
+        mock_data = Data()
+        mock_data.pos = torch.zeros((batch_size, num_points, 3))
+        mock_data.y = torch.zeros((batch_size, num_points, 1))
+        mock_data.pred = torch.zeros((batch_size, num_points, 1))
+        data = {}
+
+        self.run_path = os.path.join(DIR, "test_viz")
+        if not os.path.exists(self.run_path):
+            os.makedirs(self.run_path)
+
+        mock_num_batches = {"train": 9, "test": 3, "val": 0}
+        config = OmegaConf.load(os.path.join(DIR, "test_config/viz/viz_config_indices.yaml"))
+        visualizer = Visualizer(config.visualization, mock_num_batches, batch_size, self.run_path)
+
+        for epoch in range(epochs):
+            run(9, visualizer, epoch, "train", data)
+            run(3, visualizer, epoch, "test", data)
+            run(2, visualizer, epoch, "val", data)
+
+        self.assertEqual(len(os.listdir(os.path.join(self.run_path, "viz"))), 0)
+        shutil.rmtree(self.run_path)
+
+</source>
+<source file="systems/torch-points3d-1.3.0/test/test_visualization.py" startline="50" endline="76" pcid="1154">
+    def test_indices(self):
+        mock_data = Data()
+        mock_data.pos = torch.zeros((batch_size, num_points, 3))
+        mock_data.y = torch.zeros((batch_size, num_points, 1))
+        mock_data.pred = torch.zeros((batch_size, num_points, 1))
+        data = {"mock_date": mock_data}
+
+        self.run_path = os.path.join(DIR, "test_viz")
+        if not os.path.exists(self.run_path):
+            os.makedirs(self.run_path)
+
+        mock_num_batches = {"train": 9, "test": 3, "val": 0}
+        config = OmegaConf.load(os.path.join(DIR, "test_config/viz/viz_config_indices.yaml"))
+        visualizer = Visualizer(config.visualization, mock_num_batches, batch_size, self.run_path)
+
+        for epoch in range(epochs):
+            run(9, visualizer, epoch, "train", data)
+            run(3, visualizer, epoch, "test", data)
+            run(0, visualizer, epoch, "val", data)
+
+        targets = {'train': set(["1_1.ply", "0_0.ply"]),
+                   'test': set(["0_0.ply"])}
+        for split in ["train", "test"]:
+            for epoch in range(epochs):
+                self.assertEqual(targets[split], set(os.listdir(os.path.join(self.run_path, "viz", str(epoch), split))))
+        shutil.rmtree(self.run_path)
+
+</source>
+<source file="systems/torch-points3d-1.3.0/test/test_visualization.py" startline="138" endline="163" pcid="1157">
+    def test_dense_data(self):
+        mock_data = Data()
+        mock_data.pos = torch.zeros((batch_size, num_points, 3))
+        mock_data.y = torch.zeros((batch_size, num_points, 1))
+        mock_data.pred = torch.zeros((batch_size, num_points, 1))
+        data = {"mock_date": mock_data}
+
+        self.run_path = os.path.join(DIR, "test_viz")
+        if not os.path.exists(self.run_path):
+            os.makedirs(self.run_path)
+
+        mock_num_batches = {"train": 9, "test": 3, "val": 0}
+        config = OmegaConf.load(os.path.join(DIR, "test_config/viz/viz_config_deterministic.yaml"))
+        visualizer = Visualizer(config.visualization, mock_num_batches, batch_size, self.run_path)
+
+        for epoch in range(epochs):
+            run(9, visualizer, epoch, "train", data)
+            run(3, visualizer, epoch, "test", data)
+            run(0, visualizer, epoch, "val", data)
+
+        for split in ["train", "test"]:
+            targets = os.listdir(os.path.join(self.run_path, "viz", "0", split))
+            for epoch in range(1, epochs):
+                self.assertEqual(targets, os.listdir(os.path.join(self.run_path, "viz", str(epoch), split)))
+        shutil.rmtree(self.run_path)
+
+</source>
+</class>
+
+<class classid="37" nclones="2" nlines="25" similarity="76">
+<source file="systems/torch-points3d-1.3.0/test/test_visualization.py" startline="77" endline="105" pcid="1155">
+    def test_save_all(self):
+        mock_data = Data()
+        mock_data.pos = torch.zeros((num_points * batch_size, 3))
+        mock_data.y = torch.zeros((num_points * batch_size, 1))
+        mock_data.pred = torch.zeros((num_points * batch_size, 1))
+        mock_data.batch = torch.zeros((num_points * batch_size))
+        mock_data.batch[:num_points] = 1
+        data = {"mock_date": mock_data}
+
+        self.run_path = os.path.join(DIR, "test_viz")
+        if not os.path.exists(self.run_path):
+            os.makedirs(self.run_path)
+
+        epochs = 2
+        num_samples = 100
+        mock_num_batches = {"train": num_samples}
+
+        config = OmegaConf.load(os.path.join(DIR, "test_config/viz/viz_config_save_all.yaml"))
+        visualizer = Visualizer(config.visualization, mock_num_batches, batch_size, self.run_path)
+
+        for epoch in range(epochs):
+            run(num_samples // batch_size, visualizer, epoch, "train", data)
+
+        for split in ["train"]:
+            for epoch in range(epochs):
+                current = set(os.listdir(os.path.join(self.run_path, "viz", str(epoch), split)))
+                self.assertGreaterEqual(len(current), num_samples)
+        shutil.rmtree(self.run_path)
+
+</source>
+<source file="systems/torch-points3d-1.3.0/test/test_visualization.py" startline="106" endline="137" pcid="1156">
+    def test_pyg_data(self):
+        mock_data = Data()
+        mock_data.pos = torch.zeros((num_points * batch_size, 3))
+        mock_data.y = torch.zeros((num_points * batch_size, 1))
+        mock_data.pred = torch.zeros((num_points * batch_size, 1))
+        mock_data.batch = torch.zeros((num_points * batch_size))
+        mock_data.batch[:num_points] = 1
+        data = {"mock_date": mock_data}
+
+        self.run_path = os.path.join(DIR, "test_viz")
+        if not os.path.exists(self.run_path):
+            os.makedirs(self.run_path)
+
+        epochs = 10
+        num_batches = 100
+        mock_num_batches = {"train": num_batches}
+
+        config = OmegaConf.load(os.path.join(DIR, "test_config/viz/viz_config_non_deterministic.yaml"))
+        visualizer = Visualizer(config.visualization, mock_num_batches, batch_size, self.run_path)
+
+        for epoch in range(epochs):
+            run(num_batches, visualizer, epoch, "train", data)
+
+        count = 0
+        for split in ["train"]:
+            target = set(os.listdir(os.path.join(self.run_path, "viz", "0", split)))
+            for epoch in range(1, epochs):
+                current = set(os.listdir(os.path.join(self.run_path, "viz", str(epoch), split)))
+                count += 1 if len(target & current) == 0 else 0
+        self.assertGreaterEqual(count, 4)
+        shutil.rmtree(self.run_path)
+
+</source>
+</class>
+
+<class classid="38" nclones="3" nlines="19" similarity="85">
+<source file="systems/torch-points3d-1.3.0/test/test_lr_scheduler.py" startline="25" endline="48" pcid="1252">
+    def test_update_scheduler_on_epoch(self):
+
+        base_lr = 0.1
+        gamma = 0.9
+        conf = os.path.join(DIR, "test_config/lr_scheduler.yaml")
+        opt = OmegaConf.load(conf)
+        opt.update_lr_scheduler_on = "on_epoch"
+        model = DifferentiableMockModel(opt)
+        model.instantiate_optimizers(opt)
+        model.schedulers.__repr__()
+
+        data = Data(pos=torch.randn((1, 3)))
+        model.set_input(data, torch.device("cpu"))
+
+        num_epochs = 5
+        num_samples_epoch = 32
+        batch_size = 4
+        steps = num_samples_epoch // batch_size
+
+        for epoch in range(num_epochs):
+            for step in range(steps):
+                model.optimize_parameters(epoch, batch_size)
+        self.assertAlmostEqual(get_lr(model._optimizer), base_lr * gamma ** (num_epochs - 1))
+
+</source>
+<source file="systems/torch-points3d-1.3.0/test/test_lr_scheduler.py" startline="72" endline="96" pcid="1254">
+    def test_update_scheduler_on_batch(self):
+        base_lr = 0.1
+        gamma = 0.9
+        conf = os.path.join(DIR, "test_config/lr_scheduler.yaml")
+        opt = OmegaConf.load(conf)
+        opt.update_lr_scheduler_on = "on_num_batch"
+        model = DifferentiableMockModel(opt)
+        model.instantiate_optimizers(opt)
+
+        data = Data(pos=torch.randn((1, 3)))
+        model.set_input(data, torch.device("cpu"))
+
+        num_epochs = 5
+        num_samples_epoch = 32
+        batch_size = 4
+        steps = num_samples_epoch // batch_size
+
+        count_batch = 0
+        for epoch in range(num_epochs):
+            for step in range(steps):
+                count_batch += 1
+                model.optimize_parameters(epoch, batch_size)
+        self.assertAlmostEqual(get_lr(model._optimizer), base_lr * gamma ** (count_batch))
+
+
+</source>
+<source file="systems/torch-points3d-1.3.0/test/test_lr_scheduler.py" startline="49" endline="71" pcid="1253">
+    def test_update_scheduler_on_sample(self):
+        base_lr = 0.1
+        gamma = 0.9
+        conf = os.path.join(DIR, "test_config/lr_scheduler.yaml")
+        opt = OmegaConf.load(conf)
+        opt.update_lr_scheduler_on = "on_num_sample"
+        model = DifferentiableMockModel(opt)
+        model.instantiate_optimizers(opt)
+
+        data = Data(pos=torch.randn((1, 3)))
+        model.set_input(data, torch.device("cpu"))
+
+        num_epochs = 5
+        num_samples_epoch = 32
+        batch_size = 4
+        steps = num_samples_epoch // batch_size
+
+        for epoch in range(num_epochs):
+            for step in range(steps):
+                model.optimize_parameters(epoch, batch_size)
+
+        self.assertAlmostEqual(get_lr(model._optimizer), base_lr * gamma ** (num_epochs))
+
+</source>
+</class>
+
+<class classid="39" nclones="3" nlines="12" similarity="91">
+<source file="systems/torch-points3d-1.3.0/test/test_sampler.py" startline="45" endline="58" pcid="1258">
+    def test_multi_radius_search(self):
+        x = torch.Tensor([[-1, -1], [-1, 1], [1, -1], [1, 1]])
+        batch_x = torch.tensor([0, 0, 0, 0])
+        y = torch.Tensor([[-1, 0], [1, 0]])
+        batch_y = torch.tensor([0, 0])
+        nei_finder = MultiscaleRadiusNeighbourFinder([1.1, 10], 4)
+        multiscale = []
+        for i in range(2):
+            multiscale.append(nei_finder(x, y, batch_x, batch_y, i))
+
+        self.assertEqual(len(multiscale), 2)
+        self.assertEqual(multiscale[0][1, :].shape[0], 4)
+        self.assertEqual(multiscale[1][1, :].shape[0], 8)
+
+</source>
+<source file="systems/torch-points3d-1.3.0/test/test_sampler.py" startline="73" endline="87" pcid="1260">
+    def test_multiall(self):
+        x = torch.Tensor([[-1, -1], [-1, 1], [1, -1], [1, 1]])
+        batch_x = torch.tensor([0, 0, 0, 0])
+        y = torch.Tensor([[-1, 0], [1, 0]])
+        batch_y = torch.tensor([0, 0])
+
+        nei_finder = MultiscaleRadiusNeighbourFinder([1.1, 10], [3, 4])
+        multiscale = []
+        for i in range(2):
+            multiscale.append(nei_finder(x, y, batch_x, batch_y, i))
+
+        self.assertEqual(len(multiscale), 2)
+        self.assertEqual(multiscale[0][1, :].shape[0], 4)
+        self.assertEqual(multiscale[1][1, :].shape[0], 8)
+
+</source>
+<source file="systems/torch-points3d-1.3.0/test/test_sampler.py" startline="59" endline="72" pcid="1259">
+    def test_multi_num_search(self):
+        x = torch.Tensor([[-1, -1], [-1, 1], [1, -1], [1, 1]])
+        batch_x = torch.tensor([0, 0, 0, 0])
+        y = torch.Tensor([[-1, 0], [1, 0]])
+        batch_y = torch.tensor([0, 0])
+        nei_finder = MultiscaleRadiusNeighbourFinder(10, [3, 4])
+        multiscale = []
+        for i in range(2):
+            multiscale.append(nei_finder(x, y, batch_x, batch_y, i))
+
+        self.assertEqual(len(multiscale), 2)
+        self.assertEqual(multiscale[0][1, :].shape[0], 6)
+        self.assertEqual(multiscale[1][1, :].shape[0], 8)
+
+</source>
+</class>
+
+<class classid="40" nclones="2" nlines="17" similarity="70">
+<source file="systems/torch-points3d-1.3.0/test/test_panoptictracker.py" startline="48" endline="66" pcid="1267">
+    def test_eval_single_class(self):
+        gts = [
+            _Instance(classname=1, indices=np.array([1, 2, 3]), score=1, scan_id=0),
+            _Instance(classname=1, indices=np.array([4, 5]), score=1, scan_id=0),
+            _Instance(classname=1, indices=np.array([6, 7, 8]), score=1, scan_id=0),
+        ]
+
+        preds = [
+            _Instance(classname=1, indices=np.array([1, 2, 3]), score=1, scan_id=0),
+            _Instance(classname=1, indices=np.array([6]), score=0, scan_id=0),
+        ]
+        meter = InstanceAPMeter()
+        meter.add(preds, gts)
+
+        rec, prec, ap = meter.eval(0.5)
+        np.testing.assert_allclose(rec[1], np.asarray([1.0 / 3.0, 1.0 / 3.0]))
+        np.testing.assert_allclose(prec[1], np.asarray([1.0, 1.0 / 2.0]))
+        self.assertAlmostEqual(ap[1], 1.0 / 3.0)
+
+</source>
+<source file="systems/torch-points3d-1.3.0/test/test_panoptictracker.py" startline="83" endline="104" pcid="1269">
+    def test_eval_two_classes(self):
+        gts = [
+            _Instance(classname=1, indices=np.array([1, 2, 3]), score=1, scan_id=0),
+            _Instance(classname=1, indices=np.array([4, 5]), score=1, scan_id=0),
+            _Instance(classname=2, indices=np.array([6, 7]), score=1, scan_id=0),
+        ]
+
+        preds = [
+            _Instance(classname=1, indices=np.array([1, 2, 3]), score=1, scan_id=0),
+            _Instance(classname=2, indices=np.array([6]), score=0, scan_id=0),
+        ]
+        meter = InstanceAPMeter()
+        meter.add(preds, gts)
+
+        rec, prec, _ = meter.eval(0.25)
+        np.testing.assert_allclose(rec[1], np.asarray([1.0 / 2.0]))
+        np.testing.assert_allclose(prec[1], np.asarray([1.0]))
+
+        np.testing.assert_allclose(rec[2], np.asarray([1.0]))
+        np.testing.assert_allclose(prec[2], np.asarray([1.0]))
+
+
+</source>
+</class>
+
+<class classid="41" nclones="2" nlines="14" similarity="73">
+<source file="systems/torch-points3d-1.3.0/test/test_panoptictracker.py" startline="155" endline="168" pcid="1277">
+    def test_track_basic(self):
+        tracker = PanopticTracker(MockDataset())
+        model = MockModel()
+        tracker.track(
+            model,
+            data=Data(pos=torch.tensor([[1, 2]]), batch=torch.tensor([0, 0, 0])),
+            min_cluster_points=0,
+            iou_threshold=0.25,
+        )
+        metrics = tracker.get_metrics()
+        self.assertAlmostEqual(metrics["train_Iacc"], 1)
+        self.assertAlmostEqual(metrics["train_pos"], 1)
+        self.assertAlmostEqual(metrics["train_neg"], 0)
+
+</source>
+<source file="systems/torch-points3d-1.3.0/test/test_panoptictracker.py" startline="169" endline="185" pcid="1278">
+    def test_track_finalise(self):
+        tracker = PanopticTracker(MockDataset())
+        model = MockModel()
+        tracker.track(
+            model,
+            data=Data(pos=torch.tensor([[1, 2]]), batch=torch.tensor([0, 0, 0])),
+            min_cluster_points=0,
+            iou_threshold=0.25,
+            track_instances=True,
+        )
+        tracker.finalise(
+            track_instances=True, iou_threshold=0.25,
+        )
+        metrics = tracker.get_metrics()
+        self.assertAlmostEqual(metrics["train_map"], 1)
+
+
+</source>
+</class>
+
+<class classid="42" nclones="4" nlines="10" similarity="81">
+<source file="systems/torch-points3d-1.3.0/test/test_registration_metrics.py" startline="22" endline="35" pcid="1300">
+    def test_estimate_transfo(self):
+
+        a = torch.randn(100, 3)
+
+        R_gt = euler_angles_to_rotation_matrix(torch.rand(3) * np.pi)
+        t_gt = torch.rand(3)
+        T_gt = torch.eye(4)
+        T_gt[:3, :3] = R_gt
+        T_gt[:3, 3] = t_gt
+        b = a.mm(R_gt.T) + t_gt
+        T_pred = estimate_transfo(a, b)
+
+        npt.assert_allclose(T_pred.numpy(), T_gt.numpy(), rtol=1e-3)
+
+</source>
+<source file="systems/torch-points3d-1.3.0/test/test_registration_metrics.py" startline="48" endline="60" pcid="1302">
+    def test_fast_global_registration_with_outliers(self):
+        a = torch.randn(100, 3)
+        R_gt = euler_angles_to_rotation_matrix(torch.rand(3) * np.pi)
+        t_gt = torch.rand(3)
+        T_gt = torch.eye(4)
+        T_gt[:3, :3] = R_gt
+        T_gt[:3, 3] = t_gt
+        b = a.mm(R_gt.T) + t_gt
+        b[[1, 5, 20, 32, 74, 17, 27, 77, 88, 89]] *= 42
+        T_pred = fast_global_registration(a, b, mu_init=1, num_iter=20)
+        # T_pred = estimate_transfo(a, b)
+        npt.assert_allclose(T_pred.numpy(), T_gt.numpy(), rtol=1e-3)
+
+</source>
+<source file="systems/torch-points3d-1.3.0/test/test_registration_metrics.py" startline="61" endline="73" pcid="1303">
+    def test_ransac(self):
+        a = torch.randn(100, 3)
+        R_gt = euler_angles_to_rotation_matrix(torch.rand(3) * np.pi)
+        t_gt = torch.rand(3)
+        T_gt = torch.eye(4)
+        T_gt[:3, :3] = R_gt
+        T_gt[:3, 3] = t_gt
+        b = a.mm(R_gt.T) + t_gt
+        b[[1, 5, 20, 32, 74, 17, 27, 77, 88, 89]] *= 42
+        T_pred = ransac_registration(a, b, distance_threshold=0.01)
+        # T_pred = estimate_transfo(a, b)
+        npt.assert_allclose(T_pred.numpy(), T_gt.numpy(), rtol=1e-3)
+
+</source>
+<source file="systems/torch-points3d-1.3.0/test/test_registration_metrics.py" startline="36" endline="47" pcid="1301">
+    def test_fast_global_registration(self):
+        a = torch.randn(100, 3)
+
+        R_gt = euler_angles_to_rotation_matrix(torch.rand(3) * np.pi)
+        t_gt = torch.rand(3)
+        T_gt = torch.eye(4)
+        T_gt[:3, :3] = R_gt
+        T_gt[:3, 3] = t_gt
+        b = a.mm(R_gt.T) + t_gt
+        T_pred = fast_global_registration(a, b, mu_init=1, num_iter=20)
+        npt.assert_allclose(T_pred.numpy(), T_gt.numpy(), rtol=1e-3)
+
+</source>
+</class>
+
+<class classid="43" nclones="3" nlines="16" similarity="70">
+<source file="systems/torch-points3d-1.3.0/test/test_trainer.py" startline="19" endline="43" pcid="1324">
+    def test_trainer_on_shapenet_fixed(self):
+        self.path_outputs = os.path.join(DIR_PATH, "data/shapenet/outputs")
+        if not os.path.exists(self.path_outputs):
+            os.makedirs(self.path_outputs)
+        os.chdir(self.path_outputs)
+
+        cfg = OmegaConf.load(os.path.join(DIR_PATH, "data/shapenet/shapenet_config.yaml"))
+        cfg.training.epochs = 2
+        cfg.training.num_workers = 0
+        cfg.data.is_test = True
+        cfg.data.dataroot = os.path.join(DIR_PATH, "data/")
+
+        trainer = Trainer(cfg)
+        trainer.train()
+
+        self.assertEqual(trainer.early_break, True)
+        self.assertEqual(trainer.profiling, False)
+        self.assertEqual(trainer.precompute_multi_scale, False)
+        self.assertEqual(trainer.wandb_log, False)
+
+        keys = [k for k in trainer._tracker.get_metrics().keys()]
+        self.assertEqual(keys, ["test_loss_seg", "test_Cmiou", "test_Imiou"])
+        trainer._cfg.voting_runs = 2
+        trainer.eval()
+
+</source>
+<source file="systems/torch-points3d-1.3.0/test/test_trainer.py" startline="58" endline="74" pcid="1326">
+    def test_trainer_on_scannet_segmentation(self):
+        self.path_outputs = os.path.join(DIR_PATH, "data/scannet/outputs")
+        if not os.path.exists(self.path_outputs):
+            os.makedirs(self.path_outputs)
+        os.chdir(self.path_outputs)
+        cfg = OmegaConf.load(os.path.join(DIR_PATH, "data/scannet/config_segmentation.yaml"))
+        cfg.training.epochs = 2
+        cfg.training.num_workers = 0
+        cfg.data.is_test = True
+        cfg.data.dataroot = os.path.join(DIR_PATH, "data/")
+        trainer = Trainer(cfg)
+        trainer.train()
+        trainer._cfg.voting_runs = 2
+        trainer._cfg.tracker_options.full_res = True
+        trainer._cfg.tracker_options.make_submission = True
+        trainer.eval()
+
+</source>
+<source file="systems/torch-points3d-1.3.0/test/test_trainer.py" startline="44" endline="57" pcid="1325">
+    def test_trainer_on_scannet_object_detection(self):
+        self.path_outputs = os.path.join(DIR_PATH, "data/scannet-fixed/outputs")
+        if not os.path.exists(self.path_outputs):
+            os.makedirs(self.path_outputs)
+        os.chdir(self.path_outputs)
+
+        cfg = OmegaConf.load(os.path.join(DIR_PATH, "data/scannet-fixed/config_object_detection.yaml"))
+        cfg.training.epochs = 2
+        cfg.training.num_workers = 0
+        cfg.data.is_test = True
+        cfg.data.dataroot = os.path.join(DIR_PATH, "data/")
+        trainer = Trainer(cfg)
+        trainer.train()
+
+</source>
+</class>
+
+<class classid="44" nclones="4" nlines="49" similarity="75">
+<source file="systems/torch-points3d-1.3.0/test/test_api.py" startline="38" endline="96" pcid="1344">
+    def test_kpconv(self):
+        from torch_points3d.applications.kpconv import KPConv
+
+        input_nc = 3
+        num_layers = 4
+        grid_sampling = 0.02
+        in_feat = 32
+        model = KPConv(
+            architecture="unet",
+            input_nc=input_nc,
+            in_feat=in_feat,
+            in_grid_size=grid_sampling,
+            num_layers=num_layers,
+            config=None,
+        )
+        dataset = MockDatasetGeometric(input_nc + 1, transform=GridSampling3D(0.01), num_points=128)
+        self.assertEqual(len(model._modules["down_modules"]), num_layers + 1)
+        self.assertEqual(len(model._modules["inner_modules"]), 1)
+        self.assertEqual(len(model._modules["up_modules"]), 4)
+        self.assertFalse(model.has_mlp_head)
+        self.assertEqual(model.output_nc, in_feat)
+
+        try:
+            data_out = model.forward(dataset[0])
+            self.assertEqual(data_out.x.shape[1], in_feat)
+        except Exception as e:
+            print("Model failing:")
+            print(model)
+            raise e
+
+        input_nc = 3
+        num_layers = 4
+        grid_sampling = 0.02
+        in_feat = 32
+        output_nc = 5
+        model = KPConv(
+            architecture="unet",
+            input_nc=input_nc,
+            output_nc=output_nc,
+            in_feat=in_feat,
+            in_grid_size=grid_sampling,
+            num_layers=num_layers,
+            config=None,
+        )
+        dataset = MockDatasetGeometric(input_nc + 1, transform=GridSampling3D(0.01), num_points=128)
+        self.assertEqual(len(model._modules["down_modules"]), num_layers + 1)
+        self.assertEqual(len(model._modules["inner_modules"]), 1)
+        self.assertEqual(len(model._modules["up_modules"]), 4)
+        self.assertTrue(model.has_mlp_head)
+        self.assertEqual(model.output_nc, output_nc)
+
+        try:
+            data_out = model.forward(dataset[0])
+            self.assertEqual(data_out.x.shape[1], output_nc)
+        except Exception as e:
+            print("Model failing:")
+            print(model)
+            raise e
+
+</source>
+<source file="systems/torch-points3d-1.3.0/test/test_api.py" startline="309" endline="360" pcid="1351">
+    def test_minkowski(self):
+        from torch_points3d.applications.minkowski import Minkowski
+
+        input_nc = 3
+        num_layers = 4
+        in_feat = 16
+        model = Minkowski(
+            architecture="encoder", input_nc=input_nc, in_feat=in_feat, num_layers=num_layers, config=None,
+        )
+        dataset = MockDatasetGeometric(input_nc, transform=GridSampling3D(0.01, quantize_coords=True), num_points=128)
+        self.assertEqual(len(model._modules["down_modules"]), num_layers + 1)
+        self.assertEqual(len(model._modules["inner_modules"]), 1)
+        self.assertFalse(model.has_mlp_head)
+        self.assertEqual(model.output_nc, 8 * in_feat)
+
+        try:
+            data_out = model.forward(dataset[0])
+            # self.assertEqual(data_out.x.shape[1], 8 * in_feat)
+        except Exception as e:
+            print("Model failing:")
+            print(model)
+            raise e
+
+        input_nc = 3
+        num_layers = 4
+        grid_sampling = 0.02
+        in_feat = 32
+        output_nc = 5
+        model = Minkowski(
+            architecture="encoder",
+            input_nc=input_nc,
+            output_nc=output_nc,
+            in_feat=in_feat,
+            in_grid_size=grid_sampling,
+            num_layers=num_layers,
+            config=None,
+        )
+        dataset = MockDatasetGeometric(input_nc, transform=GridSampling3D(0.01, quantize_coords=True), num_points=128)
+        self.assertEqual(len(model._modules["down_modules"]), num_layers + 1)
+        self.assertEqual(len(model._modules["inner_modules"]), 1)
+        self.assertTrue(model.has_mlp_head)
+        self.assertEqual(model.output_nc, output_nc)
+
+        try:
+            data_out = model.forward(dataset[0])
+            self.assertEqual(data_out.x.shape[1], output_nc)
+        except Exception as e:
+            print("Model failing:")
+            print(model)
+            raise e
+
+
+</source>
+<source file="systems/torch-points3d-1.3.0/test/test_api.py" startline="200" endline="256" pcid="1348">
+    def test_kpconv(self):
+        from torch_points3d.applications.kpconv import KPConv
+
+        input_nc = 3
+        num_layers = 4
+        grid_sampling = 0.02
+        in_feat = 16
+        model = KPConv(
+            architecture="encoder",
+            input_nc=input_nc,
+            in_feat=in_feat,
+            in_grid_size=grid_sampling,
+            num_layers=num_layers,
+            config=None,
+        )
+        dataset = MockDatasetGeometric(input_nc + 1, transform=GridSampling3D(0.01), num_points=128)
+        self.assertEqual(len(model._modules["down_modules"]), num_layers + 1)
+        self.assertEqual(len(model._modules["inner_modules"]), 1)
+        self.assertFalse(model.has_mlp_head)
+        self.assertEqual(model.output_nc, 32 * in_feat)
+
+        try:
+            data_out = model.forward(dataset[0])
+            self.assertEqual(data_out.x.shape[1], 32 * in_feat)
+        except Exception as e:
+            print("Model failing:")
+            print(model)
+            raise e
+
+        input_nc = 3
+        num_layers = 4
+        grid_sampling = 0.02
+        in_feat = 32
+        output_nc = 5
+        model = KPConv(
+            architecture="encoder",
+            input_nc=input_nc,
+            output_nc=output_nc,
+            in_feat=in_feat,
+            in_grid_size=grid_sampling,
+            num_layers=num_layers,
+            config=None,
+        )
+        dataset = MockDatasetGeometric(input_nc + 1, transform=GridSampling3D(0.01), num_points=128)
+        self.assertEqual(len(model._modules["down_modules"]), num_layers + 1)
+        self.assertEqual(len(model._modules["inner_modules"]), 1)
+        self.assertTrue(model.has_mlp_head)
+        self.assertEqual(model.output_nc, output_nc)
+
+        try:
+            data_out = model.forward(dataset[0])
+            self.assertEqual(data_out.x.shape[1], output_nc)
+        except Exception as e:
+            print("Model failing:")
+            print(model)
+            raise e
+
+</source>
+<source file="systems/torch-points3d-1.3.0/test/test_api.py" startline="151" endline="198" pcid="1347">
+    def test_sparseconv3d(self):
+        from torch_points3d.applications.sparseconv3d import SparseConv3d
+
+        input_nc = 3
+        num_layers = 4
+        in_feat = 32
+        out_feat = in_feat * 3
+        model = SparseConv3d(
+            architecture="unet", input_nc=input_nc, in_feat=in_feat, num_layers=num_layers, config=None,
+        )
+        dataset = MockDatasetGeometric(input_nc, transform=GridSampling3D(0.01, quantize_coords=True), num_points=128)
+        self.assertEqual(len(model._modules["down_modules"]), num_layers + 1)
+        self.assertEqual(len(model._modules["inner_modules"]), 1)
+        self.assertEqual(len(model._modules["up_modules"]), 4 + 1)
+        self.assertFalse(model.has_mlp_head)
+        self.assertEqual(model.output_nc, out_feat)
+
+        try:
+            data_out = model.forward(dataset[0])
+            self.assertEqual(data_out.x.shape[1], out_feat)
+        except Exception as e:
+            print("Model failing:")
+            print(model)
+            print(e)
+
+        input_nc = 3
+        num_layers = 4
+
+        output_nc = 5
+        model = SparseConv3d(
+            architecture="unet", input_nc=input_nc, output_nc=output_nc, num_layers=num_layers, config=None,
+        )
+        dataset = MockDatasetGeometric(input_nc, transform=GridSampling3D(0.01, quantize_coords=True), num_points=128)
+        self.assertEqual(len(model._modules["down_modules"]), num_layers + 1)
+        self.assertEqual(len(model._modules["inner_modules"]), 1)
+        self.assertEqual(len(model._modules["up_modules"]), 4 + 1)
+        self.assertTrue(model.has_mlp_head)
+        self.assertEqual(model.output_nc, output_nc)
+
+        try:
+            data_out = model.forward(dataset[0])
+            self.assertEqual(data_out.x.shape[1], output_nc)
+        except Exception as e:
+            print("Model failing:")
+            print(model)
+            raise e
+
+
+</source>
+</class>
+
+<class classid="45" nclones="4" nlines="24" similarity="91">
+<source file="systems/torch-points3d-1.3.0/test/test_api.py" startline="97" endline="123" pcid="1345">
+    def test_pn2(self):
+        from torch_points3d.applications.pointnet2 import PointNet2
+
+        input_nc = 2
+        num_layers = 3
+        output_nc = 5
+        model = PointNet2(
+            architecture="unet",
+            input_nc=input_nc,
+            output_nc=output_nc,
+            num_layers=num_layers,
+            multiscale=True,
+            config=None,
+        )
+        dataset = MockDataset(input_nc, num_points=512)
+        self.assertEqual(len(model._modules["down_modules"]), num_layers - 1)
+        self.assertEqual(len(model._modules["inner_modules"]), 1)
+        self.assertEqual(len(model._modules["up_modules"]), num_layers)
+
+        try:
+            data_out = model.forward(dataset[0])
+            self.assertEqual(data_out.x.shape[1], output_nc)
+        except Exception as e:
+            print("Model failing:")
+            print(model)
+            raise e
+
+</source>
+<source file="systems/torch-points3d-1.3.0/test/test_api.py" startline="257" endline="282" pcid="1349">
+    def test_pn2(self):
+        from torch_points3d.applications.pointnet2 import PointNet2
+
+        input_nc = 2
+        num_layers = 3
+        output_nc = 5
+        model = PointNet2(
+            architecture="encoder",
+            input_nc=input_nc,
+            output_nc=output_nc,
+            num_layers=num_layers,
+            multiscale=True,
+            config=None,
+        )
+        dataset = MockDataset(input_nc, num_points=512)
+        self.assertEqual(len(model._modules["down_modules"]), num_layers - 1)
+        self.assertEqual(len(model._modules["inner_modules"]), 1)
+
+        try:
+            data_out = model.forward(dataset[0])
+            self.assertEqual(data_out.x.shape[1], output_nc)
+        except Exception as e:
+            print("Model failing:")
+            print(model)
+            raise e
+
+</source>
+<source file="systems/torch-points3d-1.3.0/test/test_api.py" startline="283" endline="308" pcid="1350">
+    def test_rsconv(self):
+        from torch_points3d.applications.rsconv import RSConv
+
+        input_nc = 2
+        num_layers = 4
+        output_nc = 5
+        model = RSConv(
+            architecture="encoder",
+            input_nc=input_nc,
+            output_nc=output_nc,
+            num_layers=num_layers,
+            multiscale=True,
+            config=None,
+        )
+        dataset = MockDataset(input_nc, num_points=1024)
+        self.assertEqual(len(model._modules["down_modules"]), num_layers)
+        self.assertEqual(len(model._modules["inner_modules"]), 1)
+
+        try:
+            data_out = model.forward(dataset[0])
+            self.assertEqual(data_out.x.shape[1], output_nc)
+        except Exception as e:
+            print("Model failing:")
+            print(model)
+            raise e
+
+</source>
+<source file="systems/torch-points3d-1.3.0/test/test_api.py" startline="124" endline="150" pcid="1346">
+    def test_rsconv(self):
+        from torch_points3d.applications.rsconv import RSConv
+
+        input_nc = 2
+        num_layers = 4
+        output_nc = 5
+        model = RSConv(
+            architecture="unet",
+            input_nc=input_nc,
+            output_nc=output_nc,
+            num_layers=num_layers,
+            multiscale=True,
+            config=None,
+        )
+        dataset = MockDataset(input_nc, num_points=1024)
+        self.assertEqual(len(model._modules["down_modules"]), num_layers)
+        self.assertEqual(len(model._modules["inner_modules"]), 2)
+        self.assertEqual(len(model._modules["up_modules"]), num_layers)
+
+        try:
+            data_out = model.forward(dataset[0])
+            self.assertEqual(data_out.x.shape[1], output_nc)
+        except Exception as e:
+            print("Model failing:")
+            print(model)
+            raise e
+
+</source>
+</class>
+
+<class classid="46" nclones="2" nlines="12" similarity="100">
+<source file="systems/torch-points3d-1.3.0/test/test_shapenetforward.py" startline="60" endline="72" pcid="1373">
+    def test_predictupsampledense(self):
+        dataset = ForwardShapenetDataset(self.config)
+        dataset.create_dataloaders(MockModel(DictConfig({"conv_type": "DENSE"})), 2, False, 1, False)
+        forward_set = dataset.test_dataloaders[0]
+        for b in forward_set:
+            output = torch.tensor([[1, 0], [1, 0], [0, 1], [0, 1]])
+            predicted = dataset.predict_original_samples(b, "DENSE", output)
+            self.assertEqual(len(predicted), 2)
+            self.assertEqual(predicted["example1.txt"].shape, (3, 4))
+            self.assertEqual(predicted["example2.txt"].shape, (4, 4))
+            npt.assert_allclose(predicted["example1.txt"][:, -1], np.asarray([0, 0, 0]))
+            npt.assert_allclose(predicted["example2.txt"][:, -1], np.asarray([1, 1, 1, 1]))
+
+</source>
+<source file="systems/torch-points3d-1.3.0/test/test_shapenetforward.py" startline="73" endline="85" pcid="1374">
+    def test_predictupsamplepartialdense(self):
+        dataset = ForwardShapenetDataset(self.config)
+        dataset.create_dataloaders(MockModel(DictConfig({"conv_type": "PARTIAL_DENSE"})), 2, False, 1, False)
+        forward_set = dataset.test_dataloaders[0]
+        for b in forward_set:
+            output = torch.tensor([[1, 0], [1, 0], [0, 1], [0, 1]])
+            predicted = dataset.predict_original_samples(b, "PARTIAL_DENSE", output)
+            self.assertEqual(len(predicted), 2)
+            self.assertEqual(predicted["example1.txt"].shape, (3, 4))
+            self.assertEqual(predicted["example2.txt"].shape, (4, 4))
+            npt.assert_allclose(predicted["example1.txt"][:, -1], np.asarray([0, 0, 0]))
+            npt.assert_allclose(predicted["example2.txt"][:, -1], np.asarray([1, 1, 1, 1]))
+
+</source>
+</class>
+
+<class classid="47" nclones="2" nlines="16" similarity="75">
+<source file="systems/torch-points3d-1.3.0/test/test_transform.py" startline="153" endline="168" pcid="1383">
+    def test_AddFeatsByKeys(self):
+        N = 10
+        mapping = {"a": 1, "b": 2, "c": 3, "d": 4}
+        keys, values = np.asarray(list(mapping.keys())), np.asarray(list(mapping.values()))
+        data = Data(
+            a=torch.randn((N, 1)),
+            b=torch.randn((N, 2)),
+            c=torch.randn((N, 3)),
+            d=torch.randn((N, 4)),
+            pos=torch.randn((N)),
+        )
+        mask = np.random.uniform(0, 1, (4)) > 0.1
+        transform = AddFeatsByKeys(mask, keys)
+        data_out = transform(data)
+        self.assertEqual(data_out.x.shape[-1], np.sum(values[mask]))
+
+</source>
+<source file="systems/torch-points3d-1.3.0/test/test_transform.py" startline="169" endline="185" pcid="1384">
+    def test_RemoveAttributes(self):
+        N = 10
+        mapping = {"a": 1, "b": 2, "c": 3, "d": 4}
+        keys = np.asarray(list(mapping.keys()))
+        data = Data(
+            a=torch.randn((N, 1)),
+            b=torch.randn((N, 2)),
+            c=torch.randn((N, 3)),
+            d=torch.randn((N, 4)),
+            pos=torch.randn((N)),
+        )
+        mask = np.random.uniform(0, 1, (4)) > 0.5
+        transform = RemoveAttributes(keys[mask])
+        data_out = transform(data)
+        for key in keys[mask]:
+            self.assertNotIn(key, list(data_out.keys))
+
+</source>
+</class>
+
+<class classid="48" nclones="2" nlines="11" similarity="72">
+<source file="systems/torch-points3d-1.3.0/test/test_transform.py" startline="343" endline="356" pcid="1398">
+    def test_lottery_transform(self):
+        """
+        test the lottery transform when params are indicated in the yaml
+        """
+        pos = torch.randn(10000, 3)
+        x = torch.randn(10000, 6)
+        dummy = torch.randn(10000, 6)
+        data = Data(pos=pos, x=x, dummy=dummy)
+        conf = ListConfig([{"transform": "GridSampling3D", "params": {"size": 0.1}}, {"transform": "Center"},])
+        tr = LotteryTransform(transform_options=conf)
+        tr(data)
+        self.assertIsInstance(tr.random_transforms.transforms[0], GridSampling3D)
+        self.assertIsInstance(tr.random_transforms.transforms[1], T.Center)
+
+</source>
+<source file="systems/torch-points3d-1.3.0/test/test_transform.py" startline="357" endline="381" pcid="1399">
+    def test_lottery_transform_from_yaml(self):
+        """
+        test the lottery transform when params are indicated in the yaml
+        """
+        string = """
+
+        - transform: LotteryTransform
+          params:
+            transform_options:
+              - transform: GridSampling3D
+                params:
+                  size: 0.1
+              - transform: Center
+        """
+        conf = OmegaConf.create(string)
+        pos = torch.randn(10000, 3)
+        x = torch.randn(10000, 6)
+        dummy = torch.randn(10000, 6)
+        data = Data(pos=pos, x=x, dummy=dummy)
+
+        tr = instantiate_transforms(conf).transforms[0]
+        tr(data)
+        self.assertIsInstance(tr.random_transforms.transforms[0], GridSampling3D)
+        self.assertIsInstance(tr.random_transforms.transforms[1], T.Center)
+
+</source>
+</class>
+
+</clones>

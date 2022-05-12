@@ -1,0 +1,4735 @@
+<clones>
+<systeminfo processor="nicad6" system="PySyft-0.6.0" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="1747" npairs="718"/>
+<runinfo ncompares="46592" cputime="58204"/>
+<classinfo nclasses="45"/>
+
+<class classid="1" nclones="2" nlines="13" similarity="100">
+<source file="systems/PySyft-0.6.0/tests/integration/network/make_associations_test.py" startline="13" endline="33" pcid="17">
+def test_domain1_association_network1() -> None:
+    network_guest = sy.login(port=NETWORK_PORT)
+
+    domain = sy.login(
+        email="info@openmined.org", password="changethis", port=DOMAIN1_PORT
+    )
+
+    domain.apply_to_network(client=network_guest)
+
+    network = sy.login(
+        email="info@openmined.org", password="changethis", port=NETWORK_PORT
+    )
+    associations = network.association.all()
+    for association in associations:
+        if association["node_address"] == domain.target_id.id.no_dash:
+            request_id = int(association["association_id"])
+
+    network.association[request_id].accept()
+    assert domain.association.all()[0]["status"] == "ACCEPTED"
+
+
+</source>
+<source file="systems/PySyft-0.6.0/tests/integration/network/make_associations_test.py" startline="35" endline="53" pcid="18">
+def test_domain2_association_network1() -> None:
+    network_guest = sy.login(port=NETWORK_PORT)
+
+    domain = sy.login(
+        email="info@openmined.org", password="changethis", port=DOMAIN2_PORT
+    )
+
+    domain.apply_to_network(client=network_guest)
+
+    network = sy.login(
+        email="info@openmined.org", password="changethis", port=NETWORK_PORT
+    )
+    associations = network.association.all()
+    for association in associations:
+        if association["node_address"] == domain.target_id.id.no_dash:
+            request_id = int(association["association_id"])
+
+    network.association[request_id].accept()
+    assert domain.association.all()[0]["status"] == "ACCEPTED"
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="19" similarity="76">
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/tensor/tensor_abstraction_test.py" startline="16" endline="45" pcid="21">
+def test_tensor_abstraction_pointer(get_clients, op_str) -> None:
+    clients = get_clients(3)
+
+    op = getattr(operator, op_str)
+
+    data_1 = Tensor(child=np.array([[15, 34], [32, 89]], dtype=np.int32))
+    data_2 = Tensor(child=np.array([[567, 98], [78, 25]], dtype=np.int32))
+    data_3 = Tensor(child=np.array([[125, 10], [124, 28]], dtype=np.int32))
+
+    tensor_pointer_1 = data_1.send(clients[0])
+    tensor_pointer_2 = data_2.send(clients[1])
+    tensor_pointer_3 = data_3.send(clients[2])
+
+    # creates an MPCTensor between party 1 and party 2
+    mpc_1_2 = op(tensor_pointer_1, tensor_pointer_2)
+    mpc_1_2.block_with_timeout(secs=40)
+
+    # creates and MPCTensor between party 1,2,3
+    mpc_1_2_3 = op(mpc_1_2, tensor_pointer_3)
+    mpc_1_2_3.block_with_timeout(secs=40)
+
+    exp_res = op(data_1, data_2)
+
+    assert (mpc_1_2.reconstruct() == exp_res.child).all()
+
+    exp_res = op(exp_res, data_3)
+
+    assert (mpc_1_2_3.reconstruct() == exp_res.child).all()
+
+
+</source>
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/tensor/tensor_abstraction_test.py" startline="48" endline="83" pcid="22">
+def test_tensor_abstraction_subsets(get_clients, op_str) -> None:
+    clients = get_clients(3)
+
+    op = getattr(operator, op_str)
+
+    data_1 = Tensor(child=np.array([[15, 34], [32, 89]], dtype=np.int32))
+    data_2 = Tensor(child=np.array([[567, 98], [78, 25]], dtype=np.int32))
+    data_3 = Tensor(child=np.array([[125, 10], [124, 28]], dtype=np.int32))
+
+    tensor_pointer_1 = data_1.send(clients[0])
+    tensor_pointer_2 = data_2.send(clients[1])
+    tensor_pointer_3 = data_3.send(clients[2])
+
+    # Tensor abstraction among different subsets of parties
+
+    # creates an MPCTensor between party 1 and party 2
+    mpc_1_2 = op(tensor_pointer_1, tensor_pointer_2)
+
+    mpc_1_2.block_with_timeout(40)
+
+    # creates and MPCTensor between party 2,3
+    mpc_2_3 = op(tensor_pointer_2, tensor_pointer_3)
+    mpc_2_3.block_with_timeout(40)
+
+    # creates and MPCTensor between party 1,2,3
+    mpc_1_2_3 = op(mpc_1_2, mpc_2_3)
+    mpc_1_2_3.block_with_timeout(secs=40)
+
+    exp_res_1 = op(data_1, data_2)
+    assert (mpc_1_2.reconstruct() == exp_res_1.child).all()
+
+    exp_res_2 = op(data_2, data_3)
+    assert (mpc_2_3.reconstruct() == exp_res_2.child).all()
+
+    exp_res_3 = op(exp_res_1, exp_res_2)
+    assert (mpc_1_2_3.reconstruct() == exp_res_3.child).all()
+</source>
+</class>
+
+<class classid="3" nclones="4" nlines="13" similarity="71">
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/tensor/mpc_tensor_test.py" startline="41" endline="63" pcid="24">
+def test_mpc_private_private_op(get_clients, op_str: str) -> None:
+    clients = get_clients(2)
+
+    value_1 = Tensor(child=np.array([[1, 2, 3, 4, -5]], dtype=np.int32))
+    value_2 = Tensor(child=np.array([42], dtype=np.int32))
+
+    remote_value_1 = value_1.send(clients[0])
+    remote_value_2 = value_2.send(clients[1])
+
+    mpc_tensor_1 = MPCTensor(parties=clients, secret=remote_value_1, shape=(1, 5))
+    mpc_tensor_2 = MPCTensor(parties=clients, secret=remote_value_2, shape=(1,))
+
+    op = getattr(operator, op_str)
+    res_ptr = op(mpc_tensor_1, mpc_tensor_2)
+
+    res_ptr.block_with_timeout(secs=40)
+
+    res = res_ptr.reconstruct()
+    expected = op(value_1, value_2)
+
+    assert (res == expected.child).all()
+
+
+</source>
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/tensor/mpc_tensor_test.py" startline="66" endline="86" pcid="25">
+def test_mpc_private_public_op(get_clients, op_str: str) -> None:
+    clients = get_clients(2)
+
+    value_1 = Tensor(child=np.array([[1, 2, 3, 4, -5]], dtype=np.int32))
+
+    remote_value_1 = value_1.send(clients[0])
+    public_value = 27
+
+    mpc_tensor_1 = MPCTensor(parties=clients, secret=remote_value_1, shape=(1, 5))
+
+    op = getattr(operator, op_str)
+
+    res = op(mpc_tensor_1, public_value)
+    res.block_with_timeout(secs=20)
+
+    res = res.reconstruct()
+    expected = op(value_1, public_value)
+
+    assert (res == expected.child).all()
+
+
+</source>
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/tensor/mpc_tensor_test.py" startline="141" endline="163" pcid="28">
+def test_comp_mpc_private_private_op(get_clients, op_str: str) -> None:
+    clients = get_clients(2)
+
+    value_1 = Tensor(child=np.array([[1, 2, 3, 4, -5]], dtype=np.int32))
+    value_2 = Tensor(child=np.array([0, 3, 98, -32, 27], dtype=np.int32))
+
+    remote_value_1 = value_1.send(clients[0])
+    remote_value_2 = value_2.send(clients[1])
+
+    mpc_tensor_1 = MPCTensor(parties=clients, secret=remote_value_1, shape=(1, 5))
+    mpc_tensor_2 = MPCTensor(parties=clients, secret=remote_value_2, shape=(1, 5))
+
+    op = getattr(operator, op_str)
+    res_ptr = op(mpc_tensor_1, mpc_tensor_2)
+
+    res_ptr.block_with_timeout(secs=120)
+
+    res = res_ptr.reconstruct()
+    expected = op(value_1, value_2)
+
+    assert (res == expected.child).all()
+
+
+</source>
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/tensor/mpc_tensor_test.py" startline="166" endline="184" pcid="29">
+def test_comp_mpc_private_public_op(get_clients, op_str: str) -> None:
+    clients = get_clients(2)
+
+    value_1 = Tensor(child=np.array([[32, -27, 108, 1, 32]], dtype=np.int32))
+
+    remote_value_1 = value_1.send(clients[0])
+    public_value = 27
+
+    mpc_tensor_1 = MPCTensor(parties=clients, secret=remote_value_1, shape=(1, 5))
+
+    op = getattr(operator, op_str)
+    res_ptr = op(mpc_tensor_1, public_value)
+
+    res_ptr.block_with_timeout(secs=120)
+
+    res = res_ptr.reconstruct()
+    expected = op(value_1, public_value)
+
+    assert (res == expected.child).all()
+</source>
+</class>
+
+<class classid="4" nclones="19" nlines="10" similarity="70">
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/numpy/smpc_numpy_ops_test.py" startline="11" endline="27" pcid="30">
+def test_repeat(get_clients) -> None:
+    clients = get_clients(2)
+    value = Tensor(np.array([[1, 2], [3, 4]], dtype=np.int32))
+
+    remote_value = value.send(clients[0])
+
+    mpc_tensor = MPCTensor(parties=clients, secret=remote_value, shape=(2, 2))
+
+    res = mpc_tensor.repeat(3)
+    res.block_with_timeout(secs=20)
+    res = res.reconstruct()
+
+    exp_res = value.repeat(3)
+
+    assert (res == exp_res.child).all()
+
+
+</source>
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/numpy/smpc_numpy_ops_test.py" startline="360" endline="374" pcid="49">
+def test_trace(get_clients) -> None:
+    clients = get_clients(2)
+    value = Tensor(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.int32))
+
+    remote_value = value.send(clients[0])
+
+    mpc_tensor = MPCTensor(parties=clients, secret=remote_value, shape=(3, 3))
+
+    res = mpc_tensor.trace()
+    res.block_with_timeout(secs=20)
+    res = res.reconstruct()
+
+    exp_res = value.trace()
+
+    assert (res == exp_res.child).all()
+</source>
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/numpy/smpc_numpy_ops_test.py" startline="196" endline="212" pcid="40">
+def test_swapaxes(get_clients) -> None:
+    clients = get_clients(2)
+    value = Tensor(np.array([[613, 645, 738], [531, 412, 658]], dtype=np.int32))
+
+    remote_value = value.send(clients[0])
+
+    mpc_tensor = MPCTensor(parties=clients, secret=remote_value, shape=(2, 3))
+
+    res = mpc_tensor.swapaxes(0, 1)
+    res.block_with_timeout(secs=20)
+    res = res.reconstruct()
+
+    exp_res = value.swapaxes(0, 1)
+
+    assert (res == exp_res.child).all()
+
+
+</source>
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/numpy/smpc_numpy_ops_test.py" startline="178" endline="194" pcid="39">
+def test_squeeze(get_clients) -> None:
+    clients = get_clients(2)
+    value = Tensor(np.array([[7], [6], [72]], dtype=np.int32))
+
+    remote_value = value.send(clients[0])
+
+    mpc_tensor = MPCTensor(parties=clients, secret=remote_value, shape=(3, 1))
+
+    res = mpc_tensor.squeeze()
+    res.block_with_timeout(secs=20)
+    res = res.reconstruct()
+
+    exp_res = value.squeeze()
+
+    assert (res == exp_res.child).all()
+
+
+</source>
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/numpy/smpc_numpy_ops_test.py" startline="232" endline="249" pcid="42">
+def test_put(get_clients) -> None:
+    clients = get_clients(2)
+    value = Tensor(np.array([[5, 2], [3, 7]], dtype=np.int32))
+
+    remote_value = value.send(clients[0])
+
+    mpc_tensor = MPCTensor(parties=clients, secret=remote_value, shape=(2, 2))
+
+    res = mpc_tensor.put([0, 1], 7)
+    res.block_with_timeout(secs=20)
+    res = res.reconstruct()
+
+    value.put([0, 1], 7)
+    exp_res = value  # inplace ops
+
+    assert (res == exp_res.child).all()
+
+
+</source>
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/numpy/smpc_numpy_ops_test.py" startline="142" endline="158" pcid="37">
+def test_compress(get_clients) -> None:
+    clients = get_clients(2)
+    value = Tensor(np.array([[1, 2], [3, 4], [5, 6]], dtype=np.int32))
+
+    remote_value = value.send(clients[0])
+
+    mpc_tensor = MPCTensor(parties=clients, secret=remote_value, shape=(3, 2))
+
+    res = mpc_tensor.compress([0, 1], axis=0)
+    res.block_with_timeout(secs=20)
+    res = res.reconstruct()
+
+    exp_res = value.compress([0, 1], axis=0)
+
+    assert (res == exp_res.child).all()
+
+
+</source>
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/numpy/smpc_numpy_ops_test.py" startline="251" endline="267" pcid="43">
+def test_neg(get_clients) -> None:
+    clients = get_clients(2)
+    value = Tensor(np.array([[-5, 2], [-3, 7]], dtype=np.int32))
+
+    remote_value = value.send(clients[0])
+
+    mpc_tensor = MPCTensor(parties=clients, secret=remote_value, shape=(2, 2))
+
+    res = -mpc_tensor
+    res.block_with_timeout(secs=20)
+    res = res.reconstruct()
+
+    exp_res = -value
+
+    assert (res == exp_res.child).all()
+
+
+</source>
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/numpy/smpc_numpy_ops_test.py" startline="106" endline="122" pcid="35">
+def test_resize(get_clients) -> None:
+    clients = get_clients(2)
+    value = Tensor(np.array([[89, 12], [412, 89], [87, 32]], dtype=np.int32))
+
+    remote_value = value.send(clients[0])
+
+    mpc_tensor = MPCTensor(parties=clients, secret=remote_value, shape=(3, 2))
+
+    res = mpc_tensor.resize((2, 3))
+    res.block_with_timeout(secs=20)
+    res = res.reconstruct()
+
+    exp_res = value.resize((2, 3))
+
+    assert (res == exp_res.child).all()
+
+
+</source>
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/numpy/smpc_numpy_ops_test.py" startline="124" endline="140" pcid="36">
+def test_ravel(get_clients) -> None:
+    clients = get_clients(2)
+    value = Tensor(np.array([[8, 1, 5], [4, 8, 4], [7, 2, 27]], dtype=np.int32))
+
+    remote_value = value.send(clients[0])
+
+    mpc_tensor = MPCTensor(parties=clients, secret=remote_value, shape=(3, 3))
+
+    res = mpc_tensor.ravel()
+    res.block_with_timeout(secs=20)
+    res = res.reconstruct()
+
+    exp_res = value.ravel()
+
+    assert (res == exp_res.child).all()
+
+
+</source>
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/numpy/smpc_numpy_ops_test.py" startline="29" endline="46" pcid="31">
+def test_copy(get_clients) -> None:
+    clients = get_clients(2)
+    value = Tensor(np.array([[1, 2], [3, 4]], dtype=np.int32))
+
+    remote_value = value.send(clients[0])
+
+    mpc_tensor = MPCTensor(parties=clients, secret=remote_value, shape=(2, 2))
+
+    res = mpc_tensor.copy()
+    res.block_with_timeout(secs=20)
+    res = res.reconstruct()
+
+    exp_res = mpc_tensor.reconstruct()
+
+    # we cannot check id for copy as the values are in different locations
+    assert (res == exp_res).all()
+
+
+</source>
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/numpy/smpc_numpy_ops_test.py" startline="160" endline="176" pcid="38">
+def test_reshape(get_clients) -> None:
+    clients = get_clients(2)
+    value = Tensor(np.array([[1, 2], [3, 4], [5, 6]], dtype=np.int32))
+
+    remote_value = value.send(clients[0])
+
+    mpc_tensor = MPCTensor(parties=clients, secret=remote_value, shape=(3, 2))
+
+    res = mpc_tensor.reshape((2, 3))
+    res.block_with_timeout(secs=20)
+    res = res.reconstruct()
+
+    exp_res = value.reshape((2, 3))
+
+    assert (res == exp_res.child).all()
+
+
+</source>
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/numpy/smpc_numpy_ops_test.py" startline="287" endline="303" pcid="45">
+def test_abs(get_clients) -> None:
+    clients = get_clients(2)
+    value = Tensor(np.array([[-32, -54, 98], [12, -108, 27]], dtype=np.int32))
+
+    remote_value = value.send(clients[0])
+
+    mpc_tensor = MPCTensor(parties=clients, secret=remote_value, shape=(2, 3))
+
+    res = mpc_tensor.__abs__()
+    res.block_with_timeout(secs=120)
+    res = res.reconstruct()
+
+    exp_res = value.__abs__()
+
+    assert (res == exp_res.child).all()
+
+
+</source>
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/numpy/smpc_numpy_ops_test.py" startline="214" endline="230" pcid="41">
+def test_pos(get_clients) -> None:
+    clients = get_clients(2)
+    value = Tensor(np.array([[5, 2], [3, 7]], dtype=np.int32))
+
+    remote_value = value.send(clients[0])
+
+    mpc_tensor = MPCTensor(parties=clients, secret=remote_value, shape=(2, 2))
+
+    res = mpc_tensor.__pos__()
+    res.block_with_timeout(secs=20)
+    res = res.reconstruct()
+
+    exp_res = value.__pos__()
+
+    assert (res == exp_res.child).all()
+
+
+</source>
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/numpy/smpc_numpy_ops_test.py" startline="48" endline="64" pcid="32">
+def test_diagonal(get_clients) -> None:
+    clients = get_clients(2)
+    value = Tensor(np.array([[0, 1], [2, 3]], dtype=np.int32))
+
+    remote_value = value.send(clients[0])
+
+    mpc_tensor = MPCTensor(parties=clients, secret=remote_value, shape=(2, 2))
+
+    res = mpc_tensor.diagonal()
+    res.block_with_timeout(secs=20)
+    res = res.reconstruct()
+
+    exp_res = value.diagonal()
+
+    assert (res == exp_res.child).all()
+
+
+</source>
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/numpy/smpc_numpy_ops_test.py" startline="305" endline="321" pcid="46">
+def test_sign(get_clients) -> None:
+    clients = get_clients(2)
+    value = Tensor(np.array([[-32, -54, 98], [12, -108, 27]], dtype=np.int32))
+
+    remote_value = value.send(clients[0])
+
+    mpc_tensor = MPCTensor(parties=clients, secret=remote_value, shape=(2, 3))
+
+    res = mpc_tensor.sign()
+    res.block_with_timeout(secs=120)
+    res = res.reconstruct()
+
+    exp_res = np.array([[-1, -1, 1], [1, -1, 1]], dtype=np.int32)
+
+    assert (res == exp_res).all()
+
+
+</source>
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/numpy/smpc_numpy_ops_test.py" startline="342" endline="358" pcid="48">
+def test_cumsum(get_clients) -> None:
+    clients = get_clients(2)
+    value = Tensor(np.array([-5, 2, -3, 7, 132, 54, 27], dtype=np.int32))
+
+    remote_value = value.send(clients[0])
+
+    mpc_tensor = MPCTensor(parties=clients, secret=remote_value, shape=(7,))
+
+    res = mpc_tensor.cumsum()
+    res.block_with_timeout(secs=20)
+    res = res.reconstruct()
+
+    exp_res = value.cumsum()
+
+    assert (res == exp_res.child).all()
+
+
+</source>
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/numpy/smpc_numpy_ops_test.py" startline="86" endline="104" pcid="34">
+def test_transpose(get_clients) -> None:
+    clients = get_clients(2)
+    value = Tensor(
+        np.array([[89, 12, 54], [412, 89, 42], [87, 32, 58]], dtype=np.int32)
+    )
+
+    remote_value = value.send(clients[0])
+
+    mpc_tensor = MPCTensor(parties=clients, secret=remote_value, shape=(3, 3))
+
+    res = mpc_tensor.transpose()
+    res.block_with_timeout(secs=20)
+    res = res.reconstruct()
+
+    exp_res = value.transpose()
+
+    assert (res == exp_res.child).all()
+
+
+</source>
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/numpy/smpc_numpy_ops_test.py" startline="66" endline="84" pcid="33">
+def test_flatten(get_clients) -> None:
+    clients = get_clients(2)
+    value = Tensor(
+        np.array([[89, 12, 54], [412, 89, 42], [87, 32, 58]], dtype=np.int32)
+    )
+
+    remote_value = value.send(clients[0])
+
+    mpc_tensor = MPCTensor(parties=clients, secret=remote_value, shape=(3, 3))
+
+    res = mpc_tensor.flatten()
+    res.block_with_timeout(secs=20)
+    res = res.reconstruct()
+
+    exp_res = value.flatten()
+
+    assert (res == exp_res.child).all()
+
+
+</source>
+<source file="systems/PySyft-0.6.0/tests/integration/smpc/numpy/smpc_numpy_ops_test.py" startline="269" endline="285" pcid="44">
+def test_take(get_clients) -> None:
+    clients = get_clients(2)
+    value = Tensor(np.array([-5, 2, -3, 7, 132, 54, 27], dtype=np.int32))
+
+    remote_value = value.send(clients[0])
+
+    mpc_tensor = MPCTensor(parties=clients, secret=remote_value, shape=(7,))
+
+    res = mpc_tensor.take([5, 1, 6])
+    res.block_with_timeout(secs=20)
+    res = res.reconstruct()
+
+    exp_res = value.take([5, 1, 6])
+
+    assert (res == exp_res.child).all()
+
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="10" similarity="90">
+<source file="systems/PySyft-0.6.0/packages/grid/backend/grid/api/users/syft.py" startline="52" endline="63" pcid="95">
+def process_applicant_request(
+    current_user: UserPrivate, candidate_id: int, status: str
+) -> str:
+    reply = send_message_with_reply(
+        signing_key=current_user.get_signing_key(),
+        message_type=ProcessUserCandidateMessage,
+        candidate_id=candidate_id,
+        status=status,
+    )
+    return reply.resp_msg
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/grid/backend/grid/api/requests/syft.py" startline="52" endline="61" pcid="111">
+def update_request(
+    current_user: UserPrivate, request_id: str, updated_request: RequestUpdate
+) -> str:
+    reply = send_message_with_reply(
+        signing_key=current_user.get_signing_key(),
+        message_type=UpdateRequestMessage,
+        request_id=request_id,
+        status=updated_request.status,
+    )
+    return reply.status
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="10" similarity="100">
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/lib/python/util.py" startline="21" endline="38" pcid="178">
+def downcast_args_and_kwargs(
+    args: Union[List[Any], Tuple[Any, ...]], kwargs: Dict[Any, Any]
+) -> Tuple[List[Any], Dict[Any, Any]]:
+    # when we try to handle primitives they often need to be converted to PyPrimitive
+    # first so they can be serialized and sent around
+    downcasted_args = []
+    downcasted_kwargs = {}
+    for arg in args:
+        # check if its primitive
+        downcasted_args.append(downcast(value=arg))
+
+    for k, arg in kwargs.items():
+        # check if its primitive
+        downcasted_kwargs[k] = downcast(value=arg)
+
+    return (downcasted_args, downcasted_kwargs)
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/lib/python/util.py" startline="46" endline="61" pcid="180">
+def upcast_args_and_kwargs(
+    args: Union[List[Any], Tuple[Any, ...]], kwargs: Dict[Any, Any]
+) -> Tuple[List[Any], Dict[Any, Any]]:
+    # When we invoke remote methods that use C code and cannot utilise our wrapped
+    # types through duck typing, we must convert them to the their original form.
+    upcasted_args = []
+    upcasted_kwargs = {}
+    for arg in args:
+        # try to upcast if possible
+        upcasted_args.append(upcast(value=arg))
+
+    for k, arg in kwargs.items():
+        # try to upcast if possible
+        upcasted_kwargs[k] = upcast(value=arg)
+
+    return (upcasted_args, upcasted_kwargs)
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="11" similarity="81">
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/tensor/autograd/backward_ops/pow.py" startline="26" endline="44" pcid="259">
+    def _backward(self, grad: AutogradTensor, backprop_id: uuid.UUID) -> None:
+
+        y_is_simple = is_acceptable_simple_type(self.y)
+
+        if self.x.requires_grad:
+            y_form = self.y
+
+            # ignoring type b/c method hasn't been implemented yet
+            self.x.add_grad(grad * y_form * (self.x ** (y_form - 1)))  # type: ignore
+
+            if self.x.grad_fn:
+                self.x.backward(backprop_id=backprop_id)
+
+        if not y_is_simple and self.y.requires_grad:
+
+            self.y.add_grad(np.log(self.x) * grad * self.x ** self.y)
+
+            if self.y.grad_fn:
+                self.y.backward(backprop_id=backprop_id)
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/tensor/autograd/backward_ops/rpow.py" startline="26" endline="43" pcid="261">
+    def _backward(self, grad: AutogradTensor, backprop_id: uuid.UUID) -> None:
+
+        y_is_simple = is_acceptable_simple_type(self.y)
+
+        if self.x.requires_grad:
+
+            y_form = self.y
+
+            self.x.add_grad(np.log(y_form) * grad * y_form ** self.x)
+
+            if self.x.grad_fn:
+                self.x.backward(backprop_id=backprop_id)
+
+        if not y_is_simple and self.y.requires_grad:
+            # ignore type error b/c method hasn't been implemented yet
+            self.y.add_grad(grad * self.x * self.y ** (self.x - 1))  # type: ignore
+            if self.y.grad_fn:
+                self.y.backward(backprop_id=backprop_id)
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="13" similarity="78">
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/tensor/passthrough.py" startline="542" endline="558" pcid="372">
+    def take(
+        self,
+        indices: Union[int, TypeTuple[int, ...], np.ndarray],
+        axis: Optional[int] = None,
+        out: Optional[np.ndarray] = None,
+        mode: Optional[str] = "raise",
+    ) -> PassthroughTensor:
+        return self.__class__(
+            self.child.take(
+                indices,
+                axis=axis,
+                out=out,
+                mode=mode,
+            )
+        )
+
+    # numpy.choose(a, choices, out=None, mode='raise')
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/tensor/passthrough.py" startline="559" endline="572" pcid="373">
+    def choose(
+        self,
+        choices: Sequence[Union[PassthroughTensor, np.ndarray]],
+        out: Optional[np.ndarray] = None,
+        mode: Optional[str] = "raise",
+    ) -> PassthroughTensor:
+        return self.__class__(
+            self.child.choose(
+                choices,
+                out=out,
+                mode=mode,
+            )
+        )
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="10" similarity="77">
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/adp/scalar/gamma_scalar.py" startline="58" endline="70" pcid="385">
+    def _object2proto(self) -> GammaScalar_PB:
+        kwargs = {
+            "id": sy.serialize(self.id, to_proto=True),
+            "entity": sy.serialize(self.entity, to_proto=True),
+            "prime": self.prime,
+        }
+
+        for field in ["max_val", "min_val", "value"]:
+            if getattr(self, field) is not None:
+                kwargs[field] = getattr(self, field)
+
+        return GammaScalar_PB(**kwargs)
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/adp/scalar/abstract/base_scalar.py" startline="56" endline="67" pcid="392">
+    def _object2proto(self) -> BaseScalar_PB:
+        kwargs = {
+            "id": sy.serialize(self.id, to_proto=True),
+            "entity": sy.serialize(self.entity, to_proto=True),
+        }
+
+        for field in ["max_val", "min_val", "value"]:
+            if getattr(self, field) is not None:
+                kwargs[field] = getattr(self, field)
+        pb = BaseScalar_PB(**kwargs)
+        return pb
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="36" similarity="78">
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/smpc/__init__.py" startline="20" endline="62" pcid="413">
+def create_smpc_ast(client: Optional[AbstractNodeClient] = None) -> Globals:
+    ast = Globals(client)
+
+    modules = [
+        "syft",
+        "syft.core",
+        "syft.core.smpc",
+        "syft.core.smpc.store",
+        "syft.core.smpc.protocol",
+        "syft.core.smpc.protocol.spdz",
+        "syft.core.smpc.protocol.spdz.spdz",
+    ]
+
+    classes = [
+        (
+            "syft.core.smpc.store.CryptoStore",
+            "syft.core.smpc.store.CryptoStore",
+            CryptoStore,
+        ),
+    ]
+
+    methods = [
+        (
+            "syft.core.smpc.store.CryptoStore.get_primitives_from_store",
+            "syft.lib.python.List",
+        ),
+        ("syft.core.smpc.store.CryptoStore.store", "syft.lib.python.Dict"),
+        (
+            "syft.core.smpc.store.CryptoStore.populate_store",
+            "syft.lib.python._SyNone",
+        ),
+    ]
+
+    add_modules(ast, modules)
+    add_classes(ast, classes)
+    add_methods(ast, methods)
+
+    for klass in ast.classes:
+        klass.create_pointer_class()
+        klass.create_send_method()
+        klass.create_storable_object_attr_convenience_methods()
+
+    return ast
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/__init__.py" startline="12" endline="52" pcid="1070">
+def create_client_ast(client: Optional[AbstractNodeClient] = None) -> Any:
+    # relative
+    from ....ast import add_classes
+    from ....ast import add_modules
+    from ....ast.globals import Globals
+    from .client import Client
+
+    ast = Globals(client)
+
+    modules = [
+        "syft",
+        "syft.core",
+        "syft.core.common",
+        "syft.core.common.uid",
+        "syft.core.node",
+        "syft.core.node.common",
+        "syft.core.node.common.client",
+    ]
+
+    classes = [
+        (
+            "syft.core.node.common.client.Client",
+            "syft.core.node.common.client.Client",
+            Client,
+        ),
+        (
+            "syft.core.common.uid.UID",
+            "syft.core.common.uid.UID",
+            UID,
+        ),
+    ]
+
+    add_modules(ast, modules)
+    add_classes(ast, classes)
+
+    for klass in ast.classes:
+        klass.create_pointer_class()
+        klass.create_send_method()
+        klass.create_storable_object_attr_convenience_methods()
+
+    return ast
+</source>
+</class>
+
+<class classid="11" nclones="36" nlines="11" similarity="70">
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/object_request/object_request_messages.py" startline="135" endline="145" pcid="572">
+    def __init__(
+        self,
+        address: Address,
+        budget: float,
+        reason: str,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id)
+        self.budget = budget
+        self.reason = reason
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/tensor_manager/tensor_manager_messages.py" startline="696" endline="706" pcid="680">
+    def __init__(
+        self,
+        address: Address,
+        status_code: int,
+        content: Dict,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id)
+        self.status_code = status_code
+        self.content = content
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/action/get_enum_attribute_action.py" startline="28" endline="38" pcid="1022">
+    def __init__(
+        self,
+        path: str,
+        id_at_location: UID,
+        address: Address,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address, msg_id=msg_id)
+        self.id_at_location = id_at_location
+        self.path = path
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/object_request/object_request_messages.py" startline="924" endline="934" pcid="616">
+    def __init__(
+        self,
+        address: Address,
+        status_code: int,
+        request_id: str,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id)
+        self.status_code = status_code
+        self.request_id = request_id
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/object_transfer/object_transfer_messages.py" startline="246" endline="256" pcid="847">
+    def __init__(
+        self,
+        address: Address,
+        status_code: int,
+        content: Dict,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id)
+        self.status_code = status_code
+        self.content = content
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/object_request/object_request_messages.py" startline="702" endline="713" pcid="604">
+    def __init__(
+        self,
+        address: Address,
+        request_id: str,
+        status: str,
+        reply_to: Address,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id, reply_to=reply_to)
+        self.request_id = request_id
+        self.status = status
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/object_request/object_request_messages.py" startline="777" endline="789" pcid="608">
+    def __init__(
+        self,
+        address: Address,
+        status_code: int,
+        status: str,
+        request_id: str,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id)
+        self.status_code = status_code
+        self.status = status
+        self.request_id = request_id
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/object_request/object_request_messages.py" startline="489" endline="499" pcid="592">
+    def __init__(
+        self,
+        address: Address,
+        status_code: int,
+        content: List[Dict],
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id)
+        self.status_code = status_code
+        self.content = content
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/user_manager/user_messages.py" startline="230" endline="241" pcid="795">
+    def __init__(
+        self,
+        address: Address,
+        candidate_id: int,
+        status: str,
+        reply_to: Address,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id, reply_to=reply_to)
+        self.candidate_id = candidate_id
+        self.status = status
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/object_transfer/object_transfer_messages.py" startline="106" endline="116" pcid="839">
+    def __init__(
+        self,
+        address: Address,
+        status_code: int,
+        content: Dict,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id)
+        self.status_code = status_code
+        self.content = content
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/tensor_manager/tensor_manager_messages.py" startline="267" endline="277" pcid="656">
+    def __init__(
+        self,
+        address: Address,
+        status_code: int,
+        content: Dict,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id)
+        self.status_code = status_code
+        self.content = content
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/dataset_manager/dataset_manager_messages.py" startline="415" endline="426" pcid="877">
+    def __init__(
+        self,
+        address: Address,
+        dataset_id: str,
+        metadata: Dict,
+        reply_to: Address,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id, reply_to=reply_to)
+        self.metadata = metadata
+        self.dataset_id = dataset_id
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/child_node_lifecycle/child_node_lifecycle_messages.py" startline="23" endline="33" pcid="637">
+    def __init__(
+        self,
+        lookup_id: UID,
+        child_node_client_address: Address,
+        address: Address,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id)
+        self.lookup_id = lookup_id
+        self.child_node_client_address = child_node_client_address
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/network_search/network_search_messages.py" startline="100" endline="110" pcid="737">
+    def __init__(
+        self,
+        address: Address,
+        status_code: int,
+        content: Dict,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id)
+        self.status_code = status_code
+        self.content = content
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/dataset_manager/dataset_manager_messages.py" startline="490" endline="501" pcid="881">
+    def __init__(
+        self,
+        address: Address,
+        dataset_id: str,
+        reply_to: Address,
+        bin_object_id: Optional[str] = None,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id, reply_to=reply_to)
+        self.dataset_id = dataset_id
+        self.bin_object_id = bin_object_id
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/object_request/object_request_messages.py" startline="350" endline="360" pcid="584">
+    def __init__(
+        self,
+        address: Address,
+        status_code: int,
+        request_id: Dict[str, Any],
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id)
+        self.status_code = status_code
+        self.request_id = request_id
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/object_request/object_request_messages.py" startline="207" endline="217" pcid="576">
+    def __init__(
+        self,
+        address: Address,
+        status_code: int,
+        content: Dict,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id)
+        self.status_code = status_code
+        self.content = content
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/accept_or_deny_request/accept_or_deny_request_messages.py" startline="29" endline="41" pcid="783">
+    def __init__(
+        self,
+        accept: bool,
+        request_id: UID,
+        address: Address,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id)
+
+        # if false, deny the request
+        self.accept = accept
+        self.request_id = request_id
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/object_search_permission_update/obj_search_permission_messages.py" startline="31" endline="44" pcid="633">
+    def __init__(
+        self,
+        add_instead_of_remove: bool,
+        target_verify_key: Optional[VerifyKey],
+        target_object_id: UID,
+        address: Address,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id)
+
+        self.add_instead_of_remove = add_instead_of_remove
+        self.target_verify_key = target_verify_key
+        self.target_object_id = target_object_id
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/request_handler/request_handler_messages.py" startline="34" endline="44" pcid="684">
+    def __init__(
+        self,
+        handler: DictType[str, Any],
+        address: Address,
+        msg_id: Optional[UID] = None,
+        keep: bool = True,
+    ):
+        super().__init__(address=address, msg_id=msg_id)
+        self.handler = handler
+        self.keep = keep
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/tensor_manager/tensor_manager_messages.py" startline="410" endline="420" pcid="664">
+    def __init__(
+        self,
+        address: Address,
+        status_code: int,
+        content: Dict,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id)
+        self.status_code = status_code
+        self.content = content
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/association_request/association_request_messages.py" startline="360" endline="372" pcid="946">
+    def __init__(
+        self,
+        address: Address,
+        content: Dict,
+        source: str,
+        target: str,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id)
+        self.content = content
+        self.source = source
+        self.target = target
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/publish/publish_messages.py" startline="21" endline="32" pcid="982">
+    def __init__(
+        self,
+        id_at_location: UID,
+        address: Address,
+        publish_ids_at_location: TypeList[UID],
+        sigma: float,
+    ):
+        super().__init__(address=address)
+        self.id_at_location = id_at_location
+        self.publish_ids_at_location = publish_ids_at_location
+        self.sigma = sigma
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/tensor_manager/tensor_manager_messages.py" startline="124" endline="134" pcid="648">
+    def __init__(
+        self,
+        address: Address,
+        status_code: int,
+        content: Dict,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id)
+        self.status_code = status_code
+        self.content = content
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/action/exception_action.py" startline="32" endline="44" pcid="995">
+    def __init__(
+        self,
+        address: Address,
+        msg_id_causing_exception: UID,
+        exception_type: Type,
+        exception_msg: str,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id)
+        self.msg_id_causing_exception = msg_id_causing_exception
+        self.exception_type = exception_type
+        self.exception_msg = exception_msg
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/tensor_manager/tensor_manager_messages.py" startline="553" endline="563" pcid="672">
+    def __init__(
+        self,
+        address: Address,
+        status_code: int,
+        content: Dict,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id)
+        self.status_code = status_code
+        self.content = content
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/action/get_object_action.py" startline="146" endline="159" pcid="1010">
+    def __init__(
+        self,
+        id_at_location: UID,
+        address: Address,
+        reply_to: Address,
+        msg_id: Optional[UID] = None,
+        delete_obj: bool = True,
+    ):
+        self.id_at_location = id_at_location
+        self.delete_obj = delete_obj
+
+        # the logger needs self.id_at_location to be set already - so we call this later
+        super().__init__(address=address, msg_id=msg_id, reply_to=reply_to)
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/action/get_or_set_static_attribute_action.py" startline="35" endline="49" pcid="1016">
+    def __init__(
+        self,
+        path: str,
+        id_at_location: UID,
+        address: Address,
+        action: StaticAttributeAction,
+        msg_id: Optional[UID] = None,
+        set_arg: Optional[Any] = None,
+    ):
+        super().__init__(address, msg_id=msg_id)
+        self.path = path
+        self.id_at_location = id_at_location
+        self.action = action
+        self.set_arg = set_arg
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/association_request/association_request_messages.py" startline="210" endline="223" pcid="938">
+    def __init__(
+        self,
+        address: Address,
+        response: str,
+        reply_to: Address,
+        source: str,
+        target: str,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id, reply_to=reply_to)
+        self.response = response
+        self.source = source
+        self.target = target
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/association_request/association_request_messages.py" startline="47" endline="60" pcid="930">
+    def __init__(
+        self,
+        source: str,
+        target: str,
+        address: Address,
+        reply_to: Address,
+        metadata: Dict[str, str],
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id, reply_to=reply_to)
+        self.source = source
+        self.target = target
+        self.metadata = metadata
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/dataset_manager/dataset_manager_messages.py" startline="44" endline="57" pcid="857">
+    def __init__(
+        self,
+        address: Address,
+        dataset: bytes,
+        metadata: Dict[str, str],
+        reply_to: Address,
+        platform: str,
+        msg_id: Optional[UID] = None,
+    ) -> None:
+        super().__init__(address=address, msg_id=msg_id, reply_to=reply_to)
+        self.dataset = dataset
+        self.metadata = metadata
+        self.platform = platform
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/association_request/association_request_messages.py" startline="126" endline="141" pcid="934">
+    def __init__(
+        self,
+        address: Address,
+        reply_to: Address,
+        source: str,
+        target: str,
+        metadata: Dict[str, str],
+        msg_id: Optional[UID] = None,
+        response: Optional[str] = "",
+    ):
+        super().__init__(address=address, msg_id=msg_id, reply_to=reply_to)
+        self.metadata = metadata
+        self.response = response
+        self.source = source
+        self.target = target
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/node_setup/node_setup_messages.py" startline="174" endline="191" pcid="899">
+    def __init__(
+        self,
+        address: Address,
+        name: str,
+        email: str,
+        password: str,
+        domain_name: str,
+        budget: float,
+        reply_to: Address,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id, reply_to=reply_to)
+        self.name = name
+        self.email = email
+        self.password = password
+        self.domain_name = domain_name
+        self.budget = budget
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/user_manager/user_messages.py" startline="817" endline="832" pcid="827">
+    def __init__(
+        self,
+        address: Address,
+        reply_to: Address,
+        msg_id: Optional[UID] = None,
+        email: Optional[str] = "",
+        role: Optional[str] = "",
+        groups: Optional[str] = "",
+        name: Optional[str] = "",
+    ):
+        super().__init__(address=address, msg_id=msg_id, reply_to=reply_to)
+        self.email = email
+        self.role = role
+        self.groups = groups
+        self.name = name
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/node_setup/node_setup_messages.py" startline="261" endline="280" pcid="903">
+    def __init__(
+        self,
+        address: Address,
+        domain_name: str,
+        description: str,
+        daa: bool,
+        contact: str,
+        reply_to: Address,
+        daa_document: Optional[bytes] = b"",
+        tags: Optional[TypeList] = [],
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id, reply_to=reply_to)
+        self.daa = daa
+        self.contact = contact
+        self.description = description
+        self.domain_name = domain_name
+        self.daa_document = daa_document
+        self.tags = tags
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/user_manager/user_messages.py" startline="60" endline="83" pcid="787">
+    def __init__(
+        self,
+        address: Address,
+        name: str,
+        email: str,
+        password: str,
+        reply_to: Address,
+        role: Optional[str] = "",
+        website: str = "",
+        institution: str = "",
+        daa_pdf: Optional[bytes] = b"",
+        msg_id: Optional[UID] = None,
+        budget: Optional[float] = 0.0,
+    ):
+        super().__init__(address=address, msg_id=msg_id, reply_to=reply_to)
+        self.email = email
+        self.password = password
+        self.role = role
+        self.name = name
+        self.daa_pdf = daa_pdf
+        self.website = website
+        self.institution = institution
+        self.budget = budget
+
+</source>
+</class>
+
+<class classid="12" nclones="27" nlines="12" similarity="70">
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/object_request/object_request_messages.py" startline="735" endline="755" pcid="606">
+    def _proto2object(
+        proto: UpdateRequestMessage_PB,
+    ) -> "UpdateRequestMessage":
+        """Creates a UpdateRequestMessage from a protobuf
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms a protobuf object into an instance of this class.
+        :return: returns an instance of SignalingOfferMessage
+        :rtype: UpdateRequestMessage
+        .. note::
+            This method is purely an internal method. Please use syft.deserialize()
+            if you wish to deserialize an object.
+        """
+
+        return UpdateRequestMessage(
+            msg_id=_deserialize(blob=proto.msg_id),
+            address=_deserialize(blob=proto.address),
+            request_id=json.loads(proto.request_id),
+            status=json.loads(proto.status),
+            reply_to=_deserialize(blob=proto.reply_to),
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/association_request/association_request_messages.py" startline="537" endline="557" pcid="956">
+    def _proto2object(
+        proto: GetAssociationRequestsResponse_PB,
+    ) -> "GetAssociationRequestsResponse":
+        """Creates a SignalingOfferMessage from a protobuf
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms a protobuf object into an instance of this class.
+        :return: returns an instance of SignalingOfferMessage
+        :rtype: SignalingOfferMessage
+        .. note::
+            This method is purely an internal method. Please use syft.deserialize()
+            if you wish to deserialize an object.
+        """
+        return GetAssociationRequestsResponse(
+            msg_id=_deserialize(blob=proto.msg_id),
+            address=_deserialize(blob=proto.address),
+            content=[
+                dict(metadata_container.metadata)
+                for metadata_container in proto.content
+            ],
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/association_request/association_request_messages.py" startline="394" endline="414" pcid="948">
+    def _proto2object(
+        proto: GetAssociationRequestResponse_PB,
+    ) -> "GetAssociationRequestResponse":
+        """Creates a SignalingOfferMessage from a protobuf
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms a protobuf object into an instance of this class.
+        :return: returns an instance of SignalingOfferMessage
+        :rtype: SignalingOfferMessage
+        .. note::
+            This method is purely an internal method. Please use syft.deserialize()
+            if you wish to deserialize an object.
+        """
+
+        return GetAssociationRequestResponse(
+            msg_id=_deserialize(blob=proto.msg_id),
+            address=_deserialize(blob=proto.address),
+            content=dict(proto.content),
+            source=proto.source,
+            target=proto.target,
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/dataset_manager/dataset_manager_messages.py" startline="523" endline="543" pcid="883">
+    def _proto2object(
+        proto: DeleteDatasetMessage_PB,
+    ) -> "DeleteDatasetMessage":
+        """Creates a DeleteDatasetMessage from a protobuf
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms a protobuf object into an instance of this class.
+        :return: returns an instance of SignalingOfferMessage
+        :rtype: DeleteDatasetMessage
+        .. note::
+            This method is purely an internal method. Please use syft.deserialize()
+            if you wish to deserialize an object.
+        """
+
+        return DeleteDatasetMessage(
+            msg_id=_deserialize(blob=proto.msg_id),
+            address=_deserialize(blob=proto.address),
+            dataset_id=proto.dataset_id,
+            bin_object_id=proto.bin_object_id,
+            reply_to=_deserialize(blob=proto.reply_to),
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/dataset_manager/dataset_manager_messages.py" startline="448" endline="468" pcid="879">
+    def _proto2object(
+        proto: UpdateDatasetMessage_PB,
+    ) -> "UpdateDatasetMessage":
+        """Creates a UpdateDatasetMessage from a protobuf
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms a protobuf object into an instance of this class.
+        :return: returns an instance of SignalingOfferMessage
+        :rtype: UpdateDatasetMessage
+        .. note::
+            This method is purely an internal method. Please use syft.deserialize()
+            if you wish to deserialize an object.
+        """
+
+        return UpdateDatasetMessage(
+            msg_id=_deserialize(blob=proto.msg_id),
+            address=_deserialize(blob=proto.address),
+            dataset_id=proto.dataset_id,
+            metadata=dict(proto.metadata),
+            reply_to=_deserialize(blob=proto.reply_to),
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/dataset_manager/dataset_manager_messages.py" startline="372" endline="393" pcid="875">
+    def _proto2object(
+        proto: GetDatasetsResponse_PB,
+    ) -> "GetDatasetsResponse":
+        """Creates a SignalingOfferMessage from a protobuf
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms a protobuf object into an instance of this class.
+        :return: returns an instance of SignalingOfferMessage
+        :rtype: SignalingOfferMessage
+        .. note::
+            This method is purely an internal method. Please use syft.deserialize()
+            if you wish to deserialize an object.
+        """
+
+        return GetDatasetsResponse(
+            msg_id=_deserialize(blob=proto.msg_id),
+            address=_deserialize(blob=proto.address),
+            metadatas=[
+                dict(metadata_container.metadata)
+                for metadata_container in proto.metadatas
+            ],
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/dataset_manager/dataset_manager_messages.py" startline="80" endline="101" pcid="859">
+    def _proto2object(
+        proto: CreateDatasetMessage_PB,
+    ) -> "CreateDatasetMessage":
+        """Creates a CreateDatasetMessage from a protobuf
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms a protobuf object into an instance of this class.
+        :return: returns an instance of SignalingOfferMessage
+        :rtype: CreateDatasetMessage
+        .. note::
+            This method is purely an internal method. Please use syft.deserialize()
+            if you wish to deserialize an object.
+        """
+
+        return CreateDatasetMessage(
+            msg_id=_deserialize(blob=proto.msg_id),
+            address=_deserialize(blob=proto.address),
+            dataset=proto.dataset,
+            metadata=dict(proto.metadata),
+            reply_to=_deserialize(blob=proto.reply_to),
+            platform=proto.platform,
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/association_request/association_request_messages.py" startline="83" endline="104" pcid="932">
+    def _proto2object(
+        proto: SendAssociationRequestMessage_PB,
+    ) -> "SendAssociationRequestMessage":
+        """Creates a SendAssociationRequestMessage from a protobuf
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms a protobuf object into an instance of this class.
+        :return: returns an instance of SignalingOfferMessage
+        :rtype: SendAssociationRequestMessage
+        .. note::
+            This method is purely an internal method. Please use syft.deserialize()
+            if you wish to deserialize an object.
+        """
+
+        return SendAssociationRequestMessage(
+            msg_id=_deserialize(blob=proto.msg_id),
+            address=_deserialize(blob=proto.address),
+            source=proto.source,
+            target=proto.target,
+            reply_to=_deserialize(blob=proto.reply_to),
+            metadata=dict(proto.metadata),
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/association_request/association_request_messages.py" startline="246" endline="267" pcid="940">
+    def _proto2object(
+        proto: RespondAssociationRequestMessage_PB,
+    ) -> "RespondAssociationRequestMessage":
+        """Creates a RespondAssociationRequestMessage from a protobuf
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms a protobuf object into an instance of this class.
+        :return: returns an instance of SignalingOfferMessage
+        :rtype: RespondAssociationRequestMessage
+        .. note::
+            This method is purely an internal method. Please use syft.deserialize()
+            if you wish to deserialize an object.
+        """
+
+        return RespondAssociationRequestMessage(
+            msg_id=_deserialize(blob=proto.msg_id),
+            address=_deserialize(blob=proto.address),
+            source=proto.source,
+            target=proto.target,
+            response=proto.response,
+            reply_to=_deserialize(blob=proto.reply_to),
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/user_manager/user_messages.py" startline="263" endline="283" pcid="797">
+    def _proto2object(
+        proto: ProcessUserCandidateMessage_PB,
+    ) -> "ProcessUserCandidateMessage":
+        """Creates a GetUserMessage from a protobuf
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms a protobuf object into an instance of this class.
+        :return: returns an instance of SignalingOfferMessage
+        :rtype: GetUserMessage
+        .. note::
+            This method is purely an internal method. Please use syft.deserialize()
+            if you wish to deserialize an object.
+        """
+
+        return ProcessUserCandidateMessage(
+            msg_id=_deserialize(blob=proto.msg_id),
+            address=_deserialize(blob=proto.address),
+            candidate_id=proto.candidate_id,
+            status=proto.status,
+            reply_to=_deserialize(blob=proto.reply_to),
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/object_request/object_request_messages.py" startline="811" endline="831" pcid="610">
+    def _proto2object(
+        proto: UpdateRequestResponse_PB,
+    ) -> "UpdateRequestResponse":
+        """Creates a SignalingOfferMessage from a protobuf
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms a protobuf object into an instance of this class.
+        :return: returns an instance of SignalingOfferMessage
+        :rtype: SignalingOfferMessage
+        .. note::
+            This method is purely an internal method. Please use syft.deserialize()
+            if you wish to deserialize an object.
+        """
+
+        return UpdateRequestResponse(
+            msg_id=_deserialize(blob=proto.msg_id),
+            address=_deserialize(blob=proto.address),
+            status_code=proto.status_code,
+            request_id=json.loads(proto.request_id),
+            status=json.loads(proto.status),
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/user_manager/user_messages.py" startline="856" endline="878" pcid="829">
+    def _proto2object(
+        proto: SearchUsersMessage_PB,
+    ) -> "SearchUsersMessage":
+        """Creates a SearchUsersMessage from a protobuf
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms a protobuf object into an instance of this class.
+        :return: returns an instance of SignalingOfferMessage
+        :rtype: SearchUsersMessage
+        .. note::
+            This method is purely an internal method. Please use syft.deserialize()
+            if you wish to deserialize an object.
+        """
+
+        return SearchUsersMessage(
+            msg_id=_deserialize(blob=proto.msg_id),
+            address=_deserialize(blob=proto.address),
+            email=proto.email,
+            role=proto.role,
+            groups=proto.groups,
+            name=proto.name,
+            reply_to=_deserialize(blob=proto.reply_to),
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/association_request/association_request_messages.py" startline="166" endline="188" pcid="936">
+    def _proto2object(
+        proto: ReceiveAssociationRequestMessage_PB,
+    ) -> "ReceiveAssociationRequestMessage":
+        """Creates a ReceiveAssociationRequestMessage from a protobuf
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms a protobuf object into an instance of this class.
+        :return: returns an instance of SignalingOfferMessage
+        :rtype: ReceiveAssociationRequestMessage
+        .. note::
+            This method is purely an internal method. Please use syft.deserialize()
+            if you wish to deserialize an object.
+        """
+
+        return ReceiveAssociationRequestMessage(
+            msg_id=_deserialize(blob=proto.msg_id),
+            address=_deserialize(blob=proto.address),
+            reply_to=_deserialize(blob=proto.reply_to),
+            response=proto.response,
+            metadata=proto.metadata,
+            source=proto.source,
+            target=proto.target,
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/node_setup/node_setup_messages.py" startline="306" endline="330" pcid="905">
+    def _proto2object(
+        proto: UpdateSetupMessage_PB,
+    ) -> "UpdateSetupMessage":
+        """Creates a UpdateSetupMessage from a protobuf
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms a protobuf object into an instance of this class.
+        :return: returns an instance of SignalingOfferMessage
+        :rtype: UpdateSetupMessage
+        .. note::
+            This method is purely an internal method. Please use syft.deserialize()
+            if you wish to deserialize an object.
+        """
+
+        return UpdateSetupMessage(
+            msg_id=_deserialize(blob=proto.msg_id),
+            address=_deserialize(blob=proto.address),
+            daa=proto.daa,
+            contact=proto.contact,
+            domain_name=proto.domain_name,
+            description=proto.description,
+            daa_document=proto.daa_document,
+            tags=[tag for tag in proto.tags],
+            reply_to=_deserialize(blob=proto.reply_to),
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/node_setup/node_setup_messages.py" startline="216" endline="239" pcid="901">
+    def _proto2object(
+        proto: CreateInitialSetUpMessage_PB,
+    ) -> "CreateInitialSetUpMessage":
+        """Creates a CreateInitialSetUpMessage from a protobuf
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms a protobuf object into an instance of this class.
+        :return: returns an instance of SignalingOfferMessage
+        :rtype: CreateInitialSetUpMessage
+        .. note::
+            This method is purely an internal method. Please use syft.deserialize()
+            if you wish to deserialize an object.
+        """
+
+        return CreateInitialSetUpMessage(
+            msg_id=_deserialize(blob=proto.msg_id),
+            address=_deserialize(blob=proto.address),
+            name=proto.name,
+            email=proto.email,
+            password=proto.password,
+            budget=proto.budget,
+            domain_name=proto.domain_name,
+            reply_to=_deserialize(blob=proto.reply_to),
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/user_manager/user_messages.py" startline="697" endline="724" pcid="821">
+    def _proto2object(
+        proto: UpdateUserMessage_PB,
+    ) -> "UpdateUserMessage":
+        """Creates a UpdateUserMessage from a protobuf
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms a protobuf object into an instance of this class.
+        :return: returns an instance of SignalingOfferMessage
+        :rtype: UpdateUserMessage
+        .. note::
+            This method is purely an internal method. Please use syft.deserialize()
+            if you wish to deserialize an object.
+        """
+
+        return UpdateUserMessage(
+            msg_id=_deserialize(blob=proto.msg_id),
+            address=_deserialize(blob=proto.address),
+            user_id=proto.user_id,
+            email=proto.email,
+            password=proto.password,
+            role=proto.role,
+            budget=proto.budget,
+            groups=proto.groups,
+            name=proto.name,
+            institution=proto.institution,
+            website=proto.website,
+            reply_to=_deserialize(blob=proto.reply_to),
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/user_manager/user_messages.py" startline="111" endline="137" pcid="789">
+    def _proto2object(
+        proto: CreateUserMessage_PB,
+    ) -> "CreateUserMessage":
+        """Creates a CreateUserMessage from a protobuf
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms a protobuf object into an instance of this class.
+        :return: returns an instance of SignalingOfferMessage
+        :rtype: CreateUserMessage
+        .. note::
+            This method is purely an internal method. Please use syft.deserialize()
+            if you wish to deserialize an object.
+        """
+
+        return CreateUserMessage(
+            msg_id=_deserialize(blob=proto.msg_id),
+            address=_deserialize(blob=proto.address),
+            email=proto.email,
+            password=proto.password,
+            name=proto.name,
+            role=proto.role,
+            website=proto.website,
+            institution=proto.institution,
+            daa_pdf=proto.daa_pdf,
+            reply_to=_deserialize(blob=proto.reply_to),
+            budget=proto.budget,
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/role_manager/role_manager_messages.py" startline="493" endline="523" pcid="763">
+    def _proto2object(
+        proto: UpdateRoleMessage_PB,
+    ) -> "UpdateRoleMessage":
+        """Creates a UpdateRoleMessage from a protobuf
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms a protobuf object into an instance of this class.
+        :return: returns an instance of SignalingOfferMessage
+        :rtype: UpdateRoleMessage
+        .. note::
+            This method is purely an internal method. Please use syft.deserialize()
+            if you wish to deserialize an object.
+        """
+
+        return UpdateRoleMessage(
+            msg_id=_deserialize(blob=proto.msg_id),
+            address=_deserialize(blob=proto.address),
+            name=proto.name,
+            can_make_data_requests=proto.can_make_data_requests,
+            can_triage_data_requests=proto.can_triage_data_requests,
+            can_manage_privacy_budget=proto.can_manage_privacy_budget,
+            can_create_users=proto.can_create_users,
+            can_manage_users=proto.can_manage_users,
+            can_edit_roles=proto.can_edit_roles,
+            can_manage_infrastructure=proto.can_manage_infrastructure,
+            can_upload_data=proto.can_upload_data,
+            can_upload_legal_document=proto.can_upload_legal_document,
+            can_edit_domain_settings=proto.can_edit_domain_settings,
+            role_id=proto.role_id,
+            reply_to=_deserialize(blob=proto.reply_to),
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/role_manager/role_manager_messages.py" startline="105" endline="134" pcid="743">
+    def _proto2object(
+        proto: CreateRoleMessage_PB,
+    ) -> "CreateRoleMessage":
+        """Creates a CreateRoleMessage from a protobuf
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms a protobuf object into an instance of this class.
+        :return: returns an instance of SignalingOfferMessage
+        :rtype: CreateRoleMessage
+        .. note::
+            This method is purely an internal method. Please use syft.deserialize()
+            if you wish to deserialize an object.
+        """
+
+        return CreateRoleMessage(
+            msg_id=_deserialize(blob=proto.msg_id),
+            address=_deserialize(blob=proto.address),
+            name=proto.name,
+            can_make_data_requests=proto.can_make_data_requests,
+            can_triage_data_requests=proto.can_triage_data_requests,
+            can_manage_privacy_budget=proto.can_manage_privacy_budget,
+            can_create_users=proto.can_create_users,
+            can_manage_users=proto.can_manage_users,
+            can_edit_roles=proto.can_edit_roles,
+            can_manage_infrastructure=proto.can_manage_infrastructure,
+            can_upload_data=proto.can_upload_data,
+            can_upload_legal_document=proto.can_upload_legal_document,
+            can_edit_domain_settings=proto.can_edit_domain_settings,
+            reply_to=_deserialize(blob=proto.reply_to),
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/role_manager/role_manager_messages.py" startline="462" endline="491" pcid="762">
+    def _object2proto(self) -> UpdateRoleMessage_PB:
+        """Returns a protobuf serialization of self.
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms the current object into the corresponding
+        Protobuf object so that it can be further serialized.
+        :return: returns a protobuf object
+        :rtype: UpdateRoleMessage_PB
+        .. note::
+            This method is purely an internal method. Please use serialize(object) or one of
+            the other public serialization methods if you wish to serialize an
+            object.
+        """
+        return UpdateRoleMessage_PB(
+            msg_id=serialize(self.id),
+            address=serialize(self.address),
+            name=self.name,
+            can_make_data_requests=self.can_make_data_requests,
+            can_triage_data_requests=self.can_triage_data_requests,
+            can_manage_privacy_budget=self.can_manage_privacy_budget,
+            can_create_users=self.can_create_users,
+            can_manage_users=self.can_manage_users,
+            can_edit_roles=self.can_edit_roles,
+            can_manage_infrastructure=self.can_manage_infrastructure,
+            can_upload_data=self.can_upload_data,
+            can_upload_legal_document=self.can_upload_legal_document,
+            can_edit_domain_settings=self.can_edit_domain_settings,
+            role_id=self.role_id,
+            reply_to=serialize(self.reply_to),
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/user_manager/user_messages.py" startline="84" endline="109" pcid="788">
+    def _object2proto(self) -> CreateUserMessage_PB:
+        """Returns a protobuf serialization of self.
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms the current object into the corresponding
+        Protobuf object so that it can be further serialized.
+        :return: returns a protobuf object
+        :rtype: CreateUserMessage_PB
+        .. note::
+            This method is purely an internal method. Please use serialize(object) or one of
+            the other public serialization methods if you wish to serialize an
+            object.
+        """
+        return CreateUserMessage_PB(
+            msg_id=serialize(self.id),
+            address=serialize(self.address),
+            email=self.email,
+            password=self.password,
+            role=self.role,
+            name=self.name,
+            institution=self.institution,
+            website=self.website,
+            daa_pdf=self.daa_pdf,
+            reply_to=serialize(self.reply_to),
+            budget=self.budget,
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/role_manager/role_manager_messages.py" startline="75" endline="103" pcid="742">
+    def _object2proto(self) -> CreateRoleMessage_PB:
+        """Returns a protobuf serialization of self.
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms the current object into the corresponding
+        Protobuf object so that it can be further serialized.
+        :return: returns a protobuf object
+        :rtype: CreateRoleMessage_PB
+        .. note::
+            This method is purely an internal method. Please use serialize(object) or one of
+            the other public serialization methods if you wish to serialize an
+            object.
+        """
+        return CreateRoleMessage_PB(
+            msg_id=serialize(self.id),
+            address=serialize(self.address),
+            name=self.name,
+            can_make_data_requests=self.can_make_data_requests,
+            can_triage_data_requests=self.can_triage_data_requests,
+            can_manage_privacy_budget=self.can_manage_privacy_budget,
+            can_create_users=self.can_create_users,
+            can_manage_users=self.can_manage_users,
+            can_edit_roles=self.can_edit_roles,
+            can_manage_infrastructure=self.can_manage_infrastructure,
+            can_upload_data=self.can_upload_data,
+            can_upload_legal_document=self.can_upload_legal_document,
+            can_edit_domain_settings=self.can_edit_domain_settings,
+            reply_to=serialize(self.reply_to),
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/user_manager/user_messages.py" startline="669" endline="695" pcid="820">
+    def _object2proto(self) -> UpdateUserMessage_PB:
+        """Returns a protobuf serialization of self.
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms the current object into the corresponding
+        Protobuf object so that it can be further serialized.
+        :return: returns a protobuf object
+        :rtype: UpdateUserMessage_PB
+        .. note::
+            This method is purely an internal method. Please use serialize(object) or one of
+            the other public serialization methods if you wish to serialize an
+            object.
+        """
+        return UpdateUserMessage_PB(
+            msg_id=serialize(self.id),
+            address=serialize(self.address),
+            user_id=self.user_id,
+            email=self.email,
+            password=self.password,
+            role=self.role,
+            groups=self.groups,
+            budget=self.budget,
+            institution=self.institution,
+            website=self.website,
+            name=self.name,
+            reply_to=serialize(self.reply_to),
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/node_setup/node_setup_messages.py" startline="281" endline="304" pcid="904">
+    def _object2proto(self) -> UpdateSetupMessage_PB:
+        """Returns a protobuf serialization of self.
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms the current object into the corresponding
+        Protobuf object so that it can be further serialized.
+        :return: returns a protobuf object
+        :rtype: UpdateSetupMessage_PB
+        .. note::
+            This method is purely an internal method. Please use serialize(object) or one of
+            the other public serialization methods if you wish to serialize an
+            object.
+        """
+        return UpdateSetupMessage_PB(
+            msg_id=serialize(self.id),
+            address=serialize(self.address),
+            domain_name=self.domain_name,
+            contact=self.contact,
+            daa=self.daa,
+            description=self.description,
+            daa_document=self.daa_document,
+            tags=self.tags,
+            reply_to=serialize(self.reply_to),
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/node_setup/node_setup_messages.py" startline="192" endline="214" pcid="900">
+    def _object2proto(self) -> CreateInitialSetUpMessage_PB:
+        """Returns a protobuf serialization of self.
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms the current object into the corresponding
+        Protobuf object so that it can be further serialized.
+        :return: returns a protobuf object
+        :rtype: CreateInitialSetUpMessage_PB
+        .. note::
+            This method is purely an internal method. Please use serialize(object) or one of
+            the other public serialization methods if you wish to serialize an
+            object.
+        """
+        return CreateInitialSetUpMessage_PB(
+            msg_id=serialize(self.id),
+            address=serialize(self.address),
+            name=self.name,
+            email=self.email,
+            password=self.password,
+            domain_name=self.domain_name,
+            budget=self.budget,
+            reply_to=serialize(self.reply_to),
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/user_manager/user_messages.py" startline="833" endline="854" pcid="828">
+    def _object2proto(self) -> SearchUsersMessage_PB:
+        """Returns a protobuf serialization of self.
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms the current object into the corresponding
+        Protobuf object so that it can be further serialized.
+        :return: returns a protobuf object
+        :rtype: SearchUsersMessage_PB
+        .. note::
+            This method is purely an internal method. Please use serialize(object) or one of
+            the other public serialization methods if you wish to serialize an
+            object.
+        """
+        return SearchUsersMessage_PB(
+            msg_id=serialize(self.id),
+            address=serialize(self.address),
+            email=self.email,
+            role=self.role,
+            groups=self.groups,
+            name=self.name,
+            reply_to=serialize(self.reply_to),
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/association_request/association_request_messages.py" startline="142" endline="164" pcid="935">
+    def _object2proto(self) -> ReceiveAssociationRequestMessage_PB:
+        """Returns a protobuf serialization of self.
+        As a requirement of all objects which inherit from Serializable,
+        this method transforms the current object into the corresponding
+        Protobuf object so that it can be further serialized.
+        :return: returns a protobuf object
+        :rtype: ReceiveAssociationRequestMessage_PB
+        .. note::
+            This method is purely an internal method. Please use serialize(object) or one of
+            the other public serialization methods if you wish to serialize an
+            object.
+        """
+
+        return ReceiveAssociationRequestMessage_PB(
+            msg_id=serialize(self.id),
+            address=serialize(self.address),
+            reply_to=serialize(self.reply_to),
+            response=self.response,
+            metadata=self.metadata,
+            source=self.source,
+            target=self.target,
+        )
+
+</source>
+</class>
+
+<class classid="13" nclones="4" nlines="10" similarity="90">
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/vpn/vpn_service.py" startline="31" endline="43" pcid="719">
+    def process(
+        node: NodeServiceInterface,
+        msg: VPNConnectMessage,
+        verify_key: Optional[VerifyKey] = None,
+    ) -> VPNConnectReplyMessage:
+        if verify_key is None:
+            traceback_and_raise(
+                "Can't process VPNConnectService with no verification key."
+            )
+
+        result = msg.payload.run(node=node, verify_key=verify_key)
+        return VPNConnectMessageWithReply(kwargs=result).back_to(address=msg.reply_to)
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/vpn/vpn_service.py" startline="52" endline="64" pcid="721">
+    def process(
+        node: NodeServiceInterface,
+        msg: VPNJoinMessage,
+        verify_key: Optional[VerifyKey] = None,
+    ) -> VPNJoinReplyMessage:
+        if verify_key is None:
+            traceback_and_raise(
+                "Can't process VPNJoinService with no verification key."
+            )
+
+        result = msg.payload.run(node=node, verify_key=verify_key)
+        return VPNJoinMessageWithReply(kwargs=result).back_to(address=msg.reply_to)
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/simple/simple_service.py" startline="21" endline="34" pcid="913">
+    def process(
+        node: AbstractNode,
+        msg: SimpleMessage,
+        verify_key: Optional[VerifyKey] = None,
+    ) -> SimpleReplyMessage:
+        if verify_key is None:
+            traceback_and_raise(
+                "Can't process an GetReprService with no verification key."
+            )
+
+        result = msg.payload.run(node=node, verify_key=verify_key)
+
+        return SimpleReplyMessage(payload=result, address=msg.reply_to)
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/vpn/vpn_service.py" startline="90" endline="102" pcid="725">
+    def process(
+        node: NodeServiceInterface,
+        msg: VPNStatusMessage,
+        verify_key: Optional[VerifyKey] = None,
+    ) -> VPNStatusReplyMessage:
+        if verify_key is None:
+            traceback_and_raise(
+                "Can't process VPNJoinService with no verification key."
+            )
+
+        result = msg.payload.run(node=node)
+        return VPNStatusMessageWithReply(kwargs=result).back_to(address=msg.reply_to)
+
+</source>
+</class>
+
+<class classid="14" nclones="2" nlines="30" similarity="93">
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/role_manager/role_manager_messages.py" startline="44" endline="74" pcid="741">
+    def __init__(
+        self,
+        address: Address,
+        name: str,
+        reply_to: Address,
+        can_make_data_requests: bool = False,
+        can_triage_data_requests: bool = False,
+        can_manage_privacy_budget: bool = False,
+        can_create_users: bool = False,
+        can_manage_users: bool = False,
+        can_edit_roles: bool = False,
+        can_manage_infrastructure: bool = False,
+        can_upload_data: bool = False,
+        can_upload_legal_document: bool = False,
+        can_edit_domain_settings: bool = False,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id, reply_to=reply_to)
+        self.name = name
+
+        self.can_make_data_requests = can_make_data_requests
+        self.can_triage_data_requests = can_triage_data_requests
+        self.can_manage_privacy_budget = can_manage_privacy_budget
+        self.can_create_users = can_create_users
+        self.can_manage_users = can_manage_users
+        self.can_edit_roles = can_edit_roles
+        self.can_manage_infrastructure = can_manage_infrastructure
+        self.can_upload_data = can_upload_data
+        self.can_upload_legal_document = can_upload_legal_document
+        self.can_edit_domain_settings = can_edit_domain_settings
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/role_manager/role_manager_messages.py" startline="430" endline="461" pcid="761">
+    def __init__(
+        self,
+        address: Address,
+        role_id: int,
+        name: str,
+        reply_to: Address,
+        can_make_data_requests: bool = False,
+        can_triage_data_requests: bool = False,
+        can_manage_privacy_budget: bool = False,
+        can_create_users: bool = False,
+        can_manage_users: bool = False,
+        can_edit_roles: bool = False,
+        can_manage_infrastructure: bool = False,
+        can_upload_data: bool = False,
+        can_upload_legal_document: bool = False,
+        can_edit_domain_settings: bool = False,
+        msg_id: Optional[UID] = None,
+    ):
+        super().__init__(address=address, msg_id=msg_id, reply_to=reply_to)
+        self.name = name
+        self.can_make_data_requests = can_make_data_requests
+        self.can_triage_data_requests = can_triage_data_requests
+        self.can_manage_privacy_budget = can_manage_privacy_budget
+        self.can_create_users = can_create_users
+        self.can_manage_users = can_manage_users
+        self.can_edit_roles = can_edit_roles
+        self.can_manage_infrastructure = can_manage_infrastructure
+        self.can_upload_data = can_upload_data
+        self.can_upload_legal_document = can_upload_legal_document
+        self.can_edit_domain_settings = can_edit_domain_settings
+        self.role_id = role_id
+
+</source>
+</class>
+
+<class classid="15" nclones="2" nlines="14" similarity="80">
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/request_answer/request_answer_service.py" startline="22" endline="38" pcid="770">
+    def process(
+        node: AbstractNode,
+        msg: RequestAnswerMessage,
+        verify_key: Optional[VerifyKey] = None,
+    ) -> RequestAnswerResponse:
+        if verify_key is None:
+            traceback_and_raise(
+                ValueError(
+                    "Can't process Request service without a given " "verification key"
+                )
+            )
+
+        status = node.get_request_status(message_request_id=msg.request_id)  # type: ignore
+        address = msg.reply_to
+        return RequestAnswerResponse(
+            request_id=msg.request_id, address=address, status=status
+        )
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/vm_request_service/vm_service.py" startline="23" endline="42" pcid="987">
+    def process(
+        node: AbstractNode,
+        msg: RequestAnswerMessage,
+        verify_key: Optional[VerifyKey] = None,
+    ) -> RequestAnswerResponse:
+        if verify_key is None:
+            traceback_and_raise(
+                ValueError(
+                    "Can't process Request service without a given " "verification key"
+                )
+            )
+
+        status = RequestStatus.Rejected
+        address = msg.reply_to
+        if node.root_verify_key == verify_key or node.vm_id == address.vm_id:
+            status = RequestStatus.Accepted
+
+        return RequestAnswerResponse(
+            request_id=msg.request_id, address=address, status=status
+        )
+</source>
+</class>
+
+<class classid="16" nclones="2" nlines="37" similarity="91">
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/msg_forwarding/msg_forwarding_service.py" startline="24" endline="69" pcid="779">
+    def process(
+        node: AbstractNode,
+        msg: SignedImmediateSyftMessageWithoutReply,
+        verify_key: Optional[VerifyKey] = None,
+    ) -> Optional[SignedMessageT]:
+        addr = msg.address
+        debug(f"> Forwarding WithoutReply {msg.pprint} to {addr.target_emoji()}")
+        # order is important, vm, device, domain, network
+        for scope_id in [addr.vm_id, addr.device_id, addr.domain_id, addr.network_id]:
+            if scope_id is not None and scope_id in node.store:
+                obj = node.store[scope_id]
+                func = getattr(obj, "send_immediate_msg_without_reply", None)
+
+                if func is None:
+                    error(
+                        f"{addr} in store does not have method send_immediate_msg_without_reply"
+                    )
+                else:
+                    return func(msg=msg)
+
+        try:
+            for scope_id in [
+                addr.vm_id,
+                addr.device_id,
+                addr.domain_id,
+                addr.network_id,
+            ]:
+                if scope_id is not None:
+                    debug(f"> Lookup: {scope_id.emoji()}")
+                    client = node.get_peer_client(node_id=scope_id, only_vpn=False)
+                    if client:
+                        return client.send_immediate_msg_without_reply(msg=msg)
+                    else:
+                        raise Exception
+        except Exception as e:
+            # TODO: Need to not catch blanket exceptions
+            error(
+                f"Failed to forward {msg}. "
+                f"No client for {addr} in node.get_peer_client. {e}"
+            )
+            pass
+        debug(f"> ❌ {node.pprint} 🤷🏾‍♀️ {addr.target_emoji()}")
+        traceback_and_raise(
+            Exception("Address unknown - cannot forward message. Throwing it away.")
+        )
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/node_service/msg_forwarding/msg_forwarding_service.py" startline="77" endline="121" pcid="781">
+    def process(
+        node: AbstractNode,
+        msg: SignedImmediateSyftMessageWithReply,
+        verify_key: Optional[VerifyKey] = None,
+    ) -> SignedImmediateSyftMessageWithoutReply:
+        addr = msg.address
+        debug(f"> Forwarding WithReply {msg.pprint} to {addr.target_emoji()}")
+
+        # order is important, vm, device, domain, network
+        for scope_id in [addr.vm_id, addr.device_id, addr.domain_id, addr.network_id]:
+            if scope_id is not None and scope_id in node.store:
+                obj = node.store[scope_id]
+                func = getattr(obj, "send_immediate_msg_with_reply", None)
+                if func is None or not callable(func):
+                    error(
+                        f"{addr} in store does not have method send_immediate_msg_with_reply"
+                    )
+                return func(msg=msg)
+
+        try:
+            for scope_id in [
+                addr.vm_id,
+                addr.device_id,
+                addr.domain_id,
+                addr.network_id,
+            ]:
+                if scope_id is not None:
+                    debug(f"> Lookup: {scope_id.emoji()}")
+                    client = node.get_peer_client(node_id=scope_id, only_vpn=False)
+                    if client:
+                        return client.send_immediate_msg_with_reply(msg=msg)
+                    else:
+                        raise Exception
+        except Exception as e:
+            # TODO: Need to not catch blanket exceptions
+            error(
+                f"Failed to forward {msg}. "
+                f"No client for {addr} in node.get_peer_client. {e}"
+            )
+            pass
+        debug(f"> ❌ {node.pprint} 🤷🏾‍♀️ {addr.target_emoji()}")
+        traceback_and_raise(
+            Exception("Address unknown - cannot forward message. Throwing it away.")
+        )
+
+</source>
+</class>
+
+<class classid="17" nclones="2" nlines="15" similarity="93">
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/action/greenlets_switch.py" startline="11" endline="30" pcid="1042">
+def retrieve_object(
+    node: AbstractNode, id_at_location: UID, path: str
+) -> StorableObject:
+    # A hard time limit is set on celery worker which prevents infinite execution.
+    ctr = 0
+    while True:
+        store_obj = node.store.get_object(key=id_at_location)
+        if store_obj is None:
+            if ctr % 200 == 0:
+                critical(
+                    f"execute_action on {path} failed due to missing object"
+                    + f" at: {id_at_location}"
+                )
+            # Implicit context switch between greenlets.
+            gevent.sleep(0)
+            ctr += 1
+        else:
+            return store_obj
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/src/syft/core/node/common/action/greenlets_switch.py" startline="31" endline="48" pcid="1043">
+def beaver_retrieve_object(
+    node: AbstractNode, id_at_location: UID, nr_parties: int
+) -> StorableObject:
+    # A hard time limit is set on celery worker which prevents infinite execution.
+    ctr = 0
+    while True:
+        store_obj = node.store.get_object(key=id_at_location)
+        if store_obj is None or len(store_obj.data) != nr_parties:
+            if ctr % 200 == 0:
+                critical(
+                    f"Beaver Retrieval failed for {nr_parties} parties due to missing object"
+                    + f" at: {id_at_location} values: {store_obj}"
+                )
+            # Implicit context switch between greenlets.
+            gevent.sleep(0)
+            ctr += 1
+        else:
+            return store_obj
+</source>
+</class>
+
+<class classid="18" nclones="2" nlines="13" similarity="100">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/torch/parameter_test.py" startline="15" endline="37" pcid="1118">
+def test_parameter_vm_remote_operation(
+    apache_arrow_backend: bool, node: sy.VirtualMachine, client: sy.VirtualMachineClient
+) -> None:
+    sy.flags.APACHE_ARROW_SERDE = apache_arrow_backend
+    x = th.nn.Parameter(th.randn(3, 3))
+
+    xp = x.send(client, pointable=False)
+
+    y = xp + xp
+
+    assert len(node.store.values()) == 2
+
+    y.get()
+
+    assert len(node.store.values()) == 1
+
+    del xp
+
+    gc.collect()
+
+    assert len(node.store.values()) == 0
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/torch/parameter_test.py" startline="41" endline="63" pcid="1119">
+def test_get_copy(
+    apache_arrow_backend: bool, node: sy.VirtualMachine, client: sy.VirtualMachineClient
+) -> None:
+    sy.flags.APACHE_ARROW_SERDE = apache_arrow_backend
+    x = th.nn.Parameter(th.randn(3, 3))
+
+    xp = x.send(client, pointable=False)
+
+    y = xp + xp
+
+    assert len(node.store.values()) == 2
+
+    y.get_copy()
+
+    # no deletion of the object
+    assert len(node.store.values()) == 2
+
+    del xp
+    gc.collect()
+
+    assert len(node.store.values()) == 1
+
+
+</source>
+</class>
+
+<class classid="19" nclones="4" nlines="12" similarity="75">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/dict/dict_serde_test.py" startline="47" endline="65" pcid="1136">
+def test_dict_serde() -> None:
+    t1 = th.tensor([1, 2])
+    t2 = th.tensor([1, 3])
+
+    syft_list = Dict({Int(1): t1, Int(2): t2})
+    assert type(getattr(syft_list, "id", None)) is UID
+
+    serialized = syft_list._object2proto()
+
+    assert isinstance(serialized, Dict_PB)
+
+    deserialized = Dict._proto2object(proto=serialized)
+
+    assert isinstance(deserialized, Dict)
+    assert deserialized.id == syft_list.id
+    for deserialized_el, original_el in zip(deserialized, syft_list):
+        assert deserialized_el == original_el
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/collections/ordered_dict/ordered_dict_serde_test.py" startline="39" endline="59" pcid="1146">
+def test_dict_serde() -> None:
+    t1 = th.tensor([1, 2])
+    t2 = th.tensor([1, 3])
+
+    syft_list = OrderedDict({Int(1): t1, Int(2): t2})
+    assert type(getattr(syft_list, "id", None)) is UID
+
+    serialized = syft_list._object2proto()
+
+    assert isinstance(serialized, OrderedDict_PB)
+
+    deserialized = OrderedDict._proto2object(proto=serialized)
+
+    assert isinstance(deserialized, OrderedDict)
+    assert isinstance(deserialized, PyOrderectDict)
+
+    assert deserialized.id == syft_list.id
+    for deserialized_el, original_el in zip(deserialized, syft_list):
+        assert deserialized_el == original_el
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/list/list_serde_test.py" startline="11" endline="28" pcid="1425">
+def test_list_serde() -> None:
+    t1 = th.tensor([1, 2])
+    t2 = th.tensor([1, 3])
+
+    syft_list = List([t1, t2])
+
+    serialized = syft_list._object2proto()
+
+    assert isinstance(serialized, List_PB)
+
+    deserialized = List._proto2object(proto=serialized)
+
+    assert isinstance(deserialized, List)
+    assert deserialized.id == syft_list.id
+    for deserialized_el, original_el in zip(deserialized, syft_list):
+        assert (deserialized_el == original_el).all()
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/collections/ordered_dict/ordered_dict_serde_test.py" startline="60" endline="80" pcid="1147">
+def test_dict_serde_bytes() -> None:
+    t1 = th.tensor([1, 2])
+    t2 = th.tensor([1, 3])
+
+    syft_list = OrderedDict({Int(1): t1, Int(2): t2})
+    assert type(getattr(syft_list, "id", None)) is UID
+
+    serialized = serialize(syft_list, to_bytes=True)
+
+    assert isinstance(serialized, bytes)
+
+    deserialized = deserialize(serialized, from_bytes=True)
+
+    assert isinstance(deserialized, OrderedDict)
+    assert isinstance(deserialized, PyOrderectDict)
+
+    assert deserialized.id == syft_list.id
+    for deserialized_el, original_el in zip(deserialized, syft_list):
+        assert deserialized_el == original_el
+
+
+</source>
+</class>
+
+<class classid="20" nclones="2" nlines="10" similarity="100">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/dict/dict_serde_test.py" startline="81" endline="92" pcid="1138">
+def test_iterator_methods(
+    method_name: str, root_client: sy.VirtualMachineClient
+) -> None:
+    d = Dict({"#1": 1, "#2": 2})
+    dptr = d.send(root_client)
+
+    itemsptr = getattr(dptr, method_name)()
+    assert type(itemsptr).__name__ == "IteratorPointer"
+
+    for itemptr, local_item in zip(itemsptr, getattr(d, method_name)()):
+        get_item = itemptr.get()
+        assert get_item == local_item
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/collections/ordered_dict/ordered_dict_serde_test.py" startline="99" endline="110" pcid="1149">
+def test_iterator_methods(
+    method_name: str, root_client: sy.VirtualMachineClient
+) -> None:
+    d = OrderedDict({"#1": 1, "#2": 2})
+    dptr = d.send(root_client)
+
+    itemsptr = getattr(dptr, method_name)()
+    assert type(itemsptr).__name__ == "IteratorPointer"
+
+    for itemptr, local_item in zip(itemsptr, getattr(d, method_name)()):
+        get_item = itemptr.get()
+        assert get_item == local_item
+</source>
+</class>
+
+<class classid="21" nclones="2" nlines="22" similarity="90">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/float/cross_type_test.py" startline="56" endline="83" pcid="1263">
+def test_api_float(op, py_obj):
+    sy_float = Float(42.5)
+    py_float = 42.5
+
+    try:
+        func_py = getattr(py_float, op)
+    except Exception:
+        return
+
+    func_sy = getattr(sy_float, op)
+
+    pypy_err, sypy_err = None, None
+    pypy, sypy = None, None
+
+    try:
+        pypy = func_py(py_obj)
+    except Exception as e_pypy:
+        pypy_err = str(e_pypy)
+
+    try:
+        sypy = func_sy(py_obj)
+    except Exception as e_sysy:
+        sypy_err = str(e_sysy)
+
+    if any([pypy_err, sypy_err]):
+        assert pypy_err == sypy_err
+    else:
+        assert pypy == sypy
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/int/cross_type_test.py" startline="46" endline="73" pcid="1336">
+def test_api_int(op, py_obj):
+    sy_int = Int(42)
+    py_int = 42
+
+    try:
+        func_py = getattr(py_int, op)
+    except Exception:
+        return
+
+    func_sy = getattr(sy_int, op)
+
+    pypy_err, sypy_err = None, None
+    pypy, sypy = None, None
+
+    try:
+        pypy = func_py(py_obj)
+    except Exception as e_pypy:
+        pypy_err = str(e_pypy)
+
+    try:
+        sypy = func_sy(py_obj)
+    except Exception as e_sysy:
+        sypy_err = str(e_sysy)
+
+    if any([pypy_err, sypy_err]):
+        assert pypy_err == sypy_err
+    else:
+        assert pypy == sypy
+</source>
+</class>
+
+<class classid="22" nclones="2" nlines="13" similarity="71">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/int/int_test.py" startline="534" endline="549" pcid="1318">
+def test_Int_subclass_with_index() -> None:
+    class MyIndex(Int):
+        def __index__(self):
+            return 42
+
+    class BadIndex(Int):
+        def __index__(self):
+            return 42.0
+
+    my_Int = MyIndex(7)
+    assert Int(my_Int) == 7
+    assert Int(my_Int) == 7
+
+    assert Int(BadIndex()) == 0
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/int/int_test.py" startline="551" endline="571" pcid="1321">
+def test_Int_subclass_with_Int() -> None:
+    class MyInt(Int):
+        def __Int__(self):
+            return 42
+
+    class BadInt(Int):
+        def __Int__(self):
+            return 42.0
+
+    # TODO this should work
+    my_Int = MyInt(7)
+    assert Int(my_Int) == 7
+    assert Int(my_Int) == 42
+
+    # TODO this should work
+    my_Int = BadInt(7)
+    assert Int(my_Int) == 7
+    with pytest.raises(TypeError):
+        Int(my_Int)
+
+
+</source>
+</class>
+
+<class classid="23" nclones="2" nlines="41" similarity="74">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/string/string_utils_test.py" startline="85" endline="142" pcid="1350">
+def test_find():
+    checkequal(0, String("abcdefghiabc"), "find", String("abc"))
+    checkequal(9, String("abcdefghiabc"), "find", String("abc"), 1)
+    checkequal(-1, String("abcdefghiabc"), "find", String("def"), 4)
+
+    checkequal(0, String("abc"), "find", String(""), 0)
+    checkequal(3, String("abc"), "find", String(""), 3)
+    checkequal(-1, String("abc"), "find", String(""), 4)
+
+    # to check the ability to pass None as defaults
+    checkequal(2, String("rrarrrrrrrrra"), "find", String("a"))
+    checkequal(12, String("rrarrrrrrrrra"), "find", String("a"), 4)
+    checkequal(-1, String("rrarrrrrrrrra"), "find", String("a"), 4, 6)
+    checkequal(12, String("rrarrrrrrrrra"), "find", String("a"), 4, None)
+    checkequal(2, String("rrarrrrrrrrra"), "find", String("a"), None, 6)
+
+    checkraises(TypeError, String("hello"), "find")
+
+    if contains_bytes:
+        checkequal(-1, String("hello"), "find", 42)
+    else:
+        checkraises(TypeError, String("hello"), "find", 42)
+
+    checkequal(0, String(""), "find", String(""))
+    checkequal(-1, String(""), "find", String(""), 1, 1)
+    checkequal(-1, String(""), "find", String(""), sys.maxsize, 0)
+
+    checkequal(-1, String(""), "find", String("xx"))
+    checkequal(-1, String(""), "find", String("xx"), 1, 1)
+    checkequal(-1, String(""), "find", String("xx"), sys.maxsize, 0)
+
+    # issue 7458
+    checkequal(-1, String("ab"), "find", String("xxx"), sys.maxsize + 1, 0)
+
+    # For a variety of combinations,
+    #    verify that str.find() matches __contains__
+    #    and that the found substring is really at that location
+    charset = [String(""), String("a"), String("b")]
+    digits = 4
+    base = len(charset)
+    teststrings = set()
+    for i in range(base ** digits):
+        entry = []
+        for j in range(digits):
+            i, m = divmod(i, base)
+            entry.append(charset[m])
+        teststrings.add(String("").join(entry))
+    for i in teststrings:
+        for j in teststrings:
+            loc = i.find(j)
+            r1 = loc != -1
+            r2 = j in i
+            assert r1 == r2
+            if loc != -1:
+                idx = loc + len(j)
+                assert i[loc:idx] == j
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/string/string_utils_test.py" startline="144" endline="196" pcid="1351">
+def test_rfind():
+    checkequal(9, String("abcdefghiabc"), "rfind", String("abc"))
+    checkequal(12, String("abcdefghiabc"), "rfind", "")
+    checkequal(0, String("abcdefghiabc"), "rfind", String("abcd"))
+    checkequal(-1, String("abcdefghiabc"), "rfind", String("abcz"))
+
+    checkequal(3, String("abc"), "rfind", String(""), 0)
+    checkequal(3, String("abc"), "rfind", String(""), 3)
+    checkequal(-1, String("abc"), "rfind", String(""), 4)
+
+    # to check the ability to pass None as defaults
+    checkequal(12, String("rrarrrrrrrrra"), "rfind", String("a"))
+    checkequal(12, String("rrarrrrrrrrra"), "rfind", String("a"), 4)
+    checkequal(-1, String("rrarrrrrrrrra"), "rfind", String("a"), 4, 6)
+    checkequal(12, String("rrarrrrrrrrra"), "rfind", String("a"), 4, None)
+    checkequal(2, String("rrarrrrrrrrra"), "rfind", String("a"), None, 6)
+
+    checkraises(TypeError, String("hello"), "rfind")
+
+    if contains_bytes:
+        checkequal(-1, String("hello"), "rfind", 42)
+    else:
+        checkraises(TypeError, String("hello"), "rfind", 42)
+
+    # For a variety of combinations,
+    #    verify that str.rfind() matches __contains__
+    #    and that the found substring is really at that location
+    charset = [String(""), String("a"), String("b")]
+    digits = 3
+    base = len(charset)
+    teststrings = set()
+    for i in range(base ** digits):
+        entry = []
+        for j in range(digits):
+            i, m = divmod(i, base)
+            entry.append(charset[m])
+        teststrings.add(String("").join(entry))
+    for i in teststrings:
+        for j in teststrings:
+            loc = i.rfind(j)
+            r1 = loc != -1
+            r2 = j in i
+            assert r1 == r2
+            if loc != -1:
+                assert i[loc : loc + len(j)] == j  # noqa: E203
+
+    # issue 7458
+    checkequal(-1, String("ab"), "rfind", String("xxx"), sys.maxsize + 1, 0)
+
+    # issue #15534
+    checkequal(0, String("<......\u043c..."), "rfind", "<")
+
+
+</source>
+</class>
+
+<class classid="24" nclones="2" nlines="15" similarity="100">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/string/string_utils_test.py" startline="1859" endline="1876" pcid="1360">
+    def test_removeprefix():
+        checkequal("am", String("spam"), "removeprefix", String("sp"))
+        checkequal("spamspam", String("spamspamspam"), "removeprefix", String("spam"))
+        checkequal("spam", String("spam"), "removeprefix", String("python"))
+        checkequal("spam", String("spam"), "removeprefix", String("spider"))
+        checkequal("spam", String("spam"), "removeprefix", String("spam and eggs"))
+
+        checkequal("", String(""), "removeprefix", String(""))
+        checkequal("", String(""), "removeprefix", String("abcde"))
+        checkequal("abcde", String("abcde"), "removeprefix", String(""))
+        checkequal("", String("abcde"), "removeprefix", String("abcde"))
+
+        checkraises(TypeError, String("hello"), "removeprefix")
+        checkraises(TypeError, String("hello"), "removeprefix", 42)
+        checkraises(TypeError, String("hello"), "removeprefix", 42, "h")
+        checkraises(TypeError, String("hello"), "removeprefix", "h", 42)
+        checkraises(TypeError, String("hello"), "removeprefix", ("he", "l"))
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/string/string_utils_test.py" startline="1877" endline="1895" pcid="1361">
+    def test_removesuffix():
+        checkequal("sp", String("spam"), "removesuffix", String("am"))
+        checkequal("spamspam", String("spamspamspam"), "removesuffix", String("spam"))
+        checkequal("spam", String("spam"), "removesuffix", String("python"))
+        checkequal("spam", String("spam"), "removesuffix", String("blam"))
+        checkequal("spam", String("spam"), "removesuffix", String("eggs and spam"))
+
+        checkequal("", String(""), "removesuffix", String(""))
+        checkequal("", String(""), "removesuffix", String("abcde"))
+        checkequal("abcde", String("abcde"), "removesuffix", String(""))
+        checkequal("", String("abcde"), "removesuffix", String("abcde"))
+
+        checkraises(TypeError, String("hello"), "removesuffix")
+        checkraises(TypeError, String("hello"), "removesuffix", 42)
+        checkraises(TypeError, String("hello"), "removesuffix", 42, "h")
+        checkraises(TypeError, String("hello"), "removesuffix", "h", 42)
+        checkraises(TypeError, String("hello"), "removesuffix", ("lo", "l"))
+
+
+</source>
+</class>
+
+<class classid="25" nclones="2" nlines="139" similarity="97">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/string/string_utils_test.py" startline="1912" endline="2055" pcid="1364">
+def test_additional_split():
+    checkequal(
+        [
+            String("this"),
+            String("is"),
+            String("the"),
+            "split",
+            String("function"),
+        ],
+        String("this is the split function"),
+        "split",
+    )
+
+    # by whitespace
+    checkequal(
+        [
+            String("a"),
+            String("b"),
+            String("c"),
+            String("d"),
+        ],
+        String("a b c d "),
+        "split",
+    )
+    checkequal(
+        [String("a"), String("b c d")],
+        String("a b c d"),
+        "split",
+        None,
+        1,
+    )
+    checkequal(
+        [String("a"), String("b"), String("c d")],
+        String("a b c d"),
+        "split",
+        None,
+        2,
+    )
+    checkequal(
+        [
+            String("a"),
+            String("b"),
+            String("c"),
+            String("d"),
+        ],
+        String("a b c d"),
+        "split",
+        None,
+        3,
+    )
+    checkequal(
+        [
+            String("a"),
+            String("b"),
+            String("c"),
+            String("d"),
+        ],
+        String("a b c d"),
+        "split",
+        None,
+        4,
+    )
+    checkequal(
+        [
+            String("a"),
+            String("b"),
+            String("c"),
+            String("d"),
+        ],
+        String("a b c d"),
+        "split",
+        None,
+        sys.maxsize - 1,
+    )
+    checkequal([String("a b c d")], String("a b c d"), "split", None, 0)
+    checkequal([String("a b c d")], String("  a b c d"), "split", None, 0)
+    checkequal(
+        [String("a"), String("b"), String("c  d")],
+        String("a  b  c  d"),
+        "split",
+        None,
+        2,
+    )
+
+    checkequal([], String("         "), "split")
+    checkequal([String("a")], String("  a    "), "split")
+    checkequal([String("a"), String("b")], String("  a    b   "), "split")
+    checkequal(
+        [String("a"), String("b   ")],
+        String("  a    b   "),
+        "split",
+        None,
+        1,
+    )
+    checkequal(
+        [String("a    b   c   ")],
+        String("  a    b   c   "),
+        "split",
+        None,
+        0,
+    )
+    checkequal(
+        [String("a"), String("b   c   ")],
+        String("  a    b   c   "),
+        "split",
+        None,
+        1,
+    )
+    checkequal(
+        [String("a"), String("b"), String("c   ")],
+        String("  a    b   c   "),
+        "split",
+        None,
+        2,
+    )
+    checkequal(
+        [String("a"), String("b"), String("c")],
+        String("  a    b   c   "),
+        "split",
+        None,
+        3,
+    )
+    checkequal(
+        [String("a"), String("b")],
+        String("\n\ta \t\r b \v "),
+        "split",
+    )
+    aaa = String(" a ") * 20
+    checkequal([String("a")] * 20, aaa, "split")
+    checkequal([String("a")] + [aaa[4:]], aaa, "split", None, 1)
+    checkequal([String("a")] * 19 + [String("a ")], aaa, "split", None, 19)
+
+    for b in (
+        String("arf\tbarf"),
+        String("arf\nbarf"),
+        String("arf\rbarf"),
+        String("arf\fbarf"),
+        String("arf\vbarf"),
+    ):
+        checkequal([String("arf"), String("barf")], b, "split")
+        checkequal([String("arf"), String("barf")], b, "split", None)
+        checkequal([String("arf"), String("barf")], b, "split", None, 2)
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/string/string_utils_test.py" startline="2056" endline="2201" pcid="1365">
+def test_additional_rsplit():
+    checkequal(
+        [
+            String("this"),
+            String("is"),
+            String("the"),
+            "rsplit",
+            String("function"),
+        ],
+        String("this is the rsplit function"),
+        "rsplit",
+    )
+
+    # by whitespace
+    checkequal(
+        [
+            String("a"),
+            String("b"),
+            String("c"),
+            String("d"),
+        ],
+        String("a b c d "),
+        "rsplit",
+    )
+    checkequal(
+        [String("a b c"), String("d")],
+        String("a b c d"),
+        "rsplit",
+        None,
+        1,
+    )
+    checkequal(
+        [String("a b"), String("c"), String("d")],
+        String("a b c d"),
+        "rsplit",
+        None,
+        2,
+    )
+    checkequal(
+        [
+            String("a"),
+            String("b"),
+            String("c"),
+            String("d"),
+        ],
+        String("a b c d"),
+        "rsplit",
+        None,
+        3,
+    )
+    checkequal(
+        [
+            String("a"),
+            String("b"),
+            String("c"),
+            String("d"),
+        ],
+        String("a b c d"),
+        "rsplit",
+        None,
+        4,
+    )
+    checkequal(
+        [
+            String("a"),
+            String("b"),
+            String("c"),
+            String("d"),
+        ],
+        String("a b c d"),
+        "rsplit",
+        None,
+        sys.maxsize - 20,
+    )
+    checkequal([String("a b c d")], String("a b c d"), "rsplit", None, 0)
+    checkequal([String("a b c d")], String("a b c d  "), "rsplit", None, 0)
+    checkequal(
+        [String("a  b"), String("c"), String("d")],
+        String("a  b  c  d"),
+        "rsplit",
+        None,
+        2,
+    )
+
+    checkequal([], String("         "), "rsplit")
+    checkequal([String("a")], String("  a    "), "rsplit")
+    checkequal([String("a"), String("b")], String("  a    b   "), "rsplit")
+    checkequal(
+        [String("  a"), String("b")],
+        String("  a    b   "),
+        "rsplit",
+        None,
+        1,
+    )
+    checkequal(
+        [String("  a    b   c")],
+        String("  a    b   c   "),
+        "rsplit",
+        None,
+        0,
+    )
+    checkequal(
+        [String("  a    b"), String("c")],
+        String("  a    b   c   "),
+        "rsplit",
+        None,
+        1,
+    )
+    checkequal(
+        [String("  a"), String("b"), String("c")],
+        String("  a    b   c   "),
+        "rsplit",
+        None,
+        2,
+    )
+    checkequal(
+        [String("a"), String("b"), String("c")],
+        String("  a    b   c   "),
+        "rsplit",
+        None,
+        3,
+    )
+    checkequal(
+        [String("a"), String("b")],
+        String("\n\ta \t\r b \v "),
+        "rsplit",
+        None,
+        88,
+    )
+    aaa = String(" a ") * 20
+    checkequal([String("a")] * 20, aaa, "rsplit")
+    checkequal([aaa[:-4]] + [String("a")], aaa, "rsplit", None, 1)
+    checkequal([String(" a  a")] + [String("a")] * 18, aaa, "rsplit", None, 18)
+
+    for b in (
+        String("arf\tbarf"),
+        String("arf\nbarf"),
+        String("arf\rbarf"),
+        String("arf\fbarf"),
+        String("arf\vbarf"),
+    ):
+        checkequal([String("arf"), String("barf")], b, "rsplit")
+        checkequal([String("arf"), String("barf")], b, "rsplit", None)
+        checkequal([String("arf"), String("barf")], b, "rsplit", None, 2)
+
+
+</source>
+</class>
+
+<class classid="26" nclones="2" nlines="37" similarity="73">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/string/string_utils_test.py" startline="2220" endline="2260" pcid="1367">
+def test_strip():
+    # strip/lstrip/rstrip with str arg
+    checkequal(
+        String("hello"),
+        String("xyzzyhelloxyzzy"),
+        "strip",
+        String("xyz"),
+    )
+    checkequal(
+        String("helloxyzzy"),
+        String("xyzzyhelloxyzzy"),
+        "lstrip",
+        String("xyz"),
+    )
+    checkequal(
+        String("xyzzyhello"),
+        String("xyzzyhelloxyzzy"),
+        "rstrip",
+        String("xyz"),
+    )
+    checkequal(String("hello"), String("hello"), "strip", String("xyz"))
+    checkequal(
+        String(""),
+        String("mississippi"),
+        "strip",
+        String("mississippi"),
+    )
+
+    # only trim the start and end; does not strip internal characters
+    checkequal(
+        String("mississipp"),
+        String("mississippi"),
+        "strip",
+        String("i"),
+    )
+
+    checkraises(TypeError, String("hello"), "strip", 42, 42)
+    checkraises(TypeError, String("hello"), "lstrip", 42, 42)
+    checkraises(TypeError, String("hello"), "rstrip", 42, 42)
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/string/string_utils_test.py" startline="2562" endline="2610" pcid="1383">
+def test_capitalize_nonascii():
+    # check that titlecased chars are lowered correctly
+    # \u1ffc is the titlecased char
+    # \u03a9\u0399
+    if sys.version_info >= (3, 8):
+        # a, b, capitalize
+        # ῼῳῳῳ, ῳῳῼῼ, capitalize
+        checkequal(
+            String("\u1ffc\u1ff3\u1ff3\u1ff3"),
+            String("\u1ff3\u1ff3\u1ffc\u1ffc"),
+            "capitalize",
+        )
+    else:
+        # a, b, capitalize
+        # ΩΙῳῳῳ, ῳῳῼῼ, capitalize
+        checkequal(
+            String("\u03a9\u0399\u1ff3\u1ff3\u1ff3"),
+            String("\u1ff3\u1ff3\u1ffc\u1ffc"),
+            "capitalize",
+        )
+    # check with cased non-letter chars
+    checkequal(
+        String("\u24c5\u24e8\u24e3\u24d7\u24de\u24dd"),
+        String("\u24c5\u24ce\u24c9\u24bd\u24c4\u24c3"),
+        "capitalize",
+    )
+    checkequal(
+        String("\u24c5\u24e8\u24e3\u24d7\u24de\u24dd"),
+        String("\u24df\u24e8\u24e3\u24d7\u24de\u24dd"),
+        "capitalize",
+    )
+    checkequal(
+        String("\u2160\u2171\u2172"),
+        String("\u2160\u2161\u2162"),
+        "capitalize",
+    )
+    checkequal(
+        String("\u2160\u2171\u2172"),
+        String("\u2170\u2171\u2172"),
+        "capitalize",
+    )
+    # check with Ll chars with no upper - nothing changes here
+    checkequal(
+        String("\u019b\u1d00\u1d86\u0221\u1fb7"),
+        String("\u019b\u1d00\u1d86\u0221\u1fb7"),
+        "capitalize",
+    )
+
+
+</source>
+</class>
+
+<class classid="27" nclones="3" nlines="13" similarity="100">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/string/string_utils_test.py" startline="2261" endline="2275" pcid="1368">
+def test_ljust():
+    checkequal(String("abc       "), String("abc"), "ljust", 10)
+    checkequal(String("abc   "), String("abc"), "ljust", 6)
+    checkequal(String("abc"), String("abc"), "ljust", 3)
+    checkequal(String("abc"), String("abc"), "ljust", 2)
+    checkequal(
+        String("abc*******"),
+        String("abc"),
+        "ljust",
+        10,
+        String("*"),
+    )
+    checkraises(TypeError, String("abc"), "ljust")
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/string/string_utils_test.py" startline="2291" endline="2305" pcid="1370">
+def test_center():
+    checkequal(String("   abc    "), String("abc"), "center", 10)
+    checkequal(String(" abc  "), String("abc"), "center", 6)
+    checkequal(String("abc"), String("abc"), "center", 3)
+    checkequal(String("abc"), String("abc"), "center", 2)
+    checkequal(
+        String("***abc****"),
+        String("abc"),
+        "center",
+        10,
+        String("*"),
+    )
+    checkraises(TypeError, String("abc"), "center")
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/string/string_utils_test.py" startline="2276" endline="2290" pcid="1369">
+def test_rjust():
+    checkequal(String("       abc"), String("abc"), "rjust", 10)
+    checkequal(String("   abc"), String("abc"), "rjust", 6)
+    checkequal(String("abc"), String("abc"), "rjust", 3)
+    checkequal(String("abc"), String("abc"), "rjust", 2)
+    checkequal(
+        String("*******abc"),
+        String("abc"),
+        "rjust",
+        10,
+        String("*"),
+    )
+    checkraises(TypeError, String("abc"), "rjust")
+
+
+</source>
+</class>
+
+<class classid="28" nclones="3" nlines="12" similarity="76">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/string/string_utils_test.py" startline="2350" endline="2364" pcid="1375">
+def test_istitle():
+    checkequal(False, String(""), "istitle")
+    checkequal(False, String("a"), "istitle")
+    checkequal(True, String("A"), "istitle")
+    checkequal(False, String("\n"), "istitle")
+    checkequal(True, String("A Titlecased Line"), "istitle")
+    checkequal(True, String("A\nTitlecased Line"), "istitle")
+    checkequal(True, String("A Titlecased, Line"), "istitle")
+    checkequal(False, String("Not a capitalized String"), "istitle")
+    checkequal(False, String("Not\ta Titlecase String"), "istitle")
+    checkequal(False, String("Not--a Titlecase String"), "istitle")
+    checkequal(False, String("NOT"), "istitle")
+    checkraises(TypeError, String("abc"), "istitle", 42)
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/string/string_utils_test.py" startline="2365" endline="2376" pcid="1376">
+def test_isspace():
+    checkequal(False, String(""), "isspace")
+    checkequal(False, String("a"), "isspace")
+    checkequal(True, String(" "), "isspace")
+    checkequal(True, String("\t"), "isspace")
+    checkequal(True, String("\r"), "isspace")
+    checkequal(True, String("\n"), "isspace")
+    checkequal(True, String(" \t\r\n"), "isspace")
+    checkequal(False, String(" \t\r\na"), "isspace")
+    checkraises(TypeError, String("abc"), "isspace", 42)
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/string/string_utils_test.py" startline="2388" endline="2399" pcid="1378">
+def test_isalnum():
+    checkequal(False, String(""), "isalnum")
+    checkequal(True, String("a"), "isalnum")
+    checkequal(True, String("A"), "isalnum")
+    checkequal(False, String("\n"), "isalnum")
+    checkequal(True, String("123abc456"), "isalnum")
+    checkequal(True, String("a1b3c"), "isalnum")
+    checkequal(False, String("aBc000 "), "isalnum")
+    checkequal(False, String("abc\n"), "isalnum")
+    checkraises(TypeError, String("abc"), "isalnum", 42)
+
+
+</source>
+</class>
+
+<class classid="29" nclones="2" nlines="93" similarity="79">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/string/string_utils_test.py" startline="2611" endline="2712" pcid="1384">
+def test_startswith():
+    checkequal(True, String("hello"), "startswith", String("he"))
+    checkequal(True, String("hello"), "startswith", String("hello"))
+    checkequal(False, String("hello"), "startswith", String("hello world"))
+    checkequal(True, String("hello"), "startswith", String(""))
+    checkequal(False, String("hello"), "startswith", String("ello"))
+    checkequal(True, String("hello"), "startswith", String("ello"), 1)
+    checkequal(True, String("hello"), "startswith", String("o"), 4)
+    checkequal(False, String("hello"), "startswith", String("o"), 5)
+    checkequal(True, String("hello"), "startswith", String(""), 5)
+    checkequal(False, String("hello"), "startswith", String("lo"), 6)
+    checkequal(True, String("helloworld"), "startswith", String("lowo"), 3)
+    checkequal(True, String("helloworld"), "startswith", String("lowo"), 3, 7)
+    checkequal(False, String("helloworld"), "startswith", String("lowo"), 3, 6)
+    checkequal(True, String(""), "startswith", String(""), 0, 1)
+    checkequal(True, String(""), "startswith", String(""), 0, 0)
+    checkequal(False, String(""), "startswith", String(""), 1, 0)
+
+    # test negative indices
+    checkequal(True, String("hello"), "startswith", String("he"), 0, -1)
+    checkequal(True, String("hello"), "startswith", String("he"), -53, -1)
+    checkequal(False, String("hello"), "startswith", String("hello"), 0, -1)
+    checkequal(
+        False,
+        String("hello"),
+        "startswith",
+        String("hello world"),
+        -1,
+        -10,
+    )
+    checkequal(False, String("hello"), "startswith", String("ello"), -5)
+    checkequal(True, String("hello"), "startswith", String("ello"), -4)
+    checkequal(False, String("hello"), "startswith", String("o"), -2)
+    checkequal(True, String("hello"), "startswith", String("o"), -1)
+    checkequal(True, String("hello"), "startswith", String(""), -3, -3)
+    checkequal(False, String("hello"), "startswith", String("lo"), -9)
+
+    checkraises(TypeError, String("hello"), "startswith")
+    checkraises(TypeError, String("hello"), "startswith", 42)
+
+    # test tuple arguments
+    checkequal(
+        True,
+        String("hello"),
+        "startswith",
+        (String("he"), String("ha")),
+    )
+    checkequal(
+        False,
+        String("hello"),
+        "startswith",
+        (String("lo"), String("llo")),
+    )
+    checkequal(
+        True,
+        String("hello"),
+        "startswith",
+        (String("hellox"), String("hello")),
+    )
+    checkequal(False, String("hello"), "startswith", ())
+    checkequal(
+        True,
+        String("helloworld"),
+        "startswith",
+        (String("hellowo"), String("rld"), String("lowo")),
+        3,
+    )
+    checkequal(
+        False,
+        String("helloworld"),
+        "startswith",
+        (String("hellowo"), String("ello"), String("rld")),
+        3,
+    )
+    checkequal(
+        True,
+        String("hello"),
+        "startswith",
+        (String("lo"), String("he")),
+        0,
+        -1,
+    )
+    checkequal(
+        False,
+        String("hello"),
+        "startswith",
+        (String("he"), String("hel")),
+        0,
+        1,
+    )
+    checkequal(
+        True,
+        String("hello"),
+        "startswith",
+        (String("he"), String("hel")),
+        0,
+        2,
+    )
+
+    checkraises(TypeError, String("hello"), "startswith", (42,))
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/string/string_utils_test.py" startline="2713" endline="2812" pcid="1385">
+def test_endswith():
+    checkequal(True, String("hello"), "endswith", String("lo"))
+    checkequal(False, String("hello"), "endswith", String("he"))
+    checkequal(True, String("hello"), "endswith", String(""))
+    checkequal(False, String("hello"), "endswith", String("hello world"))
+    checkequal(False, String("helloworld"), "endswith", String("worl"))
+    checkequal(True, String("helloworld"), "endswith", String("worl"), 3, 9)
+    checkequal(True, String("helloworld"), "endswith", String("world"), 3, 12)
+    checkequal(True, String("helloworld"), "endswith", String("lowo"), 1, 7)
+    checkequal(True, String("helloworld"), "endswith", String("lowo"), 2, 7)
+    checkequal(True, String("helloworld"), "endswith", String("lowo"), 3, 7)
+    checkequal(False, String("helloworld"), "endswith", String("lowo"), 4, 7)
+    checkequal(False, String("helloworld"), "endswith", String("lowo"), 3, 8)
+    checkequal(False, String("ab"), "endswith", String("ab"), 0, 1)
+    checkequal(False, String("ab"), "endswith", String("ab"), 0, 0)
+    checkequal(True, String(""), "endswith", String(""), 0, 1)
+    checkequal(True, String(""), "endswith", String(""), 0, 0)
+    checkequal(False, String(""), "endswith", String(""), 1, 0)
+
+    # test negative indices
+    checkequal(True, String("hello"), "endswith", String("lo"), -2)
+    checkequal(False, String("hello"), "endswith", String("he"), -2)
+    checkequal(True, String("hello"), "endswith", String(""), -3, -3)
+    checkequal(False, String("hello"), "endswith", String("hello world"), -10, -2)
+    checkequal(False, String("helloworld"), "endswith", String("worl"), -6)
+    checkequal(True, String("helloworld"), "endswith", String("worl"), -5, -1)
+    checkequal(True, String("helloworld"), "endswith", String("worl"), -5, 9)
+    checkequal(True, String("helloworld"), "endswith", String("world"), -7, 12)
+    checkequal(True, String("helloworld"), "endswith", String("lowo"), -99, -3)
+    checkequal(True, String("helloworld"), "endswith", String("lowo"), -8, -3)
+    checkequal(True, String("helloworld"), "endswith", String("lowo"), -7, -3)
+    checkequal(False, String("helloworld"), "endswith", String("lowo"), 3, -4)
+    checkequal(False, String("helloworld"), "endswith", String("lowo"), -8, -2)
+
+    checkraises(TypeError, String("hello"), "endswith")
+    checkraises(TypeError, String("hello"), "endswith", 42)
+
+    # test tuple arguments
+    checkequal(
+        False,
+        String("hello"),
+        "endswith",
+        (String("he"), String("ha")),
+    )
+    checkequal(
+        True,
+        String("hello"),
+        "endswith",
+        (String("lo"), String("llo")),
+    )
+    checkequal(
+        True,
+        String("hello"),
+        "endswith",
+        (String("hellox"), String("hello")),
+    )
+    checkequal(False, String("hello"), "endswith", ())
+    checkequal(
+        True,
+        String("helloworld"),
+        "endswith",
+        (String("hellowo"), String("rld"), String("lowo")),
+        3,
+    )
+    checkequal(
+        False,
+        String("helloworld"),
+        "endswith",
+        (String("hellowo"), String("ello"), String("rld")),
+        3,
+        -1,
+    )
+    checkequal(
+        True,
+        String("hello"),
+        "endswith",
+        (String("hell"), String("ell")),
+        0,
+        -1,
+    )
+    checkequal(
+        False,
+        String("hello"),
+        "endswith",
+        (String("he"), String("hel")),
+        0,
+        1,
+    )
+    checkequal(
+        True,
+        String("hello"),
+        "endswith",
+        (String("he"), String("hell")),
+        0,
+        4,
+    )
+
+    checkraises(TypeError, String("hello"), "endswith", (42,))
+
+
+</source>
+</class>
+
+<class classid="30" nclones="2" nlines="38" similarity="100">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/string/string_utils_test.py" startline="3106" endline="3148" pcid="1396">
+def test_partition():
+    checkequal(
+        (
+            String("this is the par"),
+            String("ti"),
+            String("tion method"),
+        ),
+        String("this is the partition method"),
+        "partition",
+        String("ti"),
+    )
+
+    # from raymond's original specification
+    S = String("http://www.python.org")
+    checkequal(
+        (String("http"), String("://"), String("www.python.org")),
+        S,
+        "partition",
+        String("://"),
+    )
+    checkequal(
+        (String("http://www.python.org"), String(""), String("")),
+        S,
+        "partition",
+        String("?"),
+    )
+    checkequal(
+        (String(""), String("http://"), String("www.python.org")),
+        S,
+        "partition",
+        String("http://"),
+    )
+    checkequal(
+        (String("http://www.python."), String("org"), String("")),
+        S,
+        "partition",
+        String("org"),
+    )
+
+    checkraises(ValueError, S, "partition", String(""))
+    checkraises(TypeError, S, "partition", None)
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/string/string_utils_test.py" startline="3149" endline="3191" pcid="1397">
+def test_rpartition():
+    checkequal(
+        (
+            String("this is the rparti"),
+            String("ti"),
+            String("on method"),
+        ),
+        String("this is the rpartition method"),
+        "rpartition",
+        String("ti"),
+    )
+
+    # from raymond's original specification
+    S = String("http://www.python.org")
+    checkequal(
+        (String("http"), String("://"), String("www.python.org")),
+        S,
+        "rpartition",
+        String("://"),
+    )
+    checkequal(
+        (String(""), String(""), String("http://www.python.org")),
+        S,
+        "rpartition",
+        String("?"),
+    )
+    checkequal(
+        (String(""), String("http://"), String("www.python.org")),
+        S,
+        "rpartition",
+        String("http://"),
+    )
+    checkequal(
+        (String("http://www.python."), String("org"), String("")),
+        S,
+        "rpartition",
+        String("org"),
+    )
+
+    checkraises(ValueError, S, "rpartition", String(""))
+    checkraises(TypeError, S, "rpartition", None)
+
+
+</source>
+</class>
+
+<class classid="31" nclones="2" nlines="11" similarity="75">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/string/string_id_test.py" startline="8" endline="23" pcid="1399">
+def test_id_concat_python_type() -> None:
+    val = " 2020"
+
+    result = STRING_SYFT + val
+
+    assert result.id
+    assert result.id != STRING_SYFT.id
+    assert result == STRING_PYTHON + val
+
+    result = val + STRING_SYFT
+
+    assert result.id
+    assert result.id != STRING_SYFT.id
+    assert val + STRING_PYTHON == result
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/lib/python/string/string_id_test.py" startline="24" endline="39" pcid="1400">
+def test_id_concat_syft_type() -> None:
+    val = String(" 2020")
+
+    result = STRING_SYFT + val
+
+    assert result.id
+    assert result.id != STRING_SYFT.id
+    assert val.id != result.id
+    assert result == STRING_PYTHON + val
+
+    result = val + STRING_SYFT
+
+    assert result.id
+    assert result.id != STRING_SYFT.id
+    assert val.id != result.id
+    assert val + STRING_PYTHON == result
+</source>
+</class>
+
+<class classid="32" nclones="2" nlines="23" similarity="83">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/tensor/mnist_test.py" startline="138" endline="177" pcid="1514">
+def test_basic_publish_entities_event() -> None:
+    domain = sy.Domain("My Amazing Domain", max_budget=10)
+    root_client = domain.get_root_client()
+
+    data_batch = np.random.rand(4, 10)
+
+    trask = Entity(name="Trask")
+    kritika = Entity(name="Kritika")
+    madhava = Entity(name="Madhava")
+    tudor = Entity(name="Tudor")
+
+    entities = [trask, kritika, madhava, tudor]
+
+    # Step 1: upload a private dataset as the root owner
+    data = (
+        Tensor(data_batch)
+        .private(0.01, 1, entities=entities)
+        .autograd(requires_grad=True)
+        .tag("data")
+    )
+
+    data.send(root_client)
+
+    # # Step 2: user connects to domain with a new verify_key
+    client = domain.get_client()
+
+    data_ptr = client.store["data"]
+
+    y_ptr = data_ptr.sum(0)
+
+    # can't get the private data
+    with pytest.raises(Exception):
+        y_ptr.get()
+
+    y_pub_ptr = y_ptr.publish(client=client, sigma=0.1)
+    y_pub = y_pub_ptr.get()
+    assert y_pub._data_child.ndim == 1
+    assert len(y_pub._data_child) == 10
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/tensor/mnist_test.py" startline="180" endline="215" pcid="1515">
+def test_basic_publish_entity_event() -> None:
+    domain = sy.Domain("My Amazing Domain", max_budget=10)
+    root_client = domain.get_root_client()
+
+    data_batch = np.random.rand(4, 10)
+
+    thanos = Entity(name="Thanos")
+
+    # Step 1: upload a private dataset as the root owner
+    data = (
+        Tensor(data_batch)
+        .private(0.01, 1, entity=thanos)
+        .autograd(requires_grad=True)
+        .tag("data")
+    )
+
+    data.send(root_client)
+
+    # # Step 2: user connects to domain with a new verify_key
+    client = domain.get_client()
+
+    data_ptr = client.store["data"]
+
+    y_ptr = data_ptr.gamma  # no sum op so just convert
+    y_ptr = y_ptr.sum(0)
+
+    # can't get the private data
+    with pytest.raises(Exception):
+        y_ptr.get()
+
+    y_pub_ptr = y_ptr.publish(client=client, sigma=0.1)
+    y_pub = y_pub_ptr.get()
+    assert y_pub._data_child.ndim == 1
+    assert len(y_pub._data_child) == 10
+
+
+</source>
+</class>
+
+<class classid="33" nclones="2" nlines="23" similarity="95">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/adp/linear_model_test.py" startline="16" endline="46" pcid="1527">
+def test_autodp_phiscalar_can_publish() -> None:
+    db_engine, _ = create_memory_db_engine()
+    domain = Domain(name="Bob", db_engine=db_engine)
+
+    def encode_key(key: SigningKey) -> str:
+        return key.encode(encoder=HexEncoder).decode("utf-8")
+
+    key = SigningKey.generate()
+    domain.users.signup(
+        name="Bob",
+        email="bob@gmail.com",
+        password="letmein",
+        budget=100,
+        role=1,
+        private_key=encode_key(key),
+        verify_key=encode_key(key.verify_key),
+    )
+
+    x = PhiScalar(0, 0.01, 1)
+    y = PhiScalar(0, 0.02, 1)
+    z = PhiScalar(0, 0.02, 1)
+
+    o = x * x + y * y + z
+    z = o * o * o
+
+    z.publish(acc=domain.acc, sigma=0.2, user_key=key.verify_key)
+
+    domain.acc.print_ledger()
+    assert len(domain.acc.entities) == 3
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/adp/linear_model_test.py" startline="47" endline="78" pcid="1529">
+def test_autodp_phiscalar_cannot_publish() -> None:
+    db_engine, _ = create_memory_db_engine()
+    domain = Domain(name="Bob", db_engine=db_engine)
+
+    def encode_key(key: SigningKey) -> str:
+        return key.encode(encoder=HexEncoder).decode("utf-8")
+
+    key = SigningKey.generate()
+    domain.users.signup(
+        name="Bob",
+        email="bob@gmail.com",
+        password="letmein",
+        budget=0.0001,
+        role=1,
+        private_key=encode_key(key),
+        verify_key=encode_key(key.verify_key),
+    )
+
+    x = PhiScalar(0, 0.01, 1)
+    y = PhiScalar(0, 0.02, 1)
+    z = PhiScalar(0, 0.02, 1)
+
+    o = x * x + y * y + z
+    z = o * o * o
+
+    # domain.acc.max_budget = 0.0001
+    z.publish(acc=domain.acc, sigma=0.2, user_key=key.verify_key)
+
+    domain.acc.print_ledger()
+    assert len(domain.acc.entities) == 0
+
+
+</source>
+</class>
+
+<class classid="34" nclones="2" nlines="10" similarity="80">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/pointer/garbage_collection/gc_strategies_test.py" startline="27" endline="43" pcid="1608">
+def test_gc_batched_strategy_setter() -> None:
+    node = sy.VirtualMachine(name="alice")
+    client = node.get_client()
+    client.gc.gc_strategy = GCBatched(threshold=10)
+
+    x = torch.tensor([1, 2, 3, 4])
+
+    for _ in range(9):
+        x.send(client, pointable=False)
+
+    assert len(node.store) == 9
+
+    x.send(client, pointable=False)
+
+    assert len(node.store) == 0
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/pointer/garbage_collection/gc_strategies_test.py" startline="44" endline="61" pcid="1609">
+def test_gc_batched_strategy_gc_constructor() -> None:
+    # don't share a VM with other tests
+    node = sy.VirtualMachine()
+    client = node.get_client()
+    client.gc = GarbageCollection("gcbatched", 5)
+
+    x = torch.tensor([1, 2, 3, 4])
+
+    for _ in range(4):
+        x.send(client, pointable=False)
+
+    assert len(node.store) == 4
+
+    x.send(client, pointable=False)
+
+    assert len(node.store) == 0
+
+
+</source>
+</class>
+
+<class classid="35" nclones="7" nlines="22" similarity="86">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/store/dataset_object_test.py" startline="33" endline="60" pcid="1613">
+def test_dataset_search_id() -> None:
+    id = UID()
+    data = UID()
+    description = "This is a dummy id"
+    tags = ["dummy", "test"]
+    obj1 = StorableObject(id=id, data=data, description=description, tags=tags)
+
+    id = UID()
+    data = th.Tensor([1, 2, 3, 4])
+    description = "This is a dummy tensor n1"
+    tags = ["dummy", "test"]
+    obj2 = StorableObject(id=id, data=data, description=description, tags=tags)
+
+    id = UID()
+    data = th.Tensor([10, 20, 30, 40])
+    description = "This is a dummy tensor n2"
+    tags = ["dummy", "test"]
+    obj3 = StorableObject(id=id, data=data, description=description, tags=tags)
+
+    id = UID()
+    data = [obj1, obj2, obj3]
+    description = "This is a dataset"
+    tags = ["dummy", "dataset"]
+    dataset_obj = Dataset(id=id, data=data, description=description, tags=tags)
+
+    assert dataset_obj.__contains__(_id=obj1.id)
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/store/dataset_object_test.py" startline="61" endline="88" pcid="1614">
+def test_dataset_search_id_fail() -> None:
+    id = UID()
+    data = UID()
+    description = "This is a dummy id"
+    tags = ["dummy", "test"]
+    obj1 = StorableObject(id=id, data=data, description=description, tags=tags)
+
+    id = UID()
+    data = th.Tensor([1, 2, 3, 4])
+    description = "This is a dummy tensor n1"
+    tags = ["dummy", "test"]
+    obj2 = StorableObject(id=id, data=data, description=description, tags=tags)
+
+    id = UID()
+    data = th.Tensor([10, 20, 30, 40])
+    description = "This is a dummy tensor n2"
+    tags = ["dummy", "test"]
+    obj3 = StorableObject(id=id, data=data, description=description, tags=tags)
+
+    id = UID()
+    data = [obj1, obj2, obj3]
+    description = "This is a dataset"
+    tags = ["dummy", "dataset"]
+    dataset_obj = Dataset(id=id, data=data, description=description, tags=tags)
+
+    assert not dataset_obj.__contains__(_id=UID())
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/store/dataset_object_test.py" startline="120" endline="147" pcid="1616">
+def test_dataset_get_element_fail() -> None:
+    id = UID()
+    data = UID()
+    description = "This is a dummy id"
+    tags = ["dummy", "test"]
+    obj1 = StorableObject(id=id, data=data, description=description, tags=tags)
+
+    id = UID()
+    data = th.Tensor([1, 2, 3, 4])
+    description = "This is a dummy tensor n1"
+    tags = ["dummy", "test"]
+    obj2 = StorableObject(id=id, data=data, description=description, tags=tags)
+
+    id = UID()
+    data = th.Tensor([10, 20, 30, 40])
+    description = "This is a dummy tensor n2"
+    tags = ["dummy", "test"]
+    obj3 = StorableObject(id=id, data=data, description=description, tags=tags)
+
+    id = UID()
+    data = [obj1, obj2, obj3]
+    description = "This is a dataset"
+    tags = ["dummy", "dataset"]
+    dataset_obj = Dataset(id=id, data=data, description=description, tags=tags)
+
+    assert dataset_obj.__getitem__(UID()) == []
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/store/dataset_object_test.py" startline="206" endline="234" pcid="1619">
+def test_serde_storable_obj() -> None:
+    id = UID()
+    data = th.Tensor([-1, -2, -3, -4])
+    description = "This is a dummy id"
+    tags = ["dummy", "test"]
+    obj1 = StorableObject(id=id, data=data, description=description, tags=tags)
+
+    id = UID()
+    data = th.Tensor([1, 2, 3, 4])
+    description = "This is a dummy tensor n1"
+    tags = ["dummy", "test"]
+    obj2 = StorableObject(id=id, data=data, description=description, tags=tags)
+
+    id = UID()
+    data = th.Tensor([10, 20, 30, 40])
+    description = "This is a dummy tensor n2"
+    tags = ["dummy", "test"]
+    obj3 = StorableObject(id=id, data=data, description=description, tags=tags)
+
+    id = UID()
+    data = [obj1, obj2, obj3]
+    description = "This is a dataset"
+    tags = ["dummy", "dataset"]
+    dataset_obj = Dataset(id=id, data=data, description=description, tags=tags)
+
+    blob = sy.serialize(obj=dataset_obj)
+    sy.deserialize(blob=blob)
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/store/dataset_object_test.py" startline="148" endline="175" pcid="1617">
+def test_dataset_get_keys() -> None:
+    id = UID()
+    data = UID()
+    description = "This is a dummy id"
+    tags = ["dummy", "test"]
+    obj1 = StorableObject(id=id, data=data, description=description, tags=tags)
+
+    id = UID()
+    data = th.Tensor([1, 2, 3, 4])
+    description = "This is a dummy tensor n1"
+    tags = ["dummy", "test"]
+    obj2 = StorableObject(id=id, data=data, description=description, tags=tags)
+
+    id = UID()
+    data = th.Tensor([10, 20, 30, 40])
+    description = "This is a dummy tensor n2"
+    tags = ["dummy", "test"]
+    obj3 = StorableObject(id=id, data=data, description=description, tags=tags)
+
+    id = UID()
+    data = [obj1, obj2, obj3]
+    description = "This is a dataset"
+    tags = ["dummy", "dataset"]
+    dataset_obj = Dataset(id=id, data=data, description=description, tags=tags)
+
+    assert dataset_obj.keys() == [obj1.id, obj2.id, obj3.id]
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/store/dataset_object_test.py" startline="176" endline="205" pcid="1618">
+def test_dataset_del() -> None:
+    id = UID()
+    data = UID()
+    description = "This is a dummy id"
+    tags = ["dummy", "test"]
+    obj1 = StorableObject(id=id, data=data, description=description, tags=tags)
+
+    id = UID()
+    data = th.Tensor([1, 2, 3, 4])
+    description = "This is a dummy tensor n1"
+    tags = ["dummy", "test"]
+    obj2 = StorableObject(id=id, data=data, description=description, tags=tags)
+
+    id = UID()
+    data = th.Tensor([10, 20, 30, 40])
+    description = "This is a dummy tensor n2"
+    tags = ["dummy", "test"]
+    obj3 = StorableObject(id=id, data=data, description=description, tags=tags)
+
+    id = UID()
+    data = [obj1, obj2, obj3]
+    description = "This is a dataset"
+    tags = ["dummy", "dataset"]
+    dataset_obj = Dataset(id=id, data=data, description=description, tags=tags)
+
+    dataset_obj.__delitem__(obj2.id)
+
+    assert dataset_obj.data == [obj1, obj3]
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/store/dataset_object_test.py" startline="89" endline="119" pcid="1615">
+def test_dataset_get_element() -> None:
+    id = UID()
+    data = UID()
+    description = "This is a dummy id"
+    tags = ["dummy", "test"]
+    obj1 = StorableObject(id=id, data=data, description=description, tags=tags)
+
+    id = UID()
+    data = th.Tensor([1, 2, 3, 4])
+    description = "This is a dummy tensor n1"
+    tags = ["dummy", "test"]
+    obj2 = StorableObject(id=id, data=data, description=description, tags=tags)
+
+    id = UID()
+    data = th.Tensor([10, 20, 30, 40])
+    description = "This is a dummy tensor n2"
+    tags = ["dummy", "test"]
+    obj3 = StorableObject(id=id, data=data, description=description, tags=tags)
+
+    id = UID()
+    data = [obj1, obj2, obj3]
+    description = "This is a dataset"
+    tags = ["dummy", "dataset"]
+    dataset_obj = Dataset(id=id, data=data, description=description, tags=tags)
+
+    result = dataset_obj.__getitem__(_id=obj1.id)
+
+    assert len(result) == 1
+    assert result[0] == obj1
+
+
+</source>
+</class>
+
+<class classid="36" nclones="2" nlines="10" similarity="100">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/store/memory_storage_test.py" startline="49" endline="63" pcid="1626">
+def test_set_item() -> None:
+    """Tests that __setitem__ and __getitem__ work intuitively."""
+
+    store = MemoryStore()
+    id1, obj1 = generate_id_obj(
+        data=th.Tensor([1, 2, 3, 4]),
+        description="Dummy tensor",
+        tags=["dummy", "tensor"],
+    )
+
+    store[id1] = obj1
+    assert id1 in store
+    assert len(store) == 1
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/store/memory_storage_test.py" startline="64" endline="78" pcid="1627">
+def test_store_item() -> None:
+    """Tests that store() works as an alternative to __setitem__."""
+
+    store = MemoryStore()
+    id1, obj1 = generate_id_obj(
+        data=th.Tensor([1, 2, 3, 4]),
+        description="Dummy tensor",
+        tags=["dummy", "tensor"],
+    )
+
+    store[id1] = obj1
+    assert id1 in store
+    assert len(store) == 1
+
+
+</source>
+</class>
+
+<class classid="37" nclones="2" nlines="17" similarity="82">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/store/memory_storage_test.py" startline="107" endline="128" pcid="1629">
+def test_keys_values() -> None:
+    """Tests that keys() and values() work intuitively and offer MemoryStore
+    a dict-like usage."""
+
+    store = MemoryStore()
+    id1, obj1 = generate_id_obj(
+        data=th.Tensor([1, 2, 3, 4]),
+        description="Dummy tensor",
+        tags=["dummy", "tensor"],
+    )
+    id2, obj2 = generate_id_obj(
+        data=th.Tensor([1, 2, 3]),
+        description="Another dummy tensor",
+        tags=["another", "dummy", "tensor"],
+    )
+
+    store[id1] = obj1
+    store[id2] = obj2
+    assert list(store.keys()) == [id1, id2]
+    assert list(store.values()) == [obj1, obj2]
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/store/memory_storage_test.py" startline="129" endline="152" pcid="1630">
+def test_clear_len() -> None:
+    """Tests that clear() empties the MemoryStore and len() returns the
+    number of stored objects."""
+
+    store = MemoryStore()
+    id1, obj1 = generate_id_obj(
+        data=th.Tensor([1, 2, 3, 4]),
+        description="Dummy tensor",
+        tags=["dummy", "tensor"],
+    )
+    id2, obj2 = generate_id_obj(
+        data=th.Tensor([1, 2, 3]),
+        description="Another dummy tensor",
+        tags=["another", "dummy", "tensor"],
+    )
+
+    store[id1] = obj1
+    store[id2] = obj2
+
+    assert len(store) == 2
+    store.clear()
+    assert len(store) == 0
+
+
+</source>
+</class>
+
+<class classid="38" nclones="3" nlines="15" similarity="80">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/node/domain/domain_test.py" startline="33" endline="60" pcid="1634">
+def test_domain_request_pending() -> None:
+    domain_1 = Domain(name="remote domain")
+    tensor = th.tensor([1, 2, 3])
+
+    domain_1_client = domain_1.get_root_client()
+    data_ptr_domain_1 = tensor.send(domain_1_client)
+
+    domain_2 = Domain(name="my domain")
+
+    data_ptr_domain_1.request(
+        reason="I'd lke to see this pointer",
+    )
+
+    requested_object = data_ptr_domain_1.id_at_location
+
+    # make request
+    message_request_id = domain_1_client.requests.get_request_id_from_object_id(
+        object_id=requested_object
+    )
+
+    # check status
+    response = data_ptr_domain_1.check_access(
+        node=domain_2, request_id=message_request_id
+    )
+
+    assert RequestStatus.Pending == response
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/node/domain/domain_test.py" startline="65" endline="94" pcid="1635">
+def test_domain_request_denied() -> None:
+    domain_1 = Domain(name="remote domain")
+    tensor = th.tensor([1, 2, 3])
+
+    domain_1_client = domain_1.get_root_client()
+    data_ptr_domain_1 = tensor.send(domain_1_client)
+
+    domain_2 = Domain(name="my domain")
+
+    data_ptr_domain_1.request(reason="I'd lke to see this pointer")
+
+    requested_object = data_ptr_domain_1.id_at_location
+
+    # make request
+    message_request_id = domain_1_client.requests.get_request_id_from_object_id(
+        object_id=requested_object
+    )
+
+    # domain 1 client rejects request
+    domain_1.requests[0].owner_client_if_available = domain_1_client
+    domain_1.requests[0].deny()
+
+    # check status
+    response = data_ptr_domain_1.check_access(
+        node=domain_2, request_id=message_request_id
+    )
+
+    assert RequestStatus.Rejected == response
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/node/domain/domain_test.py" startline="98" endline="124" pcid="1636">
+def test_domain_request_accepted() -> None:
+    domain_1 = Domain(name="remote domain")
+    tensor = th.tensor([1, 2, 3])
+
+    domain_1_client = domain_1.get_root_client()
+    data_ptr_domain_1 = tensor.send(domain_1_client)
+
+    domain_2 = Domain(name="my domain")
+
+    data_ptr_domain_1.request(reason="I'd lke to see this pointer")
+
+    requested_object = data_ptr_domain_1.id_at_location
+
+    message_request_id = domain_1_client.requests.get_request_id_from_object_id(
+        object_id=requested_object
+    )
+
+    domain_1.requests[0].owner_client_if_available = domain_1_client
+    domain_1.requests[0].accept()
+
+    response = data_ptr_domain_1.check_access(
+        node=domain_2, request_id=message_request_id
+    )
+
+    assert RequestStatus.Accepted == response
+
+
+</source>
+</class>
+
+<class classid="39" nclones="2" nlines="17" similarity="100">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/node/domain/service/request_message_test.py" startline="54" endline="75" pcid="1642">
+def test_accept(method_name: str) -> None:
+    node = Domain(name="remote domain")
+    node_client = node.get_root_client()
+
+    addr = Address()
+    request = RequestMessage(
+        object_id=UID(),
+        address=addr,
+        requester_verify_key=get_verify_key(),
+        owner_address=addr,
+        owner_client_if_available=node_client,
+    )
+
+    with patch.object(
+        request.owner_client_if_available, "send_immediate_msg_without_reply"
+    ) as mock_send_msg:
+        getattr(request, method_name)()
+        assert mock_send_msg.call_args[1]["msg"].address == node_client.address
+        assert mock_send_msg.call_args[1]["msg"].accept is True
+        assert mock_send_msg.call_args[1]["msg"].request_id == request.id
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/node/domain/service/request_message_test.py" startline="78" endline="99" pcid="1643">
+def test_deny(method_name: str) -> None:
+    node = Domain(name="remote domain")
+    node_client = node.get_root_client()
+
+    addr = Address()
+    request = RequestMessage(
+        object_id=UID(),
+        address=addr,
+        requester_verify_key=get_verify_key(),
+        owner_address=addr,
+        owner_client_if_available=node_client,
+    )
+
+    with patch.object(
+        request.owner_client_if_available, "send_immediate_msg_without_reply"
+    ) as mock_send_msg:
+        getattr(request, method_name)()
+        assert mock_send_msg.call_args[1]["msg"].address == node_client.address
+        assert mock_send_msg.call_args[1]["msg"].accept is False
+        assert mock_send_msg.call_args[1]["msg"].request_id == request.id
+
+
+</source>
+</class>
+
+<class classid="40" nclones="3" nlines="10" similarity="100">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/node/domain/service/request_message_test.py" startline="100" endline="112" pcid="1644">
+def test_fail_accept_request_message() -> None:
+    addr = Address()
+    request = RequestMessage(
+        object_id=UID(),
+        address=addr,
+        requester_verify_key=get_verify_key(),
+        owner_address=addr,
+    )
+
+    with raises(Exception, match="No way to dispatch Accept Message."):
+        request.accept()
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/node/domain/service/request_message_test.py" startline="126" endline="136" pcid="1646">
+def test_fail_process_request_service() -> None:
+    addr = Address()
+    request = RequestMessage(
+        object_id=UID(),
+        address=addr,
+        requester_verify_key=get_verify_key(),
+        owner_address=addr,
+    )
+
+    with raises(Exception, match="No way to dispatch Deny Message."):
+        request.deny()
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/node/domain/service/request_message_test.py" startline="113" endline="125" pcid="1645">
+def test_fail_deny_request_message() -> None:
+    addr = Address()
+    request = RequestMessage(
+        object_id=UID(),
+        address=addr,
+        requester_verify_key=get_verify_key(),
+        owner_address=addr,
+    )
+
+    with raises(Exception, match="No way to dispatch Deny Message."):
+        request.deny()
+
+
+</source>
+</class>
+
+<class classid="41" nclones="8" nlines="11" similarity="75">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/node/common/service/auth_test.py" startline="12" endline="31" pcid="1660">
+def test_service_auth_root_fails() -> None:
+    node = sy.Device()
+    msg = sy.ReprMessage(address=node.address)
+
+    random_signing_key = SigningKey.generate()
+    random_verify_key = random_signing_key.verify_key
+
+    # root_only
+    @service_auth(root_only=True)
+    def process(node: sy.Device, msg: sy.ReprMessage, verify_key: VerifyKey) -> None:
+        pass
+
+    process(node=node, msg=msg, verify_key=node.root_verify_key)
+
+    with pytest.raises(
+        AuthorizationException, match="You are not Authorized to access this service"
+    ):
+        process(node=node, msg=msg, verify_key=random_verify_key)
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/node/common/service/auth_test.py" startline="101" endline="117" pcid="1670">
+def test_service_auth_admin_success() -> None:
+    node = sy.Device()
+    msg = sy.ReprMessage(address=node.address)
+
+    random_signing_key = SigningKey.generate()
+    random_verify_key = random_signing_key.verify_key
+
+    # Administrator only
+    @service_auth(admin_only=True)
+    def process(node: sy.Device, msg: sy.ReprMessage, verify_key: VerifyKey) -> None:
+        pass
+
+    # NOTE didn't find a method to add a key to admin_verify_key_registry
+    node.admin_verify_key_registry.add(random_verify_key)
+    process(node=node, msg=msg, verify_key=random_verify_key)
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/node/common/service/auth_test.py" startline="136" endline="152" pcid="1674">
+def test_service_auth_cpl_ofcr_success() -> None:
+    node = sy.Device()
+    msg = sy.ReprMessage(address=node.address)
+
+    random_signing_key = SigningKey.generate()
+    random_verify_key = random_signing_key.verify_key
+
+    # Compliance Officer only
+    @service_auth(cpl_ofcr_only=True)
+    def process(node: sy.Device, msg: sy.ReprMessage, verify_key: VerifyKey) -> None:
+        pass
+
+    # NOTE didn't find a method to add a key to cpl_ofcr_verify_key_registry
+    node.cpl_ofcr_verify_key_registry.add(random_verify_key)
+    process(node=node, msg=msg, verify_key=random_verify_key)
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/node/common/service/auth_test.py" startline="51" endline="66" pcid="1664">
+def test_service_auth_guests_fails() -> None:
+    node = sy.Device()
+    msg = sy.ReprMessage(address=node.address)
+    new_signing_key = SigningKey.generate()
+    new_verify_key = new_signing_key.verify_key
+
+    # guests_welcome
+    @service_auth(guests_welcome=True)
+    def process(node: sy.Device, msg: sy.ReprMessage, verify_key: VerifyKey) -> None:
+        pass
+
+    process(node=node, msg=msg, verify_key=new_verify_key)
+
+    assert new_verify_key not in node.guest_verify_key_registry
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/node/common/service/auth_test.py" startline="118" endline="135" pcid="1672">
+def test_service_auth_cpl_ofcr_fails() -> None:
+    node = sy.Device()
+    msg = sy.ReprMessage(address=node.address)
+
+    random_signing_key = SigningKey.generate()
+    random_verify_key = random_signing_key.verify_key
+
+    # Compliance Officer only
+    @service_auth(cpl_ofcr_only=True)
+    def process(node: sy.Device, msg: sy.ReprMessage, verify_key: VerifyKey) -> None:
+        pass
+
+    with pytest.raises(
+        AuthorizationException, match="User lacks Compliance Officer credentials."
+    ):
+        process(node=node, msg=msg, verify_key=random_verify_key)
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/node/common/service/auth_test.py" startline="83" endline="100" pcid="1668">
+def test_service_auth_admin_fails() -> None:
+    node = sy.Device()
+    msg = sy.ReprMessage(address=node.address)
+
+    random_signing_key = SigningKey.generate()
+    random_verify_key = random_signing_key.verify_key
+
+    # Administrator only
+    @service_auth(admin_only=True)
+    def process(node: sy.Device, msg: sy.ReprMessage, verify_key: VerifyKey) -> None:
+        pass
+
+    with pytest.raises(
+        AuthorizationException, match="User lacks Administrator credentials."
+    ):
+        process(node=node, msg=msg, verify_key=random_verify_key)
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/node/common/service/auth_test.py" startline="32" endline="50" pcid="1662">
+def test_service_auth_existing_user() -> None:
+    node = sy.Device()
+    msg = sy.ReprMessage(address=node.address)
+    random_signing_key = SigningKey.generate()
+    random_verify_key = random_signing_key.verify_key
+
+    # existing_users_only
+    @service_auth(existing_users_only=True)
+    def process(node: sy.Device, msg: sy.ReprMessage, verify_key: VerifyKey) -> None:
+        pass
+
+    with pytest.raises(AuthorizationException, match="User not known."):
+        process(node=node, msg=msg, verify_key=random_verify_key)
+
+    # NOTE didn't find a method to add a key to guest_verify_key_registry
+    node.guest_verify_key_registry.add(random_verify_key)
+    process(node=node, msg=msg, verify_key=random_verify_key)
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/node/common/service/auth_test.py" startline="67" endline="82" pcid="1666">
+def test_service_auth_guests_succeeds() -> None:
+    node = sy.Device()
+    msg = sy.ReprMessage(address=node.address)
+    new_signing_key = SigningKey.generate()
+    new_verify_key = new_signing_key.verify_key
+
+    # register_new_guests
+    @service_auth(guests_welcome=True, register_new_guests=True)
+    def process(node: sy.Device, msg: sy.ReprMessage, verify_key: VerifyKey) -> None:
+        pass
+
+    process(node=node, msg=msg, verify_key=new_verify_key)
+
+    assert new_verify_key in node.guest_verify_key_registry
+
+
+</source>
+</class>
+
+<class classid="42" nclones="2" nlines="14" similarity="71">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/node/common/service/resolve_pointer_type_test.py" startline="30" endline="48" pcid="1683">
+def test_resolve_any_pointer_type(
+    root_client: sy.VirtualMachineClient,
+    inputs: Tuple[int, float, bool, torch.Tensor],
+    input_pointer_types: Tuple[str, str, str, str],
+    equality_functions: List[Callable],
+) -> None:
+    tuple_ptr = root_client.syft.lib.python.Tuple(inputs)
+
+    for idx, elem in enumerate(inputs):
+        remote_pointer = tuple_ptr[idx]
+
+        assert type(remote_pointer).__name__ == "AnyPointer"
+        resolved_pointer = remote_pointer.resolve_pointer_type()
+        assert remote_pointer.id_at_location == resolved_pointer.id_at_location
+        assert type(resolved_pointer).__name__ == input_pointer_types[idx]
+        assert equality_functions[idx](resolved_pointer.get(), elem)
+
+
+# MADHAVA: this needs fixing
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/node/common/service/resolve_pointer_type_test.py" startline="50" endline="65" pcid="1684">
+def test_resolve_union_pointer_type(
+    root_client: sy.VirtualMachineClient,
+    inputs: Tuple[int, float, bool, torch.Tensor],
+    input_pointer_types: Tuple[str, str, str, str],
+    equality_functions: List[Callable],
+) -> None:
+    list_ptr = root_client.syft.lib.python.List(list(inputs))
+
+    for idx, remote_pointer in enumerate(list_ptr):
+        assert (
+            type(remote_pointer).__name__ == "FloatIntStringTensorParameterUnionPointer"
+        )
+        resolved_pointer = remote_pointer.resolve_pointer_type()
+        assert remote_pointer.id_at_location == resolved_pointer.id_at_location
+        assert type(resolved_pointer).__name__ == input_pointer_types[idx]
+        assert equality_functions[idx](resolved_pointer.get(), inputs[idx])
+</source>
+</class>
+
+<class classid="43" nclones="2" nlines="16" similarity="81">
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/node/common/service/obj_search_permission_service_test.py" startline="38" endline="62" pcid="1686">
+def test_object_search_permissons_update_execute_add() -> None:
+    bob_phone = sy.Device(name="Bob's iPhone")
+    bob_phone_client = bob_phone.get_client()
+
+    ptr = th.tensor([1, 2, 3]).send(bob_phone_client)
+
+    msg = ObjectSearchPermissionUpdateMessage(
+        add_instead_of_remove=True,
+        target_verify_key=bob_phone_client.verify_key,
+        target_object_id=ptr.id_at_location,
+        address=bob_phone_client.address,
+    )
+
+    ImmediateObjectSearchPermissionUpdateService.process(
+        node=bob_phone, msg=msg, verify_key=bob_phone.verify_key
+    )
+
+    assert (
+        bob_phone.store[ptr.id_at_location].search_permissions[
+            bob_phone_client.verify_key
+        ]
+        == msg.id
+    )
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/syft/tests/syft/core/node/common/service/obj_search_permission_service_test.py" startline="63" endline="85" pcid="1687">
+def test_object_search_permissons_update_execute_remove() -> None:
+    bob_phone = sy.Device(name="Bob's iPhone")
+    bob_phone_client = bob_phone.get_client()
+
+    ptr = th.tensor([1, 2, 3]).send(bob_phone_client)
+
+    msg = ObjectSearchPermissionUpdateMessage(
+        add_instead_of_remove=False,
+        target_verify_key=bob_phone_client.verify_key,
+        target_object_id=ptr.id_at_location,
+        address=bob_phone_client.address,
+    )
+
+    bob_phone.store[ptr.id_at_location].search_permissions[bob_phone.verify_key] = None
+
+    ImmediateObjectSearchPermissionUpdateService.process(
+        node=bob_phone, msg=msg, verify_key=bob_phone.verify_key
+    )
+
+    assert (
+        bob_phone_client.verify_key
+        not in bob_phone.store[ptr.id_at_location].search_permissions
+    )
+</source>
+</class>
+
+<class classid="44" nclones="2" nlines="11" similarity="81">
+<source file="systems/PySyft-0.6.0/packages/hagrid/hagrid/lib.py" startline="127" endline="138" pcid="1714">
+def update_repo(repo: git.Repo, branch: str) -> None:
+    if not EDITABLE_MODE:
+        print(f"Updating HAGrid from branch: {branch}")
+        try:
+            if repo.is_dirty():
+                repo.git.reset("--hard")
+            repo.git.checkout(branch)
+            repo.remotes.origin.pull()
+        except Exception as e:
+            print(f"Error checking out branch {branch}.", e)
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/hagrid/hagrid/lib.py" startline="149" endline="161" pcid="1716">
+def use_branch(branch: str) -> None:
+    if not EDITABLE_MODE:
+        print(f"Using HAGrid from branch: {branch}")
+        repo = get_git_repo()
+        try:
+            if repo.is_dirty():
+                repo.git.reset("--hard")
+            repo.git.checkout(branch)
+            repo.remotes.origin.pull()
+        except Exception as e:
+            print(f"Error checking out branch {branch}.", e)
+
+
+</source>
+</class>
+
+<class classid="45" nclones="2" nlines="12" similarity="83">
+<source file="systems/PySyft-0.6.0/packages/hagrid/hagrid/win_bootstrap.py" startline="62" endline="74" pcid="1731">
+def path_where_is(binary: str) -> bool:
+    try:
+        cmds = ["where.exe", binary]
+        output = subprocess.run(cmds, capture_output=True, cwd="C:\\")
+        out = str(output.stdout.decode("utf-8")).split("\r\n")
+        if binary in out[0]:
+            return True
+    except Exception as e:
+        print("error", e)
+        pass
+    return False
+
+
+</source>
+<source file="systems/PySyft-0.6.0/packages/hagrid/hagrid/win_bootstrap.py" startline="75" endline="88" pcid="1732">
+def full_where_is(binary: str) -> bool:
+    try:
+        powershell_cmd = f"where.exe /R C:\ *.exe | findstr \\{binary}$"  # noqa: W605
+        cmds = ["powershell.exe", "-Command", powershell_cmd]
+        output = subprocess.run(cmds, capture_output=True, cwd="C:\\")
+        out = str(output.stdout.decode("utf-8")).split("\r\n")
+        if binary in out[0]:
+            return True
+    except Exception as e:
+        print("error", e)
+        pass
+    return False
+
+
+</source>
+</class>
+
+</clones>

@@ -1,0 +1,4105 @@
+<clones>
+<systeminfo processor="nicad6" system="catalyst-22.02" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="866" npairs="180"/>
+<runinfo ncompares="24244" cputime="50496"/>
+<classinfo nclasses="31"/>
+
+<class classid="1" nclones="2" nlines="17" similarity="76">
+<source file="systems/catalyst-22.02/catalyst/contrib/models/mnist.py" startline="10" endline="31" pcid="41">
+    def __init__(self, out_features: int, normalize: bool = True):
+        """
+        Args:
+            out_features: size of the output tensor
+            normalize: boolean flag to add normalize layer
+        """
+        super().__init__()
+        layers = [
+            nn.Conv2d(1, 32, 3, 1),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, 3, 1),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+            Flatten(),
+            nn.Linear(9216, 128),
+            nn.ReLU(),
+            nn.Linear(128, out_features),
+        ]
+        if normalize:
+            layers.append(Normalize())
+        self._net = nn.Sequential(*layers)
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/contrib/models/mnist.py" startline="46" endline="68" pcid="43">
+    def __init__(self, out_features: int):
+        """
+        Args:
+            out_features: size of the output tensor
+        """
+        super().__init__()
+        layers = [
+            nn.Conv2d(1, 32, 3, 1),
+            nn.LeakyReLU(),
+            nn.BatchNorm2d(32),
+            nn.Conv2d(32, 64, 3, 1),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2),
+            Flatten(),
+            nn.BatchNorm1d(9216),
+            nn.Linear(9216, 128),
+            nn.LeakyReLU(),
+            nn.Linear(128, out_features),
+            nn.BatchNorm1d(out_features),
+        ]
+
+        self._net = nn.Sequential(*layers)
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="10" similarity="90">
+<source file="systems/catalyst-22.02/catalyst/contrib/data/reader_cv.py" startline="10" endline="30" pcid="49">
+    def __init__(
+        self,
+        input_key: str,
+        output_key: Optional[str] = None,
+        rootpath: Optional[str] = None,
+        grayscale: bool = False,
+    ):
+        """
+        Args:
+            input_key: key to use from annotation dict
+            output_key: key to use to store the result,
+                default: ``input_key``
+            rootpath: path to images dataset root directory
+                (so your can use relative paths in annotations)
+            grayscale: flag if you need to work only
+                with grayscale images
+        """
+        super().__init__(input_key, output_key or input_key)
+        self.rootpath = rootpath
+        self.grayscale = grayscale
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/contrib/data/reader_cv.py" startline="51" endline="72" pcid="51">
+    def __init__(
+        self,
+        input_key: str,
+        output_key: Optional[str] = None,
+        rootpath: Optional[str] = None,
+        clip_range: Tuple[Union[int, float], Union[int, float]] = (0, 1),
+    ):
+        """
+        Args:
+            input_key: key to use from annotation dict
+            output_key: key to use to store the result,
+                default: ``input_key``
+            rootpath: path to images dataset root directory
+                (so your can use relative paths in annotations)
+            clip_range (Tuple[int, int]): lower and upper interval edges,
+                image values outside the interval are clipped
+                to the interval edges
+        """
+        super().__init__(input_key, output_key or input_key)
+        self.rootpath = rootpath
+        self.clip = clip_range
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="21" similarity="100">
+<source file="systems/catalyst-22.02/catalyst/contrib/utils/thresholds.py" startline="300" endline="339" pcid="66">
+def get_multilabel_thresholds_greedy(
+    scores: np.ndarray,
+    labels: np.ndarray,
+    objective: METRIC_FN,
+    num_iterations: int = 100,
+    num_thresholds: int = 100,
+    thresholds: np.ndarray = None,
+    patience: int = 3,
+    atol: float = 0.01,
+) -> Tuple[float, List[float]]:
+    """Finds best thresholds
+    for multilabel classification task with brute-force algorithm.
+
+    Args:
+        scores: estimated per-class scores/probabilities predicted by the model
+        labels: ground truth labels
+        objective: callable function, metric which we want to maximize
+        num_iterations: number of iteration for brute-force algorithm
+        num_thresholds: number of thresholds ot try for each class
+        thresholds: baseline thresholds, which we want to optimize
+        patience: maximum number of iteration before early stop exit
+        atol: minimum required improvement per iteration for early stop exit
+
+    Returns:
+        tuple with best found objective score and per-class thresholds
+    """
+    best_metric, thresholds = get_thresholds_greedy(
+        scores=scores,
+        labels=labels,
+        score_fn=partial(_multilabel_score_fn, objective=objective),
+        num_iterations=num_iterations,
+        num_thresholds=num_thresholds,
+        thresholds=thresholds,
+        patience=patience,
+        atol=atol,
+    )
+
+    return best_metric, thresholds
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/contrib/utils/thresholds.py" startline="347" endline="386" pcid="68">
+def get_multiclass_thresholds_greedy(
+    scores: np.ndarray,
+    labels: np.ndarray,
+    objective: METRIC_FN,
+    num_iterations: int = 100,
+    num_thresholds: int = 100,
+    thresholds: np.ndarray = None,
+    patience: int = 3,
+    atol: float = 0.01,
+) -> Tuple[float, List[float]]:
+    """Finds best thresholds
+    for multiclass classification task with brute-force algorithm.
+
+    Args:
+        scores: estimated per-class scores/probabilities predicted by the model
+        labels: ground truth labels
+        objective: callable function, metric which we want to maximize
+        num_iterations: number of iteration for brute-force algorithm
+        num_thresholds: number of thresholds ot try for each class
+        thresholds: baseline thresholds, which we want to optimize
+        patience: maximum number of iteration before early stop exit
+        atol: minimum required improvement per iteration for early stop exit
+
+    Returns:
+        tuple with best found objective score and per-class thresholds
+    """
+    best_metric, thresholds = get_thresholds_greedy(
+        scores=scores,
+        labels=labels,
+        score_fn=partial(_multiclass_score_fn, objective=objective),
+        num_iterations=num_iterations,
+        num_thresholds=num_thresholds,
+        thresholds=thresholds,
+        patience=patience,
+        atol=atol,
+    )
+
+    return best_metric, thresholds
+
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="26" similarity="92">
+<source file="systems/catalyst-22.02/catalyst/contrib/utils/thresholds.py" startline="387" endline="426" pcid="69">
+def get_best_multilabel_thresholds(
+    scores: np.ndarray, labels: np.ndarray, objective: METRIC_FN
+) -> Tuple[float, List[float]]:
+    """Finds best thresholds for multilabel classification task.
+
+    Args:
+        scores: estimated per-class scores/probabilities predicted by the model
+        labels: ground truth labels
+        objective: callable function, metric which we want to maximize
+
+    Returns:
+        tuple with best found objective score and per-class thresholds
+    """
+    num_classes = scores.shape[1]
+    best_metric, best_thresholds = 0.0, []
+
+    for baseline_thresholds_fn in [
+        get_baseline_thresholds,
+        get_multiclass_thresholds,
+        get_binary_threshold,
+        get_multilabel_thresholds,
+    ]:
+        _, baseline_thresholds = baseline_thresholds_fn(
+            labels=labels, scores=scores, objective=objective
+        )
+        if isinstance(baseline_thresholds, (int, float)):
+            baseline_thresholds = [baseline_thresholds] * num_classes
+        metric_value, thresholds_value = get_multilabel_thresholds_greedy(
+            labels=labels,
+            scores=scores,
+            objective=objective,
+            thresholds=baseline_thresholds,
+        )
+        if metric_value > best_metric:
+            best_metric = metric_value
+            best_thresholds = thresholds_value
+
+    return best_metric, best_thresholds
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/contrib/utils/thresholds.py" startline="427" endline="468" pcid="70">
+def get_best_multiclass_thresholds(
+    scores: np.ndarray, labels: np.ndarray, objective: METRIC_FN
+) -> Tuple[float, List[float]]:
+    """Finds best thresholds for multiclass classification task.
+
+    Args:
+        scores: estimated per-class scores/probabilities predicted by the model
+        labels: ground truth labels
+        objective: callable function, metric which we want to maximize
+
+    Returns:
+        tuple with best found objective score and per-class thresholds
+    """
+    num_classes = scores.shape[1]
+    best_metric, best_thresholds = 0.0, []
+    labels_onehot = np.zeros((labels.size, labels.max() + 1))
+    labels_onehot[np.arange(labels.size), labels] = 1
+
+    for baseline_thresholds_fn in [
+        get_baseline_thresholds,
+        get_multiclass_thresholds,
+        get_binary_threshold,
+        get_multilabel_thresholds,
+    ]:
+        _, baseline_thresholds = baseline_thresholds_fn(
+            labels=labels_onehot, scores=scores, objective=objective
+        )
+        if isinstance(baseline_thresholds, (int, float)):
+            baseline_thresholds = [baseline_thresholds] * num_classes
+        metric_value, thresholds_value = get_multiclass_thresholds_greedy(
+            labels=labels,
+            scores=scores,
+            objective=objective,
+            thresholds=baseline_thresholds,
+        )
+        if metric_value > best_metric:
+            best_metric = metric_value
+            best_thresholds = thresholds_value
+
+    return best_metric, best_thresholds
+
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="13" similarity="85">
+<source file="systems/catalyst-22.02/catalyst/contrib/datasets/movielens.py" startline="148" endline="165" pcid="98">
+    def _download(self):
+        """Download and extract files/"""
+        if self._check_exists():
+            return
+
+        os.makedirs(self.raw_folder, exist_ok=True)
+        os.makedirs(self.processed_folder, exist_ok=True)
+        url = self.resources[0]
+        md5 = self.resources[1]
+
+        download_and_extract_archive(
+            url=url,
+            download_root=self.raw_folder,
+            filename=self.filename,
+            md5=md5,
+            remove_finished=True,
+        )
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/contrib/datasets/movielens.py" startline="528" endline="543" pcid="110">
+    def _download(self):
+        """Download and extract files"""
+        if self._check_exists():
+            return
+
+        os.makedirs(self.raw_folder, exist_ok=True)
+        os.makedirs(self.processed_folder, exist_ok=True)
+        url = self.resources[0]
+
+        download_and_extract_archive(
+            url=url,
+            download_root=self.raw_folder,
+            filename=self.filename,
+            remove_finished=True,
+        )
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="22" similarity="73">
+<source file="systems/catalyst-22.02/catalyst/contrib/optimizers/adamp.py" startline="42" endline="84" pcid="133">
+    def __init__(
+        self,
+        params,
+        lr=1e-3,
+        betas=(0.9, 0.999),
+        eps=1e-8,
+        weight_decay=0,
+        delta=0.1,
+        wd_ratio=0.1,
+        nesterov=False,
+    ):
+        """
+
+        Args:
+            params: iterable of parameters to optimize
+                or dicts defining parameter groups
+            lr (float, optional): learning rate (default: 1e-3)
+            betas (Tuple[float, float], optional): coefficients
+                used for computing running averages of gradient
+                and its square (default: (0.9, 0.999))
+            eps (float, optional): term added to the denominator to improve
+                numerical stability (default: 1e-8)
+            weight_decay (float, optional): weight decay coefficient
+                (default: 1e-2)
+            delta: threshold that determines whether
+                a set of parameters is scale invariant or not (default: 0.1)
+            wd_ratio: relative weight decay applied on scale-invariant
+                parameters compared to that applied on scale-variant parameters
+                (default: 0.1)
+            nesterov (boolean, optional): enables Nesterov momentum
+                (default: False)
+        """
+        defaults = dict(  # noqa: C408
+            lr=lr,
+            betas=betas,
+            eps=eps,
+            weight_decay=weight_decay,
+            delta=delta,
+            wd_ratio=wd_ratio,
+            nesterov=nesterov,
+        )
+        super(AdamP, self).__init__(params, defaults)
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/contrib/optimizers/sgdp.py" startline="42" endline="85" pcid="142">
+    def __init__(
+        self,
+        params,
+        lr=required,
+        momentum=0,
+        weight_decay=0,
+        dampening=0,
+        nesterov=False,
+        eps=1e-8,
+        delta=0.1,
+        wd_ratio=0.1,
+    ):
+        """
+
+        Args:
+            params: iterable of parameters to optimize
+                or dicts defining parameter groups
+            lr: learning rate
+            momentum (float, optional): momentum factor (default: 0)
+            weight_decay (float, optional): weight decay (L2 penalty)
+                (default: 0)
+            dampening (float, optional): dampening for momentum (default: 0)
+            nesterov (bool, optional): enables Nesterov momentum
+                (default: False)
+            eps (float, optional): term added to the denominator to improve
+                numerical stability (default: 1e-8)
+            delta: threshold that determines whether
+                a set of parameters is scale invariant or not (default: 0.1)
+            wd_ratio: relative weight decay applied on scale-invariant
+                parameters compared to that applied on scale-variant parameters
+                (default: 0.1)
+        """
+        defaults = dict(  # noqa: C408
+            lr=lr,
+            momentum=momentum,
+            dampening=dampening,
+            weight_decay=weight_decay,
+            nesterov=nesterov,
+            eps=eps,
+            delta=delta,
+            wd_ratio=wd_ratio,
+        )
+        super(SGDP, self).__init__(params, defaults)
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="11" similarity="100">
+<source file="systems/catalyst-22.02/catalyst/contrib/optimizers/adamp.py" startline="97" endline="112" pcid="137">
+    def _projection(self, p, grad, perturb, delta, wd_ratio, eps):
+        wd = 1
+        expand_size = [-1] + [1] * (len(p.shape) - 1)
+        for view_func in [self._channel_view, self._layer_view]:
+
+            cosine_sim = self._cosine_similarity(grad, p.data, eps, view_func)
+
+            if cosine_sim.max() < delta / math.sqrt(view_func(p.data).size(1)):
+                p_n = p.data / view_func(p.data).norm(dim=1).view(expand_size).add_(eps)
+                perturb -= p_n * view_func(p_n * perturb).sum(dim=1).view(expand_size)
+                wd = wd_ratio
+
+                return perturb, wd
+
+        return perturb, wd
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/contrib/optimizers/sgdp.py" startline="98" endline="113" pcid="146">
+    def _projection(self, p, grad, perturb, delta, wd_ratio, eps):
+        wd = 1
+        expand_size = [-1] + [1] * (len(p.shape) - 1)
+        for view_func in [self._channel_view, self._layer_view]:
+
+            cosine_sim = self._cosine_similarity(grad, p.data, eps, view_func)
+
+            if cosine_sim.max() < delta / math.sqrt(view_func(p.data).size(1)):
+                p_n = p.data / view_func(p.data).norm(dim=1).view(expand_size).add_(eps)
+                perturb -= p_n * view_func(p_n * perturb).sum(dim=1).view(expand_size)
+                wd = wd_ratio
+
+                return perturb, wd
+
+        return perturb, wd
+
+</source>
+</class>
+
+<class classid="8" nclones="3" nlines="19" similarity="75">
+<source file="systems/catalyst-22.02/catalyst/contrib/losses/dice.py" startline="17" endline="47" pcid="170">
+    def __init__(
+        self,
+        class_dim: int = 1,
+        mode: str = "macro",
+        weights: List[float] = None,
+        eps: float = 1e-7,
+    ):
+        """
+        Args:
+            class_dim: indicates class dimention (K) for
+                ``outputs`` and ``targets`` tensors (default = 1)
+            mode: class summation strategy. Must be one of ['micro', 'macro',
+                'weighted']. If mode='micro', classes are ignored, and metric
+                are calculated generally. If mode='macro', metric are
+                calculated per-class and than are averaged over all classes.
+                If mode='weighted', metric are calculated per-class and than
+                summed over all classes with weights.
+            weights: class weights(for mode="weighted")
+            eps: epsilon to avoid zero division
+        """
+        super().__init__()
+        assert mode in ["micro", "macro", "weighted"]
+        self.loss_fn = partial(
+            dice,
+            eps=eps,
+            class_dim=class_dim,
+            threshold=None,
+            mode=mode,
+            weights=weights,
+        )
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/contrib/losses/trevsky.py" startline="16" endline="54" pcid="224">
+    def __init__(
+        self,
+        alpha: float,
+        beta: Optional[float] = None,
+        class_dim: int = 1,
+        mode: str = "macro",
+        weights: List[float] = None,
+        eps: float = 1e-7,
+    ):
+        """
+        Args:
+            alpha: false negative coefficient, bigger alpha bigger penalty for
+                false negative. Must be in (0, 1)
+            beta: false positive coefficient, bigger alpha bigger penalty for
+                false positive. Must be in (0, 1), if None beta = (1 - alpha)
+            class_dim: indicates class dimention (K) for
+                ``outputs`` and ``targets`` tensors (default = 1)
+            mode: class summation strategy. Must be one of ['micro', 'macro',
+                'weighted']. If mode='micro', classes are ignored, and metric
+                are calculated generally. If mode='macro', metric are
+                calculated separately and than are averaged over all classes.
+                If mode='weighted', metric are calculated separately and than
+                summed over all classes with weights.
+            weights: class weights(for mode="weighted")
+            eps: epsilon to avoid zero division
+        """
+        super().__init__()
+        assert mode in ["micro", "macro", "weighted"]
+        self.loss_fn = partial(
+            trevsky,
+            eps=eps,
+            alpha=alpha,
+            beta=beta,
+            class_dim=class_dim,
+            threshold=None,
+            mode=mode,
+            weights=weights,
+        )
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/contrib/losses/trevsky.py" startline="68" endline="107" pcid="226">
+    def __init__(
+        self,
+        alpha: float,
+        beta: Optional[float] = None,
+        gamma: float = 4 / 3,
+        class_dim: int = 1,
+        mode: str = "macro",
+        weights: List[float] = None,
+        eps: float = 1e-7,
+    ):
+        """
+        Args:
+            alpha: false negative coefficient, bigger alpha bigger penalty for
+                false negative. Must be in (0, 1)
+            beta: false positive coefficient, bigger alpha bigger penalty for
+                false positive. Must be in (0, 1), if None beta = (1 - alpha)
+            gamma: focal coefficient. It determines how much the weight of
+            simple examples is reduced.
+            class_dim: indicates class dimention (K) for
+                ``outputs`` and ``targets`` tensors (default = 1)
+            mode: class summation strategy. Must be one of ['micro', 'macro',
+                'weighted']. If mode='micro', classes are ignored, and metric
+                are calculated generally. If mode='macro', metric are
+                calculated separately and than are averaged over all classes.
+                If mode='weighted', metric are calculated separately and than
+                summed over all classes with weights.
+            weights: class weights(for mode="weighted")
+            eps: epsilon to avoid zero division
+        """
+        super().__init__()
+        self.gamma = gamma
+        self.trevsky_loss = TrevskyLoss(
+            alpha=alpha,
+            beta=beta,
+            class_dim=class_dim,
+            mode=mode,
+            weights=weights,
+            eps=eps,
+        )
+
+</source>
+</class>
+
+<class classid="9" nclones="4" nlines="16" similarity="75">
+<source file="systems/catalyst-22.02/catalyst/contrib/layers/amsoftmax.py" startline="40" endline="57" pcid="260">
+    def __init__(  # noqa: D107
+        self,
+        in_features: int,
+        out_features: int,
+        s: float = 64.0,
+        m: float = 0.5,
+        eps: float = 1e-6,
+    ):
+        super(AMSoftmax, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.s = s
+        self.m = m
+        self.eps = eps
+
+        self.weight = nn.Parameter(torch.FloatTensor(out_features, in_features))
+        nn.init.xavier_uniform_(self.weight)
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/contrib/layers/arcface.py" startline="42" endline="60" pcid="266">
+    def __init__(  # noqa: D107
+        self,
+        in_features: int,
+        out_features: int,
+        s: float = 64.0,
+        m: float = 0.5,
+        eps: float = 1e-6,
+    ):
+        super(ArcFace, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.s = s
+        self.m = m
+        self.threshold = math.pi - m
+        self.eps = eps
+
+        self.weight = nn.Parameter(torch.FloatTensor(out_features, in_features))
+        nn.init.xavier_uniform_(self.weight)
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/contrib/layers/arcface.py" startline="151" endline="173" pcid="269">
+    def __init__(  # noqa: D107
+        self,
+        in_features: int,
+        out_features: int,
+        s: float = 64.0,
+        m: float = 0.5,
+        k: int = 3,
+        eps: float = 1e-6,
+    ):
+        super(SubCenterArcFace, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+
+        self.s = s
+        self.m = m
+        self.k = k
+        self.eps = eps
+
+        self.weight = nn.Parameter(torch.FloatTensor(k, in_features, out_features))
+        nn.init.xavier_uniform_(self.weight)
+
+        self.threshold = math.pi - self.m
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/contrib/layers/cosface.py" startline="134" endline="149" pcid="333">
+    def __init__(  # noqa: D107
+        self,
+        in_features: int,
+        out_features: int,
+        dynamical_s: bool = True,
+        eps: float = 1e-6,
+    ):
+        super(AdaCos, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.s = math.sqrt(2) * math.log(out_features - 1)
+        self.eps = eps
+
+        self.weight = nn.Parameter(torch.FloatTensor(out_features, in_features))
+        nn.init.xavier_uniform_(self.weight)
+
+</source>
+</class>
+
+<class classid="10" nclones="3" nlines="12" similarity="76">
+<source file="systems/catalyst-22.02/catalyst/contrib/layers/amsoftmax.py" startline="71" endline="107" pcid="262">
+    def forward(
+        self, input: torch.Tensor, target: torch.LongTensor = None
+    ) -> torch.Tensor:
+        """
+        Args:
+            input: input features,
+                expected shapes ``BxF`` where ``B``
+                is batch dimension and ``F`` is an
+                input feature dimension.
+            target: target classes,
+                expected shapes ``B`` where
+                ``B`` is batch dimension.
+                If `None` then will be returned
+                projection on centroids.
+                Default is `None`.
+
+        Returns:
+            tensor (logits) with shapes ``BxC``
+            where ``C`` is a number of classes
+            (out_features).
+        """
+        cos_theta = F.linear(F.normalize(input), F.normalize(self.weight))
+
+        if target is None:
+            return cos_theta
+
+        cos_theta = torch.clamp(cos_theta, -1.0 + self.eps, 1.0 - self.eps)
+
+        one_hot = torch.zeros_like(cos_theta)
+        one_hot.scatter_(1, target.view(-1, 1).long(), 1)
+
+        logits = torch.where(one_hot.bool(), cos_theta - self.m, cos_theta)
+        logits *= self.s
+
+        return logits
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/contrib/layers/cosface.py" startline="64" endline="99" pcid="332">
+    def forward(
+        self, input: torch.Tensor, target: torch.LongTensor = None
+    ) -> torch.Tensor:
+        """
+        Args:
+            input: input features,
+                expected shapes ``BxF`` where ``B``
+                is batch dimension and ``F`` is an
+                input feature dimension.
+            target: target classes,
+                expected shapes ``B`` where
+                ``B`` is batch dimension.
+                If `None` then will be returned
+                projection on centroids.
+                Default is `None`.
+
+        Returns:
+            tensor (logits) with shapes ``BxC``
+            where ``C`` is a number of classes
+            (out_features).
+        """
+        cosine = F.linear(F.normalize(input), F.normalize(self.weight))
+        phi = cosine - self.m
+
+        if target is None:
+            return cosine
+
+        one_hot = torch.zeros_like(cosine)
+        one_hot.scatter_(1, target.view(-1, 1).long(), 1)
+
+        logits = (one_hot * phi) + ((1.0 - one_hot) * cosine)
+        logits *= self.s
+
+        return logits
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/contrib/layers/arcface.py" startline="74" endline="112" pcid="268">
+    def forward(
+        self, input: torch.Tensor, target: torch.LongTensor = None
+    ) -> torch.Tensor:
+        """
+        Args:
+            input: input features,
+                expected shapes ``BxF`` where ``B``
+                is batch dimension and ``F`` is an
+                input feature dimension.
+            target: target classes,
+                expected shapes ``B`` where
+                ``B`` is batch dimension.
+                If `None` then will be returned
+                projection on centroids.
+                Default is `None`.
+
+        Returns:
+            tensor (logits) with shapes ``BxC``
+            where ``C`` is a number of classes
+            (out_features).
+        """
+        cos_theta = F.linear(F.normalize(input), F.normalize(self.weight))
+
+        if target is None:
+            return cos_theta
+
+        theta = torch.acos(torch.clamp(cos_theta, -1.0 + self.eps, 1.0 - self.eps))
+
+        one_hot = torch.zeros_like(cos_theta)
+        one_hot.scatter_(1, target.view(-1, 1).long(), 1)
+
+        mask = torch.where(theta > self.threshold, torch.zeros_like(one_hot), one_hot)
+
+        logits = torch.cos(torch.where(mask.bool(), theta + self.m, theta))
+        logits *= self.s
+
+        return logits
+
+
+</source>
+</class>
+
+<class classid="11" nclones="22" nlines="19" similarity="70">
+<source file="systems/catalyst-22.02/catalyst/callbacks/criterion.py" startline="23" endline="45" pcid="386">
+    def __init__(
+        self,
+        input_key: str,
+        target_key: str,
+        metric_key: str,
+        criterion_key: str = None,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            input_key=input_key,
+            target_key=target_key,
+            metric_fn=self._metric_fn,
+            metric_key=metric_key,
+            compute_on_call=True,
+            log_on_batch=True,
+            prefix=prefix,
+            suffix=suffix,
+        )
+        self.criterion_key = criterion_key
+        self.criterion = None
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/callbacks/metrics/accuracy.py" startline="94" endline="117" pcid="397">
+    def __init__(
+        self,
+        input_key: str,
+        target_key: str,
+        topk: Iterable[int] = None,
+        num_classes: int = None,
+        log_on_batch: bool = True,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=AccuracyMetric(
+                topk=topk,
+                num_classes=num_classes,
+                prefix=prefix,
+                suffix=suffix,
+            ),
+            input_key=input_key,
+            target_key=target_key,
+            log_on_batch=log_on_batch,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/callbacks/metrics/functional_metric.py" startline="23" endline="48" pcid="390">
+    def __init__(
+        self,
+        input_key: Union[str, Iterable[str], Dict[str, str]],
+        target_key: Union[str, Iterable[str], Dict[str, str]],
+        metric_fn: Callable,
+        metric_key: str,
+        compute_on_call: bool = True,
+        log_on_batch: bool = True,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=FunctionalBatchMetric(
+                metric_fn=metric_fn,
+                metric_key=metric_key,
+                compute_on_call=compute_on_call,
+                prefix=prefix,
+                suffix=suffix,
+            ),
+            input_key=input_key,
+            target_key=target_key,
+            log_on_batch=log_on_batch,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/callbacks/metrics/classification.py" startline="193" endline="218" pcid="392">
+    def __init__(
+        self,
+        input_key: str,
+        target_key: str,
+        num_classes: Optional[int] = None,
+        zero_division: int = 0,
+        log_on_batch: bool = True,
+        compute_per_class_metrics: bool = SETTINGS.compute_per_class_metrics,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=MultilabelPrecisionRecallF1SupportMetric(
+                zero_division=zero_division,
+                prefix=prefix,
+                suffix=suffix,
+                compute_per_class_metrics=compute_per_class_metrics,
+                num_classes=num_classes,
+            ),
+            input_key=input_key,
+            target_key=target_key,
+            log_on_batch=log_on_batch,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/callbacks/metrics/cmc_score.py" startline="201" endline="225" pcid="395">
+    def __init__(
+        self,
+        embeddings_key: str,
+        pids_key: str,
+        cids_key: str,
+        is_query_key: str,
+        topk: Iterable[int] = None,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=ReidCMCMetric(
+                embeddings_key=embeddings_key,
+                pids_key=pids_key,
+                cids_key=cids_key,
+                is_query_key=is_query_key,
+                topk=topk,
+                prefix=prefix,
+                suffix=suffix,
+            ),
+            input_key=[embeddings_key, is_query_key],
+            target_key=[pids_key, cids_key],
+        )
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/callbacks/metrics/cmc_score.py" startline="151" endline="173" pcid="393">
+    def __init__(
+        self,
+        embeddings_key: str,
+        labels_key: str,
+        is_query_key: str,
+        topk: Iterable[int] = None,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=CMCMetric(
+                embeddings_key=embeddings_key,
+                labels_key=labels_key,
+                is_query_key=is_query_key,
+                topk=topk,
+                prefix=prefix,
+                suffix=suffix,
+            ),
+            input_key=[embeddings_key, is_query_key],
+            target_key=[labels_key],
+        )
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/callbacks/metrics/classification.py" startline="86" endline="111" pcid="391">
+    def __init__(
+        self,
+        input_key: str,
+        target_key: str,
+        num_classes: Optional[int] = None,
+        zero_division: int = 0,
+        log_on_batch: bool = True,
+        compute_per_class_metrics: bool = SETTINGS.compute_per_class_metrics,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=MulticlassPrecisionRecallF1SupportMetric(
+                zero_division=zero_division,
+                prefix=prefix,
+                suffix=suffix,
+                compute_per_class_metrics=compute_per_class_metrics,
+                num_classes=num_classes,
+            ),
+            input_key=input_key,
+            target_key=target_key,
+            log_on_batch=log_on_batch,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/callbacks/metrics/segmentation.py" startline="96" endline="125" pcid="405">
+    def __init__(
+        self,
+        input_key: str,
+        target_key: str,
+        class_dim: int = 1,
+        weights: Optional[List[float]] = None,
+        class_names: Optional[List[str]] = None,
+        threshold: Optional[float] = None,
+        log_on_batch: bool = True,
+        compute_per_class_metrics: bool = SETTINGS.compute_per_class_metrics,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=IOUMetric(
+                class_dim=class_dim,
+                weights=weights,
+                class_names=class_names,
+                threshold=threshold,
+                compute_per_class_metrics=compute_per_class_metrics,
+                prefix=prefix,
+                suffix=suffix,
+            ),
+            input_key=input_key,
+            target_key=target_key,
+            log_on_batch=log_on_batch,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/callbacks/metrics/auc.py" startline="82" endline="100" pcid="403">
+    def __init__(
+        self,
+        input_key: str,
+        target_key: str,
+        compute_per_class_metrics: bool = SETTINGS.compute_per_class_metrics,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=AUCMetric(
+                compute_per_class_metrics=compute_per_class_metrics,
+                prefix=prefix,
+                suffix=suffix,
+            ),
+            input_key=input_key,
+            target_key=target_key,
+        )
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/callbacks/metrics/segmentation.py" startline="214" endline="243" pcid="406">
+    def __init__(
+        self,
+        input_key: str,
+        target_key: str,
+        class_dim: int = 1,
+        weights: Optional[List[float]] = None,
+        class_names: Optional[List[str]] = None,
+        threshold: Optional[float] = None,
+        log_on_batch: bool = True,
+        compute_per_class_metrics: bool = SETTINGS.compute_per_class_metrics,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=DiceMetric(
+                class_dim=class_dim,
+                weights=weights,
+                class_names=class_names,
+                threshold=threshold,
+                compute_per_class_metrics=compute_per_class_metrics,
+                prefix=prefix,
+                suffix=suffix,
+            ),
+            input_key=input_key,
+            target_key=target_key,
+            log_on_batch=log_on_batch,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/callbacks/metrics/segmentation.py" startline="334" endline="367" pcid="407">
+    def __init__(
+        self,
+        input_key: str,
+        target_key: str,
+        alpha: float,
+        beta: Optional[float] = None,
+        class_dim: int = 1,
+        weights: Optional[List[float]] = None,
+        class_names: Optional[List[str]] = None,
+        threshold: Optional[float] = None,
+        log_on_batch: bool = True,
+        compute_per_class_metrics: bool = SETTINGS.compute_per_class_metrics,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=TrevskyMetric(
+                alpha=alpha,
+                beta=beta,
+                class_dim=class_dim,
+                weights=weights,
+                class_names=class_names,
+                threshold=threshold,
+                compute_per_class_metrics=compute_per_class_metrics,
+                prefix=prefix,
+                suffix=suffix,
+            ),
+            input_key=input_key,
+            target_key=target_key,
+            log_on_batch=log_on_batch,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/metrics/_ndcg.py" startline="138" endline="155" pcid="538">
+    def __init__(
+        self,
+        topk: Iterable[int] = None,
+        compute_on_call: bool = True,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init NDCGMetric"""
+        super().__init__(
+            metric_name="ndcg",
+            metric_function=ndcg,
+            topk=topk,
+            compute_on_call=compute_on_call,
+            prefix=prefix,
+            suffix=suffix,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/callbacks/metrics/recsys.py" startline="102" endline="119" pcid="399">
+    def __init__(
+        self,
+        input_key: str,
+        target_key: str,
+        topk: Iterable[int] = None,
+        log_on_batch: bool = True,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=HitrateMetric(topk=topk, prefix=prefix, suffix=suffix),
+            input_key=input_key,
+            target_key=target_key,
+            log_on_batch=log_on_batch,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/callbacks/metrics/accuracy.py" startline="186" endline="205" pcid="398">
+    def __init__(
+        self,
+        input_key: str,
+        target_key: str,
+        threshold: Union[float, torch.Tensor] = 0.5,
+        log_on_batch: bool = True,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=MultilabelAccuracyMetric(
+                threshold=threshold, prefix=prefix, suffix=suffix
+            ),
+            input_key=input_key,
+            target_key=target_key,
+            log_on_batch=log_on_batch,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/metrics/_map.py" startline="146" endline="163" pcid="537">
+    def __init__(
+        self,
+        topk: Iterable[int] = None,
+        compute_on_call: bool = True,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init MAPMetric"""
+        super().__init__(
+            metric_name="map",
+            metric_function=mean_average_precision,
+            topk=topk,
+            compute_on_call=compute_on_call,
+            prefix=prefix,
+            suffix=suffix,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/callbacks/metrics/recsys.py" startline="213" endline="230" pcid="400">
+    def __init__(
+        self,
+        input_key: str,
+        target_key: str,
+        topk: Iterable[int] = None,
+        log_on_batch: bool = True,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=MAPMetric(topk=topk, prefix=prefix, suffix=suffix),
+            input_key=input_key,
+            target_key=target_key,
+            log_on_batch=log_on_batch,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/metrics/_hitrate.py" startline="134" endline="151" pcid="523">
+    def __init__(
+        self,
+        topk: Iterable[int] = None,
+        compute_on_call: bool = True,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init HitrateMetric"""
+        super().__init__(
+            metric_name="hitrate",
+            metric_function=hitrate,
+            topk=topk,
+            compute_on_call=compute_on_call,
+            prefix=prefix,
+            suffix=suffix,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/metrics/_mrr.py" startline="132" endline="149" pcid="524">
+    def __init__(
+        self,
+        topk: Iterable[int] = None,
+        compute_on_call: bool = True,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init MRRMetric"""
+        super().__init__(
+            metric_name="mrr",
+            metric_function=mrr,
+            topk=topk,
+            compute_on_call=compute_on_call,
+            prefix=prefix,
+            suffix=suffix,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/callbacks/metrics/recsys.py" startline="435" endline="452" pcid="402">
+    def __init__(
+        self,
+        input_key: str,
+        target_key: str,
+        topk: Iterable[int] = None,
+        log_on_batch: bool = True,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=NDCGMetric(topk=topk, prefix=prefix, suffix=suffix),
+            input_key=input_key,
+            target_key=target_key,
+            log_on_batch=log_on_batch,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/callbacks/metrics/recsys.py" startline="324" endline="341" pcid="401">
+    def __init__(
+        self,
+        input_key: str,
+        target_key: str,
+        topk: Iterable[int] = None,
+        log_on_batch: bool = True,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=MRRMetric(topk=topk, prefix=prefix, suffix=suffix),
+            input_key=input_key,
+            target_key=target_key,
+            log_on_batch=log_on_batch,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/metrics/_accuracy.py" startline="136" endline="155" pcid="595">
+    def __init__(
+        self,
+        topk: Iterable[int] = None,
+        num_classes: int = None,
+        compute_on_call: bool = True,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init AccuracyMetric"""
+        self.topk = topk or get_default_topk(num_classes)
+        super().__init__(
+            metric_name="accuracy",
+            metric_function=accuracy,
+            topk=self.topk,
+            compute_on_call=compute_on_call,
+            prefix=prefix,
+            suffix=suffix,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/callbacks/metrics/r2_squared.py" startline="60" endline="74" pcid="389">
+    def __init__(
+        self,
+        input_key: str,
+        target_key: str,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=R2Squared(prefix=prefix, suffix=suffix),
+            input_key=input_key,
+            target_key=target_key,
+        )
+
+
+</source>
+</class>
+
+<class classid="12" nclones="2" nlines="17" similarity="82">
+<source file="systems/catalyst-22.02/catalyst/callbacks/metrics/scikit_learn.py" startline="110" endline="129" pcid="408">
+    def __init__(
+        self,
+        keys: Mapping[str, Any],
+        metric_fn: Union[Callable, str],
+        metric_key: str,
+        log_on_batch: bool = True,
+        **metric_kwargs
+    ):
+        """Init."""
+        if isinstance(metric_fn, str):
+            metric_fn = sklearn.metrics.__dict__[metric_fn]
+        metric_fn = partial(metric_fn, **metric_kwargs)
+
+        super().__init__(
+            metric=FunctionalBatchMetric(metric_fn=metric_fn, metric_key=metric_key),
+            input_key=keys,
+            target_key=keys,
+            log_on_batch=log_on_batch,
+        )
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/callbacks/metrics/scikit_learn.py" startline="239" endline="258" pcid="410">
+    def __init__(
+        self,
+        keys: Mapping[str, Any],
+        metric_fn: Union[Callable, str],
+        metric_key: str,
+        **metric_kwargs
+    ):
+        """Init."""
+        if isinstance(metric_fn, str):
+            metric_fn = sklearn.metrics.__dict__[metric_fn]
+        metric_fn = partial(metric_fn, **metric_kwargs)
+
+        super().__init__(
+            metric=FunctionalLoaderMetric(
+                metric_fn=metric_fn, metric_key=metric_key, accumulative_fields=keys
+            ),
+            input_key=keys,
+            target_key=keys,
+        )
+
+</source>
+</class>
+
+<class classid="13" nclones="2" nlines="13" similarity="78">
+<source file="systems/catalyst-22.02/catalyst/metrics/_functional_metric.py" startline="55" endline="68" pcid="539">
+    def __init__(
+        self,
+        metric_fn: Callable,
+        metric_key: str,
+        compute_on_call: bool = True,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init"""
+        super().__init__(compute_on_call=compute_on_call, prefix=prefix, suffix=suffix)
+        self.metric_fn = metric_fn
+        self.metric_name = f"{self.prefix}{metric_key}{self.suffix}"
+        self.additive_metric = AdditiveMetric()
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/metrics/_functional_metric.py" startline="177" endline="193" pcid="545">
+    def __init__(
+        self,
+        metric_fn: Callable,
+        metric_key: str,
+        accumulative_fields: Iterable[str] = None,
+        compute_on_call: bool = True,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init"""
+        super().__init__(compute_on_call=compute_on_call, prefix=prefix, suffix=suffix)
+        self.metric_fn = metric_fn
+        self.metric_name = f"{self.prefix}{metric_key}{self.suffix}"
+        self.accumulative_metric = AccumulativeMetric(
+            keys=accumulative_fields, compute_on_call=compute_on_call
+        )
+
+</source>
+</class>
+
+<class classid="14" nclones="3" nlines="22" similarity="76">
+<source file="systems/catalyst-22.02/catalyst/metrics/functional/_segmentation.py" startline="174" endline="270" pcid="562">
+def iou(
+    outputs: torch.Tensor,
+    targets: torch.Tensor,
+    class_dim: int = 1,
+    threshold: float = None,
+    mode: str = "per-class",
+    weights: Optional[List[float]] = None,
+    eps: float = 1e-7,
+) -> torch.Tensor:
+    """
+    Computes the iou/jaccard score,
+    iou score = intersection / union = tp / (tp + fp + fn)
+
+    Args:
+        outputs: [N; K; ...] tensor that for each of the N examples
+            indicates the probability of the example belonging to each of
+            the K classes, according to the model.
+        targets:  binary [N; K; ...] tensor that encodes which of the K
+            classes are associated with the N-th input
+        class_dim: indicates class dimention (K) for
+            ``outputs`` and ``targets`` tensors (default = 1), if
+            mode = "micro" means nothing
+        threshold: threshold for outputs binarization
+        mode: class summation strategy. Must be one of ['micro', 'macro',
+            'weighted', 'per-class']. If mode='micro', classes are ignored,
+            and metric are calculated generally. If mode='macro', metric are
+            calculated per-class and than are averaged over all classes. If
+            mode='weighted', metric are calculated per-class and than summed
+            over all classes with weights. If mode='per-class', metric are
+            calculated separately for all classes
+        weights: class weights(for mode="weighted")
+        eps: epsilon to avoid zero division
+
+    Returns:
+        IoU (Jaccard) score for each class(if mode='weighted') or aggregated IOU
+
+    Example:
+
+    .. code-block:: python
+
+        import torch
+        from catalyst import metrics
+
+        size = 4
+        half_size = size // 2
+        shape = (1, 1, size, size)
+        empty = torch.zeros(shape)
+        full = torch.ones(shape)
+        left = torch.ones(shape)
+        left[:, :, :, half_size:] = 0
+        right = torch.ones(shape)
+        right[:, :, :, :half_size] = 0
+        top_left = torch.zeros(shape)
+        top_left[:, :, :half_size, :half_size] = 1
+        pred = torch.cat([empty, left, empty, full, left, top_left], dim=1)
+        targets = torch.cat([full, right, empty, full, left, left], dim=1)
+
+        metrics.iou(
+            outputs=pred,
+            targets=targets,
+            class_dim=1,
+            threshold=0.5,
+            mode="per-class"
+        )
+        # tensor([0.0000, 0.0000, 1.0000, 1.0000, 1.0000, 0.5])
+
+        metrics.iou(
+            outputs=pred,
+            targets=targets,
+            class_dim=1,
+            threshold=0.5,
+            mode="macro"
+        )
+        # tensor(0.5833)
+
+        metrics.iou(
+            outputs=pred,
+            targets=targets,
+            class_dim=1,
+            threshold=0.5,
+            mode="micro"
+        )
+        # tensor(0.4375)
+    """
+    metric_fn = partial(_iou, eps=eps)
+    score = _get_region_based_metrics(
+        outputs=outputs,
+        targets=targets,
+        metric_fn=metric_fn,
+        class_dim=class_dim,
+        threshold=threshold,
+        mode=mode,
+        weights=weights,
+    )
+    return score
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/metrics/functional/_segmentation.py" startline="369" endline="477" pcid="564">
+def trevsky(
+    outputs: torch.Tensor,
+    targets: torch.Tensor,
+    alpha: float,
+    beta: Optional[float] = None,
+    class_dim: int = 1,
+    threshold: float = None,
+    mode: str = "per-class",
+    weights: Optional[List[float]] = None,
+    eps: float = 1e-7,
+) -> torch.Tensor:
+    """
+    Computes the trevsky score,
+    trevsky score = tp / (tp + fp * beta + fn * alpha)
+
+    Args:
+        outputs: [N; K; ...] tensor that for each of the N examples
+            indicates the probability of the example belonging to each of
+            the K classes, according to the model.
+        targets:  binary [N; K; ...] tensor that encodes which of the K
+            classes are associated with the N-th input
+        alpha: false negative coefficient, bigger alpha bigger penalty for
+            false negative. Must be in (0, 1)
+        beta: false positive coefficient, bigger alpha bigger penalty for false
+            positive. Must be in (0, 1), if None beta = (1 - alpha)
+        class_dim: indicates class dimention (K) for
+            ``outputs`` and ``targets`` tensors (default = 1)
+        threshold: threshold for outputs binarization
+        mode: class summation strategy. Must be one of ['micro', 'macro',
+            'weighted', 'per-class']. If mode='micro', classes are ignored,
+            and metric are calculated generally. If mode='macro', metric are
+            calculated per-class and than are averaged over all classes. If
+            mode='weighted', metric are calculated per-class and than summed
+            over all classes with weights. If mode='per-class', metric are
+            calculated separately for all classes
+        weights: class weights(for mode="weighted")
+        eps: epsilon to avoid zero division
+
+    Returns:
+        Trevsky score for each class(if mode='weighted') or aggregated score
+
+    Example:
+
+    .. code-block:: python
+
+        import torch
+        from catalyst import metrics
+
+        size = 4
+        half_size = size // 2
+        shape = (1, 1, size, size)
+        empty = torch.zeros(shape)
+        full = torch.ones(shape)
+        left = torch.ones(shape)
+        left[:, :, :, half_size:] = 0
+        right = torch.ones(shape)
+        right[:, :, :, :half_size] = 0
+        top_left = torch.zeros(shape)
+        top_left[:, :, :half_size, :half_size] = 1
+        pred = torch.cat([empty, left, empty, full, left, top_left], dim=1)
+        targets = torch.cat([full, right, empty, full, left, left], dim=1)
+
+        metrics.trevsky(
+            outputs=pred,
+            targets=targets,
+            alpha=0.2,
+            class_dim=1,
+            threshold=0.5,
+            mode="per-class"
+        )
+        # tensor([0.0000, 0.0000, 1.0000, 1.0000, 1.0000, 0.8333])
+
+        metrics.trevsky(
+            outputs=pred,
+            targets=targets,
+            alpha=0.2,
+            class_dim=1,
+            threshold=0.5,
+            mode="macro"
+        )
+        # tensor(0.6389)
+
+        metrics.trevsky(
+            outputs=pred,
+            targets=targets,
+            alpha=0.2,
+            class_dim=1,
+            threshold=0.5,
+            mode="micro"
+        )
+        # tensor(0.7000)
+    """
+    # assert 0 < alpha < 1  # I am not sure about this
+    if beta is None:
+        assert 0 < alpha < 1, "if beta=None, alpha must be in (0, 1)"
+        beta = 1 - alpha
+    metric_fn = partial(_trevsky, alpha=alpha, beta=beta, eps=eps)
+    score = _get_region_based_metrics(
+        outputs=outputs,
+        targets=targets,
+        metric_fn=metric_fn,
+        class_dim=class_dim,
+        threshold=threshold,
+        mode=mode,
+        weights=weights,
+    )
+    return score
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/metrics/functional/_segmentation.py" startline="271" endline="368" pcid="563">
+def dice(
+    outputs: torch.Tensor,
+    targets: torch.Tensor,
+    class_dim: int = 1,
+    threshold: float = None,
+    mode: str = "per-class",
+    weights: Optional[List[float]] = None,
+    eps: float = 1e-7,
+) -> torch.Tensor:
+    """
+    Computes the dice score,
+    dice score = 2 * intersection / (intersection + union)) = \
+    = 2 * tp / (2 * tp + fp + fn)
+
+    Args:
+        outputs: [N; K; ...] tensor that for each of the N examples
+            indicates the probability of the example belonging to each of
+            the K classes, according to the model.
+        targets:  binary [N; K; ...] tensor that encodes which of the K
+            classes are associated with the N-th input
+        class_dim: indicates class dimention (K) for
+            ``outputs`` and ``targets`` tensors (default = 1), if
+            mode = "micro" means nothing
+        threshold: threshold for outputs binarization
+        mode: class summation strategy. Must be one of ['micro', 'macro',
+            'weighted', 'per-class']. If mode='micro', classes are ignored,
+            and metric are calculated generally. If mode='macro', metric are
+            calculated per-class and than are averaged over all classes. If
+            mode='weighted', metric are calculated per-class and than summed
+            over all classes with weights. If mode='per-class', metric are
+            calculated separately for all classes
+        weights: class weights(for mode="weighted")
+        eps: epsilon to avoid zero division
+
+    Returns:
+        Dice score for each class(if mode='weighted') or aggregated Dice
+
+    Example:
+
+    .. code-block:: python
+
+        import torch
+        from catalyst import metrics
+
+        size = 4
+        half_size = size // 2
+        shape = (1, 1, size, size)
+        empty = torch.zeros(shape)
+        full = torch.ones(shape)
+        left = torch.ones(shape)
+        left[:, :, :, half_size:] = 0
+        right = torch.ones(shape)
+        right[:, :, :, :half_size] = 0
+        top_left = torch.zeros(shape)
+        top_left[:, :, :half_size, :half_size] = 1
+        pred = torch.cat([empty, left, empty, full, left, top_left], dim=1)
+        targets = torch.cat([full, right, empty, full, left, left], dim=1)
+
+        metrics.dice(
+            outputs=pred,
+            targets=targets,
+            class_dim=1,
+            threshold=0.5,
+            mode="per-class"
+        )
+        # tensor([0.0000, 0.0000, 1.0000, 1.0000, 1.0000, 0.6667])
+
+        metrics.dice(
+            outputs=pred,
+            targets=targets,
+            class_dim=1,
+            threshold=0.5,
+            mode="macro"
+        )
+        # tensor(0.6111)
+
+        metrics.dice(
+            outputs=pred,
+            targets=targets,
+            class_dim=1,
+            threshold=0.5,
+            mode="micro"
+        )
+        # tensor(0.6087)
+    """
+    metric_fn = partial(_dice, eps=eps)
+    score = _get_region_based_metrics(
+        outputs=outputs,
+        targets=targets,
+        metric_fn=metric_fn,
+        class_dim=class_dim,
+        threshold=threshold,
+        mode=mode,
+        weights=weights,
+    )
+    return score
+
+
+</source>
+</class>
+
+<class classid="15" nclones="2" nlines="20" similarity="75">
+<source file="systems/catalyst-22.02/catalyst/metrics/functional/_focal.py" startline="5" endline="53" pcid="571">
+def sigmoid_focal_loss(
+    outputs: torch.Tensor,
+    targets: torch.Tensor,
+    gamma: float = 2.0,
+    alpha: float = 0.25,
+    reduction: str = "mean",
+):
+    """
+    Compute binary focal loss between target and output logits.
+
+    Args:
+        outputs: tensor of arbitrary shape
+        targets: tensor of the same shape as input
+        gamma: gamma for focal loss
+        alpha: alpha for focal loss
+        reduction (string, optional):
+            specifies the reduction to apply to the output:
+            ``"none"`` | ``"mean"`` | ``"sum"`` | ``"batchwise_mean"``.
+            ``"none"``: no reduction will be applied,
+            ``"mean"``: the sum of the output will be divided by the number of
+            elements in the output,
+            ``"sum"``: the output will be summed.
+
+    Returns:
+        computed loss
+
+    Source: https://github.com/BloodAxe/pytorch-toolbelt
+    """
+    targets = targets.type(outputs.type())
+
+    logpt = -F.binary_cross_entropy_with_logits(outputs, targets, reduction="none")
+    pt = torch.exp(logpt)
+
+    # compute the loss
+    loss = -((1 - pt).pow(gamma)) * logpt
+
+    if alpha is not None:
+        loss = loss * (alpha * targets + (1 - alpha) * (1 - targets))
+
+    if reduction == "mean":
+        loss = loss.mean()
+    if reduction == "sum":
+        loss = loss.sum()
+    if reduction == "batchwise_mean":
+        loss = loss.sum(0)
+
+    return loss
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/metrics/functional/_focal.py" startline="54" endline="113" pcid="572">
+def reduced_focal_loss(
+    outputs: torch.Tensor,
+    targets: torch.Tensor,
+    threshold: float = 0.5,
+    gamma: float = 2.0,
+    reduction="mean",
+) -> torch.Tensor:
+    """Compute reduced focal loss between target and output logits.
+
+    It has been proposed in `Reduced Focal Loss\: 1st Place Solution to xView
+    object detection in Satellite Imagery`_ paper.
+
+    .. note::
+        ``size_average`` and ``reduce`` params are in the process of being
+        deprecated, and in the meantime, specifying either of those two args
+        will override ``reduction``.
+
+    Source: https://github.com/BloodAxe/pytorch-toolbelt
+
+    .. _Reduced Focal Loss\: 1st Place Solution to xView object detection
+        in Satellite Imagery: https://arxiv.org/abs/1903.01347
+
+    Args:
+        outputs: tensor of arbitrary shape
+        targets: tensor of the same shape as input
+        threshold: threshold for focal reduction
+        gamma: gamma for focal reduction
+        reduction: specifies the reduction to apply to the output:
+            ``"none"`` | ``"mean"`` | ``"sum"`` | ``"batchwise_mean"``.
+            ``"none"``: no reduction will be applied,
+            ``"mean"``: the sum of the output will be divided by the number of
+            elements in the output,
+            ``"sum"``: the output will be summed.
+            ``"batchwise_mean"`` computes mean loss per sample in batch.
+            Default: "mean"
+
+    Returns:  # noqa: DAR201
+        torch.Tensor: computed loss
+    """
+    targets = targets.type(outputs.type())
+
+    logpt = -F.binary_cross_entropy_with_logits(outputs, targets, reduction="none")
+    pt = torch.exp(logpt)
+
+    # compute the loss
+    focal_reduction = ((1.0 - pt) / threshold).pow(gamma)
+    focal_reduction[pt < threshold] = 1
+
+    loss = -focal_reduction * logpt
+
+    if reduction == "mean":
+        loss = loss.mean()
+    if reduction == "sum":
+        loss = loss.sum()
+    if reduction == "batchwise_mean":
+        loss = loss.sum(0)
+
+    return loss
+
+
+</source>
+</class>
+
+<class classid="16" nclones="4" nlines="16" similarity="73">
+<source file="systems/catalyst-22.02/catalyst/metrics/functional/_precision.py" startline="8" endline="67" pcid="573">
+def precision(
+    outputs: torch.Tensor,
+    targets: torch.Tensor,
+    argmax_dim: int = -1,
+    eps: float = 1e-7,
+    num_classes: Optional[int] = None,
+) -> Union[float, torch.Tensor]:
+    """
+    Multiclass precision score.
+
+    Args:
+        outputs: estimated targets as predicted by a model
+            with shape [bs; ..., (num_classes or 1)]
+        targets: ground truth (correct) target values
+            with shape [bs; ..., 1]
+        argmax_dim: int, that specifies dimension for argmax transformation
+            in case of scores/probabilities in ``outputs``
+        eps: float. Epsilon to avoid zero division.
+        num_classes: int, that specifies number of classes if it known
+
+    Returns:
+        Tensor: precision for every class
+
+    Examples:
+
+    .. code-block:: python
+
+        import torch
+        from catalyst import metrics
+        metrics.precision(
+            outputs=torch.tensor([
+                [1, 0, 0],
+                [0, 1, 0],
+                [0, 0, 1],
+            ]),
+            targets=torch.tensor([0, 1, 2]),
+        )
+        # tensor([1., 1., 1.])
+
+
+    .. code-block:: python
+
+        import torch
+        from catalyst import metrics
+        metrics.precision(
+            outputs=torch.tensor([[0, 0, 1, 1, 0, 1, 0, 1]]),
+            targets=torch.tensor([[0, 1, 0, 1, 0, 0, 1, 1]]),
+        )
+        # tensor([0.5000, 0.5000]
+    """
+    precision_score, _, _, _, = precision_recall_fbeta_support(
+        outputs=outputs,
+        targets=targets,
+        argmax_dim=argmax_dim,
+        eps=eps,
+        num_classes=num_classes,
+    )
+    return precision_score
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/metrics/functional/_f1_score.py" startline="64" endline="111" pcid="588">
+def f1_score(
+    outputs: torch.Tensor,
+    targets: torch.Tensor,
+    eps: float = 1e-7,
+    argmax_dim: int = -1,
+    num_classes: Optional[int] = None,
+) -> Union[float, torch.Tensor]:
+    """Fbeta_score with beta=1.
+
+    Args:
+        outputs: A list of predicted elements
+        targets:  A list of elements that are to be predicted
+        eps: epsilon to avoid zero division
+        argmax_dim: int, that specifies dimension for argmax transformation
+            in case of scores/probabilities in ``outputs``
+        num_classes: int, that specifies number of classes if it known
+
+    Returns:
+        float: F_1 score
+
+    Example:
+
+    .. code-block:: python
+
+        import torch
+        from catalyst import metrics
+        metrics.f1_score(
+            outputs=torch.tensor([
+                [1, 0, 0],
+                [0, 1, 0],
+                [0, 0, 1],
+            ]),
+            targets=torch.tensor([0, 1, 2]),
+        )
+        # tensor([1., 1., 1.]),  # per class fbeta
+    """
+    score = fbeta_score(
+        outputs=outputs,
+        targets=targets,
+        beta=1,
+        eps=eps,
+        argmax_dim=argmax_dim,
+        num_classes=num_classes,
+    )
+
+    return score
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/metrics/functional/_recall.py" startline="8" endline="68" pcid="589">
+def recall(
+    outputs: torch.Tensor,
+    targets: torch.Tensor,
+    argmax_dim: int = -1,
+    eps: float = 1e-7,
+    num_classes: Optional[int] = None,
+) -> Union[float, torch.Tensor]:
+    """
+    Multiclass recall score.
+
+    Args:
+        outputs: estimated targets as predicted by a model
+            with shape [bs; ..., (num_classes or 1)]
+        targets: ground truth (correct) target values
+            with shape [bs; ..., 1]
+        argmax_dim: int, that specifies dimension for argmax transformation
+            in case of scores/probabilities in ``outputs``
+        eps: float. Epsilon to avoid zero division.
+        num_classes: int, that specifies number of classes if it known
+
+    Returns:
+        Tensor: recall for every class
+
+    Examples:
+
+    .. code-block:: python
+
+        import torch
+        from catalyst import metrics
+        metrics.recall(
+            outputs=torch.tensor([
+                [1, 0, 0],
+                [0, 1, 0],
+                [0, 0, 1],
+            ]),
+            targets=torch.tensor([0, 1, 2]),
+        )
+        # tensor([1., 1., 1.])
+
+
+    .. code-block:: python
+
+        import torch
+        from catalyst import metrics
+        metrics.recall(
+            outputs=torch.tensor([[0, 0, 1, 1, 0, 1, 0, 1]]),
+            targets=torch.tensor([[0, 1, 0, 1, 0, 0, 1, 1]]),
+        )
+        # tensor([0.5000, 0.5000]
+    """
+    _, recall_score, _, _ = precision_recall_fbeta_support(
+        outputs=outputs,
+        targets=targets,
+        argmax_dim=argmax_dim,
+        eps=eps,
+        num_classes=num_classes,
+    )
+
+    return recall_score
+
+
+</source>
+<source file="systems/catalyst-22.02/catalyst/metrics/functional/_f1_score.py" startline="8" endline="63" pcid="587">
+def fbeta_score(
+    outputs: torch.Tensor,
+    targets: torch.Tensor,
+    beta: float = 1.0,
+    eps: float = 1e-7,
+    argmax_dim: int = -1,
+    num_classes: Optional[int] = None,
+) -> Union[float, torch.Tensor]:
+    """Counts fbeta score for given ``outputs`` and ``targets``.
+
+    Args:
+        outputs: A list of predicted elements
+        targets:  A list of elements that are to be predicted
+        beta: beta param for f_score
+        eps: epsilon to avoid zero division
+        argmax_dim: int, that specifies dimension for argmax transformation
+            in case of scores/probabilities in ``outputs``
+        num_classes: int, that specifies number of classes if it known
+
+    Raises:
+        ValueError: If ``beta`` is a negative number.
+
+    Returns:
+        float: F_beta score.
+
+    Example:
+
+    .. code-block:: python
+
+        import torch
+        from catalyst import metrics
+        metrics.fbeta_score(
+            outputs=torch.tensor([
+                [1, 0, 0],
+                [0, 1, 0],
+                [0, 0, 1],
+            ]),
+            targets=torch.tensor([0, 1, 2]),
+            beta=1,
+        )
+        # tensor([1., 1., 1.]),  # per class fbeta
+    """
+    if beta < 0:
+        raise ValueError("beta parameter should be non-negative")
+
+    _p, _r, fbeta, _ = precision_recall_fbeta_support(
+        outputs=outputs,
+        targets=targets,
+        beta=beta,
+        eps=eps,
+        argmax_dim=argmax_dim,
+        num_classes=num_classes,
+    )
+    return fbeta
+
+
+</source>
+</class>
+
+<class classid="17" nclones="2" nlines="15" similarity="93">
+<source file="systems/catalyst-22.02/tests/contrib/datasets/test_movielens_20m.py" startline="30" endline="66" pcid="614">
+def test_download_split_by_user():
+    """
+    Test movielense download
+    """
+    MovieLens20M(MOVIELENS20M_ROOT, download=True, sample=True)
+
+    filename = "ml-20m"
+
+    # check if data folder exists
+    assert os.path.isdir(MOVIELENS20M_ROOT) is True
+
+    # cehck if class folder exists
+    assert os.path.isdir(f"{MOVIELENS20M_ROOT}/MovieLens20M") is True
+
+    # check if raw folder exists
+    assert os.path.isdir(f"{MOVIELENS20M_ROOT}/MovieLens20M/raw") is True
+
+    # check if processed folder exists
+    assert os.path.isdir(f"{MOVIELENS20M_ROOT}/MovieLens20M/processed") is True
+
+    # check some random file from MovieLens
+    assert (
+        os.path.isfile(
+            f"{MOVIELENS20M_ROOT}/MovieLens20M/raw/{filename}/genome-scores.csv"
+        )
+        is True
+    )
+
+    # check if data file is not Nulll
+    assert (
+        os.path.getsize(
+            f"{MOVIELENS20M_ROOT}/MovieLens20M/raw/{filename}/genome-scores.csv"
+        )
+        > 0
+    )
+
+
+</source>
+<source file="systems/catalyst-22.02/tests/contrib/datasets/test_movielens_20m.py" startline="69" endline="105" pcid="615">
+def test_download_split_by_ts():
+    """
+    Test movielense download
+    """
+    MovieLens20M(MOVIELENS20M_ROOT, download=True, split="ts", sample=True)
+
+    filename = "ml-20m"
+
+    # check if data folder exists
+    assert os.path.isdir(MOVIELENS20M_ROOT) is True
+
+    # cehck if class folder exists
+    assert os.path.isdir(f"{MOVIELENS20M_ROOT}/MovieLens20M") is True
+
+    # check if raw folder exists
+    assert os.path.isdir(f"{MOVIELENS20M_ROOT}/MovieLens20M/raw") is True
+
+    # check if processed folder exists
+    assert os.path.isdir(f"{MOVIELENS20M_ROOT}/MovieLens20M/processed") is True
+
+    # check some random file from MovieLens
+    assert (
+        os.path.isfile(
+            f"{MOVIELENS20M_ROOT}/MovieLens20M/raw/{filename}/genome-scores.csv"
+        )
+        is True
+    )
+
+    # check if data file is not Nulll
+    assert (
+        os.path.getsize(
+            f"{MOVIELENS20M_ROOT}/MovieLens20M/raw/{filename}/genome-scores.csv"
+        )
+        > 0
+    )
+
+
+</source>
+</class>
+
+<class classid="18" nclones="2" nlines="12" similarity="84">
+<source file="systems/catalyst-22.02/tests/contrib/datasets/test_movielens_20m.py" startline="142" endline="160" pcid="617">
+def test_users_per_item_filtering():
+    """
+    Tets retrieveing the minimal ranking
+    """
+    min_users_per_item = 2.0
+
+    movielens_20m_min_users = MovieLens20M(
+        MOVIELENS20M_ROOT,
+        download=True,
+        min_users_per_item=min_users_per_item,
+        sample=True,
+        n_rows=1000000,
+    )
+
+    assert (
+        movielens_20m_min_users.users_activity["user_cnt"] >= min_users_per_item
+    ).any()
+
+
+</source>
+<source file="systems/catalyst-22.02/tests/contrib/datasets/test_movielens_20m.py" startline="163" endline="182" pcid="618">
+def test_items_per_user_filtering():
+    """
+    Tets retrieveing the minimal ranking
+    """
+    min_items_per_user = 2.0
+    min_users_per_item = 1.0
+    movielens_20m_min_users = MovieLens20M(
+        MOVIELENS20M_ROOT,
+        download=True,
+        min_items_per_user=min_items_per_user,
+        min_users_per_item=min_users_per_item,
+        sample=True,
+        n_rows=1000000,
+    )
+
+    assert (
+        movielens_20m_min_users.items_activity["item_cnt"] >= min_items_per_user
+    ).any()
+
+
+</source>
+</class>
+
+<class classid="19" nclones="2" nlines="72" similarity="72">
+<source file="systems/catalyst-22.02/tests/catalyst/runners/test_sklearn_classifier.py" startline="25" endline="113" pcid="625">
+def train_experiment(engine=None):
+    with TemporaryDirectory() as logdir:
+        utils.set_global_seed(RANDOM_STATE)
+        # 1. generate data
+        num_samples, num_features, num_classes = int(1e4), int(30), 3
+        X, y = make_classification(
+            n_samples=num_samples,
+            n_features=num_features,
+            n_informative=num_features,
+            n_repeated=0,
+            n_redundant=0,
+            n_classes=num_classes,
+            n_clusters_per_class=1,
+        )
+        X, y = torch.tensor(X), torch.tensor(y)
+        dataset = TensorDataset(X, y)
+        loader = DataLoader(dataset, batch_size=64, num_workers=1, shuffle=True)
+
+        # 2. model, optimizer and scheduler
+        hidden_size, out_features = 20, 16
+        model = nn.Sequential(
+            nn.Linear(num_features, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, out_features),
+        )
+        optimizer = Adam(model.parameters(), lr=LR)
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, [2])
+
+        # 3. criterion with triplets sampling
+        sampler_inbatch = HardTripletsSampler(norm_required=False)
+        criterion = TripletMarginLossWithSampler(
+            margin=0.5, sampler_inbatch=sampler_inbatch
+        )
+
+        # 4. training with catalyst Runner
+        class CustomRunner(dl.SupervisedRunner):
+            def handle_batch(self, batch) -> None:
+                features, targets = batch["features"].float(), batch["targets"].long()
+                embeddings = self.model(features)
+                self.batch = {
+                    "embeddings": embeddings,
+                    "targets": targets,
+                }
+
+        callbacks = [
+            dl.SklearnModelCallback(
+                feature_key="embeddings",
+                target_key="targets",
+                train_loader="train",
+                valid_loaders="valid",
+                model_fn=RandomForestClassifier,
+                predict_method="predict_proba",
+                predict_key="sklearn_predict",
+                random_state=RANDOM_STATE,
+                n_estimators=100,
+            ),
+            dl.ControlFlowCallbackWrapper(
+                dl.AccuracyCallback(
+                    target_key="targets", input_key="sklearn_predict", topk=(1, 3)
+                ),
+                loaders="valid",
+            ),
+        ]
+
+        runner = CustomRunner(input_key="features", output_key="embeddings")
+        runner.train(
+            engine=engine,
+            model=model,
+            criterion=criterion,
+            optimizer=optimizer,
+            callbacks=callbacks,
+            scheduler=scheduler,
+            loaders={"train": loader, "valid": loader},
+            verbose=False,
+            valid_loader="valid",
+            valid_metric="accuracy01",
+            minimize_valid_metric=False,
+            num_epochs=TRAIN_EPOCH,
+            logdir=logdir,
+        )
+
+        best_accuracy = max(
+            epoch_metrics["valid"]["accuracy01"]
+            for epoch_metrics in runner.experiment_metrics.values()
+        )
+
+        assert best_accuracy > 0.9
+
+
+</source>
+<source file="systems/catalyst-22.02/tests/catalyst/runners/test_sklearn_classifier_mnist.py" startline="37" endline="127" pcid="635">
+def train_experiment(engine=None):
+    with TemporaryDirectory() as logdir:
+        utils.set_global_seed(RANDOM_STATE)
+        # 1. train, valid and test loaders
+        train_data = MNIST(DATA_ROOT, train=True)
+        train_labels = train_data.targets.cpu().numpy().tolist()
+        train_sampler = BatchBalanceClassSampler(
+            train_labels, num_classes=10, num_samples=4
+        )
+        train_loader = DataLoader(train_data, batch_sampler=train_sampler)
+
+        valid_dataset = MNIST(root=DATA_ROOT, train=False)
+        valid_loader = DataLoader(dataset=valid_dataset, batch_size=32)
+
+        test_dataset = MNIST(root=DATA_ROOT, train=False)
+        test_loader = DataLoader(dataset=test_dataset, batch_size=32)
+
+        # 2. model and optimizer
+        model = nn.Sequential(
+            nn.Flatten(), nn.Linear(28 * 28, 16), nn.LeakyReLU(inplace=True)
+        )
+        optimizer = Adam(model.parameters(), lr=LR)
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, [2])
+
+        # 3. criterion with triplets sampling
+        sampler_inbatch = HardTripletsSampler(norm_required=False)
+        criterion = TripletMarginLossWithSampler(
+            margin=0.5, sampler_inbatch=sampler_inbatch
+        )
+
+        # 4. training with catalyst Runner
+        class CustomRunner(dl.SupervisedRunner):
+            def handle_batch(self, batch) -> None:
+                images, targets = batch["features"].float(), batch["targets"].long()
+                features = self.model(images)
+                self.batch = {
+                    "embeddings": features,
+                    "targets": targets,
+                }
+
+        callbacks = [
+            dl.ControlFlowCallbackWrapper(
+                dl.CriterionCallback(
+                    input_key="embeddings", target_key="targets", metric_key="loss"
+                ),
+                loaders="train",
+            ),
+            dl.SklearnModelCallback(
+                feature_key="embeddings",
+                target_key="targets",
+                train_loader="train",
+                valid_loaders=["valid", "infer"],
+                model_fn=RandomForestClassifier,
+                predict_method="predict_proba",
+                predict_key="sklearn_predict",
+                random_state=RANDOM_STATE,
+                n_estimators=50,
+            ),
+            dl.ControlFlowCallbackWrapper(
+                dl.AccuracyCallback(
+                    target_key="targets", input_key="sklearn_predict", topk=(1, 3)
+                ),
+                loaders=["valid", "infer"],
+            ),
+        ]
+
+        runner = CustomRunner(input_key="features", output_key="embeddings")
+        runner.train(
+            engine=engine,
+            model=model,
+            criterion=criterion,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            callbacks=callbacks,
+            loaders={"train": train_loader, "valid": valid_loader, "infer": test_loader},
+            verbose=False,
+            valid_loader="valid",
+            valid_metric="accuracy01",
+            minimize_valid_metric=False,
+            num_epochs=TRAIN_EPOCH,
+            logdir=logdir,
+        )
+
+        best_accuracy = max(
+            epoch_metrics["infer"]["accuracy01"]
+            for epoch_metrics in runner.experiment_metrics.values()
+        )
+
+        assert best_accuracy > 0.8
+
+
+</source>
+</class>
+
+<class classid="20" nclones="3" nlines="21" similarity="80">
+<source file="systems/catalyst-22.02/tests/catalyst/runners/test_reid.py" startline="75" endline="104" pcid="646">
+    def handle_batch(self, batch: Dict[str, torch.Tensor]) -> None:
+        """
+        Process batch
+
+        Args:
+            batch: batch data
+        """
+        if self.is_train_loader:
+            images, targets = batch["features"].float(), batch["targets"].long()
+            features = self.model(images)
+            self.batch = {
+                "embeddings": features,
+                "targets": targets,
+            }
+        else:
+            images, targets, cids, is_query = (
+                batch["features"].float(),
+                batch["targets"].long(),
+                batch["cids"].long(),
+                batch["is_query"].bool(),
+            )
+            features = self.model(images)
+            self.batch = {
+                "embeddings": features,
+                "targets": targets,
+                "cids": cids,
+                "is_query": is_query,
+            }
+
+
+</source>
+<source file="systems/catalyst-22.02/tests/pipelines/test_metric_learning.py" startline="32" endline="53" pcid="736">
+    def handle_batch(self, batch) -> None:
+        if self.is_train_loader:
+            images, targets = batch["features"].float(), batch["targets"].long()
+            features = self.model(images)
+            self.batch = {
+                "embeddings": features,
+                "targets": targets,
+            }
+        else:
+            images, targets, is_query = (
+                batch["features"].float(),
+                batch["targets"].long(),
+                batch["is_query"].bool(),
+            )
+            features = self.model(images)
+            self.batch = {
+                "embeddings": features,
+                "targets": targets,
+                "is_query": is_query,
+            }
+
+
+</source>
+<source file="systems/catalyst-22.02/tests/catalyst/runners/test_reid.py" startline="200" endline="228" pcid="649">
+    def handle_batch(self, batch: Dict[str, torch.Tensor]) -> None:
+        """
+        Handle batch for train and valid loaders
+
+        Args:
+            batch: batch to process
+        """
+        if self.is_train_loader:
+            images, targets = batch["features"].float(), batch["targets"].long()
+            features = self.model(images)
+            self.batch = {
+                "embeddings": features,
+                "targets": targets,
+                "images": images,
+            }
+        else:
+            images, targets, is_query = (
+                batch["features"].float(),
+                batch["targets"].long(),
+                batch["is_query"].bool(),
+            )
+            features = self.model(images)
+            self.batch = {
+                "embeddings": features,
+                "targets": targets,
+                "is_query": is_query,
+            }
+
+
+</source>
+</class>
+
+<class classid="21" nclones="2" nlines="56" similarity="84">
+<source file="systems/catalyst-22.02/tests/catalyst/runners/test_reid.py" startline="291" endline="361" pcid="651">
+def test_reid_pipeline():
+    """This test checks that reid pipeline runs and compute metrics with ReidCMCScoreCallback"""
+    with TemporaryDirectory() as logdir:
+
+        # 1. train and valid loaders
+        train_dataset = MnistMLDataset(root=DATA_ROOT)
+        sampler = BatchBalanceClassSampler(
+            labels=train_dataset.get_labels(),
+            num_classes=3,
+            num_samples=10,
+            num_batches=20,
+        )
+        train_loader = DataLoader(
+            dataset=train_dataset, batch_sampler=sampler, num_workers=0
+        )
+
+        valid_dataset = MnistReIDQGDataset(root=DATA_ROOT, gallery_fraq=0.2)
+        valid_loader = DataLoader(dataset=valid_dataset, batch_size=1024)
+
+        # 2. model and optimizer
+        model = MnistSimpleNet(out_features=16)
+        optimizer = Adam(model.parameters(), lr=0.001)
+
+        # 3. criterion with triplets sampling
+        sampler_inbatch = AllTripletsSampler(max_output_triplets=1000)
+        criterion = TripletMarginLossWithSampler(
+            margin=0.5, sampler_inbatch=sampler_inbatch
+        )
+
+        # 4. training with catalyst Runner
+        callbacks = [
+            dl.ControlFlowCallbackWrapper(
+                dl.CriterionCallback(
+                    input_key="embeddings", target_key="targets", metric_key="loss"
+                ),
+                loaders="train",
+            ),
+            dl.ControlFlowCallbackWrapper(
+                dl.ReidCMCScoreCallback(
+                    embeddings_key="embeddings",
+                    pids_key="targets",
+                    cids_key="cids",
+                    is_query_key="is_query",
+                    topk=[1],
+                ),
+                loaders="valid",
+            ),
+            dl.PeriodicLoaderCallback(
+                valid_loader_key="valid",
+                valid_metric_key="cmc01",
+                minimize=False,
+                valid=2,
+            ),
+        ]
+
+        runner = ReIDCustomRunner()
+        runner.train(
+            model=model,
+            criterion=criterion,
+            optimizer=optimizer,
+            callbacks=callbacks,
+            loaders=OrderedDict({"train": train_loader, "valid": valid_loader}),
+            verbose=False,
+            logdir=logdir,
+            valid_loader="valid",
+            valid_metric="cmc01",
+            minimize_valid_metric=False,
+            num_epochs=10,
+        )
+        assert "cmc01" in runner.loader_metrics
+        assert runner.loader_metrics["cmc01"] > 0.65
+</source>
+<source file="systems/catalyst-22.02/tests/pipelines/test_metric_learning.py" startline="54" endline="122" pcid="737">
+def train_experiment(engine=None):
+    with TemporaryDirectory() as logdir:
+
+        # 1. train and valid loaders
+        train_dataset = MnistMLDataset(root=DATA_ROOT)
+        sampler = BatchBalanceClassSampler(
+            labels=train_dataset.get_labels(),
+            num_classes=5,
+            num_samples=10,
+            num_batches=10,
+        )
+        train_loader = DataLoader(dataset=train_dataset, batch_sampler=sampler)
+
+        valid_dataset = MnistQGDataset(root=DATA_ROOT, gallery_fraq=0.2)
+        valid_loader = DataLoader(dataset=valid_dataset, batch_size=1024)
+
+        # 2. model and optimizer
+        model = MnistSimpleNet(out_features=16)
+        optimizer = Adam(model.parameters(), lr=0.001)
+
+        # 3. criterion with triplets sampling
+        sampler_inbatch = HardTripletsSampler(norm_required=False)
+        criterion = TripletMarginLossWithSampler(
+            margin=0.5, sampler_inbatch=sampler_inbatch
+        )
+
+        # 4. training with catalyst Runner
+        callbacks = [
+            dl.ControlFlowCallbackWrapper(
+                dl.CriterionCallback(
+                    input_key="embeddings", target_key="targets", metric_key="loss"
+                ),
+                loaders="train",
+            ),
+            dl.ControlFlowCallbackWrapper(
+                dl.CMCScoreCallback(
+                    embeddings_key="embeddings",
+                    labels_key="targets",
+                    is_query_key="is_query",
+                    topk=[1],
+                ),
+                loaders="valid",
+            ),
+            dl.PeriodicLoaderCallback(
+                valid_loader_key="valid",
+                valid_metric_key="cmc01",
+                minimize=False,
+                valid=2,
+            ),
+        ]
+
+        runner = CustomRunner(input_key="features", output_key="embeddings")
+        runner.train(
+            engine=engine,
+            model=model,
+            criterion=criterion,
+            optimizer=optimizer,
+            callbacks=callbacks,
+            loaders={"train": train_loader, "valid": valid_loader},
+            verbose=False,
+            logdir=logdir,
+            valid_loader="valid",
+            valid_metric="cmc01",
+            minimize_valid_metric=False,
+            num_epochs=2,
+        )
+
+
+# Device
+</source>
+</class>
+
+<class classid="22" nclones="2" nlines="13" similarity="92">
+<source file="systems/catalyst-22.02/tests/catalyst/data/test_loader.py" startline="8" endline="22" pcid="652">
+def test_batch_limit1() -> None:
+    for shuffle in (False, True):
+        num_samples, num_features = int(1e2), int(1e1)
+        X, y = torch.rand(num_samples, num_features), torch.rand(num_samples)
+        dataset = TensorDataset(X, y)
+        loader = DataLoader(dataset, batch_size=4, num_workers=1, shuffle=shuffle)
+        loader = BatchLimitLoaderWrapper(loader, num_batches=1)
+
+        batch1 = next(iter(loader))[0]
+        batch2 = next(iter(loader))[0]
+        batch3 = next(iter(loader))[0]
+        assert all(torch.isclose(x, y).all() for x, y in zip(batch1, batch2))
+        assert all(torch.isclose(x, y).all() for x, y in zip(batch2, batch3))
+
+
+</source>
+<source file="systems/catalyst-22.02/tests/catalyst/data/test_loader.py" startline="23" endline="36" pcid="653">
+def test_batch_limit2() -> None:
+    for shuffle in (False, True):
+        num_samples, num_features = int(1e2), int(1e1)
+        X, y = torch.rand(num_samples, num_features), torch.rand(num_samples)
+        dataset = TensorDataset(X, y)
+        loader = DataLoader(dataset, batch_size=4, num_workers=1, shuffle=shuffle)
+        loader = BatchLimitLoaderWrapper(loader, num_batches=2)
+
+        batch1 = next(iter(loader))[0]
+        batch2 = next(iter(loader))[0]
+        batch3 = next(iter(loader))[0]
+        batch4 = next(iter(loader))[0]
+        assert all(torch.isclose(x, y).all() for x, y in zip(batch1, batch3))
+        assert all(torch.isclose(x, y).all() for x, y in zip(batch2, batch4))
+</source>
+</class>
+
+<class classid="23" nclones="2" nlines="36" similarity="80">
+<source file="systems/catalyst-22.02/tests/catalyst/callbacks/test_metric_aggregation.py" startline="31" endline="71" pcid="658">
+def test_aggregation_1():
+    """
+    Aggregation as weighted_sum
+    """
+    loaders, model, criterion, optimizer = prepare_experiment()
+    runner = dl.SupervisedRunner()
+    runner.train(
+        model=model,
+        criterion=criterion,
+        optimizer=optimizer,
+        loaders=loaders,
+        logdir="./logs/aggregation_1/",
+        num_epochs=3,
+        callbacks=[
+            dl.CriterionCallback(
+                input_key="logits",
+                target_key="targets",
+                metric_key="loss_bce",
+                criterion_key="bce",
+            ),
+            dl.CriterionCallback(
+                input_key="logits",
+                target_key="targets",
+                metric_key="loss_focal",
+                criterion_key="focal",
+            ),
+            # loss aggregation
+            dl.MetricAggregationCallback(
+                metric_key="loss",
+                metrics={"loss_focal": 0.6, "loss_bce": 0.4},
+                mode="weighted_sum",
+            ),
+        ],
+    )
+    for loader in ["train", "valid"]:
+        metrics = runner.epoch_metrics[loader]
+        loss_1 = metrics["loss_bce"] * 0.4 + metrics["loss_focal"] * 0.6
+        loss_2 = metrics["loss"]
+        assert np.abs(loss_1 - loss_2) < 1e-5
+
+
+</source>
+<source file="systems/catalyst-22.02/tests/catalyst/callbacks/test_metric_aggregation.py" startline="72" endline="114" pcid="659">
+def test_aggregation_2():
+    """
+    Aggregation with custom function
+    """
+    loaders, model, criterion, optimizer = prepare_experiment()
+    runner = dl.SupervisedRunner()
+
+    def aggregation_function(metrics, runner):
+        epoch = runner.epoch_step
+        loss = (3 / 2 - epoch / 2) * metrics["loss_focal"] + (
+            1 / 2 * epoch - 1 / 2
+        ) * metrics["loss_bce"]
+        return loss
+
+    runner.train(
+        model=model,
+        criterion=criterion,
+        optimizer=optimizer,
+        loaders=loaders,
+        logdir="./logs/aggregation_2/",
+        num_epochs=3,
+        callbacks=[
+            dl.CriterionCallback(
+                input_key="logits",
+                target_key="targets",
+                metric_key="loss_bce",
+                criterion_key="bce",
+            ),
+            dl.CriterionCallback(
+                input_key="logits",
+                target_key="targets",
+                metric_key="loss_focal",
+                criterion_key="focal",
+            ),
+            # loss aggregation
+            dl.MetricAggregationCallback(metric_key="loss", mode=aggregation_function),
+        ],
+    )
+    for loader in ["train", "valid"]:
+        metrics = runner.epoch_metrics[loader]
+        loss_1 = metrics["loss_bce"]
+        loss_2 = metrics["loss"]
+        assert np.abs(loss_1 - loss_2) < 1e-5
+</source>
+</class>
+
+<class classid="24" nclones="10" nlines="46" similarity="74">
+<source file="systems/catalyst-22.02/tests/catalyst/callbacks/test_periodic_loader.py" startline="133" endline="196" pcid="667">
+def test_validation_with_period_3():
+    old_stdout = sys.stdout
+    sys.stdout = str_stdout = StringIO()
+
+    # experiment_setup
+    logdir = "./logs/periodic_loader"
+    checkpoint = logdir + "/checkpoints"
+    logfile = checkpoint + "/model.storage.json"
+
+    # data
+    num_samples, num_features = int(1e4), int(1e1)
+    X = torch.rand(num_samples, num_features)
+    y = torch.randint(0, 5, size=[num_samples])
+    dataset = TensorDataset(X, y)
+    loader = DataLoader(dataset, batch_size=32, num_workers=1)
+    loaders = {
+        "train": loader,
+        "valid": loader,
+    }
+
+    # model, criterion, optimizer, scheduler
+    model = torch.nn.Linear(num_features, 5)
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters())
+    runner = SupervisedRunner()
+
+    # first stage
+    runner.train(
+        model=model,
+        criterion=criterion,
+        optimizer=optimizer,
+        loaders=loaders,
+        logdir=logdir,
+        num_epochs=10,
+        verbose=False,
+        valid_loader="valid",
+        valid_metric="loss",
+        minimize_valid_metric=True,
+        callbacks=[
+            PeriodicLoaderCallback(
+                valid_loader_key="valid", valid_metric_key="loss", minimize=True, valid=3
+            ),
+            CheckRunCallback(num_epoch_steps=10),
+        ],
+    )
+
+    sys.stdout = old_stdout
+    exp_output = str_stdout.getvalue()
+
+    # assert len(re.findall(r"\(train\)", exp_output)) == 10
+    # assert len(re.findall(r"\(valid\)", exp_output)) == 3
+    # assert len(re.findall(r".*/train\.\d\.pth", exp_output)) == 1
+
+    assert os.path.isfile(logfile)
+    assert os.path.isfile(checkpoint + "/model.0009.pth")
+    # assert os.path.isfile(checkpoint + "/train.9_full.pth")
+    assert os.path.isfile(checkpoint + "/model.best.pth")
+    # assert os.path.isfile(checkpoint + "/best_full.pth")
+    assert os.path.isfile(checkpoint + "/model.last.pth")
+    # assert os.path.isfile(checkpoint + "/last_full.pth")
+
+    shutil.rmtree(logdir, ignore_errors=True)
+
+
+</source>
+<source file="systems/catalyst-22.02/tests/catalyst/callbacks/test_periodic_loader.py" startline="552" endline="611" pcid="672">
+def test_negative_period_exception():
+    old_stdout = sys.stdout
+    sys.stdout = str_stdout = StringIO()
+
+    # experiment_setup
+    logdir = "./logs/periodic_loader"
+    checkpoint = logdir + "/checkpoints"
+    logfile = checkpoint + "/model.storage.json"
+
+    # data
+    num_samples, num_features = int(1e4), int(1e1)
+    X = torch.rand(num_samples, num_features)
+    y = torch.randint(0, 5, size=[num_samples])
+    dataset = TensorDataset(X, y)
+    loader = DataLoader(dataset, batch_size=32, num_workers=1)
+    loaders = {
+        "train": loader,
+        "train_additional": loader,
+        "valid": loader,
+        "valid_additional": loader,
+    }
+
+    # model, criterion, optimizer, scheduler
+    model = torch.nn.Linear(num_features, 5)
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters())
+    runner = SupervisedRunner()
+
+    with pytest.raises(ValueError):
+        runner.train(
+            model=model,
+            criterion=criterion,
+            optimizer=optimizer,
+            loaders=loaders,
+            logdir=logdir,
+            num_epochs=10,
+            verbose=False,
+            valid_loader="valid",
+            valid_metric="loss",
+            minimize_valid_metric=True,
+            callbacks=[
+                PeriodicLoaderCallback(
+                    valid_loader_key="valid",
+                    valid_metric_key="loss",
+                    minimize=True,
+                    train_additional=1,
+                    train_not_exists=-10,
+                    valid=3,
+                    valid_additional=-1,
+                    valid_not_exist=1,
+                )
+            ],
+        )
+
+    sys.stdout = old_stdout
+    exp_output = str_stdout.getvalue()
+
+    shutil.rmtree(logdir, ignore_errors=True)
+
+
+</source>
+<source file="systems/catalyst-22.02/tests/catalyst/callbacks/test_periodic_loader.py" startline="262" endline="432" pcid="669">
+def test_multiple_loaders():
+    old_stdout = sys.stdout
+    sys.stdout = str_stdout = StringIO()
+
+    # experiment_setup
+    logdir = "./logs/periodic_loader"
+    checkpoint = logdir + "/checkpoints"
+    logfile = checkpoint + "/model.storage.json"
+
+    # data
+    num_samples, num_features = int(1e4), int(1e1)
+    X = torch.rand(num_samples, num_features)
+    y = torch.randint(0, 5, size=[num_samples])
+    dataset = TensorDataset(X, y)
+    loader = DataLoader(dataset, batch_size=32, num_workers=1)
+    loaders = {
+        "train": loader,
+        "train_additional": loader,
+        "valid": loader,
+        "valid_additional": loader,
+    }
+
+    # model, criterion, optimizer, scheduler
+    model = torch.nn.Linear(num_features, 5)
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters())
+    runner = SupervisedRunner()
+
+    # first stage
+    runner.train(
+        model=model,
+        criterion=criterion,
+        optimizer=optimizer,
+        loaders=loaders,
+        logdir=logdir,
+        num_epochs=10,
+        verbose=False,
+        valid_loader="valid",
+        valid_metric="loss",
+        minimize_valid_metric=True,
+        callbacks=[
+            PeriodicLoaderCallback(
+                valid_loader_key="valid",
+                valid_metric_key="loss",
+                minimize=True,
+                train_additional=2,
+                valid=3,
+                valid_additional=0,
+            ),
+            CheckRunCallback(num_epoch_steps=10),
+        ],
+    )
+
+    sys.stdout = old_stdout
+    exp_output = str_stdout.getvalue()
+
+    # assert len(re.findall(r"\(train\)", exp_output)) == 10
+    # assert len(re.findall(r"\(train_additional\)", exp_output)) == 5
+    # assert len(re.findall(r"\(valid\)", exp_output)) == 3
+    # assert len(re.findall(r"\(valid_additional\)", exp_output)) == 0
+    # assert len(re.findall(r".*/train\.\d\.pth", exp_output)) == 1
+
+    assert os.path.isfile(logfile)
+    assert os.path.isfile(checkpoint + "/model.0009.pth")
+    # assert os.path.isfile(checkpoint + "/train.9_full.pth")
+    assert os.path.isfile(checkpoint + "/model.best.pth")
+    # assert os.path.isfile(checkpoint + "/best_full.pth")
+    assert os.path.isfile(checkpoint + "/model.last.pth")
+    # assert os.path.isfile(checkpoint + "/last_full.pth")
+
+    shutil.rmtree(logdir, ignore_errors=True)
+
+
+# def test_multiple_loaders_and_multiple_stages():
+#     old_stdout = sys.stdout
+#     sys.stdout = str_stdout = StringIO()
+
+#     # experiment_setup
+#     logdir = "./logs/periodic_loader"
+#     checkpoint = logdir + "/checkpoints"
+#     logfile = checkpoint + "/model.storage.json"
+
+#     # data
+#     num_samples, num_features = int(1e4), int(1e1)
+#     X = torch.rand(num_samples, num_features)
+#     y = torch.randint(0, 5, size=[num_samples])
+#     dataset = TensorDataset(X, y)
+#     loader = DataLoader(dataset, batch_size=32, num_workers=1)
+#     loaders = {
+#         "train": loader,
+#         "train_additional": loader,
+#         "valid": loader,
+#         "valid_additional": loader,
+#     }
+
+#     # model, criterion, optimizer, scheduler
+#     model = torch.nn.Linear(num_features, 5)
+#     criterion = torch.nn.CrossEntropyLoss()
+#     optimizer = torch.optim.Adam(model.parameters())
+#     runner = SupervisedRunner()
+
+#     # first stage
+#     runner.train(
+#         model=model,
+#         criterion=criterion,
+#         optimizer=optimizer,
+#         loaders=loaders,
+#         logdir=logdir,
+#         num_epochs=5,
+#         verbose=False,
+#         valid_loader="valid",
+#         valid_metric="loss",
+#         minimize_valid_metric=True,
+#         callbacks=[
+#             PeriodicLoaderCallback(
+#                 valid_loader="valid",
+#                 valid_metric="loss",
+#                 minimize=True,
+#                 train_additional=2,
+#                 valid=3,
+#                 valid_additional=0,
+#             ),
+#             CheckRunCallback(num_epoch_steps=5),
+#         ],
+#     )
+
+#     # second stage
+#     runner.train(
+#         model=model,
+#         criterion=criterion,
+#         optimizer=optimizer,
+#         loaders=loaders,
+#         logdir=logdir,
+#         num_epochs=10,
+#         verbose=False,
+#         valid_loader="valid",
+#         valid_metric="loss",
+#         minimize_valid_metric=True,
+#         callbacks=[
+#             PeriodicLoaderCallback(
+#                 valid_loader="valid",
+#                 valid_metric="loss",
+#                 minimize=True,
+#                 train_additional=2,
+#                 valid=3,
+#                 valid_additional=0,
+#             ),
+#             CheckRunCallback(num_epoch_steps=10),
+#         ],
+#     )
+
+#     sys.stdout = old_stdout
+#     exp_output = str_stdout.getvalue()
+
+#     # assert len(re.findall(r"\(train\)", exp_output)) == 15
+#     # assert len(re.findall(r"\(train_additional\)", exp_output)) == 7
+#     # assert len(re.findall(r"\(valid\)", exp_output)) == 4
+#     # assert len(re.findall(r"\(valid_additional\)", exp_output)) == 0
+#     # assert len(re.findall(r".*/train\.\d\.pth", exp_output)) == 2
+
+#     assert os.path.isfile(logfile)
+#     assert os.path.isfile(checkpoint + "/train.9.pth")
+#     assert os.path.isfile(checkpoint + "/train.9_full.pth")
+#     assert os.path.isfile(checkpoint + "/best.pth")
+#     assert os.path.isfile(checkpoint + "/best_full.pth")
+#     assert os.path.isfile(checkpoint + "/last.pth")
+#     assert os.path.isfile(checkpoint + "/last_full.pth")
+
+#     shutil.rmtree(logdir, ignore_errors=True)
+
+
+</source>
+<source file="systems/catalyst-22.02/tests/catalyst/callbacks/test_periodic_loader.py" startline="433" endline="491" pcid="670">
+def test_no_loaders_epoch():
+    old_stdout = sys.stdout
+    sys.stdout = str_stdout = StringIO()
+
+    # experiment_setup
+    logdir = "./logs/periodic_loader"
+    checkpoint = logdir + "/checkpoints"
+    logfile = checkpoint + "/model.storage.json"
+
+    # data
+    num_samples, num_features = int(1e4), int(1e1)
+    X = torch.rand(num_samples, num_features)
+    y = torch.randint(0, 5, size=[num_samples])
+    dataset = TensorDataset(X, y)
+    loader = DataLoader(dataset, batch_size=32, num_workers=1)
+    loaders = {
+        "train": loader,
+        "train_additional": loader,
+        "valid": loader,
+        "valid_additional": loader,
+    }
+
+    # model, criterion, optimizer, scheduler
+    model = torch.nn.Linear(num_features, 5)
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters())
+    runner = SupervisedRunner()
+
+    with pytest.raises(ValueError):
+        runner.train(
+            model=model,
+            criterion=criterion,
+            optimizer=optimizer,
+            loaders=loaders,
+            logdir=logdir,
+            num_epochs=10,
+            verbose=False,
+            valid_loader="valid",
+            valid_metric="loss",
+            minimize_valid_metric=True,
+            callbacks=[
+                PeriodicLoaderCallback(
+                    valid_loader_key="valid",
+                    valid_metric_key="loss",
+                    minimize=True,
+                    train=2,
+                    train_additional=2,
+                    valid=3,
+                    valid_additional=0,
+                )
+            ],
+        )
+
+    sys.stdout = old_stdout
+    exp_output = str_stdout.getvalue()
+
+    shutil.rmtree(logdir, ignore_errors=True)
+
+
+</source>
+<source file="systems/catalyst-22.02/tests/catalyst/callbacks/test_periodic_loader.py" startline="672" endline="748" pcid="674">
+def test_ignoring_unknown_loaders():
+    old_stdout = sys.stdout
+    sys.stdout = str_stdout = StringIO()
+
+    # experiment_setup
+    logdir = "./logs/periodic_loader"
+    checkpoint = logdir + "/checkpoints"
+    logfile = checkpoint + "/model.storage.json"
+
+    # data
+    num_samples, num_features = int(1e4), int(1e1)
+    X = torch.rand(num_samples, num_features)
+    y = torch.randint(0, 5, size=[num_samples])
+    dataset = TensorDataset(X, y)
+    loader = DataLoader(dataset, batch_size=32, num_workers=1)
+    loaders = {
+        "train": loader,
+        "train_additional": loader,
+        "valid": loader,
+        "valid_additional": loader,
+    }
+
+    # model, criterion, optimizer, scheduler
+    model = torch.nn.Linear(num_features, 5)
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters())
+    runner = SupervisedRunner()
+
+    # first stage
+    runner.train(
+        model=model,
+        criterion=criterion,
+        optimizer=optimizer,
+        loaders=loaders,
+        logdir=logdir,
+        num_epochs=10,
+        verbose=False,
+        valid_loader="valid",
+        valid_metric="loss",
+        minimize_valid_metric=True,
+        callbacks=[
+            PeriodicLoaderCallback(
+                valid_loader_key="valid",
+                valid_metric_key="loss",
+                minimize=True,
+                train_additional=2,
+                train_not_exists=2,
+                valid=3,
+                valid_additional=0,
+                valid_not_exist=1,
+            ),
+            CheckRunCallback(num_epoch_steps=10),
+        ],
+    )
+
+    sys.stdout = old_stdout
+    exp_output = str_stdout.getvalue()
+
+    # assert len(re.findall(r"\(train\)", exp_output)) == 10
+    # assert len(re.findall(r"\(train_additional\)", exp_output)) == 5
+    # assert len(re.findall(r"\(train_not_exists\)", exp_output)) == 0
+    # assert len(re.findall(r"\(valid\)", exp_output)) == 3
+    # assert len(re.findall(r"\(valid_additional\)", exp_output)) == 0
+    # assert len(re.findall(r"\(valid_not_exist\)", exp_output)) == 0
+    # assert len(re.findall(r".*/train\.\d\.pth", exp_output)) == 1
+
+    assert os.path.isfile(logfile)
+    assert os.path.isfile(checkpoint + "/model.0009.pth")
+    # assert os.path.isfile(checkpoint + "/train.9_full.pth")
+    assert os.path.isfile(checkpoint + "/model.best.pth")
+    # assert os.path.isfile(checkpoint + "/best_full.pth")
+    assert os.path.isfile(checkpoint + "/model.last.pth")
+    # assert os.path.isfile(checkpoint + "/last_full.pth")
+
+    shutil.rmtree(logdir, ignore_errors=True)
+
+
+</source>
+<source file="systems/catalyst-22.02/tests/catalyst/callbacks/test_periodic_loader.py" startline="198" endline="261" pcid="668">
+def test_validation_with_period_0():
+    old_stdout = sys.stdout
+    sys.stdout = str_stdout = StringIO()
+
+    # experiment_setup
+    logdir = "./logs/periodic_loader"
+    checkpoint = logdir + "/checkpoints"
+    logfile = checkpoint + "/model.storage.json"
+
+    # data
+    num_samples, num_features = int(1e4), int(1e1)
+    X = torch.rand(num_samples, num_features)
+    y = torch.randint(0, 5, size=[num_samples])
+    dataset = TensorDataset(X, y)
+    loader = DataLoader(dataset, batch_size=32, num_workers=1)
+    loaders = {
+        "train": loader,
+        "valid": loader,
+    }
+
+    # model, criterion, optimizer, scheduler
+    model = torch.nn.Linear(num_features, 5)
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters())
+    runner = SupervisedRunner()
+
+    # first stage
+    runner.train(
+        model=model,
+        criterion=criterion,
+        optimizer=optimizer,
+        loaders=loaders,
+        logdir=logdir,
+        num_epochs=5,
+        verbose=False,
+        valid_loader="valid",
+        valid_metric="loss",
+        minimize_valid_metric=True,
+        callbacks=[
+            PeriodicLoaderCallback(
+                valid_loader_key="valid", valid_metric_key="loss", minimize=True, valid=0
+            ),
+            CheckRunCallback(num_epoch_steps=5),
+        ],
+    )
+
+    sys.stdout = old_stdout
+    exp_output = str_stdout.getvalue()
+
+    # assert len(re.findall(r"\(train\)", exp_output)) == 5
+    # assert len(re.findall(r"\(valid\)", exp_output)) == 0
+    # assert len(re.findall(r".*/train\.\d\.pth", exp_output)) == 1
+
+    assert os.path.isfile(logfile)
+    assert os.path.isfile(checkpoint + "/train.5.pth")
+    assert os.path.isfile(checkpoint + "/train.5_full.pth")
+    assert os.path.isfile(checkpoint + "/best.pth")
+    assert os.path.isfile(checkpoint + "/best_full.pth")
+    assert os.path.isfile(checkpoint + "/last.pth")
+    assert os.path.isfile(checkpoint + "/last_full.pth")
+
+    shutil.rmtree(logdir, ignore_errors=True)
+
+
+</source>
+<source file="systems/catalyst-22.02/tests/catalyst/callbacks/test_periodic_loader.py" startline="492" endline="551" pcid="671">
+def test_wrong_period_type():
+    old_stdout = sys.stdout
+    sys.stdout = str_stdout = StringIO()
+
+    # experiment_setup
+    logdir = "./logs/periodic_loader"
+    checkpoint = logdir + "/checkpoints"
+    logfile = checkpoint + "/model.storage.json"
+
+    # data
+    num_samples, num_features = int(1e4), int(1e1)
+    X = torch.rand(num_samples, num_features)
+    y = torch.randint(0, 5, size=[num_samples])
+    dataset = TensorDataset(X, y)
+    loader = DataLoader(dataset, batch_size=32, num_workers=1)
+    loaders = {
+        "train": loader,
+        "train_additional": loader,
+        "valid": loader,
+        "valid_additional": loader,
+    }
+
+    # model, criterion, optimizer, scheduler
+    model = torch.nn.Linear(num_features, 5)
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters())
+    runner = SupervisedRunner()
+
+    with pytest.raises(TypeError):
+        runner.train(
+            model=model,
+            criterion=criterion,
+            optimizer=optimizer,
+            loaders=loaders,
+            logdir=logdir,
+            num_epochs=10,
+            verbose=False,
+            valid_loader="valid",
+            valid_metric="loss",
+            minimize_valid_metric=True,
+            callbacks=[
+                PeriodicLoaderCallback(
+                    valid_loader_key="valid",
+                    valid_metric_key="loss",
+                    minimize=True,
+                    train_additional=[],
+                    train_not_exists=2,
+                    valid=3,
+                    valid_additional=0,
+                    valid_not_exist=1,
+                )
+            ],
+        )
+
+    sys.stdout = old_stdout
+    exp_output = str_stdout.getvalue()
+
+    shutil.rmtree(logdir, ignore_errors=True)
+
+
+</source>
+<source file="systems/catalyst-22.02/tests/catalyst/callbacks/test_periodic_loader.py" startline="749" endline="907" pcid="675">
+def test_loading_best_state_at_end():
+    old_stdout = sys.stdout
+    sys.stdout = str_stdout = StringIO()
+
+    # experiment_setup
+    logdir = "./logs/periodic_loader"
+    checkpoint = logdir + "/checkpoints"
+    logfile = checkpoint + "/model.storage.json"
+
+    # data
+    num_samples, num_features = int(1e4), int(1e1)
+    X = torch.rand(num_samples, num_features)
+    y = torch.randint(0, 5, size=[num_samples])
+    dataset = TensorDataset(X, y)
+    loader = DataLoader(dataset, batch_size=32, num_workers=1)
+    loaders = {
+        "train": loader,
+        "valid": loader,
+    }
+
+    # model, criterion, optimizer, scheduler
+    model = torch.nn.Linear(num_features, 5)
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters())
+    runner = SupervisedRunner()
+
+    # first stage
+    runner.train(
+        model=model,
+        criterion=criterion,
+        optimizer=optimizer,
+        loaders=loaders,
+        logdir=logdir,
+        num_epochs=5,
+        verbose=False,
+        valid_loader="valid",
+        valid_metric="loss",
+        minimize_valid_metric=True,
+        callbacks=[
+            PeriodicLoaderCallback(
+                valid_loader_key="valid", valid_metric_key="loss", minimize=True, valid=3
+            ),
+            CheckRunCallback(num_epoch_steps=5),
+        ],
+        load_best_on_end=True,
+    )
+
+    sys.stdout = old_stdout
+    exp_output = str_stdout.getvalue()
+
+    # assert len(re.findall(r"\(train\)", exp_output)) == 5
+    # assert len(re.findall(r"\(valid\)", exp_output)) == 1
+    # assert len(re.findall(r"\(global epoch 3, epoch 3, stage train\)", exp_output)) == 1
+    # assert len(re.findall(r".*/train\.\d\.pth", exp_output)) == 1
+
+    assert os.path.isfile(logfile)
+    assert os.path.isfile(checkpoint + "/model.0003.pth")
+    # assert os.path.isfile(checkpoint + "/train.3_full.pth")
+    assert os.path.isfile(checkpoint + "/model.best.pth")
+    # assert os.path.isfile(checkpoint + "/best_full.pth")
+    assert os.path.isfile(checkpoint + "/model.last.pth")
+    # assert os.path.isfile(checkpoint + "/last_full.pth")
+
+    shutil.rmtree(logdir, ignore_errors=True)
+
+
+# @pytest.mark.skip(reason="disabled")
+# def test_loading_best_state_at_end_with_custom_scores():
+#     class Metric(Callback):
+#         def __init__(self, values):
+#             super().__init__(CallbackOrder.metric)
+#             self.values = values
+
+#         def on_loader_end(self, runner: "IRunner") -> None:
+#             score = self.values[runner.loader_key][runner.stage_epoch_step]
+#             runner.loader_metrics["metric"] = score
+
+#     old_stdout = sys.stdout
+#     sys.stdout = str_stdout = StringIO()
+
+#     # experiment_setup
+#     logdir = "./logs/periodic_loader"
+#     checkpoint = logdir  # + "/checkpoints"
+#     logfile = checkpoint + "/model.storage.json"
+
+#     # data
+#     num_samples, num_features = int(1e4), int(1e1)
+#     X = torch.rand(num_samples, num_features)
+#     y = torch.randint(0, 5, size=[num_samples])
+#     dataset = TensorDataset(X, y)
+#     loader = DataLoader(dataset, batch_size=32, num_workers=1)
+#     loaders = {
+#         "train": loader,
+#         "valid": loader,
+#     }
+
+#     # model, criterion, optimizer, scheduler
+#     model = torch.nn.Linear(num_features, 5)
+#     criterion = torch.nn.CrossEntropyLoss()
+#     optimizer = torch.optim.Adam(model.parameters())
+#     runner = SupervisedRunner()
+
+#     n_epochs = 10
+#     period = 3
+#     metrics = {
+#         "train": {i: i * 0.1 for i in range(1, 11)},
+#         "valid": {
+#             i: v
+#             for i, v in enumerate(
+#                 [0.05, 0.1, 0.15, 0.15, 0.2, 0.18, 0.22, 0.11, 0.13, 0.12], 1
+#             )
+#         },
+#     }
+
+#     # first stage
+#     runner.train(
+#         model=model,
+#         criterion=criterion,
+#         optimizer=optimizer,
+#         loaders=loaders,
+#         logdir=logdir,
+#         num_epochs=n_epochs,
+#         verbose=False,
+#         valid_loader="valid",
+#         valid_metric="metric",
+#         minimize_valid_metric=False,
+#         callbacks=[
+#             PeriodicLoaderCallback(
+#                 valid_loader="valid",
+#                 valid_metric="metric",
+#                 minimize=True,
+#                 valid=period,
+#             ),
+#             CheckRunCallback(num_epoch_steps=n_epochs),
+#             Metric(metrics),
+#         ],
+#         load_best_on_end=True,
+#     )
+
+#     sys.stdout = old_stdout
+#     exp_output = str_stdout.getvalue()
+
+#     # assert len(re.findall(r"\(train\)", exp_output)) == n_epochs
+#     # assert len(re.findall(r"\(valid\)", exp_output)) == (n_epochs // period)
+#     # assert len(re.findall(r"\(global epoch 6, epoch 6, stage train\)", exp_output)) == 1
+#     # assert len(re.findall(r".*/train\.\d\.pth", exp_output)) == 1
+
+#     assert os.path.isfile(logfile)
+#     assert os.path.isfile(checkpoint + "/train.6.pth")
+#     assert os.path.isfile(checkpoint + "/train.6_full.pth")
+#     assert os.path.isfile(checkpoint + "/best.pth")
+#     assert os.path.isfile(checkpoint + "/best_full.pth")
+#     assert os.path.isfile(checkpoint + "/last.pth")
+#     assert os.path.isfile(checkpoint + "/last_full.pth")
+
+#     shutil.rmtree(logdir, ignore_errors=True)
+
+
+# @pytest.mark.skip(reason="disabled")
+</source>
+<source file="systems/catalyst-22.02/tests/catalyst/callbacks/test_periodic_loader.py" startline="612" endline="671" pcid="673">
+def test_zero_period_validation_exception():
+    old_stdout = sys.stdout
+    sys.stdout = str_stdout = StringIO()
+
+    # experiment_setup
+    logdir = "./logs/periodic_loader"
+    checkpoint = logdir + "/checkpoints"
+    logfile = checkpoint + "/model.storage.json"
+
+    # data
+    num_samples, num_features = int(1e4), int(1e1)
+    X = torch.rand(num_samples, num_features)
+    y = torch.randint(0, 5, size=[num_samples])
+    dataset = TensorDataset(X, y)
+    loader = DataLoader(dataset, batch_size=32, num_workers=1)
+    loaders = {
+        "train": loader,
+        "train_additional": loader,
+        "valid": loader,
+        "valid_additional": loader,
+    }
+
+    # model, criterion, optimizer, scheduler
+    model = torch.nn.Linear(num_features, 5)
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters())
+    runner = SupervisedRunner()
+
+    with pytest.raises(ValueError):
+        runner.train(
+            model=model,
+            criterion=criterion,
+            optimizer=optimizer,
+            loaders=loaders,
+            logdir=logdir,
+            num_epochs=10,
+            verbose=False,
+            valid_loader="valid",
+            valid_metric="loss",
+            minimize_valid_metric=True,
+            callbacks=[
+                PeriodicLoaderCallback(
+                    valid_loader_key="valid",
+                    valid_metric_key="loss",
+                    minimize=True,
+                    train_additional=1,
+                    train_not_exists=3,
+                    valid=0,
+                    valid_additional=2,
+                    valid_not_exist=1,
+                )
+            ],
+        )
+
+    sys.stdout = old_stdout
+    exp_output = str_stdout.getvalue()
+
+    shutil.rmtree(logdir, ignore_errors=True)
+
+
+</source>
+<source file="systems/catalyst-22.02/tests/catalyst/callbacks/test_periodic_loader.py" startline="908" endline="985" pcid="676">
+def test_multiple_best_checkpoints():
+    old_stdout = sys.stdout
+    sys.stdout = str_stdout = StringIO()
+
+    # experiment_setup
+    logdir = "./logs/periodic_loader"
+    checkpoint = logdir  # + "/checkpoints"
+    logfile = checkpoint + "/model.storage.json"
+
+    # data
+    num_samples, num_features = int(1e4), int(1e1)
+    X = torch.rand(num_samples, num_features)
+    y = torch.randint(0, 5, size=[num_samples])
+    dataset = TensorDataset(X, y)
+    loader = DataLoader(dataset, batch_size=32, num_workers=1)
+    loaders = {
+        "train": loader,
+        "valid": loader,
+    }
+
+    # model, criterion, optimizer, scheduler
+    model = torch.nn.Linear(num_features, 5)
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters())
+    runner = SupervisedRunner()
+
+    n_epochs = 12
+    period = 2
+    # first stage
+    runner.train(
+        model=model,
+        criterion=criterion,
+        optimizer=optimizer,
+        loaders=loaders,
+        logdir=logdir,
+        num_epochs=n_epochs,
+        verbose=False,
+        valid_loader="valid",
+        valid_metric="loss",
+        minimize_valid_metric=True,
+        callbacks=[
+            PeriodicLoaderCallback(
+                valid_loader_key="valid",
+                valid_metric_key="loss",
+                minimize=True,
+                valid=period,
+            ),
+            CheckRunCallback(num_epoch_steps=n_epochs),
+            CheckpointCallback(
+                logdir=logdir,
+                loader_key="valid",
+                metric_key="loss",
+                minimize=True,
+                topk=3,
+            ),
+        ],
+    )
+
+    sys.stdout = old_stdout
+    exp_output = str_stdout.getvalue()
+
+    # assert len(re.findall(r"\(train\)", exp_output)) == n_epochs
+    # assert len(re.findall(r"\(valid\)", exp_output)) == (n_epochs // period)
+    # assert len(re.findall(r".*/train\.\d{1,2}\.pth", exp_output)) == 3
+
+    assert os.path.isfile(logfile)
+    assert os.path.isfile(checkpoint + "/model.0008.pth")
+    # assert os.path.isfile(checkpoint + "/train.8_full.pth")
+    assert os.path.isfile(checkpoint + "/model.0010.pth")
+    # assert os.path.isfile(checkpoint + "/train.10_full.pth")
+    assert os.path.isfile(checkpoint + "/model.0012.pth")
+    # assert os.path.isfile(checkpoint + "/train.12_full.pth")
+    assert os.path.isfile(checkpoint + "/model.best.pth")
+    # assert os.path.isfile(checkpoint + "/best_full.pth")
+    assert os.path.isfile(checkpoint + "/model.last.pth")
+    # assert os.path.isfile(checkpoint + "/last_full.pth")
+
+    shutil.rmtree(logdir, ignore_errors=True)
+</source>
+</class>
+
+<class classid="25" nclones="2" nlines="22" similarity="75">
+<source file="systems/catalyst-22.02/tests/catalyst/callbacks/test_soft_update.py" startline="20" endline="53" pcid="685">
+def test_soft_update():
+
+    model = nn.ModuleDict(
+        {
+            "target": nn.Linear(10, 10, bias=False),
+            "source": nn.Linear(10, 10, bias=False),
+        }
+    )
+    set_requires_grad(model, False)
+    model["target"].weight.data.fill_(0)
+
+    runner = DummyRunner(model=model)
+    runner.is_train_loader = True
+
+    soft_update = dl.SoftUpdateCallaback(
+        target_model="target",
+        source_model="source",
+        tau=0.1,
+        scope="on_batch_end",
+    )
+    soft_update.on_batch_end(runner)
+
+    checks = (
+        (
+            (0.1 * runner.model["source"].weight.data)
+            == runner.model["target"].weight.data
+        )
+        .flatten()
+        .tolist()
+    )
+
+    assert all(checks)
+
+
+</source>
+<source file="systems/catalyst-22.02/tests/catalyst/callbacks/test_soft_update.py" startline="54" endline="78" pcid="686">
+def test_soft_update_not_work():
+
+    model = nn.ModuleDict(
+        {
+            "target": nn.Linear(10, 10, bias=False),
+            "source": nn.Linear(10, 10, bias=False),
+        }
+    )
+    set_requires_grad(model, False)
+    model["target"].weight.data.fill_(0)
+
+    runner = DummyRunner(model=model)
+    runner.is_train_loader = True
+
+    soft_update = dl.SoftUpdateCallaback(
+        target_model="target",
+        source_model="source",
+        tau=0.1,
+        scope="on_batch_start",
+    )
+    soft_update.on_batch_end(runner)
+
+    checks = (runner.model["target"].weight.data == 0).flatten().tolist()
+
+    assert all(checks)
+</source>
+</class>
+
+<class classid="26" nclones="2" nlines="27" similarity="96">
+<source file="systems/catalyst-22.02/tests/catalyst/callbacks/test_wrapper.py" startline="23" endline="54" pcid="689">
+    def test_enabled(self):
+        runner = Mock(loader_key="train", epoch=1)
+
+        orders = (
+            CallbackOrder.Internal,
+            CallbackOrder.Metric,
+            CallbackOrder.MetricAggregation,
+            CallbackOrder.Optimizer,
+            CallbackOrder.Scheduler,
+            CallbackOrder.External,
+        )
+
+        events = (
+            "on_loader_start",
+            "on_loader_end",
+            "on_experiment_start",
+            "on_experiment_end",
+            "on_epoch_start",
+            "on_epoch_end",
+            "on_batch_start",
+            "on_batch_end",
+            "on_exception",
+        )
+
+        for event in events:
+            for order in orders:
+                callback = RaiserCallback(order, event)
+                wrapper = CallbackWrapper(callback, enable_callback=True)
+
+                with self.assertRaises(Dummy):
+                    wrapper.__getattribute__(event)(runner)
+
+</source>
+<source file="systems/catalyst-22.02/tests/catalyst/callbacks/test_wrapper.py" startline="55" endline="83" pcid="690">
+    def test_disabled(self):
+        runner = Mock(loader_key="train", epoch=1)
+
+        orders = (
+            CallbackOrder.Internal,
+            CallbackOrder.Metric,
+            CallbackOrder.MetricAggregation,
+            CallbackOrder.Optimizer,
+            CallbackOrder.Scheduler,
+            CallbackOrder.External,
+        )
+
+        events = (
+            "on_loader_start",
+            "on_loader_end",
+            "on_experiment_start",
+            "on_experiment_end",
+            "on_epoch_start",
+            "on_epoch_end",
+            "on_batch_start",
+            "on_batch_end",
+            "on_exception",
+        )
+
+        for event in events:
+            for order in orders:
+                callback = RaiserCallback(order, event)
+                wrapper = CallbackWrapper(callback, enable_callback=False)
+                wrapper.__getattribute__(event)(runner)
+</source>
+</class>
+
+<class classid="27" nclones="2" nlines="33" similarity="100">
+<source file="systems/catalyst-22.02/tests/catalyst/metrics/functional/test_iou.py" startline="7" endline="56" pcid="701">
+def test_iou():
+    """
+    Tests for catalyst.metrics.iou metric.
+    """
+    size = 4
+    half_size = size // 2
+    shape = (1, 1, size, size)
+
+    # check 0: one empty
+    empty = torch.zeros(shape)
+    full = torch.ones(shape)
+    assert iou(empty, full, class_dim=1, mode="per-class").item() == 0
+
+    # check 0: no overlap
+    left = torch.ones(shape)
+    left[:, :, :, half_size:] = 0
+    right = torch.ones(shape)
+    right[:, :, :, :half_size] = 0
+    assert iou(left, right, class_dim=1, mode="per-class").item() == 0
+
+    # check 1: both empty, both full, complete overlap
+    assert iou(empty, empty, class_dim=1, mode="per-class").item() == 1
+    assert iou(full, full, class_dim=1, mode="per-class").item() == 1
+    assert iou(left, left, class_dim=1, mode="per-class").item() == 1
+
+    # check 0.5: half overlap
+    top_left = torch.zeros(shape)
+    top_left[:, :, :half_size, :half_size] = 1
+    assert torch.isclose(
+        iou(top_left, left, class_dim=1, mode="per-class"), torch.Tensor([[0.5]])
+    )
+    assert torch.isclose(
+        iou(top_left, left, class_dim=1, mode="micro"), torch.Tensor([[0.5]])
+    )
+    assert torch.isclose(
+        iou(top_left, left, class_dim=1, mode="macro"), torch.Tensor([[0.5]])
+    )
+
+    # check multiclass: 0, 0, 1, 1, 1, 0.5
+    a = torch.cat([empty, left, empty, full, left, top_left], dim=1)
+    b = torch.cat([full, right, empty, full, left, left], dim=1)
+    ans = torch.Tensor([0, 0, 1, 1, 1, 0.5])
+    ans_micro = torch.tensor(0.4375)
+    assert torch.allclose(iou(a, b, class_dim=1, mode="per-class"), ans)
+    assert torch.allclose(iou(a, b, class_dim=1, mode="micro"), ans_micro)
+
+    aaa = torch.cat([a, a, a], dim=0)
+    bbb = torch.cat([b, b, b], dim=0)
+    assert torch.allclose(iou(aaa, bbb, class_dim=1, mode="per-class"), ans)
+    assert torch.allclose(iou(aaa, bbb, class_dim=1, mode="micro"), ans_micro)
+</source>
+<source file="systems/catalyst-22.02/tests/catalyst/metrics/functional/test_dice.py" startline="7" endline="56" pcid="714">
+def test_dice():
+    """
+    Tests for catalyst.metrics.dice metric.
+    """
+    size = 4
+    half_size = size // 2
+    shape = (1, 1, size, size)
+
+    # check 0: one empty
+    empty = torch.zeros(shape)
+    full = torch.ones(shape)
+    assert dice(empty, full, class_dim=1, mode="per-class").item() == 0
+
+    # check 0: no overlap
+    left = torch.ones(shape)
+    left[:, :, :, half_size:] = 0
+    right = torch.ones(shape)
+    right[:, :, :, :half_size] = 0
+    assert dice(left, right, class_dim=1, mode="per-class").item() == 0
+
+    # check 1: both empty, both full, complete overlap
+    assert dice(empty, empty, class_dim=1, mode="per-class").item() == 1
+    assert dice(full, full, class_dim=1, mode="per-class").item() == 1
+    assert dice(left, left, class_dim=1, mode="per-class").item() == 1
+
+    # check 0.5: half overlap
+    top_left = torch.zeros(shape)
+    top_left[:, :, :half_size, :half_size] = 1
+    assert torch.isclose(
+        dice(top_left, left, class_dim=1, mode="per-class"), torch.Tensor([[0.6666666]])
+    )
+    assert torch.isclose(
+        dice(top_left, left, class_dim=1, mode="micro"), torch.Tensor([[0.6666666]])
+    )
+    assert torch.isclose(
+        dice(top_left, left, class_dim=1, mode="macro"), torch.Tensor([[0.6666666]])
+    )
+
+    # check multiclass: 0, 0, 1, 1, 1, 0.66667
+    a = torch.cat([empty, left, empty, full, left, top_left], dim=1)
+    b = torch.cat([full, right, empty, full, left, left], dim=1)
+    ans = torch.Tensor([0, 0, 1, 1, 1, 0.6666666])
+    ans_micro = torch.tensor(0.6087)
+    assert torch.allclose(dice(a, b, class_dim=1, mode="per-class"), ans)
+    assert torch.allclose(dice(a, b, class_dim=1, mode="micro"), ans_micro)
+
+    aaa = torch.cat([a, a, a], dim=0)
+    bbb = torch.cat([b, b, b], dim=0)
+    assert torch.allclose(dice(aaa, bbb, class_dim=1, mode="per-class"), ans)
+    assert torch.allclose(dice(aaa, bbb, class_dim=1, mode="micro"), ans_micro)
+</source>
+</class>
+
+<class classid="28" nclones="3" nlines="13" similarity="100">
+<source file="systems/catalyst-22.02/tests/catalyst/metrics/functional/test_classification.py" startline="99" endline="125" pcid="705">
+def test_micro(
+    tp: np.array,
+    fp: np.array,
+    fn: np.array,
+    support: np.array,
+    zero_division: int,
+    true_answer: Tuple[float],
+):
+    """
+    Test micro metrics averaging
+
+    Args:
+        tp: true positive statistic
+        fp: false positive statistic
+        fn: false negative statistic
+        support: support statistic
+        zero_division: 0 or 1
+        true_answer: true metric value
+    """
+    _, micro, _, _ = get_aggregated_metrics(
+        tp=tp, fp=fp, fn=fn, support=support, zero_division=zero_division
+    )
+    assert micro[-1] is None
+    for pred, real in zip(micro[:-1], true_answer):
+        assert abs(pred - real) < EPS
+
+
+</source>
+<source file="systems/catalyst-22.02/tests/catalyst/metrics/functional/test_classification.py" startline="211" endline="235" pcid="707">
+def test_weighted(
+    tp: np.array,
+    fp: np.array,
+    fn: np.array,
+    support: np.array,
+    zero_division: int,
+    true_answer: Tuple[float],
+):
+    """
+    Test weighted metrics averaging
+
+    Args:
+        tp: true positive statistic
+        fp: false positive statistic
+        fn: false negative statistic
+        support: support statistic
+        zero_division: 0 or 1
+        true_answer: true metric value
+    """
+    _, _, _, weighted = get_aggregated_metrics(
+        tp=tp, fp=fp, fn=fn, support=support, zero_division=zero_division
+    )
+    assert weighted[-1] is None
+    for pred, real in zip(weighted[:-1], true_answer):
+        assert abs(pred - real) < EPS
+</source>
+<source file="systems/catalyst-22.02/tests/catalyst/metrics/functional/test_classification.py" startline="155" endline="181" pcid="706">
+def test_macro_average(
+    tp: np.array,
+    fp: np.array,
+    fn: np.array,
+    support: np.array,
+    zero_division: int,
+    true_answer: Tuple[float],
+):
+    """
+    Test macro metrics averaging
+
+    Args:
+        tp: true positive statistic
+        fp: false positive statistic
+        fn: false negative statistic
+        support: support statistic
+        zero_division: 0 or 1
+        true_answer: true metric value
+    """
+    _, _, macro, _ = get_aggregated_metrics(
+        tp=tp, fp=fp, fn=fn, support=support, zero_division=zero_division
+    )
+    assert macro[-1] is None
+    for pred, real in zip(macro[:-1], true_answer):
+        assert abs(pred - real) < EPS
+
+
+</source>
+</class>
+
+<class classid="29" nclones="3" nlines="11" similarity="75">
+<source file="systems/catalyst-22.02/tests/catalyst/metrics/test_additive.py" startline="28" endline="49" pcid="727">
+def test_additive_mean(
+    values_list: Iterable[float],
+    num_samples_list: Iterable[int],
+    true_values_list: Iterable[float],
+) -> None:
+    """
+    Test additive metric mean computation
+
+    Args:
+        values_list: list of values to update metric
+        num_samples_list: list of num_samples
+        true_values_list: list of metric intermediate value
+    """
+    metric = AdditiveMetric()
+    for value, num_samples, true_value in zip(
+        values_list, num_samples_list, true_values_list
+    ):
+        metric.update(value=value, num_samples=num_samples)
+        mean, _ = metric.compute()
+        assert np.isclose(mean, true_value)
+
+
+</source>
+<source file="systems/catalyst-22.02/tests/catalyst/metrics/test_additive.py" startline="105" endline="126" pcid="729">
+def test_additive_mode(
+    values_list: Union[Iterable[float], Iterable[torch.Tensor]],
+    num_samples_list: Iterable[int],
+    true_values_list: Iterable[float],
+    mode: Iterable[str],
+):
+    """
+    Test additive metric std computation
+
+    Args:
+        values_list: list of values to update metric
+        num_samples_list: list of num_samples
+        true_values_list: list of metric intermediate value
+        mode: `AdditiveMetric` mode
+    """
+    metric = AdditiveMetric(mode=mode)
+    for value, num_samples, true_value in zip(
+        values_list, num_samples_list, true_values_list
+    ):
+        metric.update(value=value, num_samples=num_samples)
+        mean, _ = metric.compute()
+        assert np.isclose(mean, true_value)
+</source>
+<source file="systems/catalyst-22.02/tests/catalyst/metrics/test_additive.py" startline="66" endline="87" pcid="728">
+def test_additive_std(
+    values_list: Iterable[float],
+    num_samples_list: Iterable[int],
+    true_values_list: Iterable[float],
+):
+    """
+    Test additive metric std computation
+
+    Args:
+        values_list: list of values to update metric
+        num_samples_list: list of num_samples
+        true_values_list: list of metric intermediate value
+    """
+    metric = AdditiveMetric()
+    for value, num_samples, true_value in zip(
+        values_list, num_samples_list, true_values_list
+    ):
+        metric.update(value=value, num_samples=num_samples)
+        _, std = metric.compute()
+        assert np.isclose(std, true_value)
+
+
+</source>
+</class>
+
+<class classid="30" nclones="2" nlines="12" similarity="100">
+<source file="systems/catalyst-22.02/examples/catalyst_rl/db.py" startline="124" endline="136" pcid="780">
+        def add_message(self, message: IRLDatabaseMessage):
+            if message == IRLDatabaseMessage.ENABLE_SAMPLING:
+                self._set_flag("sampling_flag", 1)
+            elif message == IRLDatabaseMessage.DISABLE_SAMPLING:
+                self._set_flag("sampling_flag", 0)
+            elif message == IRLDatabaseMessage.DISABLE_TRAINING:
+                self._set_flag("sampling_flag", 0)
+                self._set_flag("training_flag", 0)
+            elif message == IRLDatabaseMessage.ENABLE_TRAINING:
+                self._set_flag("training_flag", 1)
+            else:
+                raise NotImplementedError("unknown message", message)
+
+</source>
+<source file="systems/catalyst-22.02/examples/catalyst_rl/db.py" startline="253" endline="265" pcid="794">
+        def add_message(self, message: IRLDatabaseMessage):
+            if message == IRLDatabaseMessage.ENABLE_SAMPLING:
+                self._set_flag("sampling_flag", 1)
+            elif message == IRLDatabaseMessage.DISABLE_SAMPLING:
+                self._set_flag("sampling_flag", 0)
+            elif message == IRLDatabaseMessage.DISABLE_TRAINING:
+                self._set_flag("sampling_flag", 0)
+                self._set_flag("training_flag", 0)
+            elif message == IRLDatabaseMessage.ENABLE_TRAINING:
+                self._set_flag("training_flag", 1)
+            else:
+                raise NotImplementedError("unknown message", message)
+
+</source>
+</class>
+
+<class classid="31" nclones="2" nlines="18" similarity="78">
+<source file="systems/catalyst-22.02/examples/self_supervised/src/common.py" startline="154" endline="171" pcid="855">
+def resnet_mnist(in_size: int, in_channels: int, out_features: int, size: int = 16):
+    sz, sz2, sz4 = size, size * 2, size * 4
+    out_size = (((in_size // 16) * 16) ** 2 * 4) // size
+    return nn.Sequential(
+        conv_block(in_channels, sz),
+        conv_block(sz, sz2, pool=True),
+        ResidualBlock(nn.Sequential(conv_block(sz2, sz2), conv_block(sz2, sz2))),
+        conv_block(sz2, sz4, pool=True),
+        ResidualBlock(nn.Sequential(conv_block(sz4, sz4), conv_block(sz4, sz4))),
+        nn.Sequential(
+            nn.MaxPool2d(4),
+            nn.Flatten(),
+            nn.Dropout(0.2),
+            nn.Linear(out_size, out_features),
+        ),
+    )
+
+
+</source>
+<source file="systems/catalyst-22.02/examples/self_supervised/src/common.py" startline="172" endline="193" pcid="856">
+def resnet9(in_size: int, in_channels: int, out_features: int, size: int = 16):
+    sz, sz2, sz4, sz8 = size, size * 2, size * 4, size * 8
+    assert (
+        in_size >= 32
+    ), "The graph is not valid for images with resolution lower then 32x32."
+    out_size = (((in_size // 32) * 32) ** 2 * 2) // size
+    return nn.Sequential(
+        conv_block(in_channels, sz),
+        conv_block(sz, sz2, pool=True),
+        ResidualBlock(nn.Sequential(conv_block(sz2, sz2), conv_block(sz2, sz2))),
+        conv_block(sz2, sz4, pool=True),
+        conv_block(sz4, sz8, pool=True),
+        ResidualBlock(nn.Sequential(conv_block(sz8, sz8), conv_block(sz8, sz8))),
+        nn.Sequential(
+            nn.MaxPool2d(4),
+            nn.Flatten(),
+            nn.Dropout(0.2),
+            nn.Linear(out_size, out_features),
+        ),
+    )
+
+
+</source>
+</class>
+
+</clones>

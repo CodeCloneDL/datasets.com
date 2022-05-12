@@ -1,0 +1,87 @@
+<clonepair1>
+<source file="systems/stellargraph-1.2.1/stellargraph/mapper/sampled_link_generators.py" startline="376" endline="416" pcid="166"></source>
+    def __init__(
+        self,
+        G,
+        batch_size,
+        num_samples,
+        head_node_types=None,
+        schema=None,
+        seed=None,
+        name=None,
+    ):
+        super().__init__(G, batch_size, schema)
+        self.num_samples = num_samples
+        self.name = name
+
+        # This is a link generator and requires two nodes per query
+        if head_node_types is None:
+            # infer the head node types, if this is a homogeneous-node graph
+            node_type = G.unique_node_type(
+                "head_node_types: expected a pair of head node types because G has more than one node type, found node types: %(found)s"
+            )
+            head_node_types = [node_type, node_type]
+
+        self.head_node_types = head_node_types
+        if len(self.head_node_types) != 2:
+            raise ValueError(
+                "The head_node_types should be of length 2 for a link generator"
+            )
+
+        # Create sampling schema
+        self._sampling_schema = self.schema.sampling_layout(
+            self.head_node_types, self.num_samples
+        )
+        self._type_adjacency_list = self.schema.type_adjacency_list(
+            self.head_node_types, len(self.num_samples)
+        )
+
+        # The sampler used to generate random samples of neighbours
+        self.sampler = SampledHeterogeneousBreadthFirstWalk(
+            G, graph_schema=self.schema, seed=seed
+        )
+
+</clonepair1>
+
+<clonepair1>
+<source file="systems/stellargraph-1.2.1/stellargraph/mapper/sampled_node_generators.py" startline="478" endline="516" pcid="108"></source>
+    def __init__(
+        self,
+        G,
+        batch_size,
+        num_samples,
+        head_node_type=None,
+        schema=None,
+        seed=None,
+        name=None,
+    ):
+        super().__init__(G, batch_size, schema=schema)
+
+        self.num_samples = num_samples
+        self.name = name
+
+        # The head node type
+        if head_node_type is None:
+            # infer the head node type, if this is a homogeneous-node graph
+            head_node_type = G.unique_node_type(
+                "head_node_type: expected a head node type because G has more than one node type, found node types: %(found)s"
+            )
+
+        if head_node_type not in self.schema.node_types:
+            raise KeyError("Supplied head node type must exist in the graph")
+        self.head_node_types = [head_node_type]
+
+        # Create sampling schema
+        self._sampling_schema = self.schema.sampling_layout(
+            self.head_node_types, self.num_samples
+        )
+        self._type_adjacency_list = self.schema.type_adjacency_list(
+            self.head_node_types, len(self.num_samples)
+        )
+
+        # Create sampler for HinSAGE
+        self.sampler = SampledHeterogeneousBreadthFirstWalk(
+            G, graph_schema=self.schema, seed=seed
+        )
+
+</clonepair1>

@@ -1,0 +1,150 @@
+<clones>
+<systeminfo processor="nicad6" system="luminoth-0.2.3" granularity="functions-blind" threshold="0%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="441" npairs="3"/>
+<runinfo ncompares="902" cputime="41328"/>
+<classinfo nclasses="3"/>
+
+<class classid="1" nclones="2" nlines="13" similarity="100">
+<source file="systems/luminoth-0.2.3/luminoth/models/fasterrcnn/rpn_target.py" startline="204" endline="225" pcid="95">
+        def subsample_positive():
+            # Shuffle the foreground indices
+            disable_fg_inds = tf.random_shuffle(fg_inds, seed=self._seed)
+            # Select the indices that we have to ignore, this is
+            # `tf.shape(fg_inds)[0] - num_fg` because we want to get only
+            # `num_fg` foreground labels.
+            disable_place = (tf.shape(fg_inds)[0] - num_fg)
+            disable_fg_inds = disable_fg_inds[:disable_place]
+            # Order the indices for sparse_to_dense compatibility
+            disable_fg_inds, _ = tf.nn.top_k(
+                disable_fg_inds, k=tf.shape(disable_fg_inds)[-1])
+            disable_fg_inds = tf.reverse(disable_fg_inds, [0])
+            disable_fg_inds = tf.sparse_to_dense(
+                disable_fg_inds, tf.shape(labels, out_type=tf.int64),
+                True, default_value=False
+            )
+            # Put -1 to ignore the anchors in the selected indices
+            return tf.where(
+                condition=tf.squeeze(disable_fg_inds),
+                x=tf.to_float(tf.fill(tf.shape(labels), -1)), y=labels
+            )
+
+</source>
+<source file="systems/luminoth-0.2.3/luminoth/models/fasterrcnn/rpn_target.py" startline="241" endline="266" pcid="96">
+        def subsample_negative():
+            # Shuffle the background indices
+            disable_bg_inds = tf.random_shuffle(bg_inds, seed=self._seed)
+
+            # Select the indices that we have to ignore, this is
+            # `tf.shape(bg_inds)[0] - num_bg` because we want to get only
+            # `num_bg` background labels.
+            disable_place = (tf.shape(bg_inds)[0] - num_bg)
+            disable_bg_inds = disable_bg_inds[:disable_place]
+            # Order the indices for sparse_to_dense compatibility
+            disable_bg_inds, _ = tf.nn.top_k(
+                disable_bg_inds, k=tf.shape(disable_bg_inds)[-1])
+            disable_bg_inds = tf.reverse(disable_bg_inds, [0])
+            disable_bg_inds = tf.sparse_to_dense(
+                disable_bg_inds, tf.shape(labels, out_type=tf.int64),
+                True, default_value=False
+            )
+            # Put -1 to ignore the anchors in the selected indices
+            return tf.where(
+                condition=tf.squeeze(disable_bg_inds),
+                x=tf.to_float(tf.fill(tf.shape(labels), -1)), y=labels
+            )
+
+        # Recalculate the foreground indices after (maybe) disable some of them
+
+        # Get foreground indices, get True in the indices where we have a one.
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="12" similarity="100">
+<source file="systems/luminoth-0.2.3/luminoth/utils/bbox_transform_test.py" startline="17" endline="38" pcid="235">
+    def _encode(self, proposals, gt_boxes):
+        """
+        Encodes the adjustment from proposals to GT boxes using both the
+        TensorFlow and the Numpy implementation.
+
+        Asserts that both results are equal.
+        """
+        proposals_tf = tf.placeholder(tf.float32, shape=proposals.shape)
+        gt_boxes_tf = tf.placeholder(tf.float32, shape=gt_boxes.shape)
+
+        encoded_tf = encode_tf(proposals_tf, gt_boxes_tf)
+        with self.test_session() as sess:
+            encoded_tf_val = sess.run(encoded_tf, feed_dict={
+                proposals_tf: proposals,
+                gt_boxes_tf: gt_boxes,
+            })
+
+        encoded_np = encode_np(proposals, gt_boxes)
+
+        self.assertAllClose(encoded_np, encoded_tf_val)
+        return encoded_np
+
+</source>
+<source file="systems/luminoth-0.2.3/luminoth/utils/bbox_transform_test.py" startline="39" endline="60" pcid="236">
+    def _decode(self, proposals, deltas):
+        """
+        Encodes the final boxes from proposals with deltas, using both the
+        TensorFlow and the Numpy implementation.
+
+        Asserts that both results are equal.
+        """
+        proposals_tf = tf.placeholder(tf.float32, shape=proposals.shape)
+        deltas_tf = tf.placeholder(tf.float32, shape=deltas.shape)
+
+        decoded_tf = decode_tf(proposals_tf, deltas_tf)
+        with self.test_session() as sess:
+            decoded_tf_val = sess.run(decoded_tf, feed_dict={
+                proposals_tf: proposals,
+                deltas_tf: deltas,
+            })
+
+        decoded_np = decode_np(proposals, deltas)
+
+        self.assertAllClose(decoded_np, decoded_tf_val)
+        return decoded_np
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="10" similarity="100">
+<source file="systems/luminoth-0.2.3/luminoth/tools/dataset/readers/object_detection/imagenet.py" startline="120" endline="134" pcid="381">
+    def _validate_structure(self):
+        if not tf.gfile.Exists(self._data_dir):
+            raise InvalidDataDirectory(
+                '"{}" does not exist.'.format(self._data_dir)
+            )
+
+        if not tf.gfile.Exists(self._imagesets_path):
+            raise InvalidDataDirectory('ImageSets path is missing')
+
+        if not tf.gfile.Exists(self._images_path):
+            raise InvalidDataDirectory('Images path is missing')
+
+        if not tf.gfile.Exists(self._annotations_path):
+            raise InvalidDataDirectory('Annotations path is missing')
+
+</source>
+<source file="systems/luminoth-0.2.3/luminoth/tools/dataset/readers/object_detection/pascalvoc.py" startline="40" endline="54" pcid="390">
+    def _validate_structure(self):
+        if not tf.gfile.Exists(self._data_dir):
+            raise InvalidDataDirectory(
+                '"{}" does not exist.'.format(self._data_dir)
+            )
+
+        if not tf.gfile.Exists(self._labels_path):
+            raise InvalidDataDirectory('Labels path is missing')
+
+        if not tf.gfile.Exists(self._images_path):
+            raise InvalidDataDirectory('Images path is missing')
+
+        if not tf.gfile.Exists(self._annots_path):
+            raise InvalidDataDirectory('Annotations path is missing')
+
+</source>
+</class>
+
+</clones>

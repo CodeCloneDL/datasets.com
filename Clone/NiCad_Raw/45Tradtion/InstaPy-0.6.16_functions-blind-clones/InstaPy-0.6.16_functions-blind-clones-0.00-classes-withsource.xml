@@ -1,0 +1,375 @@
+<clones>
+<systeminfo processor="nicad6" system="InstaPy-0.6.16" granularity="functions-blind" threshold="0%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="314" npairs="6"/>
+<runinfo ncompares="381" cputime="42789"/>
+<classinfo nclasses="4"/>
+
+<class classid="1" nclones="3" nlines="16" similarity="100">
+<source file="systems/InstaPy-0.6.16/instapy/instapy.py" startline="4638" endline="4659" pcid="56">
+    def pick_nonfollowers(
+        self, username: str = None, live_match: bool = False, store_locally: bool = True
+    ):
+        """Returns Nonfollowers data of a given user"""
+
+        message = "Starting to pick Nonfollowers of {}..".format(username)
+        highlight_print(self.username, message, "feature", "info", self.logger)
+
+        # get Nonfollowers
+        nonfollowers = get_nonfollowers(
+            self.browser,
+            self.username,
+            username,
+            self.relationship_data,
+            live_match,
+            store_locally,
+            self.logger,
+            self.logfolder,
+        )
+
+        return nonfollowers
+
+</source>
+<source file="systems/InstaPy-0.6.16/instapy/instapy.py" startline="4685" endline="4709" pcid="58">
+    def pick_mutual_following(
+        self, username: str = None, live_match: bool = False, store_locally: bool = True
+    ):
+        """
+         Returns Mutual Following data- all of the usernames who
+        do follow the user WHOM user itself also do follow back
+        """
+
+        message = "Starting to pick Mutual Following of {}..".format(username)
+        highlight_print(self.username, message, "feature", "info", self.logger)
+
+        # get Mutual Following
+        mutual_following = get_mutual_following(
+            self.browser,
+            self.username,
+            username,
+            self.relationship_data,
+            live_match,
+            store_locally,
+            self.logger,
+            self.logfolder,
+        )
+
+        return mutual_following
+
+</source>
+<source file="systems/InstaPy-0.6.16/instapy/instapy.py" startline="4660" endline="4684" pcid="57">
+    def pick_fans(
+        self, username: str = None, live_match: bool = False, store_locally: bool = True
+    ):
+        """
+         Returns Fans data- all of the usernames who do follow
+        the user WHOM user itself do not follow back
+        """
+
+        message = "Starting to pick Fans of {}..".format(username)
+        highlight_print(self.username, message, "feature", "info", self.logger)
+
+        # get Fans
+        fans = get_fans(
+            self.browser,
+            self.username,
+            username,
+            self.relationship_data,
+            live_match,
+            store_locally,
+            self.logger,
+            self.logfolder,
+        )
+
+        return fans
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="22" similarity="100">
+<source file="systems/InstaPy-0.6.16/instapy/instapy.py" startline="6104" endline="6135" pcid="77">
+    def story_by_tags(self, tags: list = None):
+        """Watch stories for specific tag(s)"""
+        if self.aborting:
+            return self
+
+        if tags is None:
+            self.logger.info("No Tags set")
+        else:
+            # iterate over available tags
+            for index, tag in enumerate(tags):
+                # Quota Supervisor peak check
+                if self.quotient_breach:
+                    break
+
+                # inform user whats happening
+                if len(tags) > 1:
+                    self.logger.info("Tag [{}/{}]".format(index + 1, len(tags)))
+                self.logger.info(
+                    "Loading stories with Tag --> {}".format(tag.encode("utf-8"))
+                )
+
+                try:
+                    reels = watch_story(
+                        self.browser, tag, self.logger, "tag", self.story_simulate
+                    )
+                except NoSuchElementException:
+                    self.logger.info("No stories skipping this tag")
+                    continue
+                if reels > 0:
+                    self.stories_watched += 1
+                    self.reels_watched += reels
+
+</source>
+<source file="systems/InstaPy-0.6.16/instapy/instapy.py" startline="6136" endline="6167" pcid="78">
+    def story_by_users(self, users: list = None):
+        """Watch stories for specific user(s)"""
+        if self.aborting:
+            return self
+
+        if users is None:
+            self.logger.info("No users passed to story_by_users")
+        else:
+            # iterate over available users
+            for index, user in enumerate(users):
+                # Quota Supervisor peak check
+                if self.quotient_breach:
+                    break
+
+                # inform user whats happening
+                if len(users) > 1:
+                    self.logger.info("User [{}/{}]".format(index + 1, len(users)))
+                self.logger.info(
+                    "Loading stories with User --> {}".format(user.encode("utf-8"))
+                )
+
+                try:
+                    reels = watch_story(
+                        self.browser, user, self.logger, "user", self.story_simulate
+                    )
+                except NoSuchElementException:
+                    self.logger.info("No stories skipping this user")
+                    continue
+                if reels > 0:
+                    self.stories_watched += 1
+                    self.reels_watched += reels
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="44" similarity="100">
+<source file="systems/InstaPy-0.6.16/instapy/pods_util.py" startline="84" endline="153" pcid="260">
+def share_with_pods_restriction(operation, postid, limit, logger):
+    """Keep track of already shared posts"""
+    conn = None
+
+    try:
+        # get a DB and start a connection
+        db, id = get_database()
+        conn = sqlite3.connect(db)
+
+        with conn:
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+
+            cur.execute(
+                "SELECT * FROM shareWithPodsRestriction WHERE profile_id=:id_var "
+                "AND postid=:name_var",
+                {"id_var": id, "name_var": postid},
+            )
+            data = cur.fetchone()
+            share_data = dict(data) if data else None
+
+            if operation == "write":
+                if share_data is None:
+                    # write a new record
+                    cur.execute(
+                        "INSERT INTO shareWithPodsRestriction (profile_id, "
+                        "postid, times) VALUES (?, ?, ?)",
+                        (id, postid, 1),
+                    )
+                else:
+                    # update the existing record
+                    share_data["times"] += 1
+                    sql = (
+                        "UPDATE shareWithPodsRestriction set times = ? WHERE "
+                        "profile_id=? AND postid = ?"
+                    )
+                    cur.execute(sql, (share_data["times"], id, postid))
+
+                # commit the latest changes
+                conn.commit()
+
+            elif operation == "read":
+                if share_data is None:
+                    return False
+
+                elif share_data["times"] < limit:
+                    return False
+
+                else:
+                    exceed_msg = "" if share_data["times"] == limit else "more than "
+                    logger.info(
+                        "--> {} has already been shared with pods {}{} times".format(
+                            postid, exceed_msg, str(limit)
+                        )
+                    )
+                    return True
+
+    except Exception as exc:
+        logger.error(
+            "Dap! Error occurred with share Restriction:\n\t{}".format(
+                str(exc).encode("utf-8")
+            )
+        )
+
+    finally:
+        if conn:
+            # close the open connection
+            conn.close()
+
+
+</source>
+<source file="systems/InstaPy-0.6.16/instapy/pods_util.py" startline="154" endline="221" pcid="261">
+def comment_restriction(operation, postid, limit, logger):
+    """Keep track of already shared posts"""
+    conn = None
+
+    try:
+        # get a DB and start a connection
+        db, id = get_database()
+        conn = sqlite3.connect(db)
+
+        with conn:
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+
+            cur.execute(
+                "SELECT * FROM commentRestriction WHERE profile_id=:id_var "
+                "AND postid=:name_var",
+                {"id_var": id, "name_var": postid},
+            )
+            data = cur.fetchone()
+            share_data = dict(data) if data else None
+
+            if operation == "write":
+                if share_data is None:
+                    # write a new record
+                    cur.execute(
+                        "INSERT INTO commentRestriction (profile_id, "
+                        "postid, times) VALUES (?, ?, ?)",
+                        (id, postid, 1),
+                    )
+                else:
+                    # update the existing record
+                    share_data["times"] += 1
+                    sql = (
+                        "UPDATE commentRestriction set times = ? WHERE "
+                        "profile_id=? AND postid = ?"
+                    )
+                    cur.execute(sql, (share_data["times"], id, postid))
+
+                # commit the latest changes
+                conn.commit()
+
+            elif operation == "read":
+                if share_data is None:
+                    return False
+
+                elif share_data["times"] < limit:
+                    return False
+
+                else:
+                    exceed_msg = "" if share_data["times"] == limit else "more than "
+                    logger.info(
+                        "--> {} has been commented on {}{} times".format(
+                            postid, exceed_msg, str(limit)
+                        )
+                    )
+                    return True
+
+    except Exception as exc:
+        logger.error(
+            "Dap! Error occurred with comment Restriction:\n\t{}".format(
+                str(exc).encode("utf-8")
+            )
+        )
+
+    finally:
+        if conn:
+            # close the open connection
+            conn.close()
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="22" similarity="100">
+<source file="systems/InstaPy-0.6.16/instapy/relationship_tools.py" startline="947" endline="978" pcid="294">
+def store_followers_data(username, grab, grabbed_followers, logger, logfolder):
+    """Store grabbed `Followers` data in a local storage at generated date"""
+    query_date = datetime.today().strftime("%d-%m-%Y")
+    grabbed_followers_size = len(grabbed_followers)
+    file_directory = "{}/relationship_data/{}/followers/".format(logfolder, username)
+    file_name = "{}{}~{}~{}".format(
+        file_directory, query_date, grab, grabbed_followers_size
+    )
+    file_index = 0
+    final_file = "{}.json".format(file_name)
+
+    try:
+        if not os.path.exists(file_directory):
+            os.makedirs(file_directory)
+        # this loop provides unique data files
+        while os.path.isfile(final_file):
+            file_index += 1
+            final_file = "{}({}).json".format(file_name, file_index)
+
+        with open(final_file, "w") as followers_data:
+            with interruption_handler():
+                json.dump(grabbed_followers, followers_data)
+        logger.info("Stored `Followers` data at {} local file".format(final_file))
+
+    except Exception as exc:
+        logger.info(
+            "Failed to store `Followers` data in a local file :Z\n{}".format(
+                str(exc).encode("utf-8")
+            )
+        )
+
+
+</source>
+<source file="systems/InstaPy-0.6.16/instapy/relationship_tools.py" startline="979" endline="1010" pcid="295">
+def store_following_data(username, grab, grabbed_following, logger, logfolder):
+    """Store grabbed `Following` data in a local storage at generated date"""
+    query_date = datetime.today().strftime("%d-%m-%Y")
+    grabbed_following_size = len(grabbed_following)
+    file_directory = "{}/relationship_data/{}/following/".format(logfolder, username)
+    file_name = "{}{}~{}~{}".format(
+        file_directory, query_date, grab, grabbed_following_size
+    )
+    file_index = 0
+    final_file = "{}.json".format(file_name)
+
+    try:
+        if not os.path.exists(file_directory):
+            os.makedirs(file_directory)
+        # this loop provides unique data files
+        while os.path.isfile(final_file):
+            file_index += 1
+            final_file = "{}({}).json".format(file_name, file_index)
+
+        with open(final_file, "w") as following_data:
+            with interruption_handler():
+                json.dump(grabbed_following, following_data)
+        logger.info("Stored `Following` data at {} local file".format(final_file))
+
+    except Exception as exc:
+        logger.info(
+            "Failed to store `Following` data in a local file :Z\n{}".format(
+                str(exc).encode("utf-8")
+            )
+        )
+
+
+</source>
+</class>
+
+</clones>

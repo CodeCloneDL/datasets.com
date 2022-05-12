@@ -1,0 +1,1891 @@
+<html>
+<head>
+    <title>NiCad6 Clone Report</title>
+    <style type="text/css">
+        body {font-family:sans-serif;}
+        table {background-color:white; border:0px; padding:0px; border-spacing:4px; width:auto; margin-left:30px; margin-right:auto;}
+        td {background-color:rgba(192,212,238,0.8); border:0px; padding:8px; width:auto; vertical-align:top; border-radius:8px}
+        pre {background-color:white; padding:4px;}
+        a {color:darkblue;}
+    </style>
+</head>
+<body>
+<h2>NiCad6 Clone Report</h2>
+<table>
+<tr style="font-size:14pt">
+<td><b>System:</b> &nbsp; DIG-0.1.2</td>
+<td><b>Clone pairs:</b> &nbsp; 20</td>
+<td><b>Clone classes:</b> &nbsp; 20</td>
+</tr>
+<tr style="font-size:12pt">
+<td style="background-color:white">Clone type: &nbsp; 2</td>
+<td style="background-color:white">Granularity: &nbsp; functions-blind</td>
+<td style="background-color:white">Max diff threshold: &nbsp; 0%</td>
+<td style="background-color:white">Clone size: &nbsp; 10 - 2500 lines</td>
+<td style="background-color:white">Total functions-blind: &nbsp; 609</td>
+</tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 1:</b> &nbsp; 2 fragments, nominal size 15 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag229')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/dataset/ggraph_dataset.py: 22-38
+</a>
+<div class="mid" id="frag229" style="display:none"><pre>
+    def __init__(self,
+                 root='./',
+                 prop_name='penalized_logp',
+                 conf_dict=None,
+                 transform=None,
+                 pre_transform=None,
+                 pre_filter=None,
+                 processed_filename='data.pt',
+                 use_aug=False,
+                 one_shot=False
+                 ):
+        name='qm9_property'
+        super(QM9, self).__init__(root, name, prop_name, conf_dict, 
+                                  transform, pre_transform, pre_filter, 
+                                  processed_filename, use_aug, one_shot)
+        
+        
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag230')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/dataset/ggraph_dataset.py: 87-103
+</a>
+<div class="mid" id="frag230" style="display:none"><pre>
+    def __init__(self,
+                 root='./',
+                 prop_name='penalized_logp',
+                 conf_dict=None,
+                 transform=None,
+                 pre_transform=None,
+                 pre_filter=None,
+                 processed_filename='data.pt',
+                 use_aug=False,
+                 one_shot=False
+                 ):
+        name='zinc250k_property'
+        super(ZINC250k, self).__init__(root, name, prop_name, conf_dict, 
+                                  transform, pre_transform, pre_filter, 
+                                  processed_filename, use_aug, one_shot)
+        
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 2:</b> &nbsp; 2 fragments, nominal size 42 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag248')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/utils/sascorer.py: 51-170
+</a>
+<div class="mid" id="frag248" style="display:none"><pre>
+def calculateScore(m):
+  if _fscores is None:
+    readFragmentScores()
+
+  # fragment score
+  fp = rdMolDescriptors.GetMorganFingerprint(m, 2)  #&lt;- 2 is the *radius* of the circular fingerprint
+  fps = fp.GetNonzeroElements()
+  score1 = 0.
+  nf = 0
+  for bitId, v in iteritems(fps):
+    nf += v
+    sfp = bitId
+    score1 += _fscores.get(sfp, -4) * v
+  score1 /= nf
+
+  # features score
+  nAtoms = m.GetNumAtoms()
+  nChiralCenters = len(Chem.FindMolChiralCenters(m, includeUnassigned=True))
+  ri = m.GetRingInfo()
+  nBridgeheads, nSpiro = numBridgeheadsAndSpiro(m, ri)
+  nMacrocycles = 0
+  for x in ri.AtomRings():
+    if len(x) &gt; 8:
+      nMacrocycles += 1
+
+  sizePenalty = nAtoms**1.005 - nAtoms
+  stereoPenalty = math.log10(nChiralCenters + 1)
+  spiroPenalty = math.log10(nSpiro + 1)
+  bridgePenalty = math.log10(nBridgeheads + 1)
+  macrocyclePenalty = 0.
+  # ---------------------------------------
+  # This differs from the paper, which defines:
+  #  macrocyclePenalty = math.log10(nMacrocycles+1)
+  # This form generates better results when 2 or more macrocycles are present
+  if nMacrocycles &gt; 0:
+    macrocyclePenalty = math.log10(2)
+
+  score2 = 0. - sizePenalty - stereoPenalty - spiroPenalty - bridgePenalty - macrocyclePenalty
+
+  # correction for the fingerprint density
+  # not in the original publication, added in version 1.1
+  # to make highly symmetrical molecules easier to synthetise
+  score3 = 0.
+  if nAtoms &gt; len(fps):
+    score3 = math.log(float(nAtoms) / len(fps)) * .5
+
+  sascore = score1 + score2 + score3
+
+  # need to transform "raw" value into scale between 1 and 10
+  min_score = -4.0
+  max_score = 2.5
+  sascore = 11. - (sascore - min_score + 1) / (max_score - min_score) * 9.
+  # smooth the 10-end
+  if sascore &gt; 8.:
+    sascore = 8. + math.log(sascore + 1. - 9.)
+  if sascore &gt; 10.:
+    sascore = 10.0
+  elif sascore &lt; 1.:
+    sascore = 1.0
+
+  return sascore
+
+
+# def processMols(mols):
+#   print('smiles\tName\tsa_score')
+#   for m in mols:
+#     if m is None:
+#       continue
+
+#     s = calculateScore(m)
+
+#     smiles = Chem.MolToSmiles(m)
+#     print(smiles + "\t" + m.GetProp('_Name') + "\t%3f" % s)
+
+
+# if __name__ == '__main__':
+#   import sys, time
+
+#   t1 = time.time()
+#   readFragmentScores("fpscores")
+#   t2 = time.time()
+
+#   suppl = Chem.SmilesMolSupplier(sys.argv[1])
+#   t3 = time.time()
+#   processMols(suppl)
+#   t4 = time.time()
+
+#   print('Reading took %.2f seconds. Calculating took %.2f seconds' % ((t2 - t1), (t4 - t3)),
+#         file=sys.stderr)
+
+#
+#  Copyright (c) 2013, Novartis Institutes for BioMedical Research Inc.
+#  All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are
+# met:
+#
+#     * Redistributions of source code must retain the above copyright
+#       notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above
+#       copyright notice, this list of conditions and the following
+#       disclaimer in the documentation and/or other materials provided
+#       with the distribution.
+#     * Neither the name of Novartis Institutes for BioMedical Research Inc.
+#       nor the names of its contributors may be used to endorse or promote
+#       products derived from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag433')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/JTVAE/fast_jtnn/sascorer.py: 55-118
+</a>
+<div class="mid" id="frag433" style="display:none"><pre>
+def calculateScore(m):
+    if _fscores is None:
+        readFragmentScores()
+
+    # fragment score
+    # &lt;- 2 is the *radius* of the circular fingerprint
+    fp = rdMolDescriptors.GetMorganFingerprint(m, 2)
+    fps = fp.GetNonzeroElements()
+    score1 = 0.
+    nf = 0
+    for bitId, v in iteritems(fps):
+        nf += v
+        sfp = bitId
+        score1 += _fscores.get(sfp, -4)*v
+    score1 /= nf
+
+    # features score
+    nAtoms = m.GetNumAtoms()
+    nChiralCenters = len(Chem.FindMolChiralCenters(m, includeUnassigned=True))
+    ri = m.GetRingInfo()
+    nBridgeheads, nSpiro = numBridgeheadsAndSpiro(m, ri)
+    nMacrocycles = 0
+    for x in ri.AtomRings():
+        if len(x) &gt; 8:
+            nMacrocycles += 1
+
+    sizePenalty = nAtoms**1.005 - nAtoms
+    stereoPenalty = math.log10(nChiralCenters+1)
+    spiroPenalty = math.log10(nSpiro+1)
+    bridgePenalty = math.log10(nBridgeheads+1)
+    macrocyclePenalty = 0.
+    # ---------------------------------------
+    # This differs from the paper, which defines:
+    #  macrocyclePenalty = math.log10(nMacrocycles+1)
+    # This form generates better results when 2 or more macrocycles are present
+    if nMacrocycles &gt; 0:
+        macrocyclePenalty = math.log10(2)
+
+    score2 = 0. - sizePenalty - stereoPenalty - \
+        spiroPenalty - bridgePenalty - macrocyclePenalty
+
+    # correction for the fingerprint density
+    # not in the original publication, added in version 1.1
+    # to make highly symmetrical molecules easier to synthetise
+    score3 = 0.
+    if nAtoms &gt; len(fps):
+        score3 = math.log(float(nAtoms) / len(fps)) * .5
+
+    sascore = score1 + score2 + score3
+
+    # need to transform "raw" value into scale between 1 and 10
+    min = -4.0
+    max = 2.5
+    sascore = 11. - (sascore - min + 1) / (max - min) * 9.
+    # smooth the 10-end
+    if sascore &gt; 8.:
+        sascore = 8. + math.log(sascore+1.-9.)
+    if sascore &gt; 10.:
+        sascore = 10.0
+    elif sascore &lt; 1.:
+        sascore = 1.0
+
+    return sascore
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 3:</b> &nbsp; 2 fragments, nominal size 13 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag260')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphDF/graphdf.py: 21-35
+</a>
+<div class="mid" id="frag260" style="display:none"><pre>
+    def get_model(self, task, model_conf_dict, checkpoint_path=None):
+        if model_conf_dict['use_gpu'] and not torch.cuda.is_available():
+            model_conf_dict['use_gpu'] = False
+        if task == 'rand_gen':
+            self.model = GraphFlowModel(model_conf_dict)
+        elif task == 'prop_opt':
+            self.model = GraphFlowModel_rl(model_conf_dict)
+        elif task == 'const_prop_opt':
+            self.model = GraphFlowModel_con_rl(model_conf_dict)
+        else:
+            raise ValueError('Task {} is not supported in GraphDF!'.format(task))
+        if checkpoint_path is not None:
+            self.model.load_state_dict(torch.load(checkpoint_path))
+    
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag317')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphAF/graphaf.py: 20-34
+</a>
+<div class="mid" id="frag317" style="display:none"><pre>
+    def get_model(self, task, model_conf_dict, checkpoint_path=None):
+        if model_conf_dict['use_gpu'] and not torch.cuda.is_available():
+            model_conf_dict['use_gpu'] = False
+        if task == 'rand_gen':
+            self.model = GraphFlowModel(model_conf_dict)
+        elif task == 'prop_opt':
+            self.model = GraphFlowModel_rl(model_conf_dict)
+        elif task == 'const_opt':
+            self.model = GraphFlowModel_con_rl(model_conf_dict)
+        else:
+            raise ValueError('Task {} is not supported in GraphDF!'.format(task))
+        if checkpoint_path is not None:
+            self.model.load_state_dict(torch.load(checkpoint_path))
+    
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 4:</b> &nbsp; 2 fragments, nominal size 24 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag264')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphDF/graphdf.py: 127-171
+</a>
+<div class="mid" id="frag264" style="display:none"><pre>
+    def train_prop_opt(self, lr, wd, max_iters, warm_up, model_conf_dict, pretrain_path, save_interval, save_dir):
+        r"""
+            Running fine-tuning for property optimization task.
+
+            Args:
+                lr (float): The learning rate for fine-tuning.
+                wd (float): The weight decay factor for training.
+                max_iters (int): The maximum number of training iters.
+                warm_up (int): The number of linear warm-up iters.
+                model_conf_dict (dict): The python dict for configuring the model hyperparameters.
+                pretrain_path (str): The path to the saved pretrained model file.
+                save_interval (int): Indicate the frequency to save the model parameters to .pth files,
+                    *e.g.*, if save_interval=20, the model parameters will be saved for every 20 training iters.
+                save_dir (str): The directory to save the model parameters.
+        """
+
+        self.get_model('prop_opt', model_conf_dict)
+        self.load_pretrain_model(pretrain_path)
+        self.model.train()
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr=lr, weight_decay=wd)
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+
+        print('start finetuning model(reinforce)')
+        moving_baseline = None
+        for cur_iter in range(max_iters):
+            optimizer.zero_grad()    
+            loss, per_mol_reward, per_mol_property_score, moving_baseline = self.model.reinforce_forward_optim(in_baseline=moving_baseline, cur_iter=cur_iter)
+
+            num_mol = len(per_mol_reward)
+            avg_reward = sum(per_mol_reward) / num_mol
+            avg_score = sum(per_mol_property_score) / num_mol     
+            loss.backward()
+            nn.utils.clip_grad_norm_(filter(lambda p: p.requires_grad, self.model.flow_core.parameters()), 1.0)
+            adjust_learning_rate(optimizer, cur_iter, lr, warm_up)
+            optimizer.step()
+
+            print('Iter {} | reward {}, score {}, loss {}'.format(cur_iter, avg_reward, avg_score, loss.item()))
+
+            if cur_iter % save_interval == save_interval - 1:
+                torch.save(self.model.state_dict(), os.path.join(save_dir, 'prop_opt_net_{}.pth'.format(cur_iter)))
+
+        print("Finetuning (Reinforce) Finished!")
+    
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag321')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphAF/graphaf.py: 126-171
+</a>
+<div class="mid" id="frag321" style="display:none"><pre>
+    def train_prop_optim(self, lr, wd, max_iters, warm_up, model_conf_dict, pretrain_path, save_interval, save_dir):
+        r"""
+            Running fine-tuning for property optimization task.
+            
+            Args:
+                lr (float): The learning rate for fine-tuning.
+                wd (float): The weight decay factor for training.
+                max_iters (int): The maximum number of training iters.
+                warm_up (int): The number of linear warm-up iters.
+                model_conf_dict (dict): The python dict for configuring the model hyperparameters.
+                pretrain_path (str): The path to the saved pretrained model file.
+                save_interval (int): Indicate the frequency to save the model parameters to .pth files,
+                    *e.g.*, if save_interval=20, the model parameters will be saved for every 20 training iters.
+                save_dir (str): The directory to save the model parameters.
+        """
+        
+        
+        self.get_model('prop_opt', model_conf_dict)
+        self.load_pretrain_model(pretrain_path)
+        self.model.train()
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr=lr, weight_decay=wd)
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+
+        print('start finetuning model(reinforce)')
+        moving_baseline = None
+        for cur_iter in range(max_iters):
+            optimizer.zero_grad()    
+            loss, per_mol_reward, per_mol_property_score, moving_baseline = self.model.reinforce_forward_optim(in_baseline=moving_baseline, cur_iter=cur_iter)
+
+            num_mol = len(per_mol_reward)
+            avg_reward = sum(per_mol_reward) / num_mol
+            avg_score = sum(per_mol_property_score) / num_mol     
+            loss.backward()
+            nn.utils.clip_grad_norm_(filter(lambda p: p.requires_grad, self.model.flow_core.parameters()), 1.0)
+            adjust_learning_rate(optimizer, cur_iter, lr, warm_up)
+            optimizer.step()
+
+            print('Iter {} | reward {}, score {}, loss {}'.format(cur_iter, avg_reward, avg_score, loss.item()))
+
+            if cur_iter % save_interval == save_interval - 1:
+                torch.save(self.model.state_dict(), os.path.join(save_dir, 'prop_opt_net_{}.pth'.format(cur_iter)))
+
+        print("Finetuning (Reinforce) Finished!")
+    
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 5:</b> &nbsp; 2 fragments, nominal size 33 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag266')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphDF/graphdf.py: 208-264
+</a>
+<div class="mid" id="frag266" style="display:none"><pre>
+    def train_const_prop_opt(self, loader, lr, wd, max_iters, warm_up, model_conf_dict, pretrain_path, save_interval, save_dir):
+        r"""
+            Running fine-tuning for constrained optimization task.
+
+            Args:
+                loader: The data loader for loading training samples. It is supposed to use dig.ggraph.dataset.ZINC800
+                    as the dataset class, and apply torch_geometric.data.DenseDataLoader to it to form the data loader.
+                lr (float): The learning rate for training.
+                wd (float): The weight decay factor for training.
+                max_iters (int): The maximum number of training iters.
+                warm_up (int): The number of linear warm-up iters.
+                model_conf_dict (dict): The python dict for configuring the model hyperparameters.
+                pretrain_path (str): The path to the saved pretrained model parameters file.
+                save_interval (int): Indicate the frequency to save the model parameters to .pth files,
+                    *e.g.*, if save_interval=20, the model parameters will be saved for every 20 training iters.
+                save_dir (str): The directory to save the model parameters.
+        """
+
+        self.get_model('const_prop_opt', model_conf_dict)
+        self.load_pretrain_model(pretrain_path)
+        self.model.train()
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr=lr, weight_decay=wd)
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+        loader = DataIterator(loader)
+
+        print('start finetuning model(reinforce)')
+        moving_baseline = None
+        for cur_iter in range(max_iters):
+            optimizer.zero_grad()
+            batch_data = next(loader)
+            mol_xs = batch_data.x
+            mol_adjs = batch_data.adj
+            mol_sizes = batch_data.num_atom
+            bfs_perm_origin = batch_data.bfs_perm_origin
+            raw_smiles = batch_data.smile
+        
+            loss, per_mol_reward, per_mol_property_score, moving_baseline = self.model.reinforce_forward_constrained_optim(
+                                                    mol_xs=mol_xs, mol_adjs=mol_adjs, mol_sizes=mol_sizes, raw_smiles=raw_smiles, 
+                                                    bfs_perm_origin=bfs_perm_origin, in_baseline=moving_baseline, cur_iter=cur_iter)
+
+            num_mol = len(per_mol_reward)
+            avg_reward = sum(per_mol_reward) / num_mol
+            avg_score = sum(per_mol_property_score) / num_mol
+            loss.backward()
+            nn.utils.clip_grad_norm_(filter(lambda p: p.requires_grad, self.model.flow_core.parameters()), 1.0)
+            adjust_learning_rate(optimizer, cur_iter, lr, warm_up)
+            optimizer.step()
+
+            print('Iter {} | reward {}, score {}, loss {}'.format(cur_iter, avg_reward, avg_score, loss.item()))
+
+            if cur_iter % save_interval == save_interval - 1:
+                torch.save(self.model.state_dict(), os.path.join(save_dir, 'const_prop_opt_net_{}.pth'.format(cur_iter)))
+
+        print("Finetuning (Reinforce) Finished!")
+    
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag323')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphAF/graphaf.py: 208-264
+</a>
+<div class="mid" id="frag323" style="display:none"><pre>
+    def train_cons_optim(self, loader, lr, wd, max_iters, warm_up, model_conf_dict, pretrain_path, save_interval, save_dir):
+        r"""
+            Running fine-tuning for constrained optimization task.
+            
+            Args:
+                loader: The data loader for loading training samples. It is supposed to use dig.ggraph.dataset.ZINC800
+                    as the dataset class, and apply torch_geometric.data.DenseDataLoader to it to form the data loader.
+                lr (float): The learning rate for training.
+                wd (float): The weight decay factor for training.
+                max_iters (int): The maximum number of training iters.
+                warm_up (int): The number of linear warm-up iters.
+                model_conf_dict (dict): The python dict for configuring the model hyperparameters.
+                pretrain_path (str): The path to the saved pretrained model parameters file.
+                save_interval (int): Indicate the frequency to save the model parameters to .pth files,
+                    *e.g.*, if save_interval=20, the model parameters will be saved for every 20 training iters.
+                save_dir (str): The directory to save the model parameters.
+        """
+        
+        self.get_model('const_prop_opt', model_conf_dict)
+        self.load_pretrain_model(pretrain_path)
+        self.model.train()
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr=lr, weight_decay=wd)
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+        loader = DataIterator(loader)
+
+        print('start finetuning model(reinforce)')
+        moving_baseline = None
+        for cur_iter in range(max_iters):
+            optimizer.zero_grad()
+            batch_data = next(loader)
+            mol_xs = batch_data.x
+            mol_adjs = batch_data.adj
+            mol_sizes = batch_data.num_atom
+            bfs_perm_origin = batch_data.bfs_perm_origin
+            raw_smiles = batch_data.smile
+        
+            loss, per_mol_reward, per_mol_property_score, moving_baseline = self.model.reinforce_forward_constrained_optim(
+                                                    mol_xs=mol_xs, mol_adjs=mol_adjs, mol_sizes=mol_sizes, raw_smiles=raw_smiles, 
+                                                    bfs_perm_origin=bfs_perm_origin, in_baseline=moving_baseline, cur_iter=cur_iter)
+
+            num_mol = len(per_mol_reward)
+            avg_reward = sum(per_mol_reward) / num_mol
+            avg_score = sum(per_mol_property_score) / num_mol
+            loss.backward()
+            nn.utils.clip_grad_norm_(filter(lambda p: p.requires_grad, self.model.flow_core.parameters()), 1.0)
+            adjust_learning_rate(optimizer, cur_iter, lr, warm_up)
+            optimizer.step()
+
+            print('Iter {} | reward {}, score {}, loss {}'.format(cur_iter, avg_reward, avg_score, loss.item()))
+
+            if cur_iter % save_interval == save_interval - 1:
+                torch.save(self.model.state_dict(), os.path.join(save_dir, 'const_prop_opt_net_{}.pth'.format(cur_iter)))
+
+        print("Finetuning (Reinforce) Finished!")
+    
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 6:</b> &nbsp; 2 fragments, nominal size 20 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag269')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphDF/model/rgcn.py: 11-35
+</a>
+<div class="mid" id="frag269" style="display:none"><pre>
+    def __init__(self, in_features, out_features, edge_dim=3, aggregate='sum', dropout=0., use_relu=True, bias=False):
+        '''
+        :param in/out_features: scalar of channels for node embedding
+        :param edge_dim: dim of edge type, virtual type not included
+        '''
+        super(RelationGraphConvolution, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.edge_dim = edge_dim
+        self.dropout = dropout
+        self.aggregate = aggregate
+        if use_relu:
+            self.act = nn.ReLU()
+        else:
+            self.act = None
+
+        self.weight = nn.Parameter(torch.FloatTensor(
+            self.edge_dim, self.in_features, self.out_features))
+        if bias:
+            self.bias = nn.Parameter(torch.FloatTensor(
+                self.edge_dim, 1, self.out_features))
+        else:
+            self.register_parameter('bias', None)
+        self.reset_parameters()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag330')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphAF/model/rgcn.py: 12-36
+</a>
+<div class="mid" id="frag330" style="display:none"><pre>
+    def __init__(self, in_features, out_features, edge_dim=3, aggregate='sum', dropout=0., use_relu=True, bias=False):
+        '''
+        :param in/out_features: scalar of channels for node embedding
+        :param edge_dim: dim of edge type, virtual type not included
+        '''
+        super(RelationGraphConvolution, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.edge_dim = edge_dim
+        self.dropout = dropout
+        self.aggregate = aggregate
+        if use_relu:
+            self.act = nn.ReLU()
+        else:
+            self.act = None
+
+        self.weight = nn.Parameter(torch.FloatTensor(
+            self.edge_dim, self.in_features, self.out_features))
+        if bias:
+            self.bias = nn.Parameter(torch.FloatTensor(
+                self.edge_dim, 1, self.out_features))
+        else:
+            self.register_parameter('bias', None)
+        self.reset_parameters()
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 7:</b> &nbsp; 2 fragments, nominal size 27 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag271')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphDF/model/rgcn.py: 41-83
+</a>
+<div class="mid" id="frag271" style="display:none"><pre>
+    def forward(self, x, adj):
+        '''
+        :param x: (batch, N, d)
+        :param adj: (batch, E, N, N)
+        typically d=9 e=3
+        :return:
+        updated x with shape (batch, N, d)
+        '''
+        x = F.dropout(x, p=self.dropout, training=self.training)  # (b, N, d)
+
+        batch_size = x.size(0)
+
+        # transform
+        support = torch.einsum('bid, edh-&gt; beih', x, self.weight)
+        output = torch.einsum('beij, bejh-&gt; beih', adj,
+                              support)  # (batch, e, N, d)
+
+        if self.bias is not None:
+            output += self.bias
+        if self.act is not None:
+            output = self.act(output)  # (b, E, N, d)
+        output = output.view(batch_size, self.edge_dim, x.size(
+            1), self.out_features)  # (b, E, N, d)
+
+        if self.aggregate == 'sum':
+            # sum pooling #(b, N, d)
+            node_embedding = torch.sum(output, dim=1, keepdim=False)
+        elif self.aggregate == 'max':
+            # max pooling  #(b, N, d)
+            node_embedding = torch.max(output, dim=1, keepdim=False)
+        elif self.aggregate == 'mean':
+            # mean pooling #(b, N, d)
+            node_embedding = torch.mean(output, dim=1, keepdim=False)
+        elif self.aggregate == 'concat':
+            #! implementation wrong
+            node_embedding = torch.cat(torch.split(
+                output, dim=1, split_size_or_sections=1), dim=3)  # (b, 1, n, d*e)
+            node_embedding = torch.squeeze(
+                node_embedding, dim=1)  # (b, n, d*e)
+        else:
+            print('GCN aggregate error!')
+        return node_embedding
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag332')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphAF/model/rgcn.py: 42-84
+</a>
+<div class="mid" id="frag332" style="display:none"><pre>
+    def forward(self, x, adj):
+        '''
+        :param x: (batch, N, d)
+        :param adj: (batch, E, N, N)
+        typically d=9 e=3
+        :return:
+        updated x with shape (batch, N, d)
+        '''
+        x = F.dropout(x, p=self.dropout, training=self.training)  # (b, N, d)
+
+        batch_size = x.size(0)
+
+        # transform
+        support = torch.einsum('bid, edh-&gt; beih', x, self.weight)
+        output = torch.einsum('beij, bejh-&gt; beih', adj,
+                              support)  # (batch, e, N, d)
+
+        if self.bias is not None:
+            output += self.bias
+        if self.act is not None:
+            output = self.act(output)  # (b, E, N, d)
+        output = output.view(batch_size, self.edge_dim, x.size(
+            1), self.out_features)  # (b, E, N, d)
+
+        if self.aggregate == 'sum':
+            # sum pooling #(b, N, d)
+            node_embedding = torch.sum(output, dim=1, keepdim=False)
+        elif self.aggregate == 'max':
+            # max pooling  #(b, N, d)
+            node_embedding = torch.max(output, dim=1, keepdim=False)
+        elif self.aggregate == 'mean':
+            # mean pooling #(b, N, d)
+            node_embedding = torch.mean(output, dim=1, keepdim=False)
+        elif self.aggregate == 'concat':
+            #! implementation wrong
+            node_embedding = torch.cat(torch.split(
+                output, dim=1, split_size_or_sections=1), dim=3)  # (b, 1, n, d*e)
+            node_embedding = torch.squeeze(
+                node_embedding, dim=1)  # (b, n, d*e)
+        else:
+            print('GCN aggregate error!')
+        return node_embedding
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 8:</b> &nbsp; 2 fragments, nominal size 17 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag273')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphDF/model/rgcn.py: 90-116
+</a>
+<div class="mid" id="frag273" style="display:none"><pre>
+    def __init__(self, nfeat, nhid=128, nout=128, edge_dim=3, num_layers=3, dropout=0., normalization=False):
+        '''
+        :num_layars: the number of layers in each R-GCN
+        '''
+        super(RGCN, self).__init__()
+
+        self.nfeat = nfeat
+        self.nhid = nhid
+        self.nout = nout
+        self.edge_dim = edge_dim
+        self.num_layers = num_layers
+
+        self.dropout = dropout
+        self.normalization = normalization
+
+        self.emb = nn.Linear(nfeat, nfeat, bias=False) 
+
+        self.gc1 = RelationGraphConvolution(
+            nfeat, nhid, edge_dim=self.edge_dim, aggregate='sum', use_relu=True, dropout=self.dropout, bias=False)
+
+        self.gc2 = nn.ModuleList([RelationGraphConvolution(nhid, nhid, edge_dim=self.edge_dim, aggregate='sum',
+                                                           use_relu=True, dropout=self.dropout, bias=False)
+                                  for i in range(self.num_layers-2)])
+
+        self.gc3 = RelationGraphConvolution(
+            nhid, nout, edge_dim=self.edge_dim, aggregate='sum', use_relu=False, dropout=self.dropout, bias=False)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag334')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphAF/model/rgcn.py: 91-117
+</a>
+<div class="mid" id="frag334" style="display:none"><pre>
+    def __init__(self, nfeat, nhid=128, nout=128, edge_dim=3, num_layers=3, dropout=0., normalization=False):
+        '''
+        :num_layars: the number of layers in each R-GCN
+        '''
+        super(RGCN, self).__init__()
+
+        self.nfeat = nfeat
+        self.nhid = nhid
+        self.nout = nout
+        self.edge_dim = edge_dim
+        self.num_layers = num_layers
+
+        self.dropout = dropout
+        self.normalization = normalization
+
+        self.emb = nn.Linear(nfeat, nfeat, bias=False) 
+
+        self.gc1 = RelationGraphConvolution(
+            nfeat, nhid, edge_dim=self.edge_dim, aggregate='sum', use_relu=True, dropout=self.dropout, bias=False)
+
+        self.gc2 = nn.ModuleList([RelationGraphConvolution(nhid, nhid, edge_dim=self.edge_dim, aggregate='sum',
+                                                           use_relu=True, dropout=self.dropout, bias=False)
+                                  for i in range(self.num_layers-2)])
+
+        self.gc3 = RelationGraphConvolution(
+            nhid, nout, edge_dim=self.edge_dim, aggregate='sum', use_relu=False, dropout=self.dropout, bias=False)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 9:</b> &nbsp; 2 fragments, nominal size 13 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag281')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphDF/model/disgraphaf.py: 149-176
+</a>
+<div class="mid" id="frag281" style="display:none"><pre>
+    def _get_embs_edge(self, x, adj, index):
+        """
+        Args:
+            x: current node feature matrix with shape (batch, N, 9)
+            adj: current adjacency feature matrix with shape (batch, 4, N, N)
+            index: link prediction index with shape (batch, 2)
+        Returns:
+            Embedding(concatenate graph embedding, edge start node embedding and edge end node embedding) 
+                for updating edge features with shape (batch, 3d)
+        """
+        batch_size = x.size(0)
+        assert batch_size == index.size(0)
+
+        adj = adj[:, :3] # (batch, 3, N, N)
+
+        node_emb = self.rgcn(x, adj) # (batch, N, d)
+        if hasattr(self, 'batchNorm'):
+            node_emb = self.batchNorm(node_emb.transpose(1, 2)).transpose(1, 2) # (batch, N, d)
+
+        graph_emb = torch.sum(node_emb, dim = 1, keepdim=False).contiguous().view(batch_size, 1, -1) # (batch, 1, d)
+
+        index = index.view(batch_size, -1, 1).repeat(1, 1, self.emb_size) # (batch, 2, d)
+        graph_node_emb = torch.cat((torch.gather(node_emb, dim=1, index=index), 
+                                        graph_emb),dim=1)  # (batch_size, 3, d)
+        graph_node_emb = graph_node_emb.view(batch_size, -1) # (batch_size, 3d)
+        return graph_node_emb
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag342')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphAF/model/graphaf.py: 244-271
+</a>
+<div class="mid" id="frag342" style="display:none"><pre>
+    def _get_embs_edge(self, x, adj, index):
+        """
+        Args:
+            x: current node feature matrix with shape (batch, N, 9)
+            adj: current adjacency feature matrix with shape (batch, 4, N, N)
+            index: link prediction index with shape (batch, 2)
+        Returns:
+            Embedding(concatenate graph embedding, edge start node embedding and edge end node embedding) 
+                for updating edge features with shape (batch, 3d)
+        """
+        batch_size = x.size(0)
+        assert batch_size == index.size(0)
+
+        adj = adj[:, :3] # (batch, 3, N, N)
+
+        node_emb = self.rgcn(x, adj) # (batch, N, d)
+        if hasattr(self, 'batchNorm'):
+            node_emb = self.batchNorm(node_emb.transpose(1, 2)).transpose(1, 2) # (batch, N, d)
+
+        graph_emb = torch.sum(node_emb, dim = 1, keepdim=False).contiguous().view(batch_size, 1, -1) # (batch, 1, d)
+
+        index = index.view(batch_size, -1, 1).repeat(1, 1, self.emb_size) # (batch, 2, d)
+        graph_node_emb = torch.cat((torch.gather(node_emb, dim=1, index=index), 
+                                        graph_emb),dim=1)  # (batch_size, 3, d)
+        graph_node_emb = graph_node_emb.view(batch_size, -1) # (batch_size, 3d)
+        return graph_node_emb
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 10:</b> &nbsp; 2 fragments, nominal size 23 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag290')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphDF/model/st_net.py: 7-34
+</a>
+<div class="mid" id="frag290" style="display:none"><pre>
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Sigmoid, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale())
+            self.rescale2 = nn.utils.weight_norm(Rescale())
+
+        else:
+            self.rescale1 = Rescale()
+            self.rescale2 = Rescale()
+
+        self.tanh = nn.Tanh()
+        self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag353')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphAF/model/st_net.py: 6-33
+</a>
+<div class="mid" id="frag353" style="display:none"><pre>
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Sigmoid, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale())
+            self.rescale2 = nn.utils.weight_norm(Rescale())
+
+        else:
+            self.rescale1 = Rescale()
+            self.rescale2 = Rescale()
+
+        self.tanh = nn.Tanh()
+        self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 11:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag292')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphDF/model/st_net.py: 42-58
+</a>
+<div class="mid" id="frag292" style="display:none"><pre>
+    def forward(self, x):
+        '''
+        :param x: (batch * repeat_num for node/edge, emb)
+        :return: w and b for affine operation
+        '''
+        if self.apply_batch_norm:
+            x = self.bn_before(x)
+
+        x = self.linear2(self.tanh(self.linear1(x)))
+        x = self.rescale1(x)
+        s = x[:, :self.output_dim]
+        t = x[:, self.output_dim:]
+        s = self.sigmoid(s + self.sigmoid_shift)
+        s = self.rescale2(s) # linear scale seems important, similar to learnable prior..
+        return s, t
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag355')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphAF/model/st_net.py: 41-57
+</a>
+<div class="mid" id="frag355" style="display:none"><pre>
+    def forward(self, x):
+        '''
+        :param x: (batch * repeat_num for node/edge, emb)
+        :return: w and b for affine operation
+        '''
+        if self.apply_batch_norm:
+            x = self.bn_before(x)
+
+        x = self.linear2(self.tanh(self.linear1(x)))
+        x = self.rescale1(x)
+        s = x[:, :self.output_dim]
+        t = x[:, self.output_dim:]
+        s = self.sigmoid(s + self.sigmoid_shift)
+        s = self.rescale2(s) # linear scale seems important, similar to learnable prior..
+        return s, t
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 12:</b> &nbsp; 2 fragments, nominal size 20 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag293')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphDF/model/st_net.py: 60-87
+</a>
+<div class="mid" id="frag293" style="display:none"><pre>
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Exp, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale())
+            #self.rescale2 = nn.utils.weight_norm(Rescale())
+
+        else:
+            self.rescale1 = Rescale()
+            #self.rescale2 = Rescale()
+
+        self.tanh = nn.Tanh()
+        #self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag356')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphAF/model/st_net.py: 59-86
+</a>
+<div class="mid" id="frag356" style="display:none"><pre>
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Exp, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale())
+            #self.rescale2 = nn.utils.weight_norm(Rescale())
+
+        else:
+            self.rescale1 = Rescale()
+            #self.rescale2 = Rescale()
+
+        self.tanh = nn.Tanh()
+        #self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 13:</b> &nbsp; 2 fragments, nominal size 22 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag296')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphDF/model/st_net.py: 114-141
+</a>
+<div class="mid" id="frag296" style="display:none"><pre>
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Softplus, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, hid_dim, bias=bias)
+        self.linear3 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale_channel(self.output_dim))
+
+        else:
+            self.rescale1 = Rescale_channel(self.output_dim)
+
+        self.tanh = nn.Tanh()
+        self.softplus = nn.Softplus()
+        #self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag359')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphAF/model/st_net.py: 113-140
+</a>
+<div class="mid" id="frag359" style="display:none"><pre>
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Softplus, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, hid_dim, bias=bias)
+        self.linear3 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale_channel(self.output_dim))
+
+        else:
+            self.rescale1 = Rescale_channel(self.output_dim)
+
+        self.tanh = nn.Tanh()
+        self.softplus = nn.Softplus()
+        #self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 14:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag298')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphDF/model/st_net.py: 151-168
+</a>
+<div class="mid" id="frag298" style="display:none"><pre>
+    def forward(self, x):
+        '''
+        :param x: (batch * repeat_num for node/edge, emb)
+        :return: w and b for affine operation
+        '''
+        if self.apply_batch_norm:
+            x = self.bn_before(x)
+
+        x = F.tanh(self.linear2(F.relu(self.linear1(x))))
+        x = self.linear3(x)
+        #x = self.rescale1(x)
+        s = x[:, :self.output_dim]
+        t = x[:, self.output_dim:]
+        s = self.softplus(s)
+        s = self.rescale1(s) # linear scale seems important, similar to learnable prior..
+        return s, t
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag361')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphAF/model/st_net.py: 150-167
+</a>
+<div class="mid" id="frag361" style="display:none"><pre>
+    def forward(self, x):
+        '''
+        :param x: (batch * repeat_num for node/edge, emb)
+        :return: w and b for affine operation
+        '''
+        if self.apply_batch_norm:
+            x = self.bn_before(x)
+
+        x = F.tanh(self.linear2(F.relu(self.linear1(x))))
+        x = self.linear3(x)
+        #x = self.rescale1(x)
+        s = x[:, :self.output_dim]
+        t = x[:, self.output_dim:]
+        s = self.softplus(s)
+        s = self.rescale1(s) # linear scale seems important, similar to learnable prior..
+        return s, t
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 15:</b> &nbsp; 2 fragments, nominal size 12 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag486')" href="javascript:;">
+DIG-0.1.2/dig/threedgraph/method/spherenet/features.py: 21-35
+</a>
+<div class="mid" id="frag486" style="display:none"><pre>
+def Jn_zeros(n, k):
+    zerosj = np.zeros((n, k), dtype='float32')
+    zerosj[0] = np.arange(1, k + 1) * np.pi
+    points = np.arange(1, k + n) * np.pi
+    racines = np.zeros(k + n - 1, dtype='float32')
+    for i in range(1, n):
+        for j in range(k + n - 1 - i):
+            foo = brentq(Jn, points[j], points[j + 1], (i, ))
+            racines[j] = foo
+        points = racines
+        zerosj[i][:k] = racines[:k]
+
+    return zerosj
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag542')" href="javascript:;">
+DIG-0.1.2/dig/threedgraph/method/dimenetpp/features.py: 20-34
+</a>
+<div class="mid" id="frag542" style="display:none"><pre>
+def Jn_zeros(n, k):
+    zerosj = np.zeros((n, k), dtype='float32')
+    zerosj[0] = np.arange(1, k + 1) * np.pi
+    points = np.arange(1, k + n) * np.pi
+    racines = np.zeros(k + n - 1, dtype='float32')
+    for i in range(1, n):
+        for j in range(k + n - 1 - i):
+            foo = brentq(Jn, points[j], points[j + 1], (i, ))
+            racines[j] = foo
+        points = racines
+        zerosj[i][:k] = racines[:k]
+
+    return zerosj
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 16:</b> &nbsp; 2 fragments, nominal size 20 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag488')" href="javascript:;">
+DIG-0.1.2/dig/threedgraph/method/spherenet/features.py: 48-71
+</a>
+<div class="mid" id="frag488" style="display:none"><pre>
+def bessel_basis(n, k):
+    zeros = Jn_zeros(n, k)
+    normalizer = []
+    for order in range(n):
+        normalizer_tmp = []
+        for i in range(k):
+            normalizer_tmp += [0.5 * Jn(zeros[order, i], order + 1)**2]
+        normalizer_tmp = 1 / np.array(normalizer_tmp)**0.5
+        normalizer += [normalizer_tmp]
+
+    f = spherical_bessel_formulas(n)
+    x = sym.symbols('x')
+    bess_basis = []
+    for order in range(n):
+        bess_basis_tmp = []
+        for i in range(k):
+            bess_basis_tmp += [
+                sym.simplify(normalizer[order][i] *
+                             f[order].subs(x, zeros[order, i] * x))
+            ]
+        bess_basis += [bess_basis_tmp]
+    return bess_basis
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag544')" href="javascript:;">
+DIG-0.1.2/dig/threedgraph/method/dimenetpp/features.py: 47-70
+</a>
+<div class="mid" id="frag544" style="display:none"><pre>
+def bessel_basis(n, k):
+    zeros = Jn_zeros(n, k)
+    normalizer = []
+    for order in range(n):
+        normalizer_tmp = []
+        for i in range(k):
+            normalizer_tmp += [0.5 * Jn(zeros[order, i], order + 1)**2]
+        normalizer_tmp = 1 / np.array(normalizer_tmp)**0.5
+        normalizer += [normalizer_tmp]
+
+    f = spherical_bessel_formulas(n)
+    x = sym.symbols('x')
+    bess_basis = []
+    for order in range(n):
+        bess_basis_tmp = []
+        for i in range(k):
+            bess_basis_tmp += [
+                sym.simplify(normalizer[order][i] *
+                             f[order].subs(x, zeros[order, i] * x))
+            ]
+        bess_basis += [bess_basis_tmp]
+    return bess_basis
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 17:</b> &nbsp; 2 fragments, nominal size 20 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag490')" href="javascript:;">
+DIG-0.1.2/dig/threedgraph/method/spherenet/features.py: 77-101
+</a>
+<div class="mid" id="frag490" style="display:none"><pre>
+def associated_legendre_polynomials(k, zero_m_only=True):
+    z = sym.symbols('z')
+    P_l_m = [[0] * (j + 1) for j in range(k)]
+
+    P_l_m[0][0] = 1
+    if k &gt; 0:
+        P_l_m[1][0] = z
+
+        for j in range(2, k):
+            P_l_m[j][0] = sym.simplify(((2 * j - 1) * z * P_l_m[j - 1][0] -
+                                        (j - 1) * P_l_m[j - 2][0]) / j)
+        if not zero_m_only:
+            for i in range(1, k):
+                P_l_m[i][i] = sym.simplify((1 - 2 * i) * P_l_m[i - 1][i - 1])
+                if i + 1 &lt; k:
+                    P_l_m[i + 1][i] = sym.simplify(
+                        (2 * i + 1) * z * P_l_m[i][i])
+                for j in range(i + 2, k):
+                    P_l_m[j][i] = sym.simplify(
+                        ((2 * j - 1) * z * P_l_m[j - 1][i] -
+                         (i + j - 1) * P_l_m[j - 2][i]) / (j - i))
+
+    return P_l_m
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag546')" href="javascript:;">
+DIG-0.1.2/dig/threedgraph/method/dimenetpp/features.py: 76-100
+</a>
+<div class="mid" id="frag546" style="display:none"><pre>
+def associated_legendre_polynomials(k, zero_m_only=True):
+    z = sym.symbols('z')
+    P_l_m = [[0] * (j + 1) for j in range(k)]
+
+    P_l_m[0][0] = 1
+    if k &gt; 0:
+        P_l_m[1][0] = z
+
+        for j in range(2, k):
+            P_l_m[j][0] = sym.simplify(((2 * j - 1) * z * P_l_m[j - 1][0] -
+                                        (j - 1) * P_l_m[j - 2][0]) / j)
+        if not zero_m_only:
+            for i in range(1, k):
+                P_l_m[i][i] = sym.simplify((1 - 2 * i) * P_l_m[i - 1][i - 1])
+                if i + 1 &lt; k:
+                    P_l_m[i + 1][i] = sym.simplify(
+                        (2 * i + 1) * z * P_l_m[i][i])
+                for j in range(i + 2, k):
+                    P_l_m[j][i] = sym.simplify(
+                        ((2 * j - 1) * z * P_l_m[j - 1][i] -
+                         (i + j - 1) * P_l_m[j - 2][i]) / (j - i))
+
+    return P_l_m
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 18:</b> &nbsp; 2 fragments, nominal size 10 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag513')" href="javascript:;">
+DIG-0.1.2/dig/threedgraph/method/spherenet/spherenet.py: 183-195
+</a>
+<div class="mid" id="frag513" style="display:none"><pre>
+    def __init__(self, hidden_channels, out_emb_channels, out_channels, num_output_layers, act, output_init):
+        super(update_v, self).__init__()
+        self.act = act
+        self.output_init = output_init
+
+        self.lin_up = nn.Linear(hidden_channels, out_emb_channels, bias=True)
+        self.lins = torch.nn.ModuleList()
+        for _ in range(num_output_layers):
+            self.lins.append(nn.Linear(out_emb_channels, out_emb_channels))
+        self.lin = nn.Linear(out_emb_channels, out_channels, bias=False)
+
+        self.reset_parameters()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag533')" href="javascript:;">
+DIG-0.1.2/dig/threedgraph/method/dimenetpp/dimenetpp.py: 163-175
+</a>
+<div class="mid" id="frag533" style="display:none"><pre>
+    def __init__(self, hidden_channels, out_emb_channels, out_channels, num_output_layers, act, output_init):
+        super(update_v, self).__init__()
+        self.act = act
+        self.output_init = output_init
+
+        self.lin_up = nn.Linear(hidden_channels, out_emb_channels, bias=True)
+        self.lins = torch.nn.ModuleList()
+        for _ in range(num_output_layers):
+            self.lins.append(nn.Linear(out_emb_channels, out_emb_channels))
+        self.lin = nn.Linear(out_emb_channels, out_channels, bias=False)
+
+        self.reset_parameters()
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 19:</b> &nbsp; 2 fragments, nominal size 23 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag576')" href="javascript:;">
+DIG-0.1.2/test/ggraph/dataset/test_QM9.py: 4-34
+</a>
+<div class="mid" id="frag576" style="display:none"><pre>
+def test_qm9():
+    root = './dataset/QM9'
+
+    dataset = QM9(root, prop_name='penalized_logp')
+
+    assert len(dataset) == 133885
+    assert dataset.num_features == 4
+    assert dataset.__repr__() == 'qm9_property(133885)'
+    assert len(dataset.get_split_idx()) == 2
+
+    assert len(dataset[0]) == 6
+    assert dataset[0].x.size() == (9, 4)
+    assert dataset[0].y.size() == (1,)
+    assert dataset[0].adj.size() == (4, 9, 9)
+    assert dataset[0].bfs_perm_origin.size() == (9,)
+    assert dataset[0].num_atom.size() == (1,)
+
+    dataset = QM9(root, one_shot=True, prop_name='penalized_logp')
+    
+    assert len(dataset) == 133885
+    assert dataset.__repr__() == 'qm9_property(133885)'
+    assert len(dataset.get_split_idx()) == 2
+
+    assert len(dataset[0]) == 5
+    assert dataset[0].x.size() == (5, 9)
+    assert dataset[0].y.size() == (1,)
+    assert dataset[0].adj.size() == (4, 9, 9)
+    assert dataset[0].num_atom.size() == (1,)
+
+    shutil.rmtree(root)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag578')" href="javascript:;">
+DIG-0.1.2/test/ggraph/dataset/test_ZINC250k.py: 4-34
+</a>
+<div class="mid" id="frag578" style="display:none"><pre>
+def test_zinc250k():
+    root = './dataset/ZINC250k'
+
+    dataset = ZINC250k(root, prop_name='penalized_logp')
+    
+    assert len(dataset) == 249455
+    assert dataset.num_features == 9
+    assert dataset.__repr__() == 'zinc250k_property(249455)'
+    assert len(dataset.get_split_idx()) == 2
+
+    assert len(dataset[0]) == 6
+    assert dataset[0].x.size() == (38, 9)
+    assert dataset[0].y.size() == (1,)
+    assert dataset[0].adj.size() == (4, 38, 38)
+    assert dataset[0].bfs_perm_origin.size() == (38,)
+    assert dataset[0].num_atom.size() == (1,)
+
+    dataset = ZINC250k(root, one_shot=True, prop_name='penalized_logp')
+    
+    assert len(dataset) == 249455
+    assert dataset.__repr__() == 'zinc250k_property(249455)'
+    assert len(dataset.get_split_idx()) == 2
+
+    assert len(dataset[0]) == 5
+    assert dataset[0].x.size() == (10, 38)
+    assert dataset[0].y.size() == (1,)
+    assert dataset[0].adj.size() == (4, 38, 38)
+    assert dataset[0].num_atom.size() == (1,)
+
+    shutil.rmtree(root)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 20:</b> &nbsp; 2 fragments, nominal size 83 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag602')" href="javascript:;">
+DIG-0.1.2/benchmarks/xgraph/grad_cam.py: 13-112
+</a>
+<div class="mid" id="frag602" style="display:none"><pre>
+def pipeline(config):
+    config.models.gnn_saving_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'checkpoints')
+    config.explainers.explanation_result_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')
+    config.models.param = config.models.param[config.datasets.dataset_name]
+    config.explainers.param = config.explainers.param[config.datasets.dataset_name]
+    print(OmegaConf.to_yaml(config))
+
+    if torch.cuda.is_available():
+        device = torch.device('cuda', index=config.device_id)
+    else:
+        device = torch.device('cpu')
+
+    dataset = get_dataset(config.datasets.dataset_root,
+                          config.datasets.dataset_name)
+    dataset.data.x = dataset.data.x.float()
+    dataset.data.y = dataset.data.y.squeeze().long()
+    if config.models.param.graph_classification:
+        dataloader_params = {'batch_size': config.models.param.batch_size,
+                             'random_split_flag': config.datasets.random_split_flag,
+                             'data_split_ratio': config.datasets.data_split_ratio,
+                             'seed': config.datasets.seed}
+        loader = get_dataloader(dataset, **dataloader_params)
+        test_indices = loader['test'].dataset.indices
+    else:
+        node_indices_mask = (dataset.data.y != 0) * dataset.data.test_mask
+        node_indices = torch.where(node_indices_mask)[0]
+
+    model = get_gnnNets(input_dim=dataset.num_node_features,
+                        output_dim=dataset.num_classes,
+                        model_config=config.models)
+
+    state_dict = torch.load(os.path.join(config.models.gnn_saving_dir,
+                                         config.datasets.dataset_name,
+                                         f"{config.models.gnn_name}_"
+                                         f"{len(config.models.param.gnn_latent_dim)}l_best.pth"))['net']
+    model.load_state_dict(state_dict)
+
+    model.to(device)
+
+    explanation_saving_dir = os.path.join(config.explainers.explanation_result_dir,
+                                          config.datasets.dataset_name,
+                                          config.models.gnn_name,
+                                          'GradCAM')
+    check_dir(explanation_saving_dir)
+
+    gc_explainer = GradCAM(model, explain_graph=config.models.param.graph_classification)
+
+    index = 0
+    x_collector = XCollector()
+    if config.models.param.graph_classification:
+        for i, data in enumerate(dataset[test_indices]):
+            index += 1
+            data.to(device)
+
+            if os.path.isfile(os.path.join(explanation_saving_dir, f'example_{test_indices[i]}.pt')):
+                edge_masks = torch.load(os.path.join(explanation_saving_dir, f'example_{test_indices[i]}.pt'))
+                edge_masks = [edge_mask.to(device) for edge_mask in edge_masks]
+                print(f"load example {test_indices[i]}.")
+                edge_masks, hard_edge_masks, related_preds = \
+                    gc_explainer(data.x, data.edge_index,
+                                 sparsity=config.explainers.sparsity,
+                                 num_classes=dataset.num_classes,
+                                 edge_masks=edge_masks)
+            else:
+                edge_masks, hard_edge_masks, related_preds = \
+                    gc_explainer(data.x, data.edge_index,
+                                 sparsity=config.explainers.sparsity,
+                                 num_classes=dataset.num_classes)
+
+                edge_masks = [edge_mask.to('cpu') for edge_mask in edge_masks]
+                torch.save(edge_masks, os.path.join(explanation_saving_dir, f'example_{test_indices[i]}.pt'))
+
+            prediction = model(data).argmax(-1).item()
+            x_collector.collect_data(hard_edge_masks, related_preds, label=prediction)
+    else:
+        data = dataset.data
+        data.to(device)
+        prediction = model(data).argmax(-1)
+        for node_idx in node_indices:
+            if os.path.isfile(os.path.join(explanation_saving_dir, f'example_{node_idx}.pt')):
+                edge_masks = torch.load(os.path.join(explanation_saving_dir, f'example_{node_idx}.pt'))
+                edge_masks = [edge_mask.to(device) for edge_mask in edge_masks]
+                print(f"load example {node_idx}.")
+                edge_masks, masks, related_preds = \
+                    gc_explainer(data.x, data.edge_index,
+                                 node_idx=node_idx,
+                                 sparsity=config.explainers.sparsity,
+                                 num_classes=dataset.num_classes,
+                                 edge_masks=edge_masks)
+            else:
+                edge_masks, masks, related_preds = \
+                    gc_explainer(data.x, data.edge_index,
+                                 node_idx=node_idx,
+                                 sparsity=config.explainers.sparsity,
+                                 num_classes=dataset.num_classes)
+                edge_masks = [edge_mask.to('cpu') for edge_mask in edge_masks]
+                torch.save(edge_masks, os.path.join(explanation_saving_dir, f'example_{node_idx}.pt'))
+            x_collector.collect_data(masks, related_preds, label=prediction[node_idx].item())
+
+    print(f'Fidelity: {x_collector.fidelity:.4f}\n'
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag606')" href="javascript:;">
+DIG-0.1.2/benchmarks/xgraph/deep_lift.py: 13-112
+</a>
+<div class="mid" id="frag606" style="display:none"><pre>
+def pipeline(config):
+    config.models.gnn_saving_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'checkpoints')
+    config.explainers.explanation_result_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')
+    config.models.param = config.models.param[config.datasets.dataset_name]
+    config.explainers.param = config.explainers.param[config.datasets.dataset_name]
+    print(OmegaConf.to_yaml(config))
+
+    if torch.cuda.is_available():
+        device = torch.device('cuda', index=config.device_id)
+    else:
+        device = torch.device('cpu')
+
+    # bbbp warning
+    dataset = get_dataset(config.datasets.dataset_root,
+                          config.datasets.dataset_name)
+    dataset.data.x = dataset.data.x.float()
+    dataset.data.y = dataset.data.y.squeeze().long()
+    if config.models.param.graph_classification:
+        dataloader_params = {'batch_size': config.models.param.batch_size,
+                             'random_split_flag': config.datasets.random_split_flag,
+                             'data_split_ratio': config.datasets.data_split_ratio,
+                             'seed': config.datasets.seed}
+        loader = get_dataloader(dataset, **dataloader_params)
+        test_indices = loader['test'].dataset.indices
+    else:
+        node_indices_mask = (dataset.data.y != 0) * dataset.data.test_mask
+        node_indices = torch.where(node_indices_mask)[0]
+
+    model = get_gnnNets(input_dim=dataset.num_node_features,
+                        output_dim=dataset.num_classes,
+                        model_config=config.models)
+
+    state_dict = torch.load(os.path.join(config.models.gnn_saving_dir,
+                                         config.datasets.dataset_name,
+                                         f"{config.models.gnn_name}_"
+                                         f"{len(config.models.param.gnn_latent_dim)}l_best.pth"))['net']
+    model.load_state_dict(state_dict)
+
+    model.to(device)
+    explanation_saving_dir = os.path.join(config.explainers.explanation_result_dir,
+                                          config.datasets.dataset_name,
+                                          config.models.gnn_name,
+                                          'DEEPLIFT')
+    check_dir(explanation_saving_dir)
+    deep_lift = DeepLIFT(model, explain_graph=config.models.param.graph_classification)
+
+    index = 0
+    x_collector = XCollector()
+    if config.models.param.graph_classification:
+        for i, data in enumerate(dataset[test_indices]):
+            index += 1
+            data.to(device)
+
+            if os.path.isfile(os.path.join(explanation_saving_dir, f'example_{test_indices[i]}.pt')):
+                edge_masks = torch.load(os.path.join(explanation_saving_dir, f'example_{test_indices[i]}.pt'))
+                edge_masks = [edge_mask.to(device) for edge_mask in edge_masks]
+
+                print(f"load example {test_indices[i]}.")
+                edge_masks, hard_edge_masks, related_preds = \
+                    deep_lift(data.x, data.edge_index,
+                              sparsity=config.explainers.sparsity,
+                              num_classes=dataset.num_classes,
+                              edge_masks=edge_masks)
+
+            else:
+                edge_masks, hard_edge_masks, related_preds = \
+                    deep_lift(data.x, data.edge_index,
+                              sparsity=config.explainers.sparsity,
+                              num_classes=dataset.num_classes)
+                edge_masks = [edge_mask.to('cpu') for edge_mask in edge_masks]
+                torch.save(edge_masks, os.path.join(explanation_saving_dir, f'example_{test_indices[i]}.pt'))
+
+            prediction = model(data).argmax(-1).item()
+            x_collector.collect_data(hard_edge_masks, related_preds, label=prediction)
+    else:
+        data = dataset.data
+        data.to(device)
+        prediction = model(data).argmax(-1)
+        for node_idx in node_indices:
+            if os.path.isfile(os.path.join(explanation_saving_dir, f'example_{node_idx}.pt')):
+                edge_masks = torch.load(os.path.join(explanation_saving_dir, f'example_{node_idx}.pt'))
+                edge_masks = [edge_mask.to(device) for edge_mask in edge_masks]
+                print(f"load example {node_idx}.")
+                edge_masks, hard_edge_masks, related_preds = \
+                    deep_lift(data.x, data.edge_index,
+                              node_idx=node_idx,
+                              sparsity=config.explainers.sparsity,
+                              num_classes=dataset.num_classes,
+                              edge_masks=edge_masks)
+            else:
+                edge_masks, hard_edge_masks, related_preds = \
+                    deep_lift(data.x, data.edge_index,
+                              node_idx=node_idx,
+                              sparsity=config.explainers.sparsity,
+                              num_classes=dataset.num_classes)
+                edge_masks = [edge_mask.to('cpu') for edge_mask in edge_masks]
+                torch.save(edge_masks, os.path.join(explanation_saving_dir, f'example_{node_idx}.pt'))
+            x_collector.collect_data(edge_masks, related_preds, label=prediction[node_idx].item())
+
+    print(f'Fidelity: {x_collector.fidelity:.4f}\n'
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<script language="JavaScript">
+function ShowHide(divId) { 
+    if(document.getElementById(divId).style.display == 'none') {
+        document.getElementById(divId).style.display='block';
+    } else { 
+        document.getElementById(divId).style.display = 'none';
+    } 
+}
+</script>
+</body>
+</html>

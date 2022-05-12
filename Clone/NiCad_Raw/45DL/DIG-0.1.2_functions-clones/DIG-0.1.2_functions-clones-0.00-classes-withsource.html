@@ -1,0 +1,1129 @@
+<html>
+<head>
+    <title>NiCad6 Clone Report</title>
+    <style type="text/css">
+        body {font-family:sans-serif;}
+        table {background-color:white; border:0px; padding:0px; border-spacing:4px; width:auto; margin-left:30px; margin-right:auto;}
+        td {background-color:rgba(192,212,238,0.8); border:0px; padding:8px; width:auto; vertical-align:top; border-radius:8px}
+        pre {background-color:white; padding:4px;}
+        a {color:darkblue;}
+    </style>
+</head>
+<body>
+<h2>NiCad6 Clone Report</h2>
+<table>
+<tr style="font-size:14pt">
+<td><b>System:</b> &nbsp; DIG-0.1.2</td>
+<td><b>Clone pairs:</b> &nbsp; 15</td>
+<td><b>Clone classes:</b> &nbsp; 15</td>
+</tr>
+<tr style="font-size:12pt">
+<td style="background-color:white">Clone type: &nbsp; 1</td>
+<td style="background-color:white">Granularity: &nbsp; functions</td>
+<td style="background-color:white">Max diff threshold: &nbsp; 0%</td>
+<td style="background-color:white">Clone size: &nbsp; 10 - 2500 lines</td>
+<td style="background-color:white">Total functions: &nbsp; 609</td>
+</tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 1:</b> &nbsp; 2 fragments, nominal size 23 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag269')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphDF/model/rgcn.py: 11-35
+</a>
+<div class="mid" id="frag269" style="display:none"><pre>
+    def __init__(self, in_features, out_features, edge_dim=3, aggregate='sum', dropout=0., use_relu=True, bias=False):
+        '''
+        :param in/out_features: scalar of channels for node embedding
+        :param edge_dim: dim of edge type, virtual type not included
+        '''
+        super(RelationGraphConvolution, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.edge_dim = edge_dim
+        self.dropout = dropout
+        self.aggregate = aggregate
+        if use_relu:
+            self.act = nn.ReLU()
+        else:
+            self.act = None
+
+        self.weight = nn.Parameter(torch.FloatTensor(
+            self.edge_dim, self.in_features, self.out_features))
+        if bias:
+            self.bias = nn.Parameter(torch.FloatTensor(
+                self.edge_dim, 1, self.out_features))
+        else:
+            self.register_parameter('bias', None)
+        self.reset_parameters()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag330')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphAF/model/rgcn.py: 12-36
+</a>
+<div class="mid" id="frag330" style="display:none"><pre>
+    def __init__(self, in_features, out_features, edge_dim=3, aggregate='sum', dropout=0., use_relu=True, bias=False):
+        '''
+        :param in/out_features: scalar of channels for node embedding
+        :param edge_dim: dim of edge type, virtual type not included
+        '''
+        super(RelationGraphConvolution, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.edge_dim = edge_dim
+        self.dropout = dropout
+        self.aggregate = aggregate
+        if use_relu:
+            self.act = nn.ReLU()
+        else:
+            self.act = None
+
+        self.weight = nn.Parameter(torch.FloatTensor(
+            self.edge_dim, self.in_features, self.out_features))
+        if bias:
+            self.bias = nn.Parameter(torch.FloatTensor(
+                self.edge_dim, 1, self.out_features))
+        else:
+            self.register_parameter('bias', None)
+        self.reset_parameters()
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 2:</b> &nbsp; 2 fragments, nominal size 33 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag271')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphDF/model/rgcn.py: 41-83
+</a>
+<div class="mid" id="frag271" style="display:none"><pre>
+    def forward(self, x, adj):
+        '''
+        :param x: (batch, N, d)
+        :param adj: (batch, E, N, N)
+        typically d=9 e=3
+        :return:
+        updated x with shape (batch, N, d)
+        '''
+        x = F.dropout(x, p=self.dropout, training=self.training)  # (b, N, d)
+
+        batch_size = x.size(0)
+
+        # transform
+        support = torch.einsum('bid, edh-&gt; beih', x, self.weight)
+        output = torch.einsum('beij, bejh-&gt; beih', adj,
+                              support)  # (batch, e, N, d)
+
+        if self.bias is not None:
+            output += self.bias
+        if self.act is not None:
+            output = self.act(output)  # (b, E, N, d)
+        output = output.view(batch_size, self.edge_dim, x.size(
+            1), self.out_features)  # (b, E, N, d)
+
+        if self.aggregate == 'sum':
+            # sum pooling #(b, N, d)
+            node_embedding = torch.sum(output, dim=1, keepdim=False)
+        elif self.aggregate == 'max':
+            # max pooling  #(b, N, d)
+            node_embedding = torch.max(output, dim=1, keepdim=False)
+        elif self.aggregate == 'mean':
+            # mean pooling #(b, N, d)
+            node_embedding = torch.mean(output, dim=1, keepdim=False)
+        elif self.aggregate == 'concat':
+            #! implementation wrong
+            node_embedding = torch.cat(torch.split(
+                output, dim=1, split_size_or_sections=1), dim=3)  # (b, 1, n, d*e)
+            node_embedding = torch.squeeze(
+                node_embedding, dim=1)  # (b, n, d*e)
+        else:
+            print('GCN aggregate error!')
+        return node_embedding
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag332')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphAF/model/rgcn.py: 42-84
+</a>
+<div class="mid" id="frag332" style="display:none"><pre>
+    def forward(self, x, adj):
+        '''
+        :param x: (batch, N, d)
+        :param adj: (batch, E, N, N)
+        typically d=9 e=3
+        :return:
+        updated x with shape (batch, N, d)
+        '''
+        x = F.dropout(x, p=self.dropout, training=self.training)  # (b, N, d)
+
+        batch_size = x.size(0)
+
+        # transform
+        support = torch.einsum('bid, edh-&gt; beih', x, self.weight)
+        output = torch.einsum('beij, bejh-&gt; beih', adj,
+                              support)  # (batch, e, N, d)
+
+        if self.bias is not None:
+            output += self.bias
+        if self.act is not None:
+            output = self.act(output)  # (b, E, N, d)
+        output = output.view(batch_size, self.edge_dim, x.size(
+            1), self.out_features)  # (b, E, N, d)
+
+        if self.aggregate == 'sum':
+            # sum pooling #(b, N, d)
+            node_embedding = torch.sum(output, dim=1, keepdim=False)
+        elif self.aggregate == 'max':
+            # max pooling  #(b, N, d)
+            node_embedding = torch.max(output, dim=1, keepdim=False)
+        elif self.aggregate == 'mean':
+            # mean pooling #(b, N, d)
+            node_embedding = torch.mean(output, dim=1, keepdim=False)
+        elif self.aggregate == 'concat':
+            #! implementation wrong
+            node_embedding = torch.cat(torch.split(
+                output, dim=1, split_size_or_sections=1), dim=3)  # (b, 1, n, d*e)
+            node_embedding = torch.squeeze(
+                node_embedding, dim=1)  # (b, n, d*e)
+        else:
+            print('GCN aggregate error!')
+        return node_embedding
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 3:</b> &nbsp; 2 fragments, nominal size 19 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag273')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphDF/model/rgcn.py: 90-116
+</a>
+<div class="mid" id="frag273" style="display:none"><pre>
+    def __init__(self, nfeat, nhid=128, nout=128, edge_dim=3, num_layers=3, dropout=0., normalization=False):
+        '''
+        :num_layars: the number of layers in each R-GCN
+        '''
+        super(RGCN, self).__init__()
+
+        self.nfeat = nfeat
+        self.nhid = nhid
+        self.nout = nout
+        self.edge_dim = edge_dim
+        self.num_layers = num_layers
+
+        self.dropout = dropout
+        self.normalization = normalization
+
+        self.emb = nn.Linear(nfeat, nfeat, bias=False) 
+
+        self.gc1 = RelationGraphConvolution(
+            nfeat, nhid, edge_dim=self.edge_dim, aggregate='sum', use_relu=True, dropout=self.dropout, bias=False)
+
+        self.gc2 = nn.ModuleList([RelationGraphConvolution(nhid, nhid, edge_dim=self.edge_dim, aggregate='sum',
+                                                           use_relu=True, dropout=self.dropout, bias=False)
+                                  for i in range(self.num_layers-2)])
+
+        self.gc3 = RelationGraphConvolution(
+            nhid, nout, edge_dim=self.edge_dim, aggregate='sum', use_relu=False, dropout=self.dropout, bias=False)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag334')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphAF/model/rgcn.py: 91-117
+</a>
+<div class="mid" id="frag334" style="display:none"><pre>
+    def __init__(self, nfeat, nhid=128, nout=128, edge_dim=3, num_layers=3, dropout=0., normalization=False):
+        '''
+        :num_layars: the number of layers in each R-GCN
+        '''
+        super(RGCN, self).__init__()
+
+        self.nfeat = nfeat
+        self.nhid = nhid
+        self.nout = nout
+        self.edge_dim = edge_dim
+        self.num_layers = num_layers
+
+        self.dropout = dropout
+        self.normalization = normalization
+
+        self.emb = nn.Linear(nfeat, nfeat, bias=False) 
+
+        self.gc1 = RelationGraphConvolution(
+            nfeat, nhid, edge_dim=self.edge_dim, aggregate='sum', use_relu=True, dropout=self.dropout, bias=False)
+
+        self.gc2 = nn.ModuleList([RelationGraphConvolution(nhid, nhid, edge_dim=self.edge_dim, aggregate='sum',
+                                                           use_relu=True, dropout=self.dropout, bias=False)
+                                  for i in range(self.num_layers-2)])
+
+        self.gc3 = RelationGraphConvolution(
+            nhid, nout, edge_dim=self.edge_dim, aggregate='sum', use_relu=False, dropout=self.dropout, bias=False)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 4:</b> &nbsp; 2 fragments, nominal size 12 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag274')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphDF/model/rgcn.py: 117-137
+</a>
+<div class="mid" id="frag274" style="display:none"><pre>
+    def forward(self, x, adj):
+        '''
+        :param x: (batch, N, d)
+        :param adj: (batch, E, N, N)
+        :return:
+        '''
+        # embedding layer
+        x = self.emb(x)
+
+        # first GCN layer
+        x = self.gc1(x, adj)
+
+        # hidden GCN layer(s)
+        for i in range(self.num_layers-2):
+            x = self.gc2[i](x, adj)  # (#node, #class)
+
+        # last GCN layer
+        x = self.gc3(x, adj)  # (batch, N, d)
+
+        # return node embedding
+        return x
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag335')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphAF/model/rgcn.py: 118-138
+</a>
+<div class="mid" id="frag335" style="display:none"><pre>
+    def forward(self, x, adj):
+        '''
+        :param x: (batch, N, d)
+        :param adj: (batch, E, N, N)
+        :return:
+        '''
+        # embedding layer
+        x = self.emb(x)
+
+        # first GCN layer
+        x = self.gc1(x, adj)
+
+        # hidden GCN layer(s)
+        for i in range(self.num_layers-2):
+            x = self.gc2[i](x, adj)  # (#node, #class)
+
+        # last GCN layer
+        x = self.gc3(x, adj)  # (batch, N, d)
+
+        # return node embedding
+        return x
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 5:</b> &nbsp; 2 fragments, nominal size 13 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag281')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphDF/model/disgraphaf.py: 149-176
+</a>
+<div class="mid" id="frag281" style="display:none"><pre>
+    def _get_embs_edge(self, x, adj, index):
+        """
+        Args:
+            x: current node feature matrix with shape (batch, N, 9)
+            adj: current adjacency feature matrix with shape (batch, 4, N, N)
+            index: link prediction index with shape (batch, 2)
+        Returns:
+            Embedding(concatenate graph embedding, edge start node embedding and edge end node embedding) 
+                for updating edge features with shape (batch, 3d)
+        """
+        batch_size = x.size(0)
+        assert batch_size == index.size(0)
+
+        adj = adj[:, :3] # (batch, 3, N, N)
+
+        node_emb = self.rgcn(x, adj) # (batch, N, d)
+        if hasattr(self, 'batchNorm'):
+            node_emb = self.batchNorm(node_emb.transpose(1, 2)).transpose(1, 2) # (batch, N, d)
+
+        graph_emb = torch.sum(node_emb, dim = 1, keepdim=False).contiguous().view(batch_size, 1, -1) # (batch, 1, d)
+
+        index = index.view(batch_size, -1, 1).repeat(1, 1, self.emb_size) # (batch, 2, d)
+        graph_node_emb = torch.cat((torch.gather(node_emb, dim=1, index=index), 
+                                        graph_emb),dim=1)  # (batch_size, 3, d)
+        graph_node_emb = graph_node_emb.view(batch_size, -1) # (batch_size, 3d)
+        return graph_node_emb
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag342')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphAF/model/graphaf.py: 244-271
+</a>
+<div class="mid" id="frag342" style="display:none"><pre>
+    def _get_embs_edge(self, x, adj, index):
+        """
+        Args:
+            x: current node feature matrix with shape (batch, N, 9)
+            adj: current adjacency feature matrix with shape (batch, 4, N, N)
+            index: link prediction index with shape (batch, 2)
+        Returns:
+            Embedding(concatenate graph embedding, edge start node embedding and edge end node embedding) 
+                for updating edge features with shape (batch, 3d)
+        """
+        batch_size = x.size(0)
+        assert batch_size == index.size(0)
+
+        adj = adj[:, :3] # (batch, 3, N, N)
+
+        node_emb = self.rgcn(x, adj) # (batch, N, d)
+        if hasattr(self, 'batchNorm'):
+            node_emb = self.batchNorm(node_emb.transpose(1, 2)).transpose(1, 2) # (batch, N, d)
+
+        graph_emb = torch.sum(node_emb, dim = 1, keepdim=False).contiguous().view(batch_size, 1, -1) # (batch, 1, d)
+
+        index = index.view(batch_size, -1, 1).repeat(1, 1, self.emb_size) # (batch, 2, d)
+        graph_node_emb = torch.cat((torch.gather(node_emb, dim=1, index=index), 
+                                        graph_emb),dim=1)  # (batch_size, 3, d)
+        graph_node_emb = graph_node_emb.view(batch_size, -1) # (batch_size, 3d)
+        return graph_node_emb
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 6:</b> &nbsp; 2 fragments, nominal size 23 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag290')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphDF/model/st_net.py: 7-34
+</a>
+<div class="mid" id="frag290" style="display:none"><pre>
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Sigmoid, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale())
+            self.rescale2 = nn.utils.weight_norm(Rescale())
+
+        else:
+            self.rescale1 = Rescale()
+            self.rescale2 = Rescale()
+
+        self.tanh = nn.Tanh()
+        self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag353')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphAF/model/st_net.py: 6-33
+</a>
+<div class="mid" id="frag353" style="display:none"><pre>
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Sigmoid, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale())
+            self.rescale2 = nn.utils.weight_norm(Rescale())
+
+        else:
+            self.rescale1 = Rescale()
+            self.rescale2 = Rescale()
+
+        self.tanh = nn.Tanh()
+        self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 7:</b> &nbsp; 2 fragments, nominal size 14 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag292')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphDF/model/st_net.py: 42-58
+</a>
+<div class="mid" id="frag292" style="display:none"><pre>
+    def forward(self, x):
+        '''
+        :param x: (batch * repeat_num for node/edge, emb)
+        :return: w and b for affine operation
+        '''
+        if self.apply_batch_norm:
+            x = self.bn_before(x)
+
+        x = self.linear2(self.tanh(self.linear1(x)))
+        x = self.rescale1(x)
+        s = x[:, :self.output_dim]
+        t = x[:, self.output_dim:]
+        s = self.sigmoid(s + self.sigmoid_shift)
+        s = self.rescale2(s) # linear scale seems important, similar to learnable prior..
+        return s, t
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag355')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphAF/model/st_net.py: 41-57
+</a>
+<div class="mid" id="frag355" style="display:none"><pre>
+    def forward(self, x):
+        '''
+        :param x: (batch * repeat_num for node/edge, emb)
+        :return: w and b for affine operation
+        '''
+        if self.apply_batch_norm:
+            x = self.bn_before(x)
+
+        x = self.linear2(self.tanh(self.linear1(x)))
+        x = self.rescale1(x)
+        s = x[:, :self.output_dim]
+        t = x[:, self.output_dim:]
+        s = self.sigmoid(s + self.sigmoid_shift)
+        s = self.rescale2(s) # linear scale seems important, similar to learnable prior..
+        return s, t
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 8:</b> &nbsp; 2 fragments, nominal size 20 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag293')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphDF/model/st_net.py: 60-87
+</a>
+<div class="mid" id="frag293" style="display:none"><pre>
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Exp, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale())
+            #self.rescale2 = nn.utils.weight_norm(Rescale())
+
+        else:
+            self.rescale1 = Rescale()
+            #self.rescale2 = Rescale()
+
+        self.tanh = nn.Tanh()
+        #self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag356')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphAF/model/st_net.py: 59-86
+</a>
+<div class="mid" id="frag356" style="display:none"><pre>
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Exp, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale())
+            #self.rescale2 = nn.utils.weight_norm(Rescale())
+
+        else:
+            self.rescale1 = Rescale()
+            #self.rescale2 = Rescale()
+
+        self.tanh = nn.Tanh()
+        #self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 9:</b> &nbsp; 2 fragments, nominal size 12 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag295')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphDF/model/st_net.py: 95-112
+</a>
+<div class="mid" id="frag295" style="display:none"><pre>
+    def forward(self, x):
+        '''
+        :param x: (batch * repeat_num for node/edge, emb)
+        :return: w and b for affine operation
+        '''
+        if self.apply_batch_norm:
+            x = self.bn_before(x)
+
+        x = self.linear2(self.tanh(self.linear1(x)))
+        #x = self.rescale1(x)
+        s = x[:, :self.output_dim]
+        t = x[:, self.output_dim:]
+        s = self.rescale1(torch.tanh(s))
+        #s = self.sigmoid(s + self.sigmoid_shift)
+        #s = self.rescale2(s) # linear scale seems important, similar to learnable prior..
+        return s, t
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag358')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphAF/model/st_net.py: 94-111
+</a>
+<div class="mid" id="frag358" style="display:none"><pre>
+    def forward(self, x):
+        '''
+        :param x: (batch * repeat_num for node/edge, emb)
+        :return: w and b for affine operation
+        '''
+        if self.apply_batch_norm:
+            x = self.bn_before(x)
+
+        x = self.linear2(self.tanh(self.linear1(x)))
+        #x = self.rescale1(x)
+        s = x[:, :self.output_dim]
+        t = x[:, self.output_dim:]
+        s = self.rescale1(torch.tanh(s))
+        #s = self.sigmoid(s + self.sigmoid_shift)
+        #s = self.rescale2(s) # linear scale seems important, similar to learnable prior..
+        return s, t
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 10:</b> &nbsp; 2 fragments, nominal size 22 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag296')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphDF/model/st_net.py: 114-141
+</a>
+<div class="mid" id="frag296" style="display:none"><pre>
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Softplus, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, hid_dim, bias=bias)
+        self.linear3 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale_channel(self.output_dim))
+
+        else:
+            self.rescale1 = Rescale_channel(self.output_dim)
+
+        self.tanh = nn.Tanh()
+        self.softplus = nn.Softplus()
+        #self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag359')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphAF/model/st_net.py: 113-140
+</a>
+<div class="mid" id="frag359" style="display:none"><pre>
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Softplus, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, hid_dim, bias=bias)
+        self.linear3 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale_channel(self.output_dim))
+
+        else:
+            self.rescale1 = Rescale_channel(self.output_dim)
+
+        self.tanh = nn.Tanh()
+        self.softplus = nn.Softplus()
+        #self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 11:</b> &nbsp; 2 fragments, nominal size 14 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag298')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphDF/model/st_net.py: 151-168
+</a>
+<div class="mid" id="frag298" style="display:none"><pre>
+    def forward(self, x):
+        '''
+        :param x: (batch * repeat_num for node/edge, emb)
+        :return: w and b for affine operation
+        '''
+        if self.apply_batch_norm:
+            x = self.bn_before(x)
+
+        x = F.tanh(self.linear2(F.relu(self.linear1(x))))
+        x = self.linear3(x)
+        #x = self.rescale1(x)
+        s = x[:, :self.output_dim]
+        t = x[:, self.output_dim:]
+        s = self.softplus(s)
+        s = self.rescale1(s) # linear scale seems important, similar to learnable prior..
+        return s, t
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag361')" href="javascript:;">
+DIG-0.1.2/dig/ggraph/method/GraphAF/model/st_net.py: 150-167
+</a>
+<div class="mid" id="frag361" style="display:none"><pre>
+    def forward(self, x):
+        '''
+        :param x: (batch * repeat_num for node/edge, emb)
+        :return: w and b for affine operation
+        '''
+        if self.apply_batch_norm:
+            x = self.bn_before(x)
+
+        x = F.tanh(self.linear2(F.relu(self.linear1(x))))
+        x = self.linear3(x)
+        #x = self.rescale1(x)
+        s = x[:, :self.output_dim]
+        t = x[:, self.output_dim:]
+        s = self.softplus(s)
+        s = self.rescale1(s) # linear scale seems important, similar to learnable prior..
+        return s, t
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 12:</b> &nbsp; 2 fragments, nominal size 12 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag486')" href="javascript:;">
+DIG-0.1.2/dig/threedgraph/method/spherenet/features.py: 21-35
+</a>
+<div class="mid" id="frag486" style="display:none"><pre>
+def Jn_zeros(n, k):
+    zerosj = np.zeros((n, k), dtype='float32')
+    zerosj[0] = np.arange(1, k + 1) * np.pi
+    points = np.arange(1, k + n) * np.pi
+    racines = np.zeros(k + n - 1, dtype='float32')
+    for i in range(1, n):
+        for j in range(k + n - 1 - i):
+            foo = brentq(Jn, points[j], points[j + 1], (i, ))
+            racines[j] = foo
+        points = racines
+        zerosj[i][:k] = racines[:k]
+
+    return zerosj
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag542')" href="javascript:;">
+DIG-0.1.2/dig/threedgraph/method/dimenetpp/features.py: 20-34
+</a>
+<div class="mid" id="frag542" style="display:none"><pre>
+def Jn_zeros(n, k):
+    zerosj = np.zeros((n, k), dtype='float32')
+    zerosj[0] = np.arange(1, k + 1) * np.pi
+    points = np.arange(1, k + n) * np.pi
+    racines = np.zeros(k + n - 1, dtype='float32')
+    for i in range(1, n):
+        for j in range(k + n - 1 - i):
+            foo = brentq(Jn, points[j], points[j + 1], (i, ))
+            racines[j] = foo
+        points = racines
+        zerosj[i][:k] = racines[:k]
+
+    return zerosj
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 13:</b> &nbsp; 2 fragments, nominal size 20 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag488')" href="javascript:;">
+DIG-0.1.2/dig/threedgraph/method/spherenet/features.py: 48-71
+</a>
+<div class="mid" id="frag488" style="display:none"><pre>
+def bessel_basis(n, k):
+    zeros = Jn_zeros(n, k)
+    normalizer = []
+    for order in range(n):
+        normalizer_tmp = []
+        for i in range(k):
+            normalizer_tmp += [0.5 * Jn(zeros[order, i], order + 1)**2]
+        normalizer_tmp = 1 / np.array(normalizer_tmp)**0.5
+        normalizer += [normalizer_tmp]
+
+    f = spherical_bessel_formulas(n)
+    x = sym.symbols('x')
+    bess_basis = []
+    for order in range(n):
+        bess_basis_tmp = []
+        for i in range(k):
+            bess_basis_tmp += [
+                sym.simplify(normalizer[order][i] *
+                             f[order].subs(x, zeros[order, i] * x))
+            ]
+        bess_basis += [bess_basis_tmp]
+    return bess_basis
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag544')" href="javascript:;">
+DIG-0.1.2/dig/threedgraph/method/dimenetpp/features.py: 47-70
+</a>
+<div class="mid" id="frag544" style="display:none"><pre>
+def bessel_basis(n, k):
+    zeros = Jn_zeros(n, k)
+    normalizer = []
+    for order in range(n):
+        normalizer_tmp = []
+        for i in range(k):
+            normalizer_tmp += [0.5 * Jn(zeros[order, i], order + 1)**2]
+        normalizer_tmp = 1 / np.array(normalizer_tmp)**0.5
+        normalizer += [normalizer_tmp]
+
+    f = spherical_bessel_formulas(n)
+    x = sym.symbols('x')
+    bess_basis = []
+    for order in range(n):
+        bess_basis_tmp = []
+        for i in range(k):
+            bess_basis_tmp += [
+                sym.simplify(normalizer[order][i] *
+                             f[order].subs(x, zeros[order, i] * x))
+            ]
+        bess_basis += [bess_basis_tmp]
+    return bess_basis
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 14:</b> &nbsp; 2 fragments, nominal size 20 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag490')" href="javascript:;">
+DIG-0.1.2/dig/threedgraph/method/spherenet/features.py: 77-101
+</a>
+<div class="mid" id="frag490" style="display:none"><pre>
+def associated_legendre_polynomials(k, zero_m_only=True):
+    z = sym.symbols('z')
+    P_l_m = [[0] * (j + 1) for j in range(k)]
+
+    P_l_m[0][0] = 1
+    if k &gt; 0:
+        P_l_m[1][0] = z
+
+        for j in range(2, k):
+            P_l_m[j][0] = sym.simplify(((2 * j - 1) * z * P_l_m[j - 1][0] -
+                                        (j - 1) * P_l_m[j - 2][0]) / j)
+        if not zero_m_only:
+            for i in range(1, k):
+                P_l_m[i][i] = sym.simplify((1 - 2 * i) * P_l_m[i - 1][i - 1])
+                if i + 1 &lt; k:
+                    P_l_m[i + 1][i] = sym.simplify(
+                        (2 * i + 1) * z * P_l_m[i][i])
+                for j in range(i + 2, k):
+                    P_l_m[j][i] = sym.simplify(
+                        ((2 * j - 1) * z * P_l_m[j - 1][i] -
+                         (i + j - 1) * P_l_m[j - 2][i]) / (j - i))
+
+    return P_l_m
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag546')" href="javascript:;">
+DIG-0.1.2/dig/threedgraph/method/dimenetpp/features.py: 76-100
+</a>
+<div class="mid" id="frag546" style="display:none"><pre>
+def associated_legendre_polynomials(k, zero_m_only=True):
+    z = sym.symbols('z')
+    P_l_m = [[0] * (j + 1) for j in range(k)]
+
+    P_l_m[0][0] = 1
+    if k &gt; 0:
+        P_l_m[1][0] = z
+
+        for j in range(2, k):
+            P_l_m[j][0] = sym.simplify(((2 * j - 1) * z * P_l_m[j - 1][0] -
+                                        (j - 1) * P_l_m[j - 2][0]) / j)
+        if not zero_m_only:
+            for i in range(1, k):
+                P_l_m[i][i] = sym.simplify((1 - 2 * i) * P_l_m[i - 1][i - 1])
+                if i + 1 &lt; k:
+                    P_l_m[i + 1][i] = sym.simplify(
+                        (2 * i + 1) * z * P_l_m[i][i])
+                for j in range(i + 2, k):
+                    P_l_m[j][i] = sym.simplify(
+                        ((2 * j - 1) * z * P_l_m[j - 1][i] -
+                         (i + j - 1) * P_l_m[j - 2][i]) / (j - i))
+
+    return P_l_m
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 15:</b> &nbsp; 2 fragments, nominal size 10 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag513')" href="javascript:;">
+DIG-0.1.2/dig/threedgraph/method/spherenet/spherenet.py: 183-195
+</a>
+<div class="mid" id="frag513" style="display:none"><pre>
+    def __init__(self, hidden_channels, out_emb_channels, out_channels, num_output_layers, act, output_init):
+        super(update_v, self).__init__()
+        self.act = act
+        self.output_init = output_init
+
+        self.lin_up = nn.Linear(hidden_channels, out_emb_channels, bias=True)
+        self.lins = torch.nn.ModuleList()
+        for _ in range(num_output_layers):
+            self.lins.append(nn.Linear(out_emb_channels, out_emb_channels))
+        self.lin = nn.Linear(out_emb_channels, out_channels, bias=False)
+
+        self.reset_parameters()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag533')" href="javascript:;">
+DIG-0.1.2/dig/threedgraph/method/dimenetpp/dimenetpp.py: 163-175
+</a>
+<div class="mid" id="frag533" style="display:none"><pre>
+    def __init__(self, hidden_channels, out_emb_channels, out_channels, num_output_layers, act, output_init):
+        super(update_v, self).__init__()
+        self.act = act
+        self.output_init = output_init
+
+        self.lin_up = nn.Linear(hidden_channels, out_emb_channels, bias=True)
+        self.lins = torch.nn.ModuleList()
+        for _ in range(num_output_layers):
+            self.lins.append(nn.Linear(out_emb_channels, out_emb_channels))
+        self.lin = nn.Linear(out_emb_channels, out_channels, bias=False)
+
+        self.reset_parameters()
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<script language="JavaScript">
+function ShowHide(divId) { 
+    if(document.getElementById(divId).style.display == 'none') {
+        document.getElementById(divId).style.display='block';
+    } else { 
+        document.getElementById(divId).style.display = 'none';
+    } 
+}
+</script>
+</body>
+</html>

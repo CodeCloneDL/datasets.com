@@ -1,0 +1,4321 @@
+<clones>
+<systeminfo processor="nicad6" system="tfx-1.7.0" granularity="functions-blind" threshold="0%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="3249" npairs="100"/>
+<runinfo ncompares="46034" cputime="70678"/>
+<classinfo nclasses="63"/>
+
+<class classid="1" nclones="3" nlines="10" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/components/infra_validator/model_server_clients/tensorflow_serving_client_test.py" startline="54" endline="71" pcid="88">
+  def testGetModelState_ReturnsReady_IfAllAvailable(self):
+    # Prepare stub and client.
+    self.model_stub.GetModelStatus.return_value = _make_response({
+        'model_version_status': [
+            {'state': 'AVAILABLE'},
+            {'state': 'AVAILABLE'},
+            {'state': 'AVAILABLE'}
+        ]
+    })
+    client = tensorflow_serving_client.TensorFlowServingClient(
+        'localhost:1234', 'a_model_name')
+
+    # Call.
+    result = client._GetServingStatus()
+
+    # Check result.
+    self.assertEqual(result, types.ModelServingStatus.READY)
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/components/infra_validator/model_server_clients/tensorflow_serving_client_test.py" startline="72" endline="89" pcid="89">
+  def testGetModelState_ReturnsNotReady_IfAnyStateNotAvailable(self):
+    # Prepare stub and client.
+    self.model_stub.GetModelStatus.return_value = _make_response({
+        'model_version_status': [
+            {'state': 'AVAILABLE'},
+            {'state': 'AVAILABLE'},
+            {'state': 'LOADING'}
+        ]
+    })
+    client = tensorflow_serving_client.TensorFlowServingClient(
+        'localhost:1234', 'a_model_name')
+
+    # Call.
+    result = client._GetServingStatus()
+
+    # Check result.
+    self.assertEqual(result, types.ModelServingStatus.NOT_READY)
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/components/infra_validator/model_server_clients/tensorflow_serving_client_test.py" startline="90" endline="107" pcid="90">
+  def testGetModelState_ReturnsUnavailable_IfAnyStateEnded(self):
+    # Prepare stub and client.
+    self.model_stub.GetModelStatus.return_value = _make_response({
+        'model_version_status': [
+            {'state': 'AVAILABLE'},
+            {'state': 'AVAILABLE'},
+            {'state': 'END'}
+        ]
+    })
+    client = tensorflow_serving_client.TensorFlowServingClient(
+        'localhost:1234', 'a_model_name')
+
+    # Call.
+    result = client._GetServingStatus()
+
+    # Check result.
+    self.assertEqual(result, types.ModelServingStatus.UNAVAILABLE)
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="11" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/components/evaluator/component_test.py" startline="111" endline="122" pcid="164">
+  def testConstructWithModuleFile(self):
+    examples = standard_artifacts.Examples()
+    model_exports = standard_artifacts.Model()
+    evaluator = component.Evaluator(
+        examples=channel_utils.as_channel([examples]),
+        model=channel_utils.as_channel([model_exports]),
+        example_splits=['eval'],
+        module_file='path')
+    self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
+                     evaluator.outputs['evaluation'].type_name)
+    self.assertEqual('path', evaluator.exec_properties['module_file'])
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/components/evaluator/component_test.py" startline="123" endline="134" pcid="165">
+  def testConstructWithModuleFn(self):
+    examples = standard_artifacts.Examples()
+    model_exports = standard_artifacts.Model()
+    evaluator = component.Evaluator(
+        examples=channel_utils.as_channel([examples]),
+        model=channel_utils.as_channel([model_exports]),
+        example_splits=['eval'],
+        module_path='module')
+    self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
+                     evaluator.outputs['evaluation'].type_name)
+    self.assertEqual('module', evaluator.exec_properties['module_path'])
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="10" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/components/pusher/executor_test.py" startline="156" endline="171" pcid="203">
+  def testDo_NoModelBlessing_InfraBlessed_Pushed(self):
+    # Prepare successful InfraBlessing only (without ModelBlessing).
+    infra_blessing = standard_artifacts.InfraBlessing()
+    infra_blessing.set_int_custom_property('blessed', 1)  # Blessed.
+    input_dict = {
+        standard_component_specs.MODEL_KEY:
+            self._input_dict[standard_component_specs.MODEL_KEY],
+        standard_component_specs.INFRA_BLESSING_KEY: [infra_blessing],
+    }
+
+    # Run executor
+    self._executor.Do(input_dict, self._output_dict, self._exec_properties)
+
+    # Check model is pushed.
+    self.assertPushed()
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/components/pusher/executor_test.py" startline="172" endline="187" pcid="204">
+  def testDo_NoModelBlessing_InfraNotBlessed_NotPushed(self):
+    # Prepare unsuccessful InfraBlessing only (without ModelBlessing).
+    infra_blessing = standard_artifacts.InfraBlessing()
+    infra_blessing.set_int_custom_property('blessed', 0)  # Not blessed.
+    input_dict = {
+        standard_component_specs.MODEL_KEY:
+            self._input_dict[standard_component_specs.MODEL_KEY],
+        standard_component_specs.INFRA_BLESSING_KEY: [infra_blessing],
+    }
+
+    # Run executor
+    self._executor.Do(input_dict, self._output_dict, self._exec_properties)
+
+    # Check model is not pushed.
+    self.assertNotPushed()
+
+</source>
+</class>
+
+<class classid="4" nclones="4" nlines="26" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/components/testdata/module_file/trainer_module.py" startline="88" endline="133" pcid="331">
+def _build_estimator(config, hidden_units=None, warm_start_from=None):
+  """Build an estimator for predicting the tipping behavior of taxi riders.
+
+  Args:
+    config: tf.estimator.RunConfig defining the runtime environment for the
+      estimator (including model_dir).
+    hidden_units: [int], the layer sizes of the DNN (input layer first)
+    warm_start_from: Optional directory to warm start from.
+
+  Returns:
+    A dict of the following:
+      - estimator: The estimator that will be used for training and eval.
+      - train_spec: Spec for training.
+      - eval_spec: Spec for eval.
+      - eval_input_receiver_fn: Input function for eval.
+  """
+  real_valued_columns = [
+      tf.feature_column.numeric_column(key, shape=())
+      for key in _transformed_names(_DENSE_FLOAT_FEATURE_KEYS)
+  ]
+  categorical_columns = [
+      tf.feature_column.categorical_column_with_identity(
+          key, num_buckets=_VOCAB_SIZE + _OOV_SIZE, default_value=0)
+      for key in _transformed_names(_VOCAB_FEATURE_KEYS)
+  ]
+  categorical_columns += [
+      tf.feature_column.categorical_column_with_identity(
+          key, num_buckets=_FEATURE_BUCKET_COUNT, default_value=0)
+      for key in _transformed_names(_BUCKET_FEATURE_KEYS)
+  ]
+  categorical_columns += [
+      tf.feature_column.categorical_column_with_identity(  # pylint: disable=g-complex-comprehension
+          key,
+          num_buckets=num_buckets,
+          default_value=0) for key, num_buckets in zip(
+              _transformed_names(_CATEGORICAL_FEATURE_KEYS),
+              _MAX_CATEGORICAL_FEATURE_VALUES)
+  ]
+  return tf.estimator.DNNLinearCombinedClassifier(
+      config=config,
+      linear_feature_columns=categorical_columns,
+      dnn_feature_columns=real_valued_columns,
+      dnn_hidden_units=hidden_units or [100, 70, 50, 25],
+      warm_start_from=warm_start_from)
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/examples/custom_components/slack/example/taxi_utils_slack.py" startline="143" endline="188" pcid="3095">
+def _build_estimator(config, hidden_units=None, warm_start_from=None):
+  """Build an estimator for predicting the tipping behavior of taxi riders.
+
+  Args:
+    config: tf.contrib.learn.RunConfig defining the runtime environment for the
+      estimator (including model_dir).
+    hidden_units: [int], the layer sizes of the DNN (input layer first)
+    warm_start_from: Optional directory to warm start from.
+
+  Returns:
+    A dict of the following:
+      - estimator: The estimator that will be used for training and eval.
+      - train_spec: Spec for training.
+      - eval_spec: Spec for eval.
+      - eval_input_receiver_fn: Input function for eval.
+  """
+  real_valued_columns = [
+      tf.feature_column.numeric_column(key, shape=())
+      for key in _transformed_names(_DENSE_FLOAT_FEATURE_KEYS)
+  ]
+  categorical_columns = [
+      tf.feature_column.categorical_column_with_identity(
+          key, num_buckets=_VOCAB_SIZE + _OOV_SIZE, default_value=0)
+      for key in _transformed_names(_VOCAB_FEATURE_KEYS)
+  ]
+  categorical_columns += [
+      tf.feature_column.categorical_column_with_identity(
+          key, num_buckets=_FEATURE_BUCKET_COUNT, default_value=0)
+      for key in _transformed_names(_BUCKET_FEATURE_KEYS)
+  ]
+  categorical_columns += [
+      tf.feature_column.categorical_column_with_identity(  # pylint: disable=g-complex-comprehension
+          key,
+          num_buckets=num_buckets,
+          default_value=0) for key, num_buckets in zip(
+              _transformed_names(_CATEGORICAL_FEATURE_KEYS),
+              _MAX_CATEGORICAL_FEATURE_VALUES)
+  ]
+  return tf.estimator.DNNLinearCombinedClassifier(
+      config=config,
+      linear_feature_columns=categorical_columns,
+      dnn_feature_columns=real_valued_columns,
+      dnn_hidden_units=hidden_units or [100, 70, 50, 25],
+      warm_start_from=warm_start_from)
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/examples/chicago_taxi_pipeline/taxi_utils.py" startline="142" endline="187" pcid="3122">
+def _build_estimator(config, hidden_units=None, warm_start_from=None):
+  """Build an estimator for predicting the tipping behavior of taxi riders.
+
+  Args:
+    config: tf.estimator.RunConfig defining the runtime environment for the
+      estimator (including model_dir).
+    hidden_units: [int], the layer sizes of the DNN (input layer first)
+    warm_start_from: Optional directory to warm start from.
+
+  Returns:
+    A dict of the following:
+      - estimator: The estimator that will be used for training and eval.
+      - train_spec: Spec for training.
+      - eval_spec: Spec for eval.
+      - eval_input_receiver_fn: Input function for eval.
+  """
+  real_valued_columns = [
+      tf.feature_column.numeric_column(key, shape=())
+      for key in _transformed_names(_DENSE_FLOAT_FEATURE_KEYS)
+  ]
+  categorical_columns = [
+      tf.feature_column.categorical_column_with_identity(
+          key, num_buckets=_VOCAB_SIZE + _OOV_SIZE, default_value=0)
+      for key in _transformed_names(_VOCAB_FEATURE_KEYS)
+  ]
+  categorical_columns += [
+      tf.feature_column.categorical_column_with_identity(
+          key, num_buckets=_FEATURE_BUCKET_COUNT, default_value=0)
+      for key in _transformed_names(_BUCKET_FEATURE_KEYS)
+  ]
+  categorical_columns += [
+      tf.feature_column.categorical_column_with_identity(  # pylint: disable=g-complex-comprehension
+          key,
+          num_buckets=num_buckets,
+          default_value=0) for key, num_buckets in zip(
+              _transformed_names(_CATEGORICAL_FEATURE_KEYS),
+              _MAX_CATEGORICAL_FEATURE_VALUES)
+  ]
+  return tf.estimator.DNNLinearCombinedClassifier(
+      config=config,
+      linear_feature_columns=categorical_columns,
+      dnn_feature_columns=real_valued_columns,
+      dnn_hidden_units=hidden_units or [100, 70, 50, 25],
+      warm_start_from=warm_start_from)
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/examples/bigquery_ml/taxi_utils_bqml.py" startline="148" endline="193" pcid="2993">
+def _build_estimator(config, hidden_units=None, warm_start_from=None):
+  """Build an estimator for predicting the tipping behavior of taxi riders.
+
+  Args:
+    config: tf.estimator.RunConfig defining the runtime environment for the
+      estimator (including model_dir).
+    hidden_units: [int], the layer sizes of the DNN (input layer first)
+    warm_start_from: Optional directory to warm start from.
+
+  Returns:
+    A dict of the following:
+      - estimator: The estimator that will be used for training and eval.
+      - train_spec: Spec for training.
+      - eval_spec: Spec for eval.
+      - eval_input_receiver_fn: Input function for eval.
+  """
+  real_valued_columns = [
+      tf.feature_column.numeric_column(key, shape=())
+      for key in _transformed_names(_DENSE_FLOAT_FEATURE_KEYS)
+  ]
+  categorical_columns = [
+      tf.feature_column.categorical_column_with_identity(
+          key, num_buckets=_VOCAB_SIZE + _OOV_SIZE, default_value=0)
+      for key in _transformed_names(_VOCAB_FEATURE_KEYS)
+  ]
+  categorical_columns += [
+      tf.feature_column.categorical_column_with_identity(
+          key, num_buckets=_FEATURE_BUCKET_COUNT, default_value=0)
+      for key in _transformed_names(_BUCKET_FEATURE_KEYS)
+  ]
+  categorical_columns += [
+      tf.feature_column.categorical_column_with_identity(  # pylint: disable=g-complex-comprehension
+          key,
+          num_buckets=num_buckets,
+          default_value=0) for key, num_buckets in zip(
+              _transformed_names(_CATEGORICAL_FEATURE_KEYS),
+              _MAX_CATEGORICAL_FEATURE_VALUES)
+  ]
+  return tf.estimator.DNNLinearCombinedClassifier(
+      config=config,
+      linear_feature_columns=categorical_columns,
+      dnn_feature_columns=real_valued_columns,
+      dnn_hidden_units=hidden_units or [100, 70, 50, 25],
+      warm_start_from=warm_start_from)
+
+
+</source>
+</class>
+
+<class classid="5" nclones="3" nlines="10" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/components/testdata/module_file/trainer_module.py" startline="134" endline="157" pcid="332">
+def _example_serving_receiver_fn(tf_transform_output, schema):
+  """Build the serving in inputs.
+
+  Args:
+    tf_transform_output: A TFTransformOutput.
+    schema: the schema of the input data.
+
+  Returns:
+    Tensorflow graph which parses examples, applying tf-transform to them.
+  """
+  raw_feature_spec = _get_raw_feature_spec(schema)
+  raw_feature_spec.pop(_LABEL_KEY)
+
+  raw_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
+      raw_feature_spec, default_batch_size=None)
+  serving_input_receiver = raw_input_fn()
+
+  transformed_features = tf_transform_output.transform_raw_features(
+      serving_input_receiver.features)
+
+  return tf.estimator.export.ServingInputReceiver(
+      transformed_features, serving_input_receiver.receiver_tensors)
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/examples/bigquery_ml/taxi_utils_bqml.py" startline="194" endline="219" pcid="2994">
+def _flat_input_serving_receiver_fn(tf_transform_output, schema):
+  """Build the serving function for flat list of Dense tensors as input.
+
+  Args:
+    tf_transform_output: A TFTransformOutput.
+    schema: the schema of the input data.
+
+  Returns:
+    Tensorflow graph which parses examples, applying tf-transform to them.
+  """
+  raw_feature_spec = _get_raw_feature_spec(schema)
+  raw_feature_spec.pop(_LABEL_KEY)
+
+  raw_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
+      raw_feature_spec, default_batch_size=None)
+  serving_input_receiver = raw_input_fn()
+
+  transformed_features = tf_transform_output.transform_raw_features(
+      serving_input_receiver.features)
+
+  # We construct a receiver function that receives flat list of Dense tensors as
+  # features. This is as per BigQuery ML serving requirements.
+  return tf.estimator.export.ServingInputReceiver(
+      transformed_features, serving_input_receiver.features)
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/examples/chicago_taxi_pipeline/taxi_utils.py" startline="188" endline="211" pcid="3123">
+def _example_serving_receiver_fn(tf_transform_output, schema):
+  """Build the serving in inputs.
+
+  Args:
+    tf_transform_output: A TFTransformOutput.
+    schema: the schema of the input data.
+
+  Returns:
+    Tensorflow graph which parses examples, applying tf-transform to them.
+  """
+  raw_feature_spec = _get_raw_feature_spec(schema)
+  raw_feature_spec.pop(_LABEL_KEY)
+
+  raw_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
+      raw_feature_spec, default_batch_size=None)
+  serving_input_receiver = raw_input_fn()
+
+  transformed_features = tf_transform_output.transform_raw_features(
+      serving_input_receiver.features)
+
+  return tf.estimator.export.ServingInputReceiver(
+      transformed_features, serving_input_receiver.receiver_tensors)
+
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="14" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/components/testdata/module_file/trainer_module.py" startline="158" endline="200" pcid="333">
+def _eval_input_receiver_fn(tf_transform_output, schema):
+  """Build everything needed for the tf-model-analysis to run the model.
+
+  Args:
+    tf_transform_output: A TFTransformOutput.
+    schema: the schema of the input data.
+
+  Returns:
+    EvalInputReceiver function, which contains:
+      - Tensorflow graph which parses raw untransformed features, applies the
+        tf-transform preprocessing operators.
+      - Set of raw, untransformed features.
+      - Label against which predictions will be compared.
+  """
+  # Notice that the inputs are raw features, not transformed features here.
+  raw_feature_spec = _get_raw_feature_spec(schema)
+
+  serialized_tf_example = tf.compat.v1.placeholder(
+      dtype=tf.string, shape=[None], name='input_example_tensor')
+
+  # Add a parse_example operator to the tensorflow graph, which will parse
+  # raw, untransformed, tf examples.
+  features = tf.io.parse_example(
+      serialized=serialized_tf_example, features=raw_feature_spec)
+
+  # Now that we have our raw examples, process them through the tf-transform
+  # function computed during the preprocessing step.
+  transformed_features = tf_transform_output.transform_raw_features(
+      features)
+
+  # The key name MUST be 'examples'.
+  receiver_tensors = {'examples': serialized_tf_example}
+
+  # NOTE: Model is driven by transformed features (since training works on the
+  # materialized output of TFT, but slicing will happen on raw features.
+  features.update(transformed_features)
+
+  return tfma.export.EvalInputReceiver(
+      features=features,
+      receiver_tensors=receiver_tensors,
+      labels=transformed_features[_transformed_name(_LABEL_KEY)])
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/examples/chicago_taxi_pipeline/taxi_utils.py" startline="212" endline="254" pcid="3124">
+def _eval_input_receiver_fn(tf_transform_output, schema):
+  """Build everything needed for the tf-model-analysis to run the model.
+
+  Args:
+    tf_transform_output: A TFTransformOutput.
+    schema: the schema of the input data.
+
+  Returns:
+    EvalInputReceiver function, which contains:
+      - Tensorflow graph which parses raw untransformed features, applies the
+        tf-transform preprocessing operators.
+      - Set of raw, untransformed features.
+      - Label against which predictions will be compared.
+  """
+  # Notice that the inputs are raw features, not transformed features here.
+  raw_feature_spec = _get_raw_feature_spec(schema)
+
+  serialized_tf_example = tf.compat.v1.placeholder(
+      dtype=tf.string, shape=[None], name='input_example_tensor')
+
+  # Add a parse_example operator to the tensorflow graph, which will parse
+  # raw, untransformed, tf examples.
+  features = tf.io.parse_example(
+      serialized=serialized_tf_example, features=raw_feature_spec)
+
+  # Now that we have our raw examples, process them through the tf-transform
+  # function computed during the preprocessing step.
+  transformed_features = tf_transform_output.transform_raw_features(
+      features)
+
+  # The key name MUST be 'examples'.
+  receiver_tensors = {'examples': serialized_tf_example}
+
+  # NOTE: Model is driven by transformed features (since training works on the
+  # materialized output of TFT, but slicing will happen on raw features.
+  features.update(transformed_features)
+
+  return tfma.export.EvalInputReceiver(
+      features=features,
+      receiver_tensors=receiver_tensors,
+      labels=transformed_features[_transformed_name(_LABEL_KEY)])
+
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="32" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/components/example_gen/custom_executors/avro_component_test.py" startline="56" endline="97" pcid="507">
+  def testRun(self, mock_publisher):
+    mock_publisher.return_value.publish_execution.return_value = {}
+
+    example_gen = FileBasedExampleGen(
+        custom_executor_spec=executor_spec.ExecutorClassSpec(
+            avro_executor.Executor),
+        input_base=self.avro_dir_path,
+        input_config=self.input_config,
+        output_config=self.output_config).with_id('AvroExampleGen')
+
+    output_data_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
+    pipeline_root = os.path.join(output_data_dir, 'Test')
+    fileio.makedirs(pipeline_root)
+    pipeline_info = data_types.PipelineInfo(
+        pipeline_name='Test', pipeline_root=pipeline_root, run_id='123')
+
+    driver_args = data_types.DriverArgs(enable_cache=True)
+
+    connection_config = metadata_store_pb2.ConnectionConfig()
+    connection_config.sqlite.SetInParent()
+    metadata_connection = metadata.Metadata(connection_config)
+
+    launcher = in_process_component_launcher.InProcessComponentLauncher.create(
+        component=example_gen,
+        pipeline_info=pipeline_info,
+        driver_args=driver_args,
+        metadata_connection=metadata_connection,
+        beam_pipeline_args=[],
+        additional_pipeline_args={})
+    self.assertEqual(
+        launcher._component_info.component_type,
+        name_utils.get_full_name(FileBasedExampleGen))
+
+    launcher.launch()
+    mock_publisher.return_value.publish_execution.assert_called_once()
+
+    # Check output paths.
+    self.assertTrue(fileio.exists(os.path.join(pipeline_root, example_gen.id)))
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/components/example_gen/custom_executors/parquet_component_test.py" startline="57" endline="98" pcid="519">
+  def testRun(self, mock_publisher):
+    mock_publisher.return_value.publish_execution.return_value = {}
+
+    example_gen = FileBasedExampleGen(
+        custom_executor_spec=executor_spec.ExecutorClassSpec(
+            parquet_executor.Executor),
+        input_base=self.parquet_dir_path,
+        input_config=self.input_config,
+        output_config=self.output_config).with_id('ParquetExampleGen')
+
+    output_data_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
+    pipeline_root = os.path.join(output_data_dir, 'Test')
+    fileio.makedirs(pipeline_root)
+    pipeline_info = data_types.PipelineInfo(
+        pipeline_name='Test', pipeline_root=pipeline_root, run_id='123')
+
+    driver_args = data_types.DriverArgs(enable_cache=True)
+
+    connection_config = metadata_store_pb2.ConnectionConfig()
+    connection_config.sqlite.SetInParent()
+    metadata_connection = metadata.Metadata(connection_config)
+
+    launcher = in_process_component_launcher.InProcessComponentLauncher.create(
+        component=example_gen,
+        pipeline_info=pipeline_info,
+        driver_args=driver_args,
+        metadata_connection=metadata_connection,
+        beam_pipeline_args=[],
+        additional_pipeline_args={})
+    self.assertEqual(
+        launcher._component_info.component_type,
+        name_utils.get_full_name(FileBasedExampleGen))
+
+    launcher.launch()
+    mock_publisher.return_value.publish_execution.assert_called_once()
+
+    # Check output paths.
+    self.assertTrue(fileio.exists(os.path.join(pipeline_root, example_gen.id)))
+
+
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="12" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/components/example_gen/custom_executors/parquet_executor_test.py" startline="38" endline="55" pcid="509">
+  def testParquetToExample(self):
+    with beam.Pipeline() as pipeline:
+      examples = (
+          pipeline
+          | 'ToTFExample' >> parquet_executor._ParquetToExample(
+              exec_properties={
+                  standard_component_specs.INPUT_BASE_KEY: self._input_data_dir
+              },
+              split_pattern='parquet/*'))
+
+      def check_result(got):
+        # We use Python assertion here to avoid Beam serialization error in
+        # pickling tf.test.TestCase.
+        assert (10000 == len(got)), 'Unexpected example count'
+        assert (18 == len(got[0].features.feature)), 'Example not match'
+
+      util.assert_that(examples, check_result)
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/components/example_gen/custom_executors/avro_executor_test.py" startline="38" endline="55" pcid="515">
+  def testAvroToExample(self):
+    with beam.Pipeline() as pipeline:
+      examples = (
+          pipeline
+          | 'ToTFExample' >> avro_executor._AvroToExample(
+              exec_properties={
+                  standard_component_specs.INPUT_BASE_KEY: self._input_data_dir
+              },
+              split_pattern='avro/*.avro'))
+
+      def check_result(got):
+        # We use Python assertion here to avoid Beam serialization error in
+        # pickling tf.test.TestCase.
+        assert (10000 == len(got)), 'Unexpected example count'
+        assert (18 == len(got[0].features.feature)), 'Example not match'
+
+      util.assert_that(examples, check_result)
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="38" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/components/example_gen/custom_executors/parquet_executor_test.py" startline="56" endline="106" pcid="511">
+  def testDo(self):
+    output_data_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
+
+    # Create output dict.
+    examples = standard_artifacts.Examples()
+    examples.uri = output_data_dir
+    output_dict = {standard_component_specs.EXAMPLES_KEY: [examples]}
+
+    # Create exec proterties.
+    exec_properties = {
+        standard_component_specs.INPUT_BASE_KEY:
+            self._input_data_dir,
+        standard_component_specs.INPUT_CONFIG_KEY:
+            proto_utils.proto_to_json(
+                example_gen_pb2.Input(splits=[
+                    example_gen_pb2.Input.Split(
+                        name='parquet', pattern='parquet/*'),
+                ])),
+        standard_component_specs.OUTPUT_CONFIG_KEY:
+            proto_utils.proto_to_json(
+                example_gen_pb2.Output(
+                    split_config=example_gen_pb2.SplitConfig(splits=[
+                        example_gen_pb2.SplitConfig.Split(
+                            name='train', hash_buckets=2),
+                        example_gen_pb2.SplitConfig.Split(
+                            name='eval', hash_buckets=1)
+                    ])))
+    }
+
+    # Run executor.
+    parquet_example_gen = parquet_executor.Executor()
+    parquet_example_gen.Do({}, output_dict, exec_properties)
+
+    self.assertEqual(
+        artifact_utils.encode_split_names(['train', 'eval']),
+        examples.split_names)
+
+    # Check Parquet example gen outputs.
+    train_output_file = os.path.join(examples.uri, 'Split-train',
+                                     'data_tfrecord-00000-of-00001.gz')
+    eval_output_file = os.path.join(examples.uri, 'Split-eval',
+                                    'data_tfrecord-00000-of-00001.gz')
+    self.assertTrue(fileio.exists(train_output_file))
+    self.assertTrue(fileio.exists(eval_output_file))
+    self.assertGreater(
+        fileio.open(train_output_file).size(),
+        fileio.open(eval_output_file).size())
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/components/example_gen/custom_executors/avro_executor_test.py" startline="56" endline="106" pcid="517">
+  def testDo(self):
+    output_data_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
+
+    # Create output dict.
+    examples = standard_artifacts.Examples()
+    examples.uri = output_data_dir
+    output_dict = {standard_component_specs.EXAMPLES_KEY: [examples]}
+
+    # Create exec proterties.
+    exec_properties = {
+        standard_component_specs.INPUT_BASE_KEY:
+            self._input_data_dir,
+        standard_component_specs.INPUT_CONFIG_KEY:
+            proto_utils.proto_to_json(
+                example_gen_pb2.Input(splits=[
+                    example_gen_pb2.Input.Split(
+                        name='avro', pattern='avro/*.avro'),
+                ])),
+        standard_component_specs.OUTPUT_CONFIG_KEY:
+            proto_utils.proto_to_json(
+                example_gen_pb2.Output(
+                    split_config=example_gen_pb2.SplitConfig(splits=[
+                        example_gen_pb2.SplitConfig.Split(
+                            name='train', hash_buckets=2),
+                        example_gen_pb2.SplitConfig.Split(
+                            name='eval', hash_buckets=1)
+                    ])))
+    }
+
+    # Run executor.
+    avro_example_gen = avro_executor.Executor()
+    avro_example_gen.Do({}, output_dict, exec_properties)
+
+    self.assertEqual(
+        artifact_utils.encode_split_names(['train', 'eval']),
+        examples.split_names)
+
+    # Check Avro example gen outputs.
+    train_output_file = os.path.join(examples.uri, 'Split-train',
+                                     'data_tfrecord-00000-of-00001.gz')
+    eval_output_file = os.path.join(examples.uri, 'Split-eval',
+                                    'data_tfrecord-00000-of-00001.gz')
+    self.assertTrue(fileio.exists(train_output_file))
+    self.assertTrue(fileio.exists(eval_output_file))
+    self.assertGreater(
+        fileio.open(train_output_file).size(),
+        fileio.open(eval_output_file).size())
+
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="20" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/components/example_gen/write_split_test.py" startline="34" endline="58" pcid="541">
+  def testWriteSplitCounter_WithFormatUnspecified(self):
+    count = 10
+
+    def Pipeline(root):
+      data = [tf.train.Example()] * count
+      _ = (
+          root
+          | beam.Create(data)
+          | write_split.WriteSplit(self._output_data_dir,
+                                   example_gen_pb2.FILE_FORMAT_UNSPECIFIED))
+
+    run_result = direct_runner.DirectRunner().run(Pipeline)
+    run_result.wait_until_finish()
+
+    num_instances = run_result.metrics().query(
+        MetricsFilter().with_name('num_instances'))
+
+    self.assertTrue(
+        fileio.exists(
+            os.path.join(self._output_data_dir,
+                         'data_tfrecord-00000-of-00001.gz')))
+    self.assertTrue(num_instances['counters'])
+    self.assertEqual(len(num_instances['counters']), 1)
+    self.assertEqual(num_instances['counters'][0].result, count)
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/components/example_gen/write_split_test.py" startline="59" endline="84" pcid="543">
+  def testWriteSplitCounter_WithTFRECORDS_GZIP(self):
+    count = 10
+
+    def Pipeline(root):
+      data = [tf.train.Example()] * count
+      _ = (
+          root
+          | beam.Create(data)
+          | write_split.WriteSplit(self._output_data_dir,
+                                   example_gen_pb2.FORMAT_TFRECORDS_GZIP))
+
+    run_result = direct_runner.DirectRunner().run(Pipeline)
+    run_result.wait_until_finish()
+
+    num_instances = run_result.metrics().query(
+        MetricsFilter().with_name('num_instances'))
+
+    self.assertTrue(
+        fileio.exists(
+            os.path.join(self._output_data_dir,
+                         'data_tfrecord-00000-of-00001.gz')))
+    self.assertTrue(num_instances['counters'])
+    self.assertEqual(len(num_instances['counters']), 1)
+    self.assertEqual(num_instances['counters'][0].result, count)
+
+
+</source>
+</class>
+
+<class classid="11" nclones="2" nlines="11" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/components/example_gen/utils_test.py" startline="320" endline="335" pcid="613">
+  def testHaveSpanAndVersion(self):
+    # Test specific behavior when both Span and Version are present.
+    split1 = os.path.join(self._input_base_path, 'span1', 'version1', 'split1',
+                          'data')
+    io_utils.write_string_file(split1, 'testing')
+
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='span{SPAN}/version{VERSION}/split1/*')
+    ]
+
+    _, span, version = utils.calculate_splits_fingerprint_span_and_version(
+        self._input_base_path, splits)
+    self.assertEqual(span, 1)
+    self.assertEqual(version, 1)
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/components/example_gen/utils_test.py" startline="442" endline="457" pcid="622">
+  def testHaveDateAndVersion(self):
+    # Test specific behavior when both Date and Version are present.
+    split1 = os.path.join(self._input_base_path, '19700102', 'ver1', 'split1',
+                          'data')
+    io_utils.write_string_file(split1, 'testing')
+
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='{YYYY}{MM}{DD}/ver{VERSION}/split1/*')
+    ]
+
+    _, span, version = utils.calculate_splits_fingerprint_span_and_version(
+        self._input_base_path, splits)
+    self.assertEqual(span, 1)
+    self.assertEqual(version, 1)
+
+</source>
+</class>
+
+<class classid="12" nclones="2" nlines="48" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/components/example_gen/utils_test.py" startline="542" endline="602" pcid="628">
+  def testCalculateSplitsFingerprintSpanAndVersionWithSpan(self):
+    # Test align of span and version numbers.
+    span1_v1_split1 = os.path.join(self._input_base_path, 'span01', 'ver01',
+                                   'split1', 'data')
+    io_utils.write_string_file(span1_v1_split1, 'testing11')
+    span1_v1_split2 = os.path.join(self._input_base_path, 'span01', 'ver01',
+                                   'split2', 'data')
+    io_utils.write_string_file(span1_v1_split2, 'testing12')
+    span2_v1_split1 = os.path.join(self._input_base_path, 'span02', 'ver01',
+                                   'split1', 'data')
+    io_utils.write_string_file(span2_v1_split1, 'testing21')
+
+    # Test if error raised when span does not align.
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='span{SPAN}/ver{VERSION}/split1/*'),
+        example_gen_pb2.Input.Split(
+            name='s2', pattern='span{SPAN}/ver{VERSION}/split2/*')
+    ]
+    with self.assertRaisesRegex(
+        ValueError, 'Latest span should be the same for each split'):
+      utils.calculate_splits_fingerprint_span_and_version(
+          self._input_base_path, splits)
+
+    span2_v1_split2 = os.path.join(self._input_base_path, 'span02', 'ver01',
+                                   'split2', 'data')
+    io_utils.write_string_file(span2_v1_split2, 'testing22')
+    span2_v2_split1 = os.path.join(self._input_base_path, 'span02', 'ver02',
+                                   'split1', 'data')
+    io_utils.write_string_file(span2_v2_split1, 'testing21')
+
+    # Test if error raised when span aligns but version does not.
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='span{SPAN}/ver{VERSION}/split1/*'),
+        example_gen_pb2.Input.Split(
+            name='s2', pattern='span{SPAN}/ver{VERSION}/split2/*')
+    ]
+    with self.assertRaisesRegex(
+        ValueError, 'Latest version should be the same for each split'):
+      utils.calculate_splits_fingerprint_span_and_version(
+          self._input_base_path, splits)
+
+    span2_v2_split2 = os.path.join(self._input_base_path, 'span02', 'ver02',
+                                   'split2', 'data')
+    io_utils.write_string_file(span2_v2_split2, 'testing22')
+
+    # Test if latest span and version is selected when aligned for each split.
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='span{SPAN}/ver{VERSION}/split1/*'),
+        example_gen_pb2.Input.Split(
+            name='s2', pattern='span{SPAN}/ver{VERSION}/split2/*')
+    ]
+    _, span, version = utils.calculate_splits_fingerprint_span_and_version(
+        self._input_base_path, splits)
+    self.assertEqual(span, 2)
+    self.assertEqual(version, 2)
+    self.assertEqual(splits[0].pattern, 'span02/ver02/split1/*')
+    self.assertEqual(splits[1].pattern, 'span02/ver02/split2/*')
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/components/example_gen/utils_test.py" startline="603" endline="662" pcid="629">
+  def testCalculateSplitsFingerprintSpanAndVersionWithDate(self):
+    # Test align of span and version numbers.
+    span1_v1_split1 = os.path.join(self._input_base_path, '19700102', 'ver01',
+                                   'split1', 'data')
+    io_utils.write_string_file(span1_v1_split1, 'testing11')
+    span1_v1_split2 = os.path.join(self._input_base_path, '19700102', 'ver01',
+                                   'split2', 'data')
+    io_utils.write_string_file(span1_v1_split2, 'testing12')
+    span2_v1_split1 = os.path.join(self._input_base_path, '19700103', 'ver01',
+                                   'split1', 'data')
+    io_utils.write_string_file(span2_v1_split1, 'testing21')
+
+    # Test if error raised when date does not align.
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='{YYYY}{MM}{DD}/ver{VERSION}/split1/*'),
+        example_gen_pb2.Input.Split(
+            name='s2', pattern='{YYYY}{MM}{DD}/ver{VERSION}/split2/*')
+    ]
+    with self.assertRaisesRegex(
+        ValueError, 'Latest span should be the same for each split'):
+      utils.calculate_splits_fingerprint_span_and_version(
+          self._input_base_path, splits)
+
+    span2_v1_split2 = os.path.join(self._input_base_path, '19700103', 'ver01',
+                                   'split2', 'data')
+    io_utils.write_string_file(span2_v1_split2, 'testing22')
+    span2_v2_split1 = os.path.join(self._input_base_path, '19700103', 'ver02',
+                                   'split1', 'data')
+    io_utils.write_string_file(span2_v2_split1, 'testing21')
+
+    # Test if error raised when date aligns but version does not.
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='{YYYY}{MM}{DD}/ver{VERSION}/split1/*'),
+        example_gen_pb2.Input.Split(
+            name='s2', pattern='{YYYY}{MM}{DD}/ver{VERSION}/split2/*')
+    ]
+    with self.assertRaisesRegex(
+        ValueError, 'Latest version should be the same for each split'):
+      utils.calculate_splits_fingerprint_span_and_version(
+          self._input_base_path, splits)
+    span2_v2_split2 = os.path.join(self._input_base_path, '19700103', 'ver02',
+                                   'split2', 'data')
+    io_utils.write_string_file(span2_v2_split2, 'testing22')
+
+    # Test if latest span and version is selected when aligned for each split.
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='{YYYY}{MM}{DD}/ver{VERSION}/split1/*'),
+        example_gen_pb2.Input.Split(
+            name='s2', pattern='{YYYY}{MM}{DD}/ver{VERSION}/split2/*')
+    ]
+    _, span, version = utils.calculate_splits_fingerprint_span_and_version(
+        self._input_base_path, splits)
+    self.assertEqual(span, 2)
+    self.assertEqual(version, 2)
+    self.assertEqual(splits[0].pattern, '19700103/ver02/split1/*')
+    self.assertEqual(splits[1].pattern, '19700103/ver02/split2/*')
+
+</source>
+</class>
+
+<class classid="13" nclones="2" nlines="10" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/extensions/google_cloud_big_query/pusher/component.py" startline="34" endline="57" pcid="775">
+  def __init__(self,
+               model: Optional[types.Channel] = None,
+               model_blessing: Optional[types.Channel] = None,
+               infra_blessing: Optional[types.Channel] = None,
+               custom_config: Optional[Dict[str, Any]] = None):
+    """Construct a Pusher component.
+
+    Args:
+      model: An optional Channel of type `standard_artifacts.Model`, usually
+        produced by a Trainer component.
+      model_blessing: An optional Channel of type
+        `standard_artifacts.ModelBlessing`, usually produced from an Evaluator
+        component.
+      infra_blessing: An optional Channel of type
+        `standard_artifacts.InfraBlessing`, usually produced from an
+        InfraValidator component.
+      custom_config: A dict which contains the deployment job parameters to be
+        passed to Cloud platforms.
+    """
+    super().__init__(
+        model=model,
+        model_blessing=model_blessing,
+        infra_blessing=infra_blessing,
+        custom_config=custom_config)
+</source>
+<source file="systems/tfx-1.7.0/tfx/extensions/google_cloud_ai_platform/pusher/component.py" startline="29" endline="53" pcid="893">
+  def __init__(self,
+               model: Optional[types.Channel] = None,
+               model_blessing: Optional[types.Channel] = None,
+               infra_blessing: Optional[types.Channel] = None,
+               custom_config: Optional[Dict[str, Any]] = None):
+    """Construct a Pusher component.
+
+    Args:
+      model: An optional Channel of type `standard_artifacts.Model`, usually
+        produced by a Trainer component, representing the model used for
+        training.
+      model_blessing: An optional Channel of type
+        `standard_artifacts.ModelBlessing`, usually produced from an Evaluator
+        component, containing the blessing model.
+      infra_blessing: An optional Channel of type
+        `standard_artifacts.InfraBlessing`, usually produced from an
+        InfraValidator component, containing the validation result.
+      custom_config: A dict which contains the deployment job parameters to be
+        passed to Cloud platforms.
+    """
+    super().__init__(
+        model=model,
+        model_blessing=model_blessing,
+        infra_blessing=infra_blessing,
+        custom_config=custom_config)
+</source>
+</class>
+
+<class classid="14" nclones="2" nlines="10" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/extensions/google_cloud_ai_platform/trainer/executor_test.py" startline="68" endline="78" pcid="907">
+  def testDo(self):
+    executor = ai_platform_trainer_executor.Executor()
+    executor.Do(self._inputs, self._outputs,
+                self._serialize_custom_config_under_test())
+    self.mock_runner.start_cloud_training.assert_called_with(
+        self._inputs, self._outputs, self._serialize_custom_config_under_test(),
+        self._executor_class_path, {
+            'project': self._project_id,
+            'jobDir': self._job_dir,
+        }, None, False, None)
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/extensions/google_cloud_ai_platform/trainer/executor_test.py" startline="93" endline="103" pcid="909">
+  def testDoWithGenericExecutorClass(self):
+    executor = ai_platform_trainer_executor.GenericExecutor()
+    executor.Do(self._inputs, self._outputs,
+                self._serialize_custom_config_under_test())
+    self.mock_runner.start_cloud_training.assert_called_with(
+        self._inputs, self._outputs, self._serialize_custom_config_under_test(),
+        self._generic_executor_class_path, {
+            'project': self._project_id,
+            'jobDir': self._job_dir,
+        }, None, False, None)
+
+</source>
+</class>
+
+<class classid="15" nclones="2" nlines="10" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/dsl/compiler/placeholder_utils_test.py" startline="675" endline="704" pcid="1174">
+  def testProtoExecPropertyInvalidField(self):
+    # Access a repeated field.
+    placeholder_expression = """
+      operator {
+        proto_op {
+          expression {
+            placeholder {
+              type: EXEC_PROPERTY
+              key: "proto_property"
+            }
+          }
+          proto_schema {
+            message_type: "tfx.components.infra_validator.ServingSpec"
+          }
+          proto_field_path: ".some_invalid_field"
+        }
+      }
+    """
+    pb = text_format.Parse(placeholder_expression,
+                           placeholder_pb2.PlaceholderExpression())
+
+    # Prepare FileDescriptorSet
+    fd = descriptor_pb2.FileDescriptorProto()
+    infra_validator_pb2.ServingSpec().DESCRIPTOR.file.CopyToProto(fd)
+    pb.operator.proto_op.proto_schema.file_descriptors.file.append(fd)
+
+    with self.assertRaises(ValueError):
+      placeholder_utils.resolve_placeholder_expression(pb,
+                                                       self._resolution_context)
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/dsl/compiler/placeholder_utils_test.py" startline="839" endline="866" pcid="1180">
+  def testProtoWithoutSerializationFormat(self):
+    placeholder_expression = """
+      operator {
+        proto_op {
+          expression {
+            placeholder {
+              type: EXEC_PROPERTY
+              key: "proto_property"
+            }
+          }
+          proto_schema {
+            message_type: "tfx.components.infra_validator.ServingSpec"
+          }
+        }
+      }
+    """
+    pb = text_format.Parse(placeholder_expression,
+                           placeholder_pb2.PlaceholderExpression())
+
+    # Prepare FileDescriptorSet
+    fd = descriptor_pb2.FileDescriptorProto()
+    infra_validator_pb2.ServingSpec().DESCRIPTOR.file.CopyToProto(fd)
+    pb.operator.proto_op.proto_schema.file_descriptors.file.append(fd)
+
+    with self.assertRaises(ValueError):
+      placeholder_utils.resolve_placeholder_expression(pb,
+                                                       self._resolution_context)
+
+</source>
+</class>
+
+<class classid="16" nclones="2" nlines="10" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/dsl/compiler/placeholder_utils_test.py" startline="705" endline="735" pcid="1175">
+  def testProtoExecPropertyNoneAccess(self):
+    # Access a missing optional exec property.
+    placeholder_expression = """
+      operator {
+        proto_op {
+          expression {
+            placeholder {
+              type: EXEC_PROPERTY
+              key: "proto_property"
+            }
+          }
+          proto_schema {
+            message_type: "tfx.components.infra_validator.ServingSpec"
+          }
+          proto_field_path: ".tensorflow_serving"
+          proto_field_path: ".tags"
+        }
+      }
+    """
+    pb = text_format.Parse(placeholder_expression,
+                           placeholder_pb2.PlaceholderExpression())
+
+    # Prepare FileDescriptorSet
+    fd = descriptor_pb2.FileDescriptorProto()
+    infra_validator_pb2.ServingSpec().DESCRIPTOR.file.CopyToProto(fd)
+    pb.operator.proto_op.proto_schema.file_descriptors.file.append(fd)
+
+    self.assertIsNone(
+        placeholder_utils.resolve_placeholder_expression(
+            pb, self._none_resolution_context))
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/dsl/compiler/placeholder_utils_test.py" startline="769" endline="799" pcid="1178">
+  def testProtoRuntimeInfoNoneAccess(self):
+    # Access a missing platform config.
+    placeholder_expression = """
+      operator {
+        proto_op {
+          expression {
+            placeholder {
+              type: RUNTIME_INFO
+              key: "platform_config"
+            }
+          }
+          proto_schema {
+            message_type: "tfx.components.infra_validator.ServingSpec"
+          }
+          proto_field_path: ".tensorflow_serving"
+          proto_field_path: ".tags"
+        }
+      }
+    """
+    pb = text_format.Parse(placeholder_expression,
+                           placeholder_pb2.PlaceholderExpression())
+
+    # Prepare FileDescriptorSet
+    fd = descriptor_pb2.FileDescriptorProto()
+    infra_validator_pb2.ServingSpec().DESCRIPTOR.file.CopyToProto(fd)
+    pb.operator.proto_op.proto_schema.file_descriptors.file.append(fd)
+
+    self.assertIsNone(
+        placeholder_utils.resolve_placeholder_expression(
+            pb, self._none_resolution_context))
+
+</source>
+</class>
+
+<class classid="17" nclones="2" nlines="14" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/orchestration/kubeflow/v2/kubeflow_v2_dag_runner_test.py" startline="67" endline="82" pcid="1325">
+  def testCompileTwoStepPipeline(self, fake_now, fake_sys_version):
+    fake_now.return_value = datetime.date(2020, 1, 1)
+    fake_sys_version.major = 3
+    fake_sys_version.minor = 7
+    runner = kubeflow_v2_dag_runner.KubeflowV2DagRunner(
+        output_dir=_TEST_DIR,
+        output_filename=_TEST_FILE_NAME,
+        config=kubeflow_v2_dag_runner.KubeflowV2DagRunnerConfig(
+            display_name='my-pipeline',
+            default_image='gcr.io/my-tfx:latest'))
+
+    self._compare_against_testdata(
+        runner=runner,
+        pipeline=test_utils.two_step_pipeline(),
+        golden_file='expected_two_step_pipeline_job.json')
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/orchestration/kubeflow/v2/kubeflow_v2_dag_runner_test.py" startline="86" endline="102" pcid="1326">
+  def testCompileFullTaxiPipeline(self, fake_now, fake_sys_version):
+    fake_now.return_value = datetime.date(2020, 1, 1)
+    fake_sys_version.major = 3
+    fake_sys_version.minor = 7
+    runner = kubeflow_v2_dag_runner.KubeflowV2DagRunner(
+        output_dir=_TEST_DIR,
+        output_filename=_TEST_FILE_NAME,
+        config=kubeflow_v2_dag_runner.KubeflowV2DagRunnerConfig(
+            display_name='my-pipeline',
+            default_image='tensorflow/tfx:latest'))
+
+    self._compare_against_testdata(
+        runner=runner,
+        pipeline=test_utils.full_taxi_pipeline(),
+        golden_file='expected_full_taxi_pipeline_job.json')
+
+
+</source>
+</class>
+
+<class classid="18" nclones="2" nlines="24" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/orchestration/kubeflow/e2e_tests/kubeflow_gcp_integration_test.py" startline="243" endline="271" pcid="1449">
+  def testVertexSequentialTunerPipeline(self):
+    """Tuner-only pipeline for sequential Tuner flock on Vertex AI Training."""
+    pipeline_name = self._make_unique_pipeline_name(
+        'kubeflow-vertex-seq-tuner')
+    pipeline = self._create_pipeline(
+        pipeline_name,
+        [
+            self.penguin_examples_importer,
+            self.penguin_schema_importer,
+            ai_platform_tuner_component.Tuner(
+                examples=self.penguin_examples_importer.outputs['result'],
+                module_file=self._penguin_tuner_module,
+                schema=self.penguin_schema_importer.outputs['result'],
+                train_args=trainer_pb2.TrainArgs(num_steps=1),
+                eval_args=trainer_pb2.EvalArgs(num_steps=1),
+                # Single worker sequential tuning.
+                tune_args=tuner_pb2.TuneArgs(num_parallel_trials=1),
+                custom_config={
+                    ai_platform_tuner_executor.TUNING_ARGS_KEY:
+                        self._getVertexTrainingArgs(pipeline_name),
+                    constants.ENABLE_VERTEX_KEY:
+                        True,
+                    constants.VERTEX_REGION_KEY:
+                        self._GCP_REGION
+                })
+        ])
+    self._compile_and_run_pipeline(pipeline)
+    self._assertHyperparametersAreWritten(pipeline_name)
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/orchestration/kubeflow/e2e_tests/kubeflow_gcp_integration_test.py" startline="272" endline="300" pcid="1450">
+  def testVertexDistributedTunerPipeline(self):
+    """Tuner-only pipeline for distributed Tuner flock on Vertex AI Training."""
+    pipeline_name = self._make_unique_pipeline_name(
+        'kubeflow-vertex-dist-tuner')
+    pipeline = self._create_pipeline(
+        pipeline_name,
+        [
+            self.penguin_examples_importer,
+            self.penguin_schema_importer,
+            ai_platform_tuner_component.Tuner(
+                examples=self.penguin_examples_importer.outputs['result'],
+                module_file=self._penguin_tuner_module,
+                schema=self.penguin_schema_importer.outputs['result'],
+                train_args=trainer_pb2.TrainArgs(num_steps=10),
+                eval_args=trainer_pb2.EvalArgs(num_steps=5),
+                # 3 worker parallel tuning.
+                tune_args=tuner_pb2.TuneArgs(num_parallel_trials=3),
+                custom_config={
+                    ai_platform_tuner_executor.TUNING_ARGS_KEY:
+                        self._getVertexTrainingArgs(pipeline_name),
+                    constants.ENABLE_VERTEX_KEY:
+                        True,
+                    constants.VERTEX_REGION_KEY:
+                        self._GCP_REGION
+                })
+        ])
+    self._compile_and_run_pipeline(pipeline)
+    self._assertHyperparametersAreWritten(pipeline_name)
+
+</source>
+</class>
+
+<class classid="19" nclones="2" nlines="25" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/orchestration/launcher/docker_component_launcher_test.py" startline="104" endline="138" pcid="1499">
+  def _create_launcher_context(self, component_config=None):
+    test_dir = self.get_temp_dir()
+
+    connection_config = metadata_store_pb2.ConnectionConfig()
+    connection_config.sqlite.SetInParent()
+    metadata_connection = metadata.Metadata(connection_config)
+
+    pipeline_root = os.path.join(test_dir, 'Test')
+
+    input_artifact = test_utils._InputArtifact()
+    input_artifact.uri = os.path.join(test_dir, 'input')
+
+    component = test_utils._FakeComponent(
+        name='FakeComponent',
+        input_channel=channel_utils.as_channel([input_artifact]),
+        custom_executor_spec=executor_spec.ExecutorContainerSpec(
+            image='gcr://test', args=['{{input_dict["input"][0].uri}}']))
+
+    pipeline_info = data_types.PipelineInfo(
+        pipeline_name='Test', pipeline_root=pipeline_root, run_id='123')
+
+    driver_args = data_types.DriverArgs(enable_cache=True)
+
+    launcher = docker_component_launcher.DockerComponentLauncher.create(
+        component=component,
+        pipeline_info=pipeline_info,
+        driver_args=driver_args,
+        metadata_connection=metadata_connection,
+        beam_pipeline_args=[],
+        additional_pipeline_args={},
+        component_config=component_config)
+
+    return {'launcher': launcher, 'input_artifact': input_artifact}
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/orchestration/launcher/kubernetes_component_launcher_test.py" startline="256" endline="289" pcid="1515">
+  def _create_launcher_context(self, component_config=None):
+    test_dir = self.get_temp_dir()
+
+    connection_config = metadata_store_pb2.ConnectionConfig()
+    connection_config.sqlite.SetInParent()
+    metadata_connection = metadata.Metadata(connection_config)
+
+    pipeline_root = os.path.join(test_dir, 'Test')
+
+    input_artifact = test_utils._InputArtifact()
+    input_artifact.uri = os.path.join(test_dir, 'input')
+
+    component = test_utils._FakeComponent(
+        name='FakeComponent',
+        input_channel=channel_utils.as_channel([input_artifact]),
+        custom_executor_spec=executor_spec.ExecutorContainerSpec(
+            image='gcr://test', args=['{{input_dict["input"][0].uri}}']))
+
+    pipeline_info = data_types.PipelineInfo(
+        pipeline_name='Test', pipeline_root=pipeline_root, run_id='123')
+
+    driver_args = data_types.DriverArgs(enable_cache=True)
+
+    launcher = kubernetes_component_launcher.KubernetesComponentLauncher.create(
+        component=component,
+        pipeline_info=pipeline_info,
+        driver_args=driver_args,
+        metadata_connection=metadata_connection,
+        beam_pipeline_args=[],
+        additional_pipeline_args={},
+        component_config=component_config)
+
+    return {'launcher': launcher, 'input_artifact': input_artifact}
+
+</source>
+</class>
+
+<class classid="20" nclones="2" nlines="16" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/orchestration/launcher/docker_component_launcher_e2e_test.py" startline="51" endline="69" pcid="1519">
+def _create_pipeline(
+    pipeline_name,
+    pipeline_root,
+    metadata_path,
+    name,
+):
+  hello_world = _HelloWorldComponent(name=name)
+
+  return pipeline.Pipeline(
+      pipeline_name=pipeline_name,
+      pipeline_root=pipeline_root,
+      components=[hello_world],
+      enable_cache=True,
+      metadata_connection_config=metadata.sqlite_metadata_connection_config(
+          metadata_path),
+      additional_pipeline_args={},
+  )
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/orchestration/portable/docker_executor_operator_e2e_test.py" startline="51" endline="69" pcid="1994">
+def _create_pipeline(
+    pipeline_name,
+    pipeline_root,
+    metadata_path,
+    name,
+):
+  hello_world = _HelloWorldComponent(name=name)
+
+  return pipeline.Pipeline(
+      pipeline_name=pipeline_name,
+      pipeline_root=pipeline_root,
+      components=[hello_world],
+      enable_cache=True,
+      metadata_connection_config=metadata.sqlite_metadata_connection_config(
+          metadata_path),
+      additional_pipeline_args={},
+  )
+
+
+</source>
+</class>
+
+<class classid="21" nclones="2" nlines="10" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/orchestration/launcher/docker_component_launcher_e2e_test.py" startline="72" endline="83" pcid="1520">
+  def setUp(self):
+    super().setUp()
+    self._test_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
+
+    self._pipeline_name = 'docker_e2e_test'
+    self._pipeline_root = os.path.join(self._test_dir, 'tfx', 'pipelines',
+                                       self._pipeline_name)
+    self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
+                                       self._pipeline_name, 'metadata.db')
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/orchestration/portable/docker_executor_operator_e2e_test.py" startline="72" endline="83" pcid="1995">
+  def setUp(self):
+    super().setUp()
+    self._test_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
+
+    self._pipeline_name = 'docker_e2e_test'
+    self._pipeline_root = os.path.join(self._test_dir, 'tfx', 'pipelines',
+                                       self._pipeline_name)
+    self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
+                                       self._pipeline_name, 'metadata.db')
+
+</source>
+</class>
+
+<class classid="22" nclones="2" nlines="11" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/orchestration/launcher/docker_component_launcher_e2e_test.py" startline="84" endline="98" pcid="1521">
+  def testDockerComponentLauncherInBeam(self):
+
+    beam_dag_runner.BeamDagRunner().run(
+        _create_pipeline(
+            pipeline_name=self._pipeline_name,
+            pipeline_root=self._pipeline_root,
+            metadata_path=self._metadata_path,
+            name='docker_e2e_test_in_beam'))
+
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
+    with metadata.Metadata(metadata_config) as m:
+      self.assertEqual(1, len(m.store.get_executions()))
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/orchestration/portable/docker_executor_operator_e2e_test.py" startline="84" endline="98" pcid="1996">
+  def testDockerComponentLauncherInBeam(self):
+
+    beam_dag_runner.BeamDagRunner().run(
+                _create_pipeline(
+                    pipeline_name=self._pipeline_name,
+                    pipeline_root=self._pipeline_root,
+                    metadata_path=self._metadata_path,
+                    name='docker_e2e_test_in_beam'))
+
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
+    with metadata.Metadata(metadata_config) as m:
+      self.assertEqual(1, len(m.store.get_executions()))
+
+
+</source>
+</class>
+
+<class classid="23" nclones="2" nlines="49" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/orchestration/beam/beam_dag_runner_test.py" startline="193" endline="244" pcid="1528">
+  def testRunWithLocalDeploymentConfig(self):
+    self._pipeline.deployment_config.Pack(_LOCAL_DEPLOYMENT_CONFIG)
+    beam_dag_runner.BeamDagRunner().run_with_ir(self._pipeline)
+    self.assertEqual(
+        _component_executors, {
+            'my_example_gen':
+                text_format.Parse(
+                    'class_path: "tfx.components.example_gen_executor"',
+                    _PythonClassExecutableSpec()),
+            'my_transform':
+                text_format.Parse(
+                    'class_path: "tfx.components.transform_executor"',
+                    _PythonClassExecutableSpec()),
+            'my_trainer':
+                text_format.Parse('image: "path/to/docker/image"',
+                                  _ContainerExecutableSpec()),
+            'my_importer':
+                None,
+        })
+    self.assertEqual(
+        _component_drivers, {
+            'my_example_gen':
+                text_format.Parse(
+                    'class_path: "tfx.components.example_gen_driver"',
+                    _PythonClassExecutableSpec()),
+            'my_transform':
+                None,
+            'my_trainer':
+                None,
+            'my_importer':
+                None,
+        })
+    self.assertEqual(
+        _component_platform_configs, {
+            'my_example_gen':
+                None,
+            'my_transform':
+                None,
+            'my_trainer':
+                text_format.Parse('docker_server_url: "docker/server/url"',
+                                  _DockerPlatformConfig()),
+            'my_importer':
+                None,
+        })
+    # 'my_importer' has no upstream and can be executed in any order.
+    self.assertIn('my_importer', _executed_components)
+    _executed_components.remove('my_importer')
+    self.assertEqual(_executed_components,
+                     ['my_example_gen', 'my_transform', 'my_trainer'])
+    # Verifies that every component gets a not-None pipeline_run.
+    self.assertTrue(all(_component_to_pipeline_run.values()))
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/orchestration/beam/beam_dag_runner_test.py" startline="249" endline="300" pcid="1529">
+  def testRunWithIntermediateDeploymentConfig(self):
+    self._pipeline.deployment_config.Pack(_INTERMEDIATE_DEPLOYMENT_CONFIG)
+    beam_dag_runner.BeamDagRunner().run_with_ir(self._pipeline)
+    self.assertEqual(
+        _component_executors, {
+            'my_example_gen':
+                text_format.Parse(
+                    'class_path: "tfx.components.example_gen_executor"',
+                    _PythonClassExecutableSpec()),
+            'my_transform':
+                text_format.Parse(
+                    'class_path: "tfx.components.transform_executor"',
+                    _PythonClassExecutableSpec()),
+            'my_trainer':
+                text_format.Parse('image: "path/to/docker/image"',
+                                  _ContainerExecutableSpec()),
+            'my_importer':
+                None,
+        })
+    self.assertEqual(
+        _component_drivers, {
+            'my_example_gen':
+                text_format.Parse(
+                    'class_path: "tfx.components.example_gen_driver"',
+                    _PythonClassExecutableSpec()),
+            'my_transform':
+                None,
+            'my_trainer':
+                None,
+            'my_importer':
+                None,
+        })
+    self.assertEqual(
+        _component_platform_configs, {
+            'my_example_gen':
+                None,
+            'my_transform':
+                None,
+            'my_trainer':
+                text_format.Parse('docker_server_url: "docker/server/url"',
+                                  _DockerPlatformConfig()),
+            'my_importer':
+                None,
+        })
+    # 'my_importer' has no upstream and can be executed in any order.
+    self.assertIn('my_importer', _executed_components)
+    _executed_components.remove('my_importer')
+    self.assertEqual(_executed_components,
+                     ['my_example_gen', 'my_transform', 'my_trainer'])
+    # Verifies that every component gets a not-None pipeline_run.
+    self.assertTrue(all(_component_to_pipeline_run.values()))
+
+</source>
+</class>
+
+<class classid="24" nclones="2" nlines="10" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/orchestration/beam/beam_dag_runner_test.py" startline="305" endline="315" pcid="1530">
+  def testPartialRunWithLocalDeploymentConfig(self):
+    self._pipeline.deployment_config.Pack(_LOCAL_DEPLOYMENT_CONFIG)
+    pr_opts = pipeline_pb2.PartialRun()
+    pr_opts.from_nodes.append('my_trainer')
+    pr_opts.to_nodes.append('my_trainer')
+    pr_opts.snapshot_settings.latest_pipeline_run_strategy.SetInParent()
+    beam_dag_runner.BeamDagRunner().run_with_ir(
+        self._pipeline,
+        run_options=pipeline_pb2.RunOptions(partial_run=pr_opts))
+    self.assertEqual(_executed_components, ['my_trainer'])
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/orchestration/beam/beam_dag_runner_test.py" startline="320" endline="330" pcid="1531">
+  def testPartialRunWithIntermediateDeploymentConfig(self):
+    self._pipeline.deployment_config.Pack(_INTERMEDIATE_DEPLOYMENT_CONFIG)
+    pr_opts = pipeline_pb2.PartialRun()
+    pr_opts.from_nodes.append('my_trainer')
+    pr_opts.to_nodes.append('my_trainer')
+    pr_opts.snapshot_settings.latest_pipeline_run_strategy.SetInParent()
+    beam_dag_runner.BeamDagRunner().run_with_ir(
+        self._pipeline,
+        run_options=pipeline_pb2.RunOptions(partial_run=pr_opts))
+    self.assertEqual(_executed_components, ['my_trainer'])
+
+</source>
+</class>
+
+<class classid="25" nclones="2" nlines="12" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/orchestration/data_types_utils.py" startline="73" endline="87" pcid="1591">
+def build_metadata_value_dict(
+    value_dict: Mapping[str, types.ExecPropertyTypes]
+) -> Dict[str, metadata_store_pb2.Value]:
+  """Converts plain value dict into MLMD value dict."""
+  result = {}
+  if not value_dict:
+    return result
+  for k, v in value_dict.items():
+    if v is None:
+      continue
+    value = metadata_store_pb2.Value()
+    result[k] = set_metadata_value(value, v)
+  return result
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/orchestration/data_types_utils.py" startline="88" endline="102" pcid="1592">
+def build_pipeline_value_dict(
+    value_dict: Dict[str, types.ExecPropertyTypes]
+) -> Dict[str, pipeline_pb2.Value]:
+  """Converts plain value dict into pipeline_pb2.Value dict."""
+  result = {}
+  if not value_dict:
+    return result
+  for k, v in value_dict.items():
+    if v is None:
+      continue
+    value = pipeline_pb2.Value()
+    result[k] = set_parameter_value(value, v)
+  return result
+
+
+</source>
+</class>
+
+<class classid="26" nclones="2" nlines="29" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/orchestration/portable/execution_publish_utils_test.py" startline="107" endline="153" pcid="1898">
+  def testPublishCachedExecution(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      contexts = self._generate_contexts(m)
+      execution_id = execution_publish_utils.register_execution(
+          m, self._execution_type, contexts).id
+      output_example = standard_artifacts.Examples()
+      execution_publish_utils.publish_cached_execution(
+          m,
+          contexts,
+          execution_id,
+          output_artifacts={'examples': [output_example]})
+      [execution] = m.store.get_executions()
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          last_known_state: CACHED
+          """,
+          execution,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch', 'name'
+          ])
+      [event] = m.store.get_events_by_execution_ids([execution.id])
+      self.assertProtoPartiallyEquals(
+          """
+          artifact_id: 1
+          execution_id: 1
+          path {
+            steps {
+              key: 'examples'
+            }
+            steps {
+              index: 0
+            }
+          }
+          type: OUTPUT
+          """,
+          event,
+          ignored_fields=['milliseconds_since_epoch'])
+      # Verifies the context-execution edges are set up.
+      self.assertCountEqual(
+          [c.id for c in contexts],
+          [c.id for c in m.store.get_contexts_by_execution(execution.id)])
+      self.assertCountEqual(
+          [c.id for c in contexts],
+          [c.id for c in m.store.get_contexts_by_artifact(output_example.id)])
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/orchestration/portable/execution_publish_utils_test.py" startline="559" endline="606" pcid="1908">
+  def testPublishInternalExecution(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      contexts = self._generate_contexts(m)
+      execution_id = execution_publish_utils.register_execution(
+          m, self._execution_type, contexts).id
+      output_example = standard_artifacts.Examples()
+      execution_publish_utils.publish_internal_execution(
+          m,
+          contexts,
+          execution_id,
+          output_artifacts={'examples': [output_example]})
+      [execution] = m.store.get_executions()
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          last_known_state: COMPLETE
+          """,
+          execution,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch', 'name'
+          ])
+      [event] = m.store.get_events_by_execution_ids([execution.id])
+      self.assertProtoPartiallyEquals(
+          """
+          artifact_id: 1
+          execution_id: 1
+          path {
+            steps {
+              key: 'examples'
+            }
+            steps {
+              index: 0
+            }
+          }
+          type: INTERNAL_OUTPUT
+          """,
+          event,
+          ignored_fields=['milliseconds_since_epoch'])
+      # Verifies the context-execution edges are set up.
+      self.assertCountEqual(
+          [c.id for c in contexts],
+          [c.id for c in m.store.get_contexts_by_execution(execution.id)])
+      self.assertCountEqual(
+          [c.id for c in contexts],
+          [c.id for c in m.store.get_contexts_by_artifact(output_example.id)])
+
+
+</source>
+</class>
+
+<class classid="27" nclones="2" nlines="22" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/orchestration/portable/execution_publish_utils_test.py" startline="453" endline="492" pcid="1905">
+  def testPublishSuccessExecutionRecordExecutionResult(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      executor_output = text_format.Parse(
+          """
+        execution_result {
+          code: 0
+          result_message: 'info message.'
+         }
+      """, execution_result_pb2.ExecutorOutput())
+      contexts = self._generate_contexts(m)
+      execution_id = execution_publish_utils.register_execution(
+          m, self._execution_type, contexts).id
+      execution_publish_utils.publish_failed_execution(m, contexts,
+                                                       execution_id,
+                                                       executor_output)
+      [execution] = m.store.get_executions_by_id([execution_id])
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          last_known_state: FAILED
+          custom_properties {
+            key: '__execution_result__'
+            value {
+              string_value: '{\\n  "resultMessage": "info message."\\n}'
+            }
+          }
+          """,
+          execution,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch', 'name'
+          ])
+      # No events because there is no artifact published.
+      events = m.store.get_events_by_execution_ids([execution.id])
+      self.assertEmpty(events)
+      # Verifies the context-execution edges are set up.
+      self.assertCountEqual(
+          [c.id for c in contexts],
+          [c.id for c in m.store.get_contexts_by_execution(execution.id)])
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/orchestration/portable/execution_publish_utils_test.py" startline="519" endline="558" pcid="1907">
+  def testPublishFailedExecution(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      executor_output = text_format.Parse(
+          """
+        execution_result {
+          code: 1
+          result_message: 'error message.'
+         }
+      """, execution_result_pb2.ExecutorOutput())
+      contexts = self._generate_contexts(m)
+      execution_id = execution_publish_utils.register_execution(
+          m, self._execution_type, contexts).id
+      execution_publish_utils.publish_failed_execution(m, contexts,
+                                                       execution_id,
+                                                       executor_output)
+      [execution] = m.store.get_executions_by_id([execution_id])
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          last_known_state: FAILED
+          custom_properties {
+            key: '__execution_result__'
+            value {
+              string_value: '{\\n  "resultMessage": "error message.",\\n  "code": 1\\n}'
+            }
+          }
+          """,
+          execution,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch', 'name'
+          ])
+      # No events because there is no artifact published.
+      events = m.store.get_events_by_execution_ids([execution.id])
+      self.assertEmpty(events)
+      # Verifies the context-execution edges are set up.
+      self.assertCountEqual(
+          [c.id for c in contexts],
+          [c.id for c in m.store.get_contexts_by_execution(execution.id)])
+
+</source>
+</class>
+
+<class classid="28" nclones="2" nlines="11" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/orchestration/portable/python_executor_operator_test.py" startline="91" endline="117" pcid="1940">
+  def testRunExecutor_with_InprocessExecutor(self):
+    executor_sepc = text_format.Parse(
+        """
+      class_path: "tfx.orchestration.portable.python_executor_operator_test.InprocessExecutor"
+    """, executable_spec_pb2.PythonClassExecutableSpec())
+    operator = python_executor_operator.PythonExecutorOperator(executor_sepc)
+    input_dict = {'input_key': [standard_artifacts.Examples()]}
+    output_dict = {'output_key': [standard_artifacts.Model()]}
+    exec_properties = {'key': 'value'}
+    executor_output = operator.run_executor(
+        self._get_execution_info(input_dict, output_dict, exec_properties))
+    self.assertProtoPartiallyEquals(
+        """
+          execution_properties {
+            key: "key"
+            value {
+              string_value: "value"
+            }
+          }
+          output_artifacts {
+            key: "output_key"
+            value {
+              artifacts {
+              }
+            }
+          }""", executor_output)
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/orchestration/portable/python_executor_operator_test.py" startline="118" endline="144" pcid="1941">
+  def testRunExecutor_with_NotInprocessExecutor(self):
+    executor_sepc = text_format.Parse(
+        """
+      class_path: "tfx.orchestration.portable.python_executor_operator_test.NotInprocessExecutor"
+    """, executable_spec_pb2.PythonClassExecutableSpec())
+    operator = python_executor_operator.PythonExecutorOperator(executor_sepc)
+    input_dict = {'input_key': [standard_artifacts.Examples()]}
+    output_dict = {'output_key': [standard_artifacts.Model()]}
+    exec_properties = {'key': 'value'}
+    executor_output = operator.run_executor(
+        self._get_execution_info(input_dict, output_dict, exec_properties))
+    self.assertProtoPartiallyEquals(
+        """
+          execution_properties {
+            key: "key"
+            value {
+              string_value: "value"
+            }
+          }
+          output_artifacts {
+            key: "output_key"
+            value {
+              artifacts {
+              }
+            }
+          }""", executor_output)
+
+</source>
+</class>
+
+<class classid="29" nclones="2" nlines="15" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/orchestration/test_pipelines/download_grep_print_pipeline.py" startline="118" endline="136" pcid="2175">
+def create_pipeline_component_instances(text_url: str, pattern: str):
+  """Creates tasks for the download_grep_print pipeline."""
+
+  downloader_task = downloader_component(url=text_url)
+  grep_task = grep_component(
+      text=downloader_task.outputs['data'],
+      pattern=pattern,
+  )
+  print_task = print_component(
+      text=grep_task.outputs['filtered_text'],
+  )
+
+  component_instances = [
+      downloader_task,
+      grep_task,
+      print_task,
+  ]
+
+  return component_instances
+</source>
+<source file="systems/tfx-1.7.0/tfx/examples/custom_components/container_components/download_grep_print_pipeline.py" startline="118" endline="136" pcid="3070">
+def create_pipeline_component_instances(text_url: str, pattern: str):
+  """Creates tasks for the download_grep_print pipeline."""
+
+  downloader_task = downloader_component(url=text_url)
+  grep_task = grep_component(
+      text=downloader_task.outputs['data'],
+      pattern=pattern,
+  )
+  print_task = print_component(
+      text=grep_task.outputs['filtered_text'],
+  )
+
+  component_instances = [
+      downloader_task,
+      grep_task,
+      print_task,
+  ]
+
+  return component_instances
+</source>
+</class>
+
+<class classid="30" nclones="2" nlines="21" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/local_handler_test.py" startline="32" endline="56" pcid="2415">
+  def setUp(self):
+    super().setUp()
+    self.chicago_taxi_pipeline_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'testdata')
+    self._home = self.tmp_dir
+    self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
+    self.enter_context(test_case_utils.override_env_var('HOME', self._home))
+    self._local_home = os.path.join(os.environ['HOME'], 'local')
+    self.enter_context(
+        test_case_utils.override_env_var('LOCAL_HOME', self._local_home))
+
+    # Flags for handler.
+    self.engine = 'local'
+    self.pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
+                                      'test_pipeline_local_1.py')
+    self.pipeline_name = 'chicago_taxi_local'
+    self.pipeline_root = os.path.join(self._home, 'tfx', 'pipelines',
+                                      self.pipeline_name)
+    self.run_id = 'dummyID'
+
+    self.pipeline_args = {
+        labels.PIPELINE_NAME: self.pipeline_name,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path,
+    }
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/beam_handler_test.py" startline="32" endline="56" pcid="2571">
+  def setUp(self):
+    super().setUp()
+    self.chicago_taxi_pipeline_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'testdata')
+    self._home = self.tmp_dir
+    self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
+    self.enter_context(test_case_utils.override_env_var('HOME', self._home))
+    self._beam_home = os.path.join(os.environ['HOME'], 'beam')
+    self.enter_context(
+        test_case_utils.override_env_var('BEAM_HOME', self._beam_home))
+
+    # Flags for handler.
+    self.engine = 'beam'
+    self.pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
+                                      'test_pipeline_beam_1.py')
+    self.pipeline_name = 'chicago_taxi_beam'
+    self.pipeline_root = os.path.join(self._home, 'tfx', 'pipelines',
+                                      self.pipeline_name)
+    self.run_id = 'dummyID'
+
+    self.pipeline_args = {
+        labels.PIPELINE_NAME: self.pipeline_name,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path,
+    }
+
+</source>
+</class>
+
+<class classid="31" nclones="2" nlines="11" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/local_handler_test.py" startline="90" endline="103" pcid="2419">
+  def testCreatePipelineExistentPipeline(self):
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path
+    }
+    handler = local_handler.LocalHandler(flags_dict)
+    handler.create_pipeline()
+    # Run create_pipeline again to test.
+    with self.assertRaises(SystemExit) as err:
+      handler.create_pipeline()
+    self.assertEqual(
+        str(err.exception), 'Pipeline "{}" already exists.'.format(
+            self.pipeline_args[labels.PIPELINE_NAME]))
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/beam_handler_test.py" startline="78" endline="91" pcid="2574">
+  def testCreatePipelineExistentPipeline(self):
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path
+    }
+    handler = beam_handler.BeamHandler(flags_dict)
+    handler.create_pipeline()
+    # Run create_pipeline again to test.
+    with self.assertRaises(SystemExit) as err:
+      handler.create_pipeline()
+    self.assertEqual(
+        str(err.exception), 'Pipeline "{}" already exists.'.format(
+            self.pipeline_args[labels.PIPELINE_NAME]))
+
+</source>
+</class>
+
+<class classid="32" nclones="2" nlines="17" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/local_handler_test.py" startline="104" endline="126" pcid="2420">
+  def testUpdatePipeline(self):
+    # First create pipeline with test_pipeline.py
+    pipeline_path_1 = os.path.join(self.chicago_taxi_pipeline_dir,
+                                   'test_pipeline_local_1.py')
+    flags_dict_1 = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: pipeline_path_1
+    }
+    handler = local_handler.LocalHandler(flags_dict_1)
+    handler.create_pipeline()
+
+    # Update test_pipeline and run update_pipeline
+    pipeline_path_2 = os.path.join(self.chicago_taxi_pipeline_dir,
+                                   'test_pipeline_local_2.py')
+    flags_dict_2 = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: pipeline_path_2
+    }
+    handler = local_handler.LocalHandler(flags_dict_2)
+    handler.update_pipeline()
+    self.assertTrue(
+        fileio.exists(handler._get_pipeline_args_path(self.pipeline_name)))
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/beam_handler_test.py" startline="92" endline="114" pcid="2575">
+  def testUpdatePipeline(self):
+    # First create pipeline with test_pipeline.py
+    pipeline_path_1 = os.path.join(self.chicago_taxi_pipeline_dir,
+                                   'test_pipeline_beam_1.py')
+    flags_dict_1 = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: pipeline_path_1
+    }
+    handler = beam_handler.BeamHandler(flags_dict_1)
+    handler.create_pipeline()
+
+    # Update test_pipeline and run update_pipeline
+    pipeline_path_2 = os.path.join(self.chicago_taxi_pipeline_dir,
+                                   'test_pipeline_beam_2.py')
+    flags_dict_2 = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: pipeline_path_2
+    }
+    handler = beam_handler.BeamHandler(flags_dict_2)
+    handler.update_pipeline()
+    self.assertTrue(
+        fileio.exists(handler._get_pipeline_args_path(self.pipeline_name)))
+
+</source>
+</class>
+
+<class classid="33" nclones="2" nlines="10" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/local_handler_test.py" startline="127" endline="139" pcid="2421">
+  def testUpdatePipelineNoPipeline(self):
+    # Update pipeline without creating one.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path
+    }
+    handler = local_handler.LocalHandler(flags_dict)
+    with self.assertRaises(SystemExit) as err:
+      handler.update_pipeline()
+    self.assertEqual(
+        str(err.exception), 'Pipeline "{}" does not exist.'.format(
+            self.pipeline_args[labels.PIPELINE_NAME]))
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/beam_handler_test.py" startline="115" endline="127" pcid="2576">
+  def testUpdatePipelineNoPipeline(self):
+    # Update pipeline without creating one.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path
+    }
+    handler = beam_handler.BeamHandler(flags_dict)
+    with self.assertRaises(SystemExit) as err:
+      handler.update_pipeline()
+    self.assertEqual(
+        str(err.exception), 'Pipeline "{}" does not exist.'.format(
+            self.pipeline_args[labels.PIPELINE_NAME]))
+
+</source>
+</class>
+
+<class classid="34" nclones="2" nlines="13" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/local_handler_test.py" startline="159" endline="177" pcid="2424">
+  def testDeletePipeline(self):
+    # First create a pipeline.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path
+    }
+    handler = local_handler.LocalHandler(flags_dict)
+    handler.create_pipeline()
+
+    # Now delete the pipeline created aand check if pipeline folder is deleted.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name
+    }
+    handler = local_handler.LocalHandler(flags_dict)
+    handler.delete_pipeline()
+    self.assertFalse(
+        fileio.exists(handler._get_pipeline_info_path(self.pipeline_name)))
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/beam_handler_test.py" startline="147" endline="165" pcid="2579">
+  def testDeletePipeline(self):
+    # First create a pipeline.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path
+    }
+    handler = beam_handler.BeamHandler(flags_dict)
+    handler.create_pipeline()
+
+    # Now delete the pipeline created aand check if pipeline folder is deleted.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name
+    }
+    handler = beam_handler.BeamHandler(flags_dict)
+    handler.delete_pipeline()
+    self.assertFalse(
+        fileio.exists(handler._get_pipeline_info_path(self.pipeline_name)))
+
+</source>
+</class>
+
+<class classid="35" nclones="5" nlines="10" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/local_handler_test.py" startline="178" endline="189" pcid="2425">
+  def testDeletePipelineNonExistentPipeline(self):
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name
+    }
+    handler = local_handler.LocalHandler(flags_dict)
+    with self.assertRaises(SystemExit) as err:
+      handler.delete_pipeline()
+    self.assertEqual(
+        str(err.exception), 'Pipeline "{}" does not exist.'.format(
+            flags_dict[labels.PIPELINE_NAME]))
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/local_handler_test.py" startline="310" endline="322" pcid="2432">
+  def testCreateRunNoPipeline(self):
+    # Run pipeline without creating one.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name
+    }
+    handler = local_handler.LocalHandler(flags_dict)
+    with self.assertRaises(SystemExit) as err:
+      handler.create_run()
+    self.assertEqual(
+        str(err.exception), 'Pipeline "{}" does not exist.'.format(
+            flags_dict[labels.PIPELINE_NAME]))
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/vertex_handler_test.py" startline="183" endline="194" pcid="2603">
+  def testDeletePipelineNonExistentPipeline(self):
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name
+    }
+    handler = vertex_handler.VertexHandler(flags_dict)
+    with self.assertRaises(SystemExit) as err:
+      handler.delete_pipeline()
+    self.assertEqual(
+        str(err.exception), 'Pipeline "{}" does not exist.'.format(
+            flags_dict[labels.PIPELINE_NAME]))
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/beam_handler_test.py" startline="166" endline="177" pcid="2580">
+  def testDeletePipelineNonExistentPipeline(self):
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name
+    }
+    handler = beam_handler.BeamHandler(flags_dict)
+    with self.assertRaises(SystemExit) as err:
+      handler.delete_pipeline()
+    self.assertEqual(
+        str(err.exception), 'Pipeline "{}" does not exist.'.format(
+            flags_dict[labels.PIPELINE_NAME]))
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/beam_handler_test.py" startline="298" endline="310" pcid="2587">
+  def testCreateRunNoPipeline(self):
+    # Run pipeline without creating one.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name
+    }
+    handler = beam_handler.BeamHandler(flags_dict)
+    with self.assertRaises(SystemExit) as err:
+      handler.create_run()
+    self.assertEqual(
+        str(err.exception), 'Pipeline "{}" does not exist.'.format(
+            flags_dict[labels.PIPELINE_NAME]))
+
+</source>
+</class>
+
+<class classid="36" nclones="3" nlines="13" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/local_handler_test.py" startline="190" endline="207" pcid="2426">
+  def testListPipelinesNonEmpty(self):
+    # First create two pipelines in the dags folder.
+    handler_pipeline_path_1 = os.path.join(os.environ['LOCAL_HOME'],
+                                           'pipeline_1')
+    handler_pipeline_path_2 = os.path.join(os.environ['LOCAL_HOME'],
+                                           'pipeline_2')
+    fileio.makedirs(handler_pipeline_path_1)
+    fileio.makedirs(handler_pipeline_path_2)
+
+    # Now, list the pipelines
+    flags_dict = {labels.ENGINE_FLAG: self.engine}
+    handler = local_handler.LocalHandler(flags_dict)
+
+    with self.captureWritesToStream(sys.stdout) as captured:
+      handler.list_pipelines()
+    self.assertIn('pipeline_1', captured.contents())
+    self.assertIn('pipeline_2', captured.contents())
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/vertex_handler_test.py" startline="138" endline="155" pcid="2600">
+  def testListPipelinesNonEmpty(self):
+    # First create two pipelines in the dags folder.
+    handler_pipeline_path_1 = os.path.join(os.environ['VERTEX_HOME'],
+                                           'pipeline_1')
+    handler_pipeline_path_2 = os.path.join(os.environ['VERTEX_HOME'],
+                                           'pipeline_2')
+    fileio.makedirs(handler_pipeline_path_1)
+    fileio.makedirs(handler_pipeline_path_2)
+
+    # Now, list the pipelines
+    flags_dict = {labels.ENGINE_FLAG: labels.VERTEX_ENGINE}
+    handler = vertex_handler.VertexHandler(flags_dict)
+
+    with self.captureWritesToStream(sys.stdout) as captured:
+      handler.list_pipelines()
+    self.assertIn('pipeline_1', captured.contents())
+    self.assertIn('pipeline_2', captured.contents())
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/beam_handler_test.py" startline="178" endline="195" pcid="2581">
+  def testListPipelinesNonEmpty(self):
+    # First create two pipelines in the dags folder.
+    handler_pipeline_path_1 = os.path.join(os.environ['BEAM_HOME'],
+                                           'pipeline_1')
+    handler_pipeline_path_2 = os.path.join(os.environ['BEAM_HOME'],
+                                           'pipeline_2')
+    fileio.makedirs(handler_pipeline_path_1)
+    fileio.makedirs(handler_pipeline_path_2)
+
+    # Now, list the pipelines
+    flags_dict = {labels.ENGINE_FLAG: self.engine}
+    handler = beam_handler.BeamHandler(flags_dict)
+
+    with self.captureWritesToStream(sys.stdout) as captured:
+      handler.list_pipelines()
+    self.assertIn('pipeline_1', captured.contents())
+    self.assertIn('pipeline_2', captured.contents())
+
+</source>
+</class>
+
+<class classid="37" nclones="3" nlines="16" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/local_handler_test.py" startline="215" endline="234" pcid="2428">
+  def testPipelineSchemaNoPipelineRoot(self):
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path
+    }
+    handler = local_handler.LocalHandler(flags_dict)
+    handler.create_pipeline()
+
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name,
+    }
+    handler = local_handler.LocalHandler(flags_dict)
+    with self.assertRaises(SystemExit) as err:
+      handler.get_schema()
+    self.assertEqual(
+        str(err.exception),
+        'Create a run before inferring schema. If pipeline is already running, then wait for it to successfully finish.'
+    )
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/airflow_handler_test.py" startline="248" endline="267" pcid="2559">
+  def testPipelineSchemaNoPipelineRoot(self):
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path
+    }
+    handler = airflow_handler.AirflowHandler(flags_dict)
+    handler.create_pipeline()
+
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name,
+    }
+    handler = airflow_handler.AirflowHandler(flags_dict)
+    with self.assertRaises(SystemExit) as err:
+      handler.get_schema()
+    self.assertEqual(
+        str(err.exception),
+        'Create a run before inferring schema. If pipeline is already running, then wait for it to successfully finish.'
+    )
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/beam_handler_test.py" startline="203" endline="222" pcid="2583">
+  def testPipelineSchemaNoPipelineRoot(self):
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path
+    }
+    handler = beam_handler.BeamHandler(flags_dict)
+    handler.create_pipeline()
+
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name,
+    }
+    handler = beam_handler.BeamHandler(flags_dict)
+    with self.assertRaises(SystemExit) as err:
+      handler.get_schema()
+    self.assertEqual(
+        str(err.exception),
+        'Create a run before inferring schema. If pipeline is already running, then wait for it to successfully finish.'
+    )
+
+</source>
+</class>
+
+<class classid="38" nclones="3" nlines="17" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/local_handler_test.py" startline="235" endline="256" pcid="2429">
+  def testPipelineSchemaNoSchemaGenOutput(self):
+    # First create a pipeline.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path
+    }
+    handler = local_handler.LocalHandler(flags_dict)
+    handler.create_pipeline()
+
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name,
+    }
+    handler = local_handler.LocalHandler(flags_dict)
+    fileio.makedirs(self.pipeline_root)
+    with self.assertRaises(SystemExit) as err:
+      handler.get_schema()
+    self.assertEqual(
+        str(err.exception),
+        'Either SchemaGen component does not exist or pipeline is still running. If pipeline is running, then wait for it to successfully finish.'
+    )
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/airflow_handler_test.py" startline="268" endline="289" pcid="2560">
+  def testPipelineSchemaNoSchemaGenOutput(self):
+    # First create a pipeline.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path
+    }
+    handler = airflow_handler.AirflowHandler(flags_dict)
+    handler.create_pipeline()
+
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name,
+    }
+    handler = airflow_handler.AirflowHandler(flags_dict)
+    fileio.makedirs(self.pipeline_root)
+    with self.assertRaises(SystemExit) as err:
+      handler.get_schema()
+    self.assertEqual(
+        str(err.exception),
+        'Either SchemaGen component does not exist or pipeline is still running. If pipeline is running, then wait for it to successfully finish.'
+    )
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/beam_handler_test.py" startline="223" endline="244" pcid="2584">
+  def testPipelineSchemaNoSchemaGenOutput(self):
+    # First create a pipeline.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path
+    }
+    handler = beam_handler.BeamHandler(flags_dict)
+    handler.create_pipeline()
+
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name,
+    }
+    handler = beam_handler.BeamHandler(flags_dict)
+    fileio.makedirs(self.pipeline_root)
+    with self.assertRaises(SystemExit) as err:
+      handler.get_schema()
+    self.assertEqual(
+        str(err.exception),
+        'Either SchemaGen component does not exist or pipeline is still running. If pipeline is running, then wait for it to successfully finish.'
+    )
+
+</source>
+</class>
+
+<class classid="39" nclones="3" nlines="26" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/local_handler_test.py" startline="257" endline="288" pcid="2430">
+  def testPipelineSchemaSuccessfulRun(self):
+    # First create a pipeline.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path
+    }
+    handler = local_handler.LocalHandler(flags_dict)
+    handler.create_pipeline()
+
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name,
+    }
+    handler = local_handler.LocalHandler(flags_dict)
+    # Create fake schema in pipeline root.
+    component_output_dir = os.path.join(self.pipeline_root, 'SchemaGen')
+    schema_path = base_driver._generate_output_uri(  # pylint: disable=protected-access
+        component_output_dir, 'schema', 3)
+
+    fileio.makedirs(schema_path)
+    with open(os.path.join(schema_path, 'schema.pbtxt'), 'w') as f:
+      f.write('SCHEMA')
+    with self.captureWritesToStream(sys.stdout) as captured:
+      handler.get_schema()
+      curr_dir_path = os.path.abspath('schema.pbtxt')
+      self.assertIn('Path to schema: {}'.format(curr_dir_path),
+                    captured.contents())
+      self.assertIn(
+          '*********SCHEMA FOR {}**********'.format(self.pipeline_name.upper()),
+          captured.contents())
+      self.assertTrue(fileio.exists(curr_dir_path))
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/beam_handler_test.py" startline="245" endline="276" pcid="2585">
+  def testPipelineSchemaSuccessfulRun(self):
+    # First create a pipeline.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path
+    }
+    handler = beam_handler.BeamHandler(flags_dict)
+    handler.create_pipeline()
+
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name,
+    }
+    handler = beam_handler.BeamHandler(flags_dict)
+    # Create fake schema in pipeline root.
+    component_output_dir = os.path.join(self.pipeline_root, 'SchemaGen')
+    schema_path = base_driver._generate_output_uri(  # pylint: disable=protected-access
+        component_output_dir, 'schema', 3)
+
+    fileio.makedirs(schema_path)
+    with open(os.path.join(schema_path, 'schema.pbtxt'), 'w') as f:
+      f.write('SCHEMA')
+    with self.captureWritesToStream(sys.stdout) as captured:
+      handler.get_schema()
+      curr_dir_path = os.path.abspath('schema.pbtxt')
+      self.assertIn('Path to schema: {}'.format(curr_dir_path),
+                    captured.contents())
+      self.assertIn(
+          '*********SCHEMA FOR {}**********'.format(self.pipeline_name.upper()),
+          captured.contents())
+      self.assertTrue(fileio.exists(curr_dir_path))
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/airflow_handler_test.py" startline="290" endline="320" pcid="2561">
+  def testPipelineSchemaSuccessfulRun(self):
+    # First create a pipeline.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path
+    }
+    handler = airflow_handler.AirflowHandler(flags_dict)
+    handler.create_pipeline()
+
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name,
+    }
+    handler = airflow_handler.AirflowHandler(flags_dict)
+    # Create fake schema in pipeline root.
+    component_output_dir = os.path.join(self.pipeline_root, 'SchemaGen')
+    schema_path = base_driver._generate_output_uri(  # pylint: disable=protected-access
+        component_output_dir, 'schema', 3)
+    fileio.makedirs(schema_path)
+    with open(os.path.join(schema_path, 'schema.pbtxt'), 'w') as f:
+      f.write('SCHEMA')
+    with self.captureWritesToStream(sys.stdout) as captured:
+      handler.get_schema()
+      curr_dir_path = os.path.abspath('schema.pbtxt')
+      self.assertIn('Path to schema: {}'.format(curr_dir_path),
+                    captured.contents())
+      self.assertIn(
+          '*********SCHEMA FOR {}**********'.format(self.pipeline_name.upper()),
+          captured.contents())
+      self.assertTrue(fileio.exists(curr_dir_path))
+
+</source>
+</class>
+
+<class classid="40" nclones="2" nlines="13" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/local_handler_test.py" startline="290" endline="309" pcid="2431">
+  def testCreateRun(self, mock_call):
+    # Create a pipeline in dags folder.
+    handler_pipeline_path = os.path.join(
+        os.environ['LOCAL_HOME'], self.pipeline_args[labels.PIPELINE_NAME])
+    fileio.makedirs(handler_pipeline_path)
+
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name
+    }
+    handler = local_handler.LocalHandler(flags_dict)
+    with open(handler._get_pipeline_args_path(self.pipeline_name), 'w') as f:
+      json.dump(self.pipeline_args, f)
+
+    # Now run the pipeline
+    handler.create_run()
+
+    mock_call.assert_called_once()
+    self.assertIn(self.pipeline_path, mock_call.call_args[0][0])
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/handler/beam_handler_test.py" startline="278" endline="297" pcid="2586">
+  def testCreateRun(self, mock_call):
+    # Create a pipeline in dags folder.
+    handler_pipeline_path = os.path.join(
+        os.environ['BEAM_HOME'], self.pipeline_args[labels.PIPELINE_NAME])
+    fileio.makedirs(handler_pipeline_path)
+
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name
+    }
+    handler = beam_handler.BeamHandler(flags_dict)
+    with open(handler._get_pipeline_args_path(self.pipeline_name), 'w') as f:
+      json.dump(self.pipeline_args, f)
+
+    # Now run the pipeline
+    handler.create_run()
+
+    mock_call.assert_called_once()
+    self.assertIn(self.pipeline_path, mock_call.call_args[0][0])
+
+</source>
+</class>
+
+<class classid="41" nclones="2" nlines="29" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/tools/cli/e2e/cli_local_e2e_test.py" startline="32" endline="72" pcid="2636">
+  def setUp(self):
+    super().setUp()
+
+    # Change the encoding for Click since Python 3 is configured to use ASCII as
+    # encoding for the environment.
+    if codecs.lookup(locale.getpreferredencoding()).name == 'ascii':
+      os.environ['LANG'] = 'en_US.utf-8'
+
+    # Setup local_home in a temp directory
+    self._home = self.tmp_dir
+    self._local_home = os.path.join(self._home, 'local')
+    self.enter_context(
+        test_case_utils.override_env_var('LOCAL_HOME', self._local_home))
+    self.enter_context(
+        test_case_utils.override_env_var('HOME', self._home))
+
+    # Testdata path.
+    self._testdata_dir = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), 'testdata')
+
+    # Copy data.
+    chicago_taxi_pipeline_dir = os.path.join(
+        os.path.dirname(
+            os.path.dirname(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
+        'examples', 'chicago_taxi_pipeline', '')
+    data_dir = os.path.join(chicago_taxi_pipeline_dir, 'data', 'simple')
+    content = fileio.listdir(data_dir)
+    assert content, 'content in {} is empty'.format(data_dir)
+    target_data_dir = os.path.join(self._home, 'taxi', 'data', 'simple')
+    io_utils.copy_dir(data_dir, target_data_dir)
+    assert fileio.isdir(target_data_dir)
+    content = fileio.listdir(target_data_dir)
+    assert content, 'content in {} is {}'.format(target_data_dir, content)
+    io_utils.copy_file(
+        os.path.join(chicago_taxi_pipeline_dir, 'taxi_utils.py'),
+        os.path.join(self._home, 'taxi', 'taxi_utils.py'))
+
+    # Initialize CLI runner.
+    self.runner = click_testing.CliRunner()
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/e2e/cli_beam_e2e_test.py" startline="31" endline="71" pcid="2650">
+  def setUp(self):
+    super().setUp()
+
+    # Change the encoding for Click since Python 3 is configured to use ASCII as
+    # encoding for the environment.
+    if codecs.lookup(locale.getpreferredencoding()).name == 'ascii':
+      os.environ['LANG'] = 'en_US.utf-8'
+
+    # Setup beam_home in a temp directory
+    self._home = self.tmp_dir
+    self._beam_home = os.path.join(self._home, 'beam')
+    self.enter_context(
+        test_case_utils.override_env_var('BEAM_HOME', self._beam_home))
+    self.enter_context(
+        test_case_utils.override_env_var('HOME', self._home))
+
+    # Testdata path.
+    self._testdata_dir = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), 'testdata')
+
+    # Copy data.
+    chicago_taxi_pipeline_dir = os.path.join(
+        os.path.dirname(
+            os.path.dirname(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
+        'examples', 'chicago_taxi_pipeline', '')
+    data_dir = os.path.join(chicago_taxi_pipeline_dir, 'data', 'simple')
+    content = fileio.listdir(data_dir)
+    assert content, 'content in {} is empty'.format(data_dir)
+    target_data_dir = os.path.join(self._home, 'taxi', 'data', 'simple')
+    io_utils.copy_dir(data_dir, target_data_dir)
+    assert fileio.isdir(target_data_dir)
+    content = fileio.listdir(target_data_dir)
+    assert content, 'content in {} is {}'.format(target_data_dir, content)
+    io_utils.copy_file(
+        os.path.join(chicago_taxi_pipeline_dir, 'taxi_utils.py'),
+        os.path.join(self._home, 'taxi', 'taxi_utils.py'))
+
+    # Initialize CLI runner.
+    self.runner = click_testing.CliRunner()
+
+</source>
+</class>
+
+<class classid="42" nclones="2" nlines="11" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/tools/cli/e2e/cli_local_e2e_test.py" startline="90" endline="105" pcid="2638">
+  def testPipelineCreate(self):
+    # Create a pipeline.
+    pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_local_1.py')
+    pipeline_name = 'chicago_taxi_local'
+    self._valid_create_and_check(pipeline_path, pipeline_name)
+
+    # Test pipeline create when pipeline already exists.
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'create', '--engine', 'local', '--pipeline_path',
+        pipeline_path
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Creating pipeline', result.output)
+    self.assertTrue('Pipeline "{}" already exists.'.format(pipeline_name),
+                    result.output)
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/e2e/cli_beam_e2e_test.py" startline="88" endline="103" pcid="2652">
+  def testPipelineCreate(self):
+    # Create a pipeline.
+    pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_beam_1.py')
+    pipeline_name = 'chicago_taxi_beam'
+    self._valid_create_and_check(pipeline_path, pipeline_name)
+
+    # Test pipeline create when pipeline already exists.
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'create', '--engine', 'beam', '--pipeline_path',
+        pipeline_path
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Creating pipeline', result.output)
+    self.assertTrue('Pipeline "{}" already exists.'.format(pipeline_name),
+                    result.output)
+
+</source>
+</class>
+
+<class classid="43" nclones="2" nlines="26" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/tools/cli/e2e/cli_local_e2e_test.py" startline="106" endline="137" pcid="2639">
+  def testPipelineUpdate(self):
+    pipeline_name = 'chicago_taxi_local'
+    handler_pipeline_path = os.path.join(self._local_home, pipeline_name)
+    pipeline_path_1 = os.path.join(self._testdata_dir,
+                                   'test_pipeline_local_1.py')
+    # Try pipeline update when pipeline does not exist.
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'update', '--engine', 'local', '--pipeline_path',
+        pipeline_path_1
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Updating pipeline', result.output)
+    self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name),
+                  result.output)
+    self.assertFalse(fileio.exists(handler_pipeline_path))
+
+    # Now update an existing pipeline.
+    self._valid_create_and_check(pipeline_path_1, pipeline_name)
+    pipeline_path_2 = os.path.join(self._testdata_dir,
+                                   'test_pipeline_local_2.py')
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'update', '--engine', 'local', '--pipeline_path',
+        pipeline_path_2
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Updating pipeline', result.output)
+    self.assertIn('Pipeline "{}" updated successfully.'.format(pipeline_name),
+                  result.output)
+    self.assertTrue(
+        fileio.exists(
+            os.path.join(handler_pipeline_path, 'pipeline_args.json')))
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/e2e/cli_beam_e2e_test.py" startline="104" endline="135" pcid="2653">
+  def testPipelineUpdate(self):
+    pipeline_name = 'chicago_taxi_beam'
+    handler_pipeline_path = os.path.join(self._beam_home, pipeline_name)
+    pipeline_path_1 = os.path.join(self._testdata_dir,
+                                   'test_pipeline_beam_1.py')
+    # Try pipeline update when pipeline does not exist.
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'update', '--engine', 'beam', '--pipeline_path',
+        pipeline_path_1
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Updating pipeline', result.output)
+    self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name),
+                  result.output)
+    self.assertFalse(fileio.exists(handler_pipeline_path))
+
+    # Now update an existing pipeline.
+    self._valid_create_and_check(pipeline_path_1, pipeline_name)
+    pipeline_path_2 = os.path.join(self._testdata_dir,
+                                   'test_pipeline_beam_2.py')
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'update', '--engine', 'beam', '--pipeline_path',
+        pipeline_path_2
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Updating pipeline', result.output)
+    self.assertIn('Pipeline "{}" updated successfully.'.format(pipeline_name),
+                  result.output)
+    self.assertTrue(
+        fileio.exists(
+            os.path.join(handler_pipeline_path, 'pipeline_args.json')))
+
+</source>
+</class>
+
+<class classid="44" nclones="2" nlines="24" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/tools/cli/e2e/cli_local_e2e_test.py" startline="138" endline="170" pcid="2640">
+  def testPipelineCompile(self):
+    # Invalid DSL path
+    pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_flink.py')
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'compile', '--engine', 'local', '--pipeline_path',
+        pipeline_path
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Compiling pipeline', result.output)
+    self.assertIn('Invalid pipeline path: {}'.format(pipeline_path),
+                  result.output)
+
+    # Wrong Runner.
+    pipeline_path = os.path.join(self.tmp_dir, 'empty_file.py')
+    io_utils.write_string_file(pipeline_path, '')
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'compile', '--engine', 'local', '--pipeline_path',
+        pipeline_path
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Compiling pipeline', result.output)
+    self.assertIn('Cannot find LocalDagRunner.run()', result.output)
+
+    # Successful compilation.
+    pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_local_2.py')
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'compile', '--engine', 'local', '--pipeline_path',
+        pipeline_path
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Compiling pipeline', result.output)
+    self.assertIn('Pipeline compiled successfully', result.output)
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/e2e/cli_beam_e2e_test.py" startline="136" endline="168" pcid="2654">
+  def testPipelineCompile(self):
+    # Invalid DSL path
+    pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_flink.py')
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'compile', '--engine', 'beam', '--pipeline_path',
+        pipeline_path
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Compiling pipeline', result.output)
+    self.assertIn('Invalid pipeline path: {}'.format(pipeline_path),
+                  result.output)
+
+    # Wrong Runner.
+    pipeline_path = os.path.join(self.tmp_dir, 'empty_file.py')
+    io_utils.write_string_file(pipeline_path, '')
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'compile', '--engine', 'beam', '--pipeline_path',
+        pipeline_path
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Compiling pipeline', result.output)
+    self.assertIn('Cannot find BeamDagRunner.run()', result.output)
+
+    # Successful compilation.
+    pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_beam_2.py')
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'compile', '--engine', 'beam', '--pipeline_path',
+        pipeline_path
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Compiling pipeline', result.output)
+    self.assertIn('Pipeline compiled successfully', result.output)
+
+</source>
+</class>
+
+<class classid="45" nclones="2" nlines="21" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/tools/cli/e2e/cli_local_e2e_test.py" startline="171" endline="200" pcid="2641">
+  def testPipelineDelete(self):
+    pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_local_1.py')
+    pipeline_name = 'chicago_taxi_local'
+    handler_pipeline_path = os.path.join(self._local_home, pipeline_name)
+
+    # Try deleting a non existent pipeline.
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'delete', '--engine', 'local', '--pipeline_name',
+        pipeline_name
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Deleting pipeline', result.output)
+    self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name),
+                  result.output)
+    self.assertFalse(fileio.exists(handler_pipeline_path))
+
+    # Create a pipeline.
+    self._valid_create_and_check(pipeline_path, pipeline_name)
+
+    # Now delete the pipeline.
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'delete', '--engine', 'local', '--pipeline_name',
+        pipeline_name
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Deleting pipeline', result.output)
+    self.assertFalse(fileio.exists(handler_pipeline_path))
+    self.assertIn('Pipeline "{}" deleted successfully.'.format(pipeline_name),
+                  result.output)
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/e2e/cli_beam_e2e_test.py" startline="169" endline="198" pcid="2655">
+  def testPipelineDelete(self):
+    pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_beam_1.py')
+    pipeline_name = 'chicago_taxi_beam'
+    handler_pipeline_path = os.path.join(self._beam_home, pipeline_name)
+
+    # Try deleting a non existent pipeline.
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'delete', '--engine', 'beam', '--pipeline_name',
+        pipeline_name
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Deleting pipeline', result.output)
+    self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name),
+                  result.output)
+    self.assertFalse(fileio.exists(handler_pipeline_path))
+
+    # Create a pipeline.
+    self._valid_create_and_check(pipeline_path, pipeline_name)
+
+    # Now delete the pipeline.
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'delete', '--engine', 'beam', '--pipeline_name',
+        pipeline_name
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Deleting pipeline', result.output)
+    self.assertFalse(fileio.exists(handler_pipeline_path))
+    self.assertIn('Pipeline "{}" deleted successfully.'.format(pipeline_name),
+                  result.output)
+
+</source>
+</class>
+
+<class classid="46" nclones="2" nlines="20" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/tools/cli/e2e/cli_local_e2e_test.py" startline="201" endline="228" pcid="2642">
+  def testPipelineList(self):
+
+    # Try listing pipelines when there are none.
+    result = self.runner.invoke(cli_group,
+                                ['pipeline', 'list', '--engine', 'local'])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Listing all pipelines', result.output)
+    self.assertIn('No pipelines to display.', result.output)
+
+    # Create pipelines.
+    pipeline_name_1 = 'chicago_taxi_local'
+    pipeline_path_1 = os.path.join(self._testdata_dir,
+                                   'test_pipeline_local_1.py')
+    self._valid_create_and_check(pipeline_path_1, pipeline_name_1)
+
+    pipeline_name_2 = 'chicago_taxi_local_v2'
+    pipeline_path_2 = os.path.join(self._testdata_dir,
+                                   'test_pipeline_local_3.py')
+    self._valid_create_and_check(pipeline_path_2, pipeline_name_2)
+
+    # List pipelines.
+    result = self.runner.invoke(cli_group,
+                                ['pipeline', 'list', '--engine', 'local'])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Listing all pipelines', result.output)
+    self.assertIn(pipeline_name_1, result.output)
+    self.assertIn(pipeline_name_2, result.output)
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/e2e/cli_beam_e2e_test.py" startline="199" endline="226" pcid="2656">
+  def testPipelineList(self):
+
+    # Try listing pipelines when there are none.
+    result = self.runner.invoke(cli_group,
+                                ['pipeline', 'list', '--engine', 'beam'])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Listing all pipelines', result.output)
+    self.assertIn('No pipelines to display.', result.output)
+
+    # Create pipelines.
+    pipeline_name_1 = 'chicago_taxi_beam'
+    pipeline_path_1 = os.path.join(self._testdata_dir,
+                                   'test_pipeline_beam_1.py')
+    self._valid_create_and_check(pipeline_path_1, pipeline_name_1)
+
+    pipeline_name_2 = 'chicago_taxi_beam_v2'
+    pipeline_path_2 = os.path.join(self._testdata_dir,
+                                   'test_pipeline_beam_3.py')
+    self._valid_create_and_check(pipeline_path_2, pipeline_name_2)
+
+    # List pipelines.
+    result = self.runner.invoke(cli_group,
+                                ['pipeline', 'list', '--engine', 'beam'])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Listing all pipelines', result.output)
+    self.assertIn(pipeline_name_1, result.output)
+    self.assertIn(pipeline_name_2, result.output)
+
+</source>
+</class>
+
+<class classid="47" nclones="2" nlines="43" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/tools/cli/e2e/cli_local_e2e_test.py" startline="229" endline="292" pcid="2643">
+  def testPipelineSchema(self):
+    pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_local_2.py')
+    pipeline_name = 'chicago_taxi_local'
+
+    # Try getting schema without creating pipeline.
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'schema', '--engine', 'local', '--pipeline_name',
+        pipeline_name
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Getting latest schema.', result.output)
+    self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name),
+                  result.output)
+
+    # Create a pipeline.
+    self._valid_create_and_check(pipeline_path, pipeline_name)
+
+    # Try getting schema without creating a pipeline run.
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'schema', '--engine', 'local', '--pipeline_name',
+        pipeline_name
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Getting latest schema.', result.output)
+    self.assertIn(
+        'Create a run before inferring schema. If pipeline is already running, then wait for it to successfully finish.',
+        result.output)
+
+    # Run pipeline.
+    self._valid_run_and_check(pipeline_name)
+
+    # Try inferring schema without SchemaGen component.
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'schema', '--engine', 'local', '--pipeline_name',
+        pipeline_name
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Getting latest schema.', result.output)
+    self.assertIn(
+        'Either SchemaGen component does not exist or pipeline is still running. If pipeline is running, then wait for it to successfully finish.',
+        result.output)
+
+    # Create a pipeline.
+    pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_local_3.py')
+    pipeline_name = 'chicago_taxi_local_v2'
+    self._valid_create_and_check(pipeline_path, pipeline_name)
+
+    # Run pipeline
+    self._valid_run_and_check(pipeline_name)
+
+    # Infer Schema when pipeline runs for the first time.
+    schema_path = os.path.join(os.getcwd(), 'schema.pbtxt')
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'schema', '--engine', 'local', '--pipeline_name',
+        pipeline_name
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Getting latest schema.', result.output)
+    self.assertTrue(fileio.exists(schema_path))
+    self.assertIn('Path to schema: {}'.format(schema_path), result.output)
+    self.assertIn(
+        '*********SCHEMA FOR {}**********'.format(pipeline_name.upper()),
+        result.output)
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/e2e/cli_beam_e2e_test.py" startline="227" endline="290" pcid="2657">
+  def testPipelineSchema(self):
+    pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_beam_2.py')
+    pipeline_name = 'chicago_taxi_beam'
+
+    # Try getting schema without creating pipeline.
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'schema', '--engine', 'beam', '--pipeline_name',
+        pipeline_name
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Getting latest schema.', result.output)
+    self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name),
+                  result.output)
+
+    # Create a pipeline.
+    self._valid_create_and_check(pipeline_path, pipeline_name)
+
+    # Try getting schema without creating a pipeline run.
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'schema', '--engine', 'beam', '--pipeline_name',
+        pipeline_name
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Getting latest schema.', result.output)
+    self.assertIn(
+        'Create a run before inferring schema. If pipeline is already running, then wait for it to successfully finish.',
+        result.output)
+
+    # Run pipeline.
+    self._valid_run_and_check(pipeline_name)
+
+    # Try inferring schema without SchemaGen component.
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'schema', '--engine', 'beam', '--pipeline_name',
+        pipeline_name
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Getting latest schema.', result.output)
+    self.assertIn(
+        'Either SchemaGen component does not exist or pipeline is still running. If pipeline is running, then wait for it to successfully finish.',
+        result.output)
+
+    # Create a pipeline.
+    pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_beam_3.py')
+    pipeline_name = 'chicago_taxi_beam_v2'
+    self._valid_create_and_check(pipeline_path, pipeline_name)
+
+    # Run pipeline
+    self._valid_run_and_check(pipeline_name)
+
+    # Infer Schema when pipeline runs for the first time.
+    schema_path = os.path.join(os.getcwd(), 'schema.pbtxt')
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'schema', '--engine', 'beam', '--pipeline_name',
+        pipeline_name
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Getting latest schema.', result.output)
+    self.assertTrue(fileio.exists(schema_path))
+    self.assertIn('Path to schema: {}'.format(schema_path), result.output)
+    self.assertIn(
+        '*********SCHEMA FOR {}**********'.format(pipeline_name.upper()),
+        result.output)
+
+</source>
+</class>
+
+<class classid="48" nclones="2" nlines="14" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/tools/cli/e2e/cli_local_e2e_test.py" startline="303" endline="324" pcid="2645">
+  def testRunCreate(self):
+    # Create a pipeline first.
+    pipeline_name_1 = 'chicago_taxi_local'
+    pipeline_path_1 = os.path.join(self._testdata_dir,
+                                   'test_pipeline_local_2.py')
+    self._valid_create_and_check(pipeline_path_1, pipeline_name_1)
+
+    # Now run a different pipeline
+    pipeline_name_2 = 'chicago_taxi_local_v2'
+    result = self.runner.invoke(cli_group, [
+        'run', 'create', '--engine', 'local', '--pipeline_name', pipeline_name_2
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Creating a run for pipeline: {}'.format(pipeline_name_2),
+                  result.output)
+    self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name_2),
+                  result.output)
+
+    # Now run the pipeline
+    self._valid_run_and_check(pipeline_name_1)
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/e2e/cli_beam_e2e_test.py" startline="301" endline="322" pcid="2659">
+  def testRunCreate(self):
+    # Create a pipeline first.
+    pipeline_name_1 = 'chicago_taxi_beam'
+    pipeline_path_1 = os.path.join(self._testdata_dir,
+                                   'test_pipeline_beam_2.py')
+    self._valid_create_and_check(pipeline_path_1, pipeline_name_1)
+
+    # Now run a different pipeline
+    pipeline_name_2 = 'chicago_taxi_beam_v2'
+    result = self.runner.invoke(cli_group, [
+        'run', 'create', '--engine', 'beam', '--pipeline_name', pipeline_name_2
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Creating a run for pipeline: {}'.format(pipeline_name_2),
+                  result.output)
+    self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name_2),
+                  result.output)
+
+    # Now run the pipeline
+    self._valid_run_and_check(pipeline_name_1)
+
+
+</source>
+</class>
+
+<class classid="49" nclones="2" nlines="12" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/tools/cli/testdata/test_pipeline_local_2.py" startline="36" endline="53" pcid="2721">
+def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
+                     metadata_path: str) -> pipeline.Pipeline:
+  """Implements the chicago taxi pipeline with TFX."""
+
+  # Brings data into the pipeline or otherwise joins/converts training data.
+  example_gen = CsvExampleGen(input_base=data_root)
+
+  return pipeline.Pipeline(
+      pipeline_name=pipeline_name,
+      pipeline_root=pipeline_root,
+      components=[example_gen],
+      enable_cache=True,
+      metadata_connection_config=metadata.sqlite_metadata_connection_config(
+          metadata_path),
+      additional_pipeline_args={},
+  )
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/testdata/test_pipeline_beam_2.py" startline="36" endline="53" pcid="2732">
+def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
+                     metadata_path: str) -> pipeline.Pipeline:
+  """Implements the chicago taxi pipeline with TFX."""
+
+  # Brings data into the pipeline or otherwise joins/converts training data.
+  example_gen = CsvExampleGen(input_base=data_root)
+
+  return pipeline.Pipeline(
+      pipeline_name=pipeline_name,
+      pipeline_root=pipeline_root,
+      components=[example_gen],
+      enable_cache=True,
+      metadata_connection_config=metadata.sqlite_metadata_connection_config(
+          metadata_path),
+      additional_pipeline_args={},
+  )
+
+
+</source>
+</class>
+
+<class classid="50" nclones="2" nlines="14" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/tools/cli/testdata/test_pipeline_beam_1.py" startline="37" endline="60" pcid="2725">
+def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
+                     metadata_path: str) -> pipeline.Pipeline:
+  """Implements the chicago taxi pipeline with TFX."""
+
+  # Brings data into the pipeline or otherwise joins/converts training data.
+  example_gen = CsvExampleGen(input_base=data_root)
+
+  # Computes statistics over data for visualization and example validation.
+  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
+
+  # Generates schema based on statistics files.
+  infer_schema = SchemaGen(statistics=statistics_gen.outputs['statistics'])
+
+  return pipeline.Pipeline(
+      pipeline_name=pipeline_name,
+      pipeline_root=pipeline_root,
+      components=[example_gen, statistics_gen, infer_schema],
+      enable_cache=True,
+      metadata_connection_config=metadata.sqlite_metadata_connection_config(
+          metadata_path),
+      additional_pipeline_args={},
+  )
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/testdata/test_pipeline_local_1.py" startline="39" endline="63" pcid="2733">
+def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
+                     metadata_path: str) -> pipeline.Pipeline:
+  """Implements the chicago taxi pipeline with TFX."""
+
+  # Brings data into the pipeline or otherwise joins/converts training data.
+  example_gen = CsvExampleGen(input_base=data_root)
+
+  # Computes statistics over data for visualization and example validation.
+  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
+
+  # Generates schema based on statistics files.
+  infer_schema = SchemaGen(statistics=statistics_gen.outputs['statistics'])
+
+  return pipeline.Pipeline(
+      pipeline_name=pipeline_name,
+      pipeline_root=pipeline_root,
+      components=[example_gen, statistics_gen, infer_schema],
+      enable_cache=True,
+      metadata_connection_config=metadata.sqlite_metadata_connection_config(
+          metadata_path),
+      additional_pipeline_args={},
+  )
+
+# We need to guard this in this conditional because this file is loaded multiple
+# times in a single test run of local_handler_test.py.
+</source>
+</class>
+
+<class classid="51" nclones="2" nlines="17" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/tools/cli/testdata/test_pipeline_local_3.py" startline="51" endline="79" pcid="2726">
+def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
+                     metadata_path: str) -> pipeline.Pipeline:
+  """Implements the chicago taxi pipeline with TFX."""
+
+  # Brings data into the pipeline or otherwise joins/converts training data.
+  example_gen = CsvExampleGen(input_base=data_root)
+
+  # Computes statistics over data for visualization and example validation.
+  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
+
+  # Generates schema based on statistics files.
+  infer_schema = SchemaGen(statistics=statistics_gen.outputs['statistics'])
+
+  # Performs anomaly detection based on statistics and data schema.
+  validate_stats = ExampleValidator(
+      statistics=statistics_gen.outputs['statistics'],
+      schema=infer_schema.outputs['schema'])
+
+  return pipeline.Pipeline(
+      pipeline_name=pipeline_name,
+      pipeline_root=pipeline_root,
+      components=[example_gen, statistics_gen, infer_schema, validate_stats],
+      enable_cache=True,
+      metadata_connection_config=metadata.sqlite_metadata_connection_config(
+          metadata_path),
+      additional_pipeline_args={},
+  )
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/testdata/test_pipeline_beam_3.py" startline="51" endline="79" pcid="2729">
+def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
+                     metadata_path: str) -> pipeline.Pipeline:
+  """Implements the chicago taxi pipeline with TFX."""
+
+  # Brings data into the pipeline or otherwise joins/converts training data.
+  example_gen = CsvExampleGen(input_base=data_root)
+
+  # Computes statistics over data for visualization and example validation.
+  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
+
+  # Generates schema based on statistics files.
+  infer_schema = SchemaGen(statistics=statistics_gen.outputs['statistics'])
+
+  # Performs anomaly detection based on statistics and data schema.
+  validate_stats = ExampleValidator(
+      statistics=statistics_gen.outputs['statistics'],
+      schema=infer_schema.outputs['schema'])
+
+  return pipeline.Pipeline(
+      pipeline_name=pipeline_name,
+      pipeline_root=pipeline_root,
+      components=[example_gen, statistics_gen, infer_schema, validate_stats],
+      enable_cache=True,
+      metadata_connection_config=metadata.sqlite_metadata_connection_config(
+          metadata_path),
+      additional_pipeline_args={},
+  )
+
+
+</source>
+</class>
+
+<class classid="52" nclones="2" nlines="11" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/tools/cli/commands/run_test.py" startline="101" endline="112" pcid="2769">
+  def testRunList(self):
+    result = self.runner.invoke(
+        run_group,
+        ['list', '--pipeline_name', 'chicago', '--engine', 'airflow'])
+    self.assertIn('Listing all runs of pipeline', result.output)
+    self.assertSucceeded(result)
+    result = self.runner.invoke(
+        run_group,
+        ['list', '--pipeline-name', 'chicago', '--engine', 'airflow'])
+    self.assertIn('Listing all runs of pipeline', result.output)
+    self.assertSucceeded(result)
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/tools/cli/commands/run_test.py" startline="143" endline="154" pcid="2772">
+  def testRunTerminate(self):
+    result = self.runner.invoke(
+        run_group,
+        ['terminate', '--run_id', 'airflow_run_id', '--engine', 'airflow'])
+    self.assertIn('Terminating run.', result.output)
+    self.assertSucceeded(result)
+    result = self.runner.invoke(
+        run_group,
+        ['terminate', '--run-id', 'airflow_run_id', '--engine', 'airflow'])
+    self.assertIn('Terminating run.', result.output)
+    self.assertSucceeded(result)
+
+</source>
+</class>
+
+<class classid="53" nclones="2" nlines="22" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/experimental/templates/taxi/kubeflow_runner.py" startline="50" endline="97" pcid="2796">
+def run():
+  """Define a kubeflow pipeline."""
+
+  # Metadata config. The defaults works work with the installation of
+  # KF Pipelines using Kubeflow. If installing KF Pipelines using the
+  # lightweight deployment option, you may need to override the defaults.
+  # If you use Kubeflow, metadata will be written to MySQL database inside
+  # Kubeflow cluster.
+  metadata_config = tfx.orchestration.experimental.get_default_kubeflow_metadata_config(
+  )
+
+  runner_config = tfx.orchestration.experimental.KubeflowDagRunnerConfig(
+      kubeflow_metadata_config=metadata_config,
+      tfx_image=configs.PIPELINE_IMAGE)
+  pod_labels = {
+      'add-pod-env': 'true',
+      tfx.orchestration.experimental.LABEL_KFP_SDK_ENV: 'tfx-template'
+  }
+  tfx.orchestration.experimental.KubeflowDagRunner(
+      config=runner_config, pod_labels_to_attach=pod_labels
+  ).run(
+      pipeline.create_pipeline(
+          pipeline_name=configs.PIPELINE_NAME,
+          pipeline_root=PIPELINE_ROOT,
+          data_path=DATA_PATH,
+          # TODO(step 7): (Optional) Uncomment below to use BigQueryExampleGen.
+          # query=configs.BIG_QUERY_QUERY,
+          # TODO(step 5): (Optional) Set the path of the customized schema.
+          # schema_path=generated_schema_path,
+          preprocessing_fn=configs.PREPROCESSING_FN,
+          run_fn=configs.RUN_FN,
+          train_args=tfx.proto.TrainArgs(num_steps=configs.TRAIN_NUM_STEPS),
+          eval_args=tfx.proto.EvalArgs(num_steps=configs.EVAL_NUM_STEPS),
+          eval_accuracy_threshold=configs.EVAL_ACCURACY_THRESHOLD,
+          serving_model_dir=SERVING_MODEL_DIR,
+          # TODO(step 7): (Optional) Uncomment below to use provide GCP related
+          #               config for BigQuery with Beam DirectRunner.
+          # beam_pipeline_args=configs
+          # .BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS,
+          # TODO(step 8): (Optional) Uncomment below to use Dataflow.
+          # beam_pipeline_args=configs.DATAFLOW_BEAM_PIPELINE_ARGS,
+          # TODO(step 9): (Optional) Uncomment below to use Cloud AI Platform.
+          # ai_platform_training_args=configs.GCP_AI_PLATFORM_TRAINING_ARGS,
+          # TODO(step 9): (Optional) Uncomment below to use Cloud AI Platform.
+          # ai_platform_serving_args=configs.GCP_AI_PLATFORM_SERVING_ARGS,
+      ))
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/experimental/templates/penguin/kubeflow_runner.py" startline="50" endline="90" pcid="2839">
+def run():
+  """Define a kubeflow pipeline."""
+
+  # Metadata config. The defaults works work with the installation of
+  # KF Pipelines using Kubeflow. If installing KF Pipelines using the
+  # lightweight deployment option, you may need to override the defaults.
+  # If you use Kubeflow, metadata will be written to MySQL database inside
+  # Kubeflow cluster.
+  metadata_config = tfx.orchestration.experimental.get_default_kubeflow_metadata_config(
+  )
+
+  runner_config = tfx.orchestration.experimental.KubeflowDagRunnerConfig(
+      kubeflow_metadata_config=metadata_config,
+      tfx_image=configs.PIPELINE_IMAGE)
+  pod_labels = {
+      'add-pod-env': 'true',
+      tfx.orchestration.experimental.LABEL_KFP_SDK_ENV: 'tfx-template'
+  }
+  tfx.orchestration.experimental.KubeflowDagRunner(
+      config=runner_config, pod_labels_to_attach=pod_labels
+  ).run(
+      pipeline.create_pipeline(
+          pipeline_name=configs.PIPELINE_NAME,
+          pipeline_root=PIPELINE_ROOT,
+          data_path=DATA_PATH,
+          # NOTE: Use `query` instead of `data_path` to use BigQueryExampleGen.
+          # query=configs.BIG_QUERY_QUERY,
+          # NOTE: Set the path of the customized schema if any.
+          # schema_path=generated_schema_path,
+          preprocessing_fn=configs.PREPROCESSING_FN,
+          run_fn=configs.RUN_FN,
+          train_args=tfx.proto.TrainArgs(num_steps=configs.TRAIN_NUM_STEPS),
+          eval_args=tfx.proto.EvalArgs(num_steps=configs.EVAL_NUM_STEPS),
+          eval_accuracy_threshold=configs.EVAL_ACCURACY_THRESHOLD,
+          serving_model_dir=SERVING_MODEL_DIR,
+          # NOTE: Provide GCP configs to use BigQuery with Beam DirectRunner.
+          # beam_pipeline_args=configs.
+          # BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS,
+      ))
+
+
+</source>
+</class>
+
+<class classid="54" nclones="2" nlines="14" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/experimental/templates/taxi/local_runner.py" startline="52" endline="77" pcid="2815">
+def run():
+  """Define a local pipeline."""
+
+  tfx.orchestration.LocalDagRunner().run(
+      pipeline.create_pipeline(
+          pipeline_name=configs.PIPELINE_NAME,
+          pipeline_root=PIPELINE_ROOT,
+          data_path=DATA_PATH,
+          # TODO(step 7): (Optional) Uncomment here to use BigQueryExampleGen.
+          # query=configs.BIG_QUERY_QUERY,
+          # TODO(step 5): (Optional) Set the path of the customized schema.
+          # schema_path=generated_schema_path,
+          preprocessing_fn=configs.PREPROCESSING_FN,
+          run_fn=configs.RUN_FN,
+          train_args=tfx.proto.TrainArgs(num_steps=configs.TRAIN_NUM_STEPS),
+          eval_args=tfx.proto.EvalArgs(num_steps=configs.EVAL_NUM_STEPS),
+          eval_accuracy_threshold=configs.EVAL_ACCURACY_THRESHOLD,
+          serving_model_dir=SERVING_MODEL_DIR,
+          # TODO(step 7): (Optional) Uncomment here to use provide GCP related
+          #               config for BigQuery with Beam DirectRunner.
+          # beam_pipeline_args=configs.
+          # BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS,
+          metadata_connection_config=tfx.orchestration.metadata
+          .sqlite_metadata_connection_config(METADATA_PATH)))
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/experimental/templates/penguin/local_runner.py" startline="53" endline="77" pcid="2854">
+def run():
+  """Define a pipeline."""
+
+  tfx.orchestration.LocalDagRunner().run(
+      pipeline.create_pipeline(
+          pipeline_name=configs.PIPELINE_NAME,
+          pipeline_root=PIPELINE_ROOT,
+          data_path=DATA_PATH,
+          # NOTE: Use `query` instead of `data_path` to use BigQueryExampleGen.
+          # query=configs.BIG_QUERY_QUERY,
+          # NOTE: Set the path of the customized schema if any.
+          # schema_path=generated_schema_path,
+          preprocessing_fn=configs.PREPROCESSING_FN,
+          run_fn=configs.RUN_FN,
+          train_args=tfx.proto.TrainArgs(num_steps=configs.TRAIN_NUM_STEPS),
+          eval_args=tfx.proto.EvalArgs(num_steps=configs.EVAL_NUM_STEPS),
+          eval_accuracy_threshold=configs.EVAL_ACCURACY_THRESHOLD,
+          serving_model_dir=SERVING_MODEL_DIR,
+          # NOTE: Provide GCP configs to use BigQuery with Beam DirectRunner.
+          # beam_pipeline_args=configs.
+          # BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS,
+          metadata_connection_config=tfx.orchestration.metadata
+          .sqlite_metadata_connection_config(METADATA_PATH)))
+
+
+</source>
+</class>
+
+<class classid="55" nclones="2" nlines="12" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/experimental/templates/test_utils.py" startline="152" endline="164" pcid="2835">
+  def _create_pipeline(self):
+    result = self._runCli([
+        'pipeline',
+        'create',
+        '--engine',
+        'local',
+        '--pipeline_path',
+        'local_runner.py',
+    ])
+    self.assertIn(
+        'Pipeline "{}" created successfully.'.format(self._pipeline_name),
+        result)
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/experimental/templates/test_utils.py" startline="165" endline="177" pcid="2836">
+  def _update_pipeline(self):
+    result = self._runCli([
+        'pipeline',
+        'update',
+        '--engine',
+        'local',
+        '--pipeline_path',
+        'local_runner.py',
+    ])
+    self.assertIn(
+        'Pipeline "{}" updated successfully.'.format(self._pipeline_name),
+        result)
+
+</source>
+</class>
+
+<class classid="56" nclones="4" nlines="14" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/examples/bert/cola/bert_cola_pipeline_e2e_test.py" startline="31" endline="46" pcid="2924">
+  def setUp(self):
+    super().setUp()
+    self._test_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
+
+    self._pipeline_name = 'keras_test'
+    self._data_root = os.path.join(os.path.dirname(__file__), 'data')
+    self._module_file = os.path.join(
+        os.path.dirname(__file__), 'bert_cola_utils.py')
+    self._serving_model_dir = os.path.join(self._test_dir, 'serving_model')
+    self._pipeline_root = os.path.join(self._test_dir, 'tfx', 'pipelines',
+                                       self._pipeline_name)
+    self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
+                                       self._pipeline_name, 'metadata.db')
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/examples/imdb/imdb_pipeline_native_keras_e2e_test.py" startline="31" endline="46" pcid="3037">
+  def setUp(self):
+    super().setUp()
+    self._test_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
+
+    self._pipeline_name = 'keras_test'
+    self._data_root = os.path.join(os.path.dirname(__file__), 'data')
+    self._module_file = os.path.join(
+        os.path.dirname(__file__), 'imdb_utils_native_keras.py')
+    self._serving_model_dir = os.path.join(self._test_dir, 'serving_model')
+    self._pipeline_root = os.path.join(self._test_dir, 'tfx', 'pipelines',
+                                       self._pipeline_name)
+    self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
+                                       self._pipeline_name, 'metadata.db')
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/examples/bert/mrpc/bert_mrpc_pipeline_e2e_test.py" startline="31" endline="46" pcid="2944">
+  def setUp(self):
+    super().setUp()
+    self._test_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
+
+    self._pipeline_name = 'keras_test'
+    self._data_root = os.path.join(os.path.dirname(__file__), 'data')
+    self._module_file = os.path.join(
+        os.path.dirname(__file__), 'bert_mrpc_utils.py')
+    self._serving_model_dir = os.path.join(self._test_dir, 'serving_model')
+    self._pipeline_root = os.path.join(self._test_dir, 'tfx', 'pipelines',
+                                       self._pipeline_name)
+    self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
+                                       self._pipeline_name, 'metadata.db')
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/examples/tfjs_next_page_prediction/tfjs_next_page_prediction_e2e_test.py" startline="28" endline="43" pcid="3056">
+  def setUp(self):
+    super().setUp()
+    self._test_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
+
+    self._pipeline_name = 'page_prediction_test'
+    self._data_root = os.path.join(os.path.dirname(__file__), 'data')
+    self._module_file = os.path.join(
+        os.path.dirname(__file__), 'tfjs_next_page_prediction_util.py')
+    self._serving_model_dir = os.path.join(self._test_dir, 'serving_model')
+    self._pipeline_root = os.path.join(self._test_dir, 'tfx', 'pipelines',
+                                       self._pipeline_name)
+    self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
+                                       self._pipeline_name, 'metadata.db')
+
+</source>
+</class>
+
+<class classid="57" nclones="2" nlines="21" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/examples/bert/cola/bert_cola_pipeline_e2e_test.py" startline="66" endline="91" pcid="2927">
+  def testColaPipelineNativeKeras(self):
+    pipeline = bert_cola_pipeline._create_pipeline(
+        pipeline_name=self._pipeline_name,
+        data_root=self._data_root,
+        module_file=self._module_file,
+        serving_model_dir=self._serving_model_dir,
+        pipeline_root=self._pipeline_root,
+        metadata_path=self._metadata_path,
+        beam_pipeline_args=[])
+
+    LocalDagRunner().run(pipeline)
+
+    self.assertTrue(fileio.exists(self._serving_model_dir))
+    self.assertTrue(fileio.exists(self._metadata_path))
+    expected_execution_count = 9  # 8 components + 1 resolver
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
+    with metadata.Metadata(metadata_config) as m:
+      artifact_count = len(m.store.get_artifacts())
+      execution_count = len(m.store.get_executions())
+      self.assertGreaterEqual(artifact_count, execution_count)
+      self.assertEqual(expected_execution_count, execution_count)
+
+    self.assertPipelineExecution()
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/examples/bert/mrpc/bert_mrpc_pipeline_e2e_test.py" startline="66" endline="91" pcid="2947">
+  def testMrpcPipelineNativeKeras(self):
+    pipeline = bert_mrpc_pipeline._create_pipeline(
+        pipeline_name=self._pipeline_name,
+        data_root=self._data_root,
+        module_file=self._module_file,
+        serving_model_dir=self._serving_model_dir,
+        pipeline_root=self._pipeline_root,
+        metadata_path=self._metadata_path,
+        beam_pipeline_args=[])
+
+    LocalDagRunner().run(pipeline)
+
+    self.assertTrue(fileio.exists(self._serving_model_dir))
+    self.assertTrue(fileio.exists(self._metadata_path))
+    expected_execution_count = 9  # 8 components + 1 resolver
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
+    with metadata.Metadata(metadata_config) as m:
+      artifact_count = len(m.store.get_artifacts())
+      execution_count = len(m.store.get_executions())
+      self.assertGreaterEqual(artifact_count, execution_count)
+      self.assertEqual(expected_execution_count, execution_count)
+
+    self.assertPipelineExecution()
+
+
+</source>
+</class>
+
+<class classid="58" nclones="2" nlines="74" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/examples/bert/cola/bert_cola_pipeline.py" startline="70" endline="176" pcid="2928">
+def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
+                     module_file: str, serving_model_dir: str,
+                     metadata_path: str,
+                     beam_pipeline_args: List[str]) -> pipeline.Pipeline:
+  """Implements the Bert classication on Cola dataset pipline with TFX."""
+  input_config = example_gen_pb2.Input(splits=[
+      example_gen_pb2.Input.Split(name='train', pattern='train/*'),
+      example_gen_pb2.Input.Split(name='eval', pattern='validation/*')
+  ])
+
+  # Brings data into the pipline
+  example_gen = CsvExampleGen(input_base=data_root, input_config=input_config)
+
+  # Computes statistics over data for visualization and example validation.
+  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
+
+  # Generates schema based on statistics files.
+  schema_gen = SchemaGen(
+      statistics=statistics_gen.outputs['statistics'], infer_feature_shape=True)
+
+  # Performs anomaly detection based on statistics and data schema.
+  example_validator = ExampleValidator(
+      statistics=statistics_gen.outputs['statistics'],
+      schema=schema_gen.outputs['schema'])
+
+  # Performs transformations and feature engineering in training and serving.
+  transform = Transform(
+      examples=example_gen.outputs['examples'],
+      schema=schema_gen.outputs['schema'],
+      module_file=module_file)
+
+  # Uses user-provided Python function that trains a model.
+  trainer = Trainer(
+      module_file=module_file,
+      examples=transform.outputs['transformed_examples'],
+      transform_graph=transform.outputs['transform_graph'],
+      schema=schema_gen.outputs['schema'],
+      # Adjust these steps when training on the full dataset.
+      train_args=trainer_pb2.TrainArgs(num_steps=2),
+      eval_args=trainer_pb2.EvalArgs(num_steps=1))
+
+  # Get the latest blessed model for model validation.
+  model_resolver = resolver.Resolver(
+      strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+      model=Channel(type=Model),
+      model_blessing=Channel(
+          type=ModelBlessing)).with_id('latest_blessed_model_resolver')
+
+  # Uses TFMA to compute evaluation statistics over features of a model and
+  # perform quality validation of a candidate model (compared to a baseline).
+  eval_config = tfma.EvalConfig(
+      model_specs=[tfma.ModelSpec(label_key='label')],
+      slicing_specs=[tfma.SlicingSpec()],
+      metrics_specs=[
+          tfma.MetricsSpec(metrics=[
+              tfma.MetricConfig(
+                  class_name='SparseCategoricalAccuracy',
+                  threshold=tfma.MetricThreshold(
+                      value_threshold=tfma.GenericValueThreshold(
+                          # Adjust the threshold when training on the
+                          # full dataset.
+                          lower_bound={'value': 0.5}),
+                      # Change threshold will be ignored if there is no
+                      # baseline model resolved from MLMD (first run).
+                      change_threshold=tfma.GenericChangeThreshold(
+                          direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                          absolute={'value': -1e-2})))
+          ])
+      ])
+  evaluator = Evaluator(
+      examples=example_gen.outputs['examples'],
+      model=trainer.outputs['model'],
+      baseline_model=model_resolver.outputs['model'],
+      eval_config=eval_config)
+
+  # Checks whether the model passed the validation steps and pushes the model
+  # to a file destination if check passed.
+  pusher = Pusher(
+      model=trainer.outputs['model'],
+      model_blessing=evaluator.outputs['blessing'],
+      push_destination=pusher_pb2.PushDestination(
+          filesystem=pusher_pb2.PushDestination.Filesystem(
+              base_directory=serving_model_dir)))
+
+  components = [
+      example_gen,
+      statistics_gen,
+      schema_gen,
+      example_validator,
+      transform,
+      trainer,
+      model_resolver,
+      evaluator,
+      pusher,
+  ]
+
+  return pipeline.Pipeline(
+      pipeline_name=pipeline_name,
+      pipeline_root=pipeline_root,
+      components=components,
+      metadata_connection_config=metadata.sqlite_metadata_connection_config(
+          metadata_path),
+      enable_cache=True,
+      beam_pipeline_args=beam_pipeline_args,
+  )
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/examples/bert/mrpc/bert_mrpc_pipeline.py" startline="70" endline="176" pcid="2936">
+def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
+                     module_file: str, serving_model_dir: str,
+                     metadata_path: str,
+                     beam_pipeline_args: List[str]) -> pipeline.Pipeline:
+  """Implements the Bert classication on mrpc dataset pipline with TFX."""
+  input_config = example_gen_pb2.Input(splits=[
+      example_gen_pb2.Input.Split(name='train', pattern='train/*'),
+      example_gen_pb2.Input.Split(name='eval', pattern='validation/*')
+  ])
+
+  # Brings data into the pipline
+  example_gen = CsvExampleGen(input_base=data_root, input_config=input_config)
+
+  # Computes statistics over data for visualization and example validation.
+  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
+
+  # Generates schema based on statistics files.
+  schema_gen = SchemaGen(
+      statistics=statistics_gen.outputs['statistics'], infer_feature_shape=True)
+
+  # Performs anomaly detection based on statistics and data schema.
+  example_validator = ExampleValidator(
+      statistics=statistics_gen.outputs['statistics'],
+      schema=schema_gen.outputs['schema'])
+
+  # Performs transformations and feature engineering in training and serving.
+  transform = Transform(
+      examples=example_gen.outputs['examples'],
+      schema=schema_gen.outputs['schema'],
+      module_file=module_file)
+
+  # Uses user-provided Python function that trains a model.
+  trainer = Trainer(
+      module_file=module_file,
+      examples=transform.outputs['transformed_examples'],
+      transform_graph=transform.outputs['transform_graph'],
+      schema=schema_gen.outputs['schema'],
+      # Adjust these steps when training on the full dataset.
+      train_args=trainer_pb2.TrainArgs(num_steps=1),
+      eval_args=trainer_pb2.EvalArgs(num_steps=1))
+
+  # Get the latest blessed model for model validation.
+  model_resolver = resolver.Resolver(
+      strategy_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+      model=Channel(type=Model),
+      model_blessing=Channel(
+          type=ModelBlessing)).with_id('latest_blessed_model_resolver')
+
+  # Uses TFMA to compute evaluation statistics over features of a model and
+  # perform quality validation of a candidate model (compared to a baseline).
+  eval_config = tfma.EvalConfig(
+      model_specs=[tfma.ModelSpec(label_key='label')],
+      slicing_specs=[tfma.SlicingSpec()],
+      metrics_specs=[
+          tfma.MetricsSpec(metrics=[
+              tfma.MetricConfig(
+                  class_name='SparseCategoricalAccuracy',
+                  threshold=tfma.MetricThreshold(
+                      value_threshold=tfma.GenericValueThreshold(
+                          # Adjust the threshold when training on the
+                          # full dataset.
+                          lower_bound={'value': 0.5}),
+                      # Change threshold will be ignored if there is no
+                      # baseline model resolved from MLMD (first run).
+                      change_threshold=tfma.GenericChangeThreshold(
+                          direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                          absolute={'value': -1e-2})))
+          ])
+      ])
+  evaluator = Evaluator(
+      examples=example_gen.outputs['examples'],
+      model=trainer.outputs['model'],
+      baseline_model=model_resolver.outputs['model'],
+      eval_config=eval_config)
+
+  # Checks whether the model passed the validation steps and pushes the model
+  # to a file destination if check passed.
+  pusher = Pusher(
+      model=trainer.outputs['model'],
+      model_blessing=evaluator.outputs['blessing'],
+      push_destination=pusher_pb2.PushDestination(
+          filesystem=pusher_pb2.PushDestination.Filesystem(
+              base_directory=serving_model_dir)))
+
+  components = [
+      example_gen,
+      statistics_gen,
+      schema_gen,
+      example_validator,
+      transform,
+      trainer,
+      model_resolver,
+      evaluator,
+      pusher,
+  ]
+
+  return pipeline.Pipeline(
+      pipeline_name=pipeline_name,
+      pipeline_root=pipeline_root,
+      components=components,
+      metadata_connection_config=metadata.sqlite_metadata_connection_config(
+          metadata_path),
+      enable_cache=True,
+      beam_pipeline_args=beam_pipeline_args,
+  )
+
+
+</source>
+</class>
+
+<class classid="59" nclones="2" nlines="11" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/examples/bert/cola/bert_cola_utils.py" startline="158" endline="184" pcid="2932">
+def _input_fn(file_pattern: List[str],
+              data_accessor: tfx.components.DataAccessor,
+              tf_transform_output: tft.TFTransformOutput,
+              batch_size: int = 200) -> tf.data.Dataset:
+  """Generates features and label for tuning/training.
+
+  Args:
+    file_pattern: List of paths or patterns of materialized transformed input
+      tfrecord files.
+    data_accessor: DataAccessor for converting input to RecordBatch.
+    tf_transform_output: A TFTransformOutput.
+    batch_size: representing the number of consecutive elements of returned
+      dataset to combine in a single batch
+
+  Returns:
+    A dataset that contains (features, indices) tuple where features is a
+      dictionary of Tensors, and indices is a single Tensor of label indices.
+  """
+  dataset = data_accessor.tf_dataset_factory(
+      file_pattern,
+      tfxio.TensorFlowDatasetOptions(
+          batch_size=batch_size, label_key=_LABEL_KEY),
+      tf_transform_output.transformed_metadata.schema)
+  dataset = dataset.repeat()
+  return dataset.prefetch(tf.data.AUTOTUNE)
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/examples/bert/mrpc/bert_mrpc_utils.py" startline="157" endline="183" pcid="2940">
+def _input_fn(file_pattern: List[str],
+              data_accessor: tfx.components.DataAccessor,
+              tf_transform_output: tft.TFTransformOutput,
+              batch_size: int = 200) -> tf.data.Dataset:
+  """Generates features and label for tuning/training.
+
+  Args:
+    file_pattern: List of paths or patterns of input tfrecord files.
+    data_accessor: DataAccessor for converting input to RecordBatch.
+    tf_transform_output: A TFTransformOutput.
+    batch_size: representing the number of consecutive elements of returned
+      dataset to combine in a single batch
+
+  Returns:
+    A dataset that contains (features, indices) tuple where features is a
+      dictionary of Tensors, and indices is a single Tensor of label indices.
+  """
+  dataset = data_accessor.tf_dataset_factory(
+      file_pattern,
+      tfxio.TensorFlowDatasetOptions(
+          batch_size=batch_size, label_key=_LABEL_KEY),
+      tf_transform_output.transformed_metadata.schema)
+  dataset = dataset.repeat()
+
+  return dataset.prefetch(tf.data.AUTOTUNE)
+
+
+</source>
+</class>
+
+<class classid="60" nclones="3" nlines="10" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/examples/bert/cola/bert_cola_utils.py" startline="185" endline="204" pcid="2933">
+def _get_serve_tf_examples_fn(model, tf_transform_output):
+  """Returns a function that parses a serialized tf.Example."""
+
+  model.tft_layer = tf_transform_output.transform_features_layer()
+
+  @tf.function
+  def serve_tf_examples_fn(serialized_tf_examples):
+    """Returns the output to be used in the serving signature."""
+    feature_spec = tf_transform_output.raw_feature_spec()
+    feature_spec.pop(_LABEL_KEY)
+    parsed_features = tf.io.parse_example(serialized_tf_examples, feature_spec)
+
+    transformed_features = model.tft_layer(parsed_features)
+
+    return model(transformed_features)
+
+  return serve_tf_examples_fn
+
+
+# TFX Trainer will call this function.
+</source>
+<source file="systems/tfx-1.7.0/tfx/examples/bert/mrpc/bert_mrpc_utils.py" startline="184" endline="205" pcid="2941">
+def _get_serve_tf_examples_fn(model, tf_transform_output):
+  """Returns a function that parses a serialized tf.Example."""
+
+  model.tft_layer = tf_transform_output.transform_features_layer()
+
+  @tf.function
+  def serve_tf_examples_fn(serialized_tf_examples):
+    """Returns the output to be used in the serving signature."""
+    feature_spec = tf_transform_output.raw_feature_spec()
+    feature_spec.pop(_LABEL_KEY)
+    parsed_features = tf.io.parse_example(serialized_tf_examples, feature_spec)
+
+    transformed_features = model.tft_layer(parsed_features)
+
+    return model(transformed_features)
+
+  return serve_tf_examples_fn
+
+
+# TFX Trainer will call this function.
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/examples/imdb/imdb_utils_native_keras.py" startline="155" endline="171" pcid="3046">
+def _get_serve_tf_examples_fn(model, tf_transform_output):
+  """Returns a function that parses a serialized tf.Example."""
+  model.tft_layer = tf_transform_output.transform_features_layer()
+
+  @tf.function
+  def serve_tf_examples_fn(serialized_tf_examples):
+    """Returns the output to be used in the serving signature."""
+    feature_spec = tf_transform_output.raw_feature_spec()
+    feature_spec.pop(_LABEL_KEY)
+    parsed_features = tf.io.parse_example(serialized_tf_examples, feature_spec)
+    transformed_features = model.tft_layer(parsed_features)
+    return model(transformed_features)
+
+  return serve_tf_examples_fn
+
+
+# TFX Trainer will call this function.
+</source>
+</class>
+
+<class classid="61" nclones="2" nlines="15" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/examples/cifar10/cifar10_pipeline_native_keras_e2e_test.py" startline="46" endline="64" pcid="2965">
+  def assertExecutedOnce(self, component: str) -> None:
+    """Check the component is executed exactly once."""
+    component_path = os.path.join(self._pipeline_root, component)
+    self.assertTrue(fileio.exists(component_path))
+    outputs = fileio.listdir(component_path)
+
+    self.assertIn('.system', outputs)
+    outputs.remove('.system')
+    system_paths = [
+        os.path.join('.system', path)
+        for path in fileio.listdir(os.path.join(component_path, '.system'))
+    ]
+    self.assertNotEmpty(system_paths)
+    self.assertIn('.system/executor_execution', system_paths)
+    outputs.extend(system_paths)
+    for output in outputs:
+      execution = fileio.listdir(os.path.join(component_path, output))
+      self.assertLen(execution, 1)
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/examples/tfjs_next_page_prediction/tfjs_next_page_prediction_e2e_test.py" startline="44" endline="62" pcid="3057">
+  def assertExecutedOnce(self, component: str) -> None:
+    """Check the component is executed exactly once."""
+    component_path = os.path.join(self._pipeline_root, component)
+    self.assertTrue(fileio.exists(component_path))
+    outputs = fileio.listdir(component_path)
+
+    self.assertIn('.system', outputs)
+    outputs.remove('.system')
+    system_paths = [
+        os.path.join('.system', path)
+        for path in fileio.listdir(os.path.join(component_path, '.system'))
+    ]
+    self.assertNotEmpty(system_paths)
+    self.assertIn('.system/executor_execution', system_paths)
+    outputs.extend(system_paths)
+    for output in outputs:
+      execution = fileio.listdir(os.path.join(component_path, output))
+      self.assertLen(execution, 1)
+
+</source>
+</class>
+
+<class classid="62" nclones="3" nlines="16" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/examples/mnist/mnist_pipeline_native_keras_e2e_test.py" startline="51" endline="69" pcid="2980">
+  def assertExecutedOnce(self, component: str) -> None:
+    """Check the component is executed exactly once."""
+    component_path = os.path.join(self._pipeline_root, component)
+    self.assertTrue(fileio.exists(component_path))
+    outputs = fileio.listdir(component_path)
+    self.assertIn('.system', outputs)
+    outputs.remove('.system')
+    system_paths = [
+        os.path.join('.system', path)
+        for path in fileio.listdir(os.path.join(component_path, '.system'))
+    ]
+    self.assertNotEmpty(system_paths)
+    self.assertIn('.system/executor_execution', system_paths)
+    outputs.extend(system_paths)
+    self.assertNotEmpty(outputs)
+    for output in outputs:
+      execution = fileio.listdir(os.path.join(component_path, output))
+      self.assertLen(execution, 1)
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_local_e2e_test.py" startline="43" endline="62" pcid="3128">
+  def assertExecutedOnce(self, component: str) -> None:
+    """Check the component is executed exactly once."""
+    component_path = os.path.join(self._pipeline_root, component)
+    self.assertTrue(fileio.exists(component_path))
+    outputs = fileio.listdir(component_path)
+
+    self.assertIn('.system', outputs)
+    outputs.remove('.system')
+    system_paths = [
+        os.path.join('.system', path)
+        for path in fileio.listdir(os.path.join(component_path, '.system'))
+    ]
+    self.assertNotEmpty(system_paths)
+    self.assertIn('.system/executor_execution', system_paths)
+    outputs.extend(system_paths)
+    self.assertNotEmpty(outputs)
+    for output in outputs:
+      execution = fileio.listdir(os.path.join(component_path, output))
+      self.assertLen(execution, 1)
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_native_keras_e2e_test.py" startline="49" endline="67" pcid="3112">
+  def assertExecutedOnce(self, component: str) -> None:
+    """Check the component is executed exactly once."""
+    component_path = os.path.join(self._pipeline_root, component)
+    self.assertTrue(fileio.exists(component_path))
+    outputs = fileio.listdir(component_path)
+    self.assertIn('.system', outputs)
+    outputs.remove('.system')
+    system_paths = [
+        os.path.join('.system', path)
+        for path in fileio.listdir(os.path.join(component_path, '.system'))
+    ]
+    self.assertNotEmpty(system_paths)
+    self.assertIn('.system/executor_execution', system_paths)
+    outputs.extend(system_paths)
+    self.assertNotEmpty(outputs)
+    for output in outputs:
+      execution = fileio.listdir(os.path.join(component_path, output))
+      self.assertLen(execution, 1)
+
+</source>
+</class>
+
+<class classid="63" nclones="3" nlines="23" similarity="100">
+<source file="systems/tfx-1.7.0/tfx/examples/bigquery_ml/taxi_utils_bqml.py" startline="106" endline="147" pcid="2992">
+def preprocessing_fn(inputs):
+  """tf.transform's callback function for preprocessing inputs.
+
+  Args:
+    inputs: map from feature keys to raw not-yet-transformed features.
+
+  Returns:
+    Map from string feature key to transformed feature operations.
+  """
+  outputs = {}
+  for key in _DENSE_FLOAT_FEATURE_KEYS:
+    # If sparse make it dense, setting nan's to 0 or '', and apply zscore.
+    outputs[_transformed_name(key)] = tft.scale_to_z_score(
+        _fill_in_missing(inputs[key]))
+
+  for key in _VOCAB_FEATURE_KEYS:
+    # Build a vocabulary for this feature.
+    outputs[_transformed_name(key)] = tft.compute_and_apply_vocabulary(
+        _fill_in_missing(inputs[key]),
+        top_k=_VOCAB_SIZE,
+        num_oov_buckets=_OOV_SIZE)
+
+  for key in _BUCKET_FEATURE_KEYS:
+    outputs[_transformed_name(key)] = tft.bucketize(
+        _fill_in_missing(inputs[key]), _FEATURE_BUCKET_COUNT)
+
+  for key in _CATEGORICAL_FEATURE_KEYS:
+    outputs[_transformed_name(key)] = _fill_in_missing(inputs[key])
+
+  # Was this passenger a big tipper?
+  taxi_fare = _fill_in_missing(inputs[_FARE_KEY])
+  tips = _fill_in_missing(inputs[_LABEL_KEY])
+  outputs[_transformed_name(_LABEL_KEY)] = tf.compat.v1.where(
+      tf.math.is_nan(taxi_fare),
+      tf.cast(tf.zeros_like(taxi_fare), tf.int64),
+      # Test if the tip was > 20% of the fare.
+      tf.cast(
+          tf.greater(tips, tf.multiply(taxi_fare, tf.constant(0.2))), tf.int64))
+
+  return outputs
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/examples/custom_components/slack/example/taxi_utils_slack.py" startline="101" endline="142" pcid="3094">
+def preprocessing_fn(inputs):
+  """tf.transform's callback function for preprocessing inputs.
+
+  Args:
+    inputs: map from feature keys to raw not-yet-transformed features.
+
+  Returns:
+    Map from string feature key to transformed feature operations.
+  """
+  outputs = {}
+  for key in _DENSE_FLOAT_FEATURE_KEYS:
+    # If sparse make it dense, setting nan's to 0 or '', and apply zscore.
+    outputs[_transformed_name(key)] = tft.scale_to_z_score(
+        _fill_in_missing(inputs[key]))
+
+  for key in _VOCAB_FEATURE_KEYS:
+    # Build a vocabulary for this feature.
+    outputs[_transformed_name(key)] = tft.compute_and_apply_vocabulary(
+        _fill_in_missing(inputs[key]),
+        top_k=_VOCAB_SIZE,
+        num_oov_buckets=_OOV_SIZE)
+
+  for key in _BUCKET_FEATURE_KEYS:
+    outputs[_transformed_name(key)] = tft.bucketize(
+        _fill_in_missing(inputs[key]), _FEATURE_BUCKET_COUNT)
+
+  for key in _CATEGORICAL_FEATURE_KEYS:
+    outputs[_transformed_name(key)] = _fill_in_missing(inputs[key])
+
+  # Was this passenger a big tipper?
+  taxi_fare = _fill_in_missing(inputs[_FARE_KEY])
+  tips = _fill_in_missing(inputs[_LABEL_KEY])
+  outputs[_transformed_name(_LABEL_KEY)] = tf.compat.v1.where(
+      tf.math.is_nan(taxi_fare),
+      tf.cast(tf.zeros_like(taxi_fare), tf.int64),
+      # Test if the tip was > 20% of the fare.
+      tf.cast(
+          tf.greater(tips, tf.multiply(taxi_fare, tf.constant(0.2))), tf.int64))
+
+  return outputs
+
+
+</source>
+<source file="systems/tfx-1.7.0/tfx/examples/chicago_taxi_pipeline/taxi_utils.py" startline="100" endline="141" pcid="3121">
+def preprocessing_fn(inputs):
+  """tf.transform's callback function for preprocessing inputs.
+
+  Args:
+    inputs: map from feature keys to raw not-yet-transformed features.
+
+  Returns:
+    Map from string feature key to transformed feature operations.
+  """
+  outputs = {}
+  for key in _DENSE_FLOAT_FEATURE_KEYS:
+    # If sparse make it dense, setting nan's to 0 or '', and apply zscore.
+    outputs[_transformed_name(key)] = tft.scale_to_z_score(
+        _fill_in_missing(inputs[key]))
+
+  for key in _VOCAB_FEATURE_KEYS:
+    # Build a vocabulary for this feature.
+    outputs[_transformed_name(key)] = tft.compute_and_apply_vocabulary(
+        _fill_in_missing(inputs[key]),
+        top_k=_VOCAB_SIZE,
+        num_oov_buckets=_OOV_SIZE)
+
+  for key in _BUCKET_FEATURE_KEYS:
+    outputs[_transformed_name(key)] = tft.bucketize(
+        _fill_in_missing(inputs[key]), _FEATURE_BUCKET_COUNT)
+
+  for key in _CATEGORICAL_FEATURE_KEYS:
+    outputs[_transformed_name(key)] = _fill_in_missing(inputs[key])
+
+  # Was this passenger a big tipper?
+  taxi_fare = _fill_in_missing(inputs[_FARE_KEY])
+  tips = _fill_in_missing(inputs[_LABEL_KEY])
+  outputs[_transformed_name(_LABEL_KEY)] = tf.compat.v1.where(
+      tf.math.is_nan(taxi_fare),
+      tf.cast(tf.zeros_like(taxi_fare), tf.int64),
+      # Test if the tip was > 20% of the fare.
+      tf.cast(
+          tf.greater(tips, tf.multiply(taxi_fare, tf.constant(0.2))), tf.int64))
+
+  return outputs
+
+
+</source>
+</class>
+
+</clones>

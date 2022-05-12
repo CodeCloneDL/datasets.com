@@ -1,0 +1,480 @@
+<clones>
+<systeminfo processor="nicad6" system="torchio-0.18.70" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="597" npairs="15"/>
+<runinfo ncompares="6840" cputime="113542"/>
+<classinfo nclasses="11"/>
+
+<class classid="1" nclones="2" nlines="13" similarity="84">
+<source file="systems/torchio-0.18.70/tests/transforms/augmentation/test_random_labels_to_image.py" startline="14" endline="32" pcid="165">
+    def test_deterministic_simulation(self):
+        """The transform creates an image where values are equal to given
+        mean if standard deviation is zero.
+        Using a label map."""
+        transform = RandomLabelsToImage(
+            label_key='label',
+            mean=[0.5, 2],
+            std=[0, 0]
+        )
+        transformed = transform(self.sample_subject)
+        self.assertTensorEqual(
+            transformed['image_from_labels'].data == 0.5,
+            self.sample_subject['label'].data == 0
+        )
+        self.assertTensorEqual(
+            transformed['image_from_labels'].data == 2,
+            self.sample_subject['label'].data == 1
+        )
+
+</source>
+<source file="systems/torchio-0.18.70/tests/transforms/augmentation/test_random_labels_to_image.py" startline="33" endline="52" pcid="166">
+    def test_deterministic_simulation_with_discretized_label_map(self):
+        """The transform creates an image where values are equal to given mean
+        if standard deviation is zero.
+        Using a discretized label map."""
+        transform = RandomLabelsToImage(
+            label_key='label',
+            mean=[0.5, 2],
+            std=[0, 0],
+            discretize=True
+        )
+        transformed = transform(self.sample_subject)
+        self.assertTensorEqual(
+            transformed['image_from_labels'].data == 0.5,
+            self.sample_subject['label'].data == 0
+        )
+        self.assertTensorEqual(
+            transformed['image_from_labels'].data == 2,
+            self.sample_subject['label'].data == 1
+        )
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="11" similarity="81">
+<source file="systems/torchio-0.18.70/tests/transforms/augmentation/test_random_labels_to_image.py" startline="89" endline="104" pcid="169">
+    def test_filling(self):
+        """The transform can fill in the generated image with an already
+        existing image.
+        Using a label map."""
+        transform = RandomLabelsToImage(
+            label_key='label',
+            image_key='t1',
+            used_labels=[1]
+        )
+        t1_indices = self.sample_subject['label'].data == 0
+        transformed = transform(self.sample_subject)
+        self.assertTensorAlmostEqual(
+            transformed['t1'].data[t1_indices],
+            self.sample_subject['t1'].data[t1_indices]
+        )
+
+</source>
+<source file="systems/torchio-0.18.70/tests/transforms/augmentation/test_random_labels_to_image.py" startline="105" endline="121" pcid="170">
+    def test_filling_with_discretized_label_map(self):
+        """The transform can fill in the generated image with an already
+        existing image.
+        Using a discretized label map."""
+        transform = RandomLabelsToImage(
+            label_key='label',
+            image_key='t1',
+            discretize=True,
+            used_labels=[1]
+        )
+        t1_indices = self.sample_subject['label'].data < 0.5
+        transformed = transform(self.sample_subject)
+        self.assertTensorAlmostEqual(
+            transformed['t1'].data[t1_indices],
+            self.sample_subject['t1'].data[t1_indices]
+        )
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="11" similarity="72">
+<source file="systems/torchio-0.18.70/tests/transforms/augmentation/test_random_elastic_deformation.py" startline="70" endline="80" pcid="272">
+    def test_no_displacement(self):
+        transform = RandomElasticDeformation(max_displacement=0)
+        transformed = transform(self.sample_subject)
+        self.assertTensorEqual(
+            self.sample_subject.t1.data,
+            transformed.t1.data,
+        )
+        self.assertTensorEqual(
+            self.sample_subject.label.data,
+            transformed.label.data,
+        )
+</source>
+<source file="systems/torchio-0.18.70/tests/transforms/preprocessing/test_to_canonical.py" startline="9" endline="20" pcid="312">
+    def test_no_changes(self):
+        transform = ToCanonical()
+        transformed = transform(self.sample_subject)
+        self.assertTensorEqual(
+            transformed.t1.data,
+            self.sample_subject.t1.data,
+        )
+        self.assertTensorEqual(
+            transformed.t1.affine,
+            self.sample_subject.t1.affine,
+        )
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="20" similarity="80">
+<source file="systems/torchio-0.18.70/tests/transforms/label/test_remove_labels.py" startline="7" endline="28" pcid="289">
+    def test_remove(self):
+        initial_labels = (1, 2, 3, 4, 5, 6, 7)
+        labels_to_remove = (1, 2, 5, 6)
+        remaining_labels = (3, 4, 7)
+
+        remove_labels = RemoveLabels(labels_to_remove)
+
+        subject = self.get_subject_with_labels(labels=initial_labels)
+        transformed = remove_labels(subject)
+        inverse_transformed = transformed.apply_inverse_transform(warn=False)
+        self.assertEqual(
+            self.get_unique_labels(subject.label),
+            set(initial_labels),
+        )
+        self.assertEqual(
+            self.get_unique_labels(transformed.label),
+            set(remaining_labels),
+        )
+        self.assertEqual(
+            self.get_unique_labels(inverse_transformed.label),
+            set(remaining_labels),
+        )
+</source>
+<source file="systems/torchio-0.18.70/tests/transforms/label/test_sequential_labels.py" startline="7" endline="28" pcid="290">
+    def test_sequential(self):
+        initial_labels = (2, 8, 9, 10, 15, 20, 100)
+        transformed_labels = (1, 2, 3, 4, 5, 6, 7)
+
+        sequential_labels = SequentialLabels()
+
+        subject = self.get_subject_with_labels(labels=initial_labels)
+        transformed = sequential_labels(subject)
+        inverse_transformed = transformed.apply_inverse_transform()
+
+        self.assertEqual(
+            self.get_unique_labels(subject.label),
+            set(initial_labels),
+        )
+        self.assertEqual(
+            self.get_unique_labels(transformed.label),
+            set(transformed_labels),
+        )
+        self.assertEqual(
+            self.get_unique_labels(inverse_transformed.label),
+            set(initial_labels),
+        )
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="20" similarity="80">
+<source file="systems/torchio-0.18.70/tests/transforms/preprocessing/test_crop_pad.py" startline="120" endline="140" pcid="329">
+    def test_center_mask(self):
+        """The mask bounding box and the input image have the same center"""
+        target_shape = 8, 22, 30
+        transform_center = tio.CropOrPad(target_shape)
+        transform_mask = tio.CropOrPad(target_shape, mask_name='label')
+        mask = self.sample_subject['label'].data
+        mask *= 0
+        mask[0, 4:6, 9:11, 14:16] = 1
+        transformed_center = transform_center(self.sample_subject)
+        transformed_mask = transform_mask(self.sample_subject)
+        zipped = zip(transformed_center.values(), transformed_mask.values())
+        for image_center, image_mask in zipped:
+            self.assertTensorEqual(
+                image_center.data, image_mask.data,
+                'Data is different after cropping',
+            )
+            self.assertTensorEqual(
+                image_center.affine, image_mask.affine,
+                'Physical position is different after cropping',
+            )
+
+</source>
+<source file="systems/torchio-0.18.70/tests/transforms/preprocessing/test_crop_pad.py" startline="141" endline="163" pcid="330">
+    def test_mask_corners(self):
+        """The mask bounding box and the input image have the same center"""
+        target_shape = 8, 22, 30
+        transform_center = tio.CropOrPad(target_shape)
+        transform_mask = tio.CropOrPad(
+            target_shape, mask_name='label')
+        mask = self.sample_subject['label'].data
+        mask *= 0
+        mask[0, 0, 0, 0] = 1
+        mask[0, -1, -1, -1] = 1
+        transformed_center = transform_center(self.sample_subject)
+        transformed_mask = transform_mask(self.sample_subject)
+        zipped = zip(transformed_center.values(), transformed_mask.values())
+        for image_center, image_mask in zipped:
+            self.assertTensorEqual(
+                image_center.data, image_mask.data,
+                'Data is different after cropping',
+            )
+            self.assertTensorEqual(
+                image_center.affine, image_mask.affine,
+                'Physical position is different after cropping',
+            )
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="11" similarity="70">
+<source file="systems/torchio-0.18.70/torchio/datasets/itk_snap/itk_snap.py" startline="39" endline="52" pcid="440">
+    def get_kwargs(self):
+        t1, t1c, t2, flair, seg = (
+            self.download_root / self.name / f'BRATS_HG0015_{name}.mha'
+            for name in ('T1', 'T1C', 'T2', 'FLAIR', 'truth')
+        )
+        return {
+            't1': ScalarImage(t1),
+            't1c': ScalarImage(t1c),
+            't2': ScalarImage(t2),
+            'flair': ScalarImage(flair),
+            'seg': LabelMap(seg),
+        }
+
+
+</source>
+<source file="systems/torchio-0.18.70/torchio/datasets/itk_snap/itk_snap.py" startline="72" endline="82" pcid="444">
+    def get_kwargs(self):
+        b14, b14_seg, b25, b25_seg = (
+            self.download_root / self.name / f'bav_frame_{name}.nii.gz'
+            for name in ('14', '14_manseg', '25', '25_manseg')
+        )
+        return {
+            'b14': ScalarImage(b14),
+            'b14_seg': LabelMap(b14_seg),
+            'b25': ScalarImage(b25),
+            'b25_seg': LabelMap(b25_seg),
+        }
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="16" similarity="72">
+<source file="systems/torchio-0.18.70/torchio/transforms/augmentation/spatial/random_elastic_deformation.py" startline="200" endline="218" pcid="458">
+    def __init__(
+            self,
+            control_points: np.ndarray,
+            max_displacement: TypeTripletFloat,
+            image_interpolation: str = 'linear',
+            **kwargs
+            ):
+        super().__init__(**kwargs)
+        self.control_points = control_points
+        self.max_displacement = max_displacement
+        self.image_interpolation = self.parse_interpolation(
+            image_interpolation)
+        self.invert_transform = False
+        self.args_names = (
+            'control_points',
+            'image_interpolation',
+            'max_displacement',
+        )
+
+</source>
+<source file="systems/torchio-0.18.70/torchio/transforms/preprocessing/spatial/resize.py" startline="30" endline="44" pcid="572">
+    def __init__(
+            self,
+            target_shape: TypeSpatialShape,
+            image_interpolation: str = 'linear',
+            **kwargs
+            ):
+        super().__init__(**kwargs)
+        self.target_shape = np.asarray(to_tuple(target_shape, length=3))
+        self.image_interpolation = self.parse_interpolation(
+            image_interpolation)
+        self.args_names = (
+            'target_shape',
+            'image_interpolation',
+        )
+
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="12" similarity="83">
+<source file="systems/torchio-0.18.70/torchio/transforms/augmentation/intensity/random_spike.py" startline="52" endline="64" pcid="493">
+    def apply_transform(self, subject: Subject) -> Subject:
+        arguments = defaultdict(dict)
+        for image_name in self.get_images_dict(subject):
+            spikes_positions_param, intensity_param = self.get_params(
+                self.num_spikes_range,
+                self.intensity_range,
+            )
+            arguments['spikes_positions'][image_name] = spikes_positions_param
+            arguments['intensity'][image_name] = intensity_param
+        transform = Spike(**self.add_include_exclude(arguments))
+        transformed = transform(subject)
+        return transformed
+
+</source>
+<source file="systems/torchio-0.18.70/torchio/transforms/augmentation/intensity/random_bias_field.py" startline="47" endline="59" pcid="499">
+    def apply_transform(self, subject: Subject) -> Subject:
+        arguments = defaultdict(dict)
+        for image_name in self.get_images_dict(subject):
+            coefficients = self.get_params(
+                self.order,
+                self.coefficients_range,
+            )
+            arguments['coefficients'][image_name] = coefficients
+            arguments['order'][image_name] = self.order
+        transform = BiasField(**self.add_include_exclude(arguments))
+        transformed = transform(subject)
+        return transformed
+
+</source>
+</class>
+
+<class classid="9" nclones="5" nlines="10" similarity="70">
+<source file="systems/torchio-0.18.70/torchio/transforms/augmentation/intensity/random_spike.py" startline="95" endline="106" pcid="495">
+    def __init__(
+            self,
+            spikes_positions: Union[np.ndarray, Dict[str, np.ndarray]],
+            intensity: Union[float, Dict[str, float]],
+            **kwargs
+            ):
+        super().__init__(**kwargs)
+        self.spikes_positions = spikes_positions
+        self.intensity = intensity
+        self.args_names = 'spikes_positions', 'intensity'
+        self.invert_transform = False
+
+</source>
+<source file="systems/torchio-0.18.70/torchio/transforms/augmentation/intensity/random_bias_field.py" startline="85" endline="96" pcid="501">
+    def __init__(
+            self,
+            coefficients: Union[List[float], Dict[str, List[float]]],
+            order: Union[int, Dict[str, int]],
+            **kwargs
+            ):
+        super().__init__(**kwargs)
+        self.coefficients = coefficients
+        self.order = order
+        self.invert_transform = False
+        self.args_names = 'coefficients', 'order'
+
+</source>
+<source file="systems/torchio-0.18.70/torchio/transforms/lambda_transform.py" startline="30" endline="40" pcid="548">
+    def __init__(
+            self,
+            function: TypeCallable,
+            types_to_apply: Optional[Sequence[str]] = None,
+            **kwargs
+            ):
+        super().__init__(**kwargs)
+        self.function = function
+        self.types_to_apply = types_to_apply
+        self.args_names = 'function', 'types_to_apply'
+
+</source>
+<source file="systems/torchio-0.18.70/torchio/transforms/preprocessing/intensity/histogram_standardization.py" startline="48" endline="58" pcid="584">
+    def __init__(
+            self,
+            landmarks: TypeLandmarks,
+            masking_method: TypeMaskingMethod = None,
+            **kwargs
+            ):
+        super().__init__(masking_method=masking_method, **kwargs)
+        self.landmarks = landmarks
+        self.landmarks_dict = self._parse_landmarks(landmarks)
+        self.args_names = 'landmarks', 'masking_method'
+
+</source>
+<source file="systems/torchio-0.18.70/torchio/transforms/preprocessing/spatial/pad.py" startline="55" endline="66" pcid="566">
+    def __init__(
+            self,
+            padding: TypeBounds,
+            padding_mode: Union[str, float] = 0,
+            **kwargs
+            ):
+        super().__init__(padding, **kwargs)
+        self.padding = padding
+        self.check_padding_mode(padding_mode)
+        self.padding_mode = padding_mode
+        self.args_names = 'padding', 'padding_mode'
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="17" similarity="70">
+<source file="systems/torchio-0.18.70/torchio/transforms/augmentation/intensity/random_spike.py" startline="107" endline="124" pcid="496">
+    def apply_transform(self, subject: Subject) -> Subject:
+        spikes_positions = self.spikes_positions
+        intensity = self.intensity
+        for image_name, image in self.get_images_dict(subject).items():
+            if self.arguments_are_dict():
+                spikes_positions = self.spikes_positions[image_name]
+                intensity = self.intensity[image_name]
+            transformed_tensors = []
+            for channel in image.data:
+                transformed_tensor = self.add_artifact(
+                    channel,
+                    spikes_positions,
+                    intensity,
+                )
+                transformed_tensors.append(transformed_tensor)
+            image.set_data(torch.stack(transformed_tensors))
+        return subject
+
+</source>
+<source file="systems/torchio-0.18.70/torchio/transforms/augmentation/intensity/random_blur.py" startline="74" endline="91" pcid="540">
+    def apply_transform(self, subject: Subject) -> Subject:
+        std = self.std
+        for name, image in self.get_images_dict(subject).items():
+            if self.arguments_are_dict():
+                std = self.std[name]
+            stds = to_tuple(std, length=len(image.data))
+            transformed_tensors = []
+            for std, tensor in zip(stds, image.data):
+                transformed_tensor = blur(
+                    tensor,
+                    image.spacing,
+                    std,
+                )
+                transformed_tensors.append(transformed_tensor)
+            image.set_data(torch.stack(transformed_tensors))
+        return subject
+
+
+</source>
+</class>
+
+<class classid="11" nclones="2" nlines="12" similarity="76">
+<source file="systems/torchio-0.18.70/torchio/transforms/preprocessing/label/keep_largest_component.py" startline="21" endline="35" pcid="592">
+    def apply_transform(self, subject: Subject) -> Subject:
+        for image in self.get_images(subject):
+            if image.num_channels > 1:
+                message = (
+                    'The number of input channels must be 1,'
+                    f' but it is {image.num_channels}'
+                )
+                raise RuntimeError(message)
+            sitk_image = image.as_sitk()
+            connected_components = sitk.ConnectedComponent(sitk_image)
+            labeled_cc = sitk.RelabelComponent(connected_components)
+            largest_cc = labeled_cc == 1
+            tensor, _ = self.sitk_to_nib(largest_cc)
+            image.set_data(tensor)
+        return subject
+</source>
+<source file="systems/torchio-0.18.70/torchio/transforms/preprocessing/label/contour.py" startline="13" endline="25" pcid="593">
+    def apply_transform(self, subject):
+        for image in self.get_images(subject):
+            if image.num_channels > 1:
+                message = (
+                    'The number of input channels must be 1,'
+                    f' but it is {image.num_channels}'
+                )
+                raise RuntimeError(message)
+            sitk_image = image.as_sitk()
+            contour = sitk.BinaryContour(sitk_image)
+            tensor, _ = self.sitk_to_nib(contour)
+            image.set_data(tensor)
+        return subject
+</source>
+</class>
+
+</clones>

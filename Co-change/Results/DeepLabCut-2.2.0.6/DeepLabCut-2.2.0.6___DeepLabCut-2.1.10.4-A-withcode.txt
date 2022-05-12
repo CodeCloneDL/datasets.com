@@ -1,0 +1,1364 @@
+<clonepair1>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/multiple_individuals_refinement_toolbox.py" startline="344" endline="545" pcid="480"></source>
+    def browseDir(self, event):
+        """
+        Show the DirDialog and ask the user to change the directory where machine labels are stored
+        """
+
+        fname = str("machinelabels-iter" + str(self.iterationindex) + ".h5")
+        self.statusbar.SetStatusText("Looking for a folder to start refining...")
+        cwd = os.path.join(os.getcwd(), "labeled-data")
+        #        dlg = wx.FileDialog(self, "Choose the machinelabels file for current iteration.",cwd, "",wildcard=fname,style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+        if platform.system() == "Darwin":
+            dlg = wx.FileDialog(
+                self,
+                "Choose the machinelabels file for current iteration.",
+                cwd,
+                fname,
+                wildcard="(*.h5)|*.h5",
+                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+            )
+        else:
+            dlg = wx.FileDialog(
+                self,
+                "Choose the machinelabels file for current iteration.",
+                cwd,
+                "",
+                wildcard=fname,
+                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+            )
+
+        if dlg.ShowModal() == wx.ID_OK:
+            self.data_file = dlg.GetPath()
+            self.dir = str(Path(self.data_file).parents[0])
+            self.fileName = str(Path(self.data_file).stem)
+            self.load.Enable(False)
+            self.next.Enable(True)
+            self.save.Enable(True)
+            self.zoom.Enable(True)
+            self.pan.Enable(True)
+            self.home.Enable(True)
+            self.quit.Enable(True)
+            self.lock.Enable(True)
+        else:
+            dlg.Destroy()
+            self.Destroy()
+            return
+        dlg.Destroy()
+
+        try:
+            self.dataname = str(self.data_file)
+
+        except:
+            print("No machinelabels file found!")
+            self.Destroy()
+        self.statusbar.SetStatusText(
+            "Working on folder: {}".format(os.path.split(str(self.dir))[-1])
+        )
+        self.preview = True
+        self.iter = 0
+
+        if os.path.isfile(self.dataname):
+            self.Dataframe = pd.read_hdf(self.dataname)
+            # Overwrite the config-defined individual names
+            # with those actually present in the annotated data
+            self.individual_names = (
+                self.Dataframe.columns.get_level_values("individuals")
+                .unique()
+                .to_list()
+            )
+            conversioncode.guarantee_multiindex_rows(self.Dataframe)
+            self.Dataframe.sort_index(inplace=True)
+            self.scorer = self.Dataframe.columns.get_level_values(0)[0]
+
+            # bodyParts = self.Dataframe.columns.get_level_values(1)
+            # _, idx = np.unique(bodyParts, return_index=True)
+            # self.num_joints = len(self.bodyparts)
+            # self.bodyparts =  bodyParts[np.sort(idx)]
+            self.index = list(self.Dataframe.iloc[:, 0].index)
+            # Reading images
+
+            self.img = os.path.join(self.project_path, *self.index[self.iter])
+            img_name = Path(self.img).name
+            self.norm, self.colorIndex = self.image_panel.getColorIndices(
+                self.img, self.bodyparts
+            )
+            # Adding Slider and Checkbox
+
+            (
+                self.choiceBox,
+                self.slider,
+                self.checkBox,
+                self.visualization_rdb,
+            ) = self.choice_panel.addCheckBoxSlider(
+                self.bodyparts, self.file, self.markerSize
+            )
+            self.slider.Bind(wx.EVT_SLIDER, self.OnSliderScroll)
+            self.checkBox.Bind(wx.EVT_CHECKBOX, self.activateSlider)
+            self.visualization_rdb.Bind(wx.EVT_RADIOBOX, self.clear_plot)
+            self.slider.Enable(False)
+
+            # take into account of all the bodyparts for the colorscheme. Sort the bodyparts to have same order as in the config file
+            self.all_bodyparts = np.array(
+                self.multianimalbodyparts + self.uniquebodyparts
+            )
+            _, return_idx = np.unique(self.all_bodyparts, return_index=True)
+            self.all_bodyparts = list(self.all_bodyparts[np.sort(return_idx)])
+
+            # Show image
+            # Setting axis title:dont want to show the threshold as it is not selected yet.
+
+            (
+                self.figure,
+                self.axes,
+                self.canvas,
+                self.toolbar,
+                self.ax,
+            ) = self.image_panel.drawplot(
+                self.img,
+                img_name,
+                self.iter,
+                self.index,
+                self.threshold,
+                self.colormap,
+                self.preview,
+            )
+            self.axes.callbacks.connect("xlim_changed", self.onZoom)
+            self.axes.callbacks.connect("ylim_changed", self.onZoom)
+
+            instruction = wx.MessageBox(
+                "1. Enter the likelihood threshold. \n\n2. Each prediction will be shown with a unique color. \n All the data points above the threshold will be marked as circle filled with a unique color. All the data points below the threshold will be marked with a hollow circle. \n\n3. Enable the checkbox to adjust the marker size. \n\n4.  Hover your mouse over data points to see the labels and their likelihood. \n\n5. Left click and drag to move the data points. \n\n6. Middle click on any data point to remove it. Be careful, you cannot undo this step. \n Click once on the zoom button to zoom-in the image.The cursor will become cross, click and drag over a point to zoom in. \n Click on the zoom button again to disable the zooming function and recover the cursor. \n Use pan button to pan across the image while zoomed in. Use home button to go back to the full;default view. \n\n7. When finished click 'Save' to save all the changes. \n\n8. Click OK to continue",
+                "User instructions",
+                wx.OK | wx.ICON_INFORMATION,
+            )
+
+            if instruction == 4:
+                """
+                If ok is selected then the image is updated with the thresholded value of the likelihood
+                """
+                textBox = wx.TextEntryDialog(
+                    self,
+                    "Select the likelihood threshold",
+                    caption="Enter the threshold",
+                    value="0.1",
+                )
+                textBox.ShowModal()
+                self.threshold = float(textBox.GetValue())
+                textBox.Destroy()
+                self.img = os.path.join(self.project_path, *self.index[self.iter])
+                img_name = Path(self.img).name
+                self.axes.clear()
+                self.preview = False
+                # self.figure.delaxes(self.figure.axes[1]) # Removes the axes corresponding to the colorbar
+                (
+                    self.figure,
+                    self.axes,
+                    self.canvas,
+                    self.toolbar,
+                    self.ax,
+                ) = self.image_panel.drawplot(
+                    self.img,
+                    img_name,
+                    self.iter,
+                    self.index,
+                    self.threshold,
+                    self.colormap,
+                    self.preview,
+                )
+                self.axes.callbacks.connect("xlim_changed", self.onZoom)
+                self.axes.callbacks.connect("ylim_changed", self.onZoom)
+                MainFrame.plot(self, self.img)
+                MainFrame.saveEachImage(self)
+            else:
+                # self.figure.delaxes(self.figure.axes[1]) # Removes the axes corresponding to the colorbar
+                (
+                    self.figure,
+                    self.axes,
+                    self.canvas,
+                    self.toolbar,
+                    self.ax,
+                ) = self.image_panel.drawplot(
+                    self.img,
+                    img_name,
+                    self.iter,
+                    self.index,
+                    self.threshold,
+                    self.colormap,
+                    self.preview,
+                )
+                self.axes.callbacks.connect("xlim_changed", self.onZoom)
+                self.axes.callbacks.connect("ylim_changed", self.onZoom)
+                MainFrame.plot(self, self.img)
+                MainFrame.saveEachImage(self)
+
+        else:
+            msg = wx.MessageBox(
+                "No Machinelabels file found! Want to retry?",
+                "Error!",
+                wx.YES_NO | wx.ICON_WARNING,
+            )
+            if msg == 2:
+                self.load.Enable(True)
+                self.next.Enable(False)
+                self.save.Enable(False)
+
+</clonepair1>
+
+<clonepair1>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/refinement.py" startline="333" endline="521" pcid="428"></source>
+    def browseDir(self, event):
+        """
+        Show the DirDialog and ask the user to change the directory where machine labels are stored
+        """
+
+        fname = str("machinelabels-iter" + str(self.iterationindex) + ".h5")
+        self.statusbar.SetStatusText("Looking for a folder to start refining...")
+        cwd = os.path.join(os.getcwd(), "labeled-data")
+        #        dlg = wx.FileDialog(self, "Choose the machinelabels file for current iteration.",cwd, "",wildcard=fname,style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+        platform.system()
+        if platform.system() == "Darwin":
+            dlg = wx.FileDialog(
+                self,
+                "Select the machinelabels-iterX.h5 file.",
+                cwd,
+                fname,
+                wildcard="(*.h5)|*.h5",
+                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+            )
+        else:
+            dlg = wx.FileDialog(
+                self,
+                "Select the machinelabels-iterX.h5 file.",
+                cwd,
+                "",
+                wildcard=fname,
+                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+            )
+
+        if dlg.ShowModal() == wx.ID_OK:
+            self.data_file = dlg.GetPath()
+            self.dir = str(Path(self.data_file).parents[0])
+            self.fileName = str(Path(self.data_file).stem)
+            self.load.Enable(False)
+            self.next.Enable(True)
+            self.save.Enable(True)
+            self.zoom.Enable(True)
+            self.pan.Enable(True)
+            self.home.Enable(True)
+            self.quit.Enable(True)
+            self.lock.Enable(True)
+        else:
+            dlg.Destroy()
+            self.Destroy()
+            return
+        dlg.Destroy()
+
+        try:
+            self.dataname = str(self.data_file)
+
+        except:
+            print("No machinelabels file found!")
+            self.Destroy()
+        self.statusbar.SetStatusText(
+            "Working on folder: {}".format(os.path.split(str(self.dir))[-1])
+        )
+        self.preview = True
+        self.iter = 0
+
+        if os.path.isfile(self.dataname):
+            self.Dataframe = pd.read_hdf(self.dataname)
+            conversioncode.guarantee_multiindex_rows(self.Dataframe)
+            self.Dataframe.sort_index(inplace=True)
+            self.scorer = self.Dataframe.columns.get_level_values(0)[0]
+
+            # bodyParts = self.Dataframe.columns.get_level_values(1)
+            # _, idx = np.unique(bodyParts, return_index=True)
+            # self.num_joints = len(self.bodyparts)
+            # self.bodyparts =  bodyParts[np.sort(idx)]
+            self.index = list(self.Dataframe.iloc[:, 0].index)
+            # Reading images
+
+            self.img = os.path.join(self.project_path, *self.index[self.iter])
+            img_name = Path(self.img).name
+            self.norm, self.colorIndex = self.image_panel.getColorIndices(
+                self.img, self.bodyparts
+            )
+            # Adding Slider and Checkbox
+
+            (
+                self.choiceBox,
+                self.slider,
+                self.checkBox,
+            ) = self.choice_panel.addCheckBoxSlider(
+                self.bodyparts, self.file, self.markerSize
+            )
+            self.slider.Bind(wx.EVT_SLIDER, self.OnSliderScroll)
+            self.checkBox.Bind(wx.EVT_CHECKBOX, self.activateSlider)
+            self.slider.Enable(False)
+            # Show image
+            # Setting axis title:dont want to show the threshold as it is not selected yet.
+            (
+                self.figure,
+                self.axes,
+                self.canvas,
+                self.toolbar,
+            ) = self.image_panel.drawplot(
+                self.img,
+                img_name,
+                self.iter,
+                self.index,
+                self.threshold,
+                self.bodyparts,
+                self.colormap,
+                self.preview,
+            )
+            self.axes.callbacks.connect("xlim_changed", self.onZoom)
+            self.axes.callbacks.connect("ylim_changed", self.onZoom)
+
+            instruction = wx.MessageBox(
+                "1. Enter the likelihood threshold. \n\n2. Each prediction will be shown with a unique color. \n All the data points above the threshold will be marked as circle filled with a unique color. All the data points below the threshold will be marked with a hollow circle. \n\n3. Enable the checkbox to adjust the marker size. \n\n4.  Hover your mouse over data points to see the labels and their likelihood. \n\n5. Left click and drag to move the data points. \n\n6. Middle click on any data point to remove it. Be careful, you cannot undo this step. \n Click once on the zoom button to zoom-in the image.The cursor will become cross, click and drag over a point to zoom in. \n Click on the zoom button again to disable the zooming function and recover the cursor. \n Use pan button to pan across the image while zoomed in. Use home button to go back to the full;default view. \n\n7. When finished click 'Save' to save all the changes. \n\n8. Click OK to continue",
+                "User instructions",
+                wx.OK | wx.ICON_INFORMATION,
+            )
+
+            if instruction == 4:
+                """
+                If ok is selected then the image is updated with the thresholded value of the likelihood
+                """
+                textBox = wx.TextEntryDialog(
+                    self,
+                    "Select the likelihood threshold",
+                    caption="Enter the threshold",
+                    value="0.4",
+                )
+                textBox.ShowModal()
+                self.threshold = float(textBox.GetValue())
+                textBox.Destroy()
+                self.img = os.path.join(self.project_path, *self.index[self.iter])
+                img_name = Path(self.img).name
+                self.axes.clear()
+                self.preview = False
+                self.figure.delaxes(
+                    self.figure.axes[1]
+                )  # Removes the axes corresponding to the colorbar
+                (
+                    self.figure,
+                    self.axes,
+                    self.canvas,
+                    self.toolbar,
+                ) = self.image_panel.drawplot(
+                    self.img,
+                    img_name,
+                    self.iter,
+                    self.index,
+                    self.threshold,
+                    self.bodyparts,
+                    self.colormap,
+                    self.preview,
+                )
+                self.axes.callbacks.connect("xlim_changed", self.onZoom)
+                self.axes.callbacks.connect("ylim_changed", self.onZoom)
+                MainFrame.plot(self, self.img)
+                MainFrame.saveEachImage(self)
+            else:
+                self.figure.delaxes(
+                    self.figure.axes[1]
+                )  # Removes the axes corresponding to the colorbar
+                (
+                    self.figure,
+                    self.axes,
+                    self.canvas,
+                    self.toolbar,
+                ) = self.image_panel.drawplot(
+                    self.img,
+                    img_name,
+                    self.iter,
+                    self.index,
+                    self.threshold,
+                    self.bodyparts,
+                    self.colormap,
+                    self.preview,
+                )
+                self.axes.callbacks.connect("xlim_changed", self.onZoom)
+                self.axes.callbacks.connect("ylim_changed", self.onZoom)
+                MainFrame.plot(self, self.img)
+                MainFrame.saveEachImage(self)
+
+        else:
+            msg = wx.MessageBox(
+                "No Machinelabels file found! Want to retry?",
+                "Error!",
+                wx.YES_NO | wx.ICON_WARNING,
+            )
+            if msg == 2:
+                self.load.Enable(True)
+                self.next.Enable(False)
+                self.save.Enable(False)
+
+</clonepair1>
+<clonepair2>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/multiple_individuals_refinement_toolbox.py" startline="552" endline="655" pcid="482"></source>
+    def nextImage(self, event):
+        """
+        Reads the next image and enables the user to move the annotations
+        """
+        #  Checks for the last image and disables the Next button
+        if len(self.index) - self.iter == 1:
+            self.next.Enable(False)
+            return
+        self.prev.Enable(True)
+
+        # Checks if zoom/pan button is ON
+        MainFrame.updateZoomPan(self)
+
+        MainFrame.saveEachImage(self)
+        # print(self.Dataframe.head())
+        self.statusbar.SetStatusText(
+            "Working on folder: {}".format(os.path.split(str(self.dir))[-1])
+        )
+
+        self.iter = self.iter + 1
+
+        if len(self.index) > self.iter:
+            self.updatedCoords = []
+            self.img = os.path.join(self.project_path, *self.index[self.iter])
+            img_name = Path(self.img).name
+
+            # Plotting
+            self.figure.delaxes(
+                self.figure.axes[1]
+            )  # Removes the axes corresponding to the colorbar
+            if self.visualization_rdb.GetSelection() == 0:
+                (
+                    self.figure,
+                    self.axes,
+                    self.canvas,
+                    self.toolbar,
+                    self.ax,
+                ) = self.image_panel.drawplot(
+                    self.img,
+                    img_name,
+                    self.iter,
+                    self.index,
+                    self.threshold,
+                    self.colormap,
+                    self.preview,
+                    keep_view=self.view_locked,
+                )
+            else:
+                (
+                    self.figure,
+                    self.axes,
+                    self.canvas,
+                    self.toolbar,
+                    self.ax,
+                ) = self.image_panel.drawplot(
+                    self.img,
+                    img_name,
+                    self.iter,
+                    self.index,
+                    self.threshold,
+                    self.colormap,
+                    self.preview,
+                    keep_view=self.view_locked,
+                )
+            im = io.imread(self.img)
+            self.axes.callbacks.connect("xlim_changed", self.onZoom)
+            self.axes.callbacks.connect("ylim_changed", self.onZoom)
+            if np.max(im) == 0:
+                msg = wx.MessageBox(
+                    "Invalid image. Click Yes to remove",
+                    "Error!",
+                    wx.YES_NO | wx.ICON_WARNING,
+                )
+                if msg == 2:
+                    self.Dataframe = self.Dataframe.drop(self.index[self.iter])
+                    self.index = list(self.Dataframe.iloc[:, 0].index)
+                self.iter = self.iter - 1
+
+                self.img = os.path.join(self.project_path, *self.index[self.iter])
+                img_name = Path(self.img).name
+
+                (
+                    self.figure,
+                    self.axes,
+                    self.canvas,
+                    self.toolbar,
+                    self.ax,
+                ) = self.image_panel.drawplot(
+                    self.img,
+                    img_name,
+                    self.iter,
+                    self.index,
+                    self.threshold,
+                    self.colormap,
+                    self.preview,
+                    keep_view=self.view_locked,
+                )
+                self.axes.callbacks.connect("xlim_changed", self.onZoom)
+                self.axes.callbacks.connect("ylim_changed", self.onZoom)
+            MainFrame.plot(self, self.img)
+        else:
+            self.next.Enable(False)
+        MainFrame.saveEachImage(self)
+
+</clonepair2>
+
+<clonepair2>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/refinement.py" startline="522" endline="606" pcid="429"></source>
+    def nextImage(self, event):
+        """
+        Reads the next image and enables the user to move the annotations
+        """
+        #  Checks for the last image and disables the Next button
+        if len(self.index) - self.iter == 1:
+            self.next.Enable(False)
+            return
+        self.prev.Enable(True)
+
+        # Checks if zoom/pan button is ON
+        MainFrame.updateZoomPan(self)
+
+        MainFrame.saveEachImage(self)
+        self.statusbar.SetStatusText(
+            "Working on folder: {}".format(os.path.split(str(self.dir))[-1])
+        )
+
+        self.iter = self.iter + 1
+
+        if len(self.index) > self.iter:
+            self.updatedCoords = []
+            self.img = os.path.join(self.project_path, *self.index[self.iter])
+            img_name = Path(self.img).name
+
+            # Plotting
+            self.figure.delaxes(
+                self.figure.axes[1]
+            )  # Removes the axes corresponding to the colorbar
+            (
+                self.figure,
+                self.axes,
+                self.canvas,
+                self.toolbar,
+            ) = self.image_panel.drawplot(
+                self.img,
+                img_name,
+                self.iter,
+                self.index,
+                self.threshold,
+                self.bodyparts,
+                self.colormap,
+                self.preview,
+                keep_view=self.view_locked,
+            )
+            im = io.imread(self.img)
+            self.axes.callbacks.connect("xlim_changed", self.onZoom)
+            self.axes.callbacks.connect("ylim_changed", self.onZoom)
+            if np.max(im) == 0:
+                msg = wx.MessageBox(
+                    "Invalid image. Click Yes to remove",
+                    "Error!",
+                    wx.YES_NO | wx.ICON_WARNING,
+                )
+                if msg == 2:
+                    self.Dataframe = self.Dataframe.drop(self.index[self.iter])
+                    self.index = list(self.Dataframe.iloc[:, 0].index)
+                self.iter = self.iter - 1
+
+                self.img = os.path.join(self.project_path, *self.index[self.iter])
+                img_name = Path(self.img).name
+
+                (
+                    self.figure,
+                    self.axes,
+                    self.canvas,
+                    self.toolbar,
+                ) = self.image_panel.drawplot(
+                    self.img,
+                    img_name,
+                    self.iter,
+                    self.index,
+                    self.threshold,
+                    self.bodyparts,
+                    self.colormap,
+                    self.preview,
+                    keep_view=self.view_locked,
+                )
+                self.axes.callbacks.connect("xlim_changed", self.onZoom)
+                self.axes.callbacks.connect("ylim_changed", self.onZoom)
+            MainFrame.plot(self, self.img)
+        else:
+            self.next.Enable(False)
+        MainFrame.saveEachImage(self)
+
+</clonepair2>
+<clonepair3>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/refine_training_dataset/outlier_frames.py" startline="781" endline="847" pcid="28"></source>
+def PlottingSingleFrame(
+    clip,
+    Dataframe,
+    bodyparts2plot,
+    tmpfolder,
+    index,
+    dotsize,
+    pcutoff,
+    alphavalue,
+    colors,
+    strwidth=4,
+    savelabeled=True,
+):
+    """Label frame and save under imagename / this is already cropped (for clip)"""
+    from skimage import io
+
+    imagename1 = os.path.join(tmpfolder, "img" + str(index).zfill(strwidth) + ".png")
+    imagename2 = os.path.join(
+        tmpfolder, "img" + str(index).zfill(strwidth) + "labeled.png"
+    )
+
+    if not os.path.isfile(
+        os.path.join(tmpfolder, "img" + str(index).zfill(strwidth) + ".png")
+    ):
+        plt.axis("off")
+        image = img_as_ubyte(clip.get_frame(index * 1.0 / clip.fps))
+        io.imsave(imagename1, image)
+
+        if savelabeled:
+            if np.ndim(image) > 2:
+                h, w, nc = np.shape(image)
+            else:
+                h, w = np.shape(image)
+
+            bpts = Dataframe.columns.get_level_values("bodyparts")
+            all_bpts = bpts.values[::3]
+            df_x, df_y, df_likelihood = Dataframe.values.reshape(
+                (Dataframe.shape[0], -1, 3)
+            ).T
+            bplist = bpts.unique().to_list()
+            if Dataframe.columns.nlevels == 3:
+                map2bp = list(range(len(all_bpts)))
+            else:
+                map2bp = [bplist.index(bp) for bp in all_bpts]
+            keep = np.flatnonzero(np.isin(all_bpts, bodyparts2plot))
+
+            plt.figure(frameon=False, figsize=(w * 1.0 / 100, h * 1.0 / 100))
+            plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
+            plt.imshow(image)
+            for i, ind in enumerate(keep):
+                if df_likelihood[ind, index] > pcutoff:
+                    plt.scatter(
+                        df_x[ind, index],
+                        df_y[ind, index],
+                        s=dotsize ** 2,
+                        color=colors(map2bp[i]),
+                        alpha=alphavalue,
+                    )
+            plt.xlim(0, w)
+            plt.ylim(0, h)
+            plt.axis("off")
+            plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
+            plt.gca().invert_yaxis()
+            plt.savefig(imagename2)
+            plt.close("all")
+
+
+</clonepair3>
+
+<clonepair3>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/refine_training_dataset/outlier_frames.py" startline="848" endline="926" pcid="29"></source>
+def PlottingSingleFramecv2(
+    cap,
+    crop,
+    coords,
+    Dataframe,
+    bodyparts2plot,
+    tmpfolder,
+    index,
+    dotsize,
+    pcutoff,
+    alphavalue,
+    colors,
+    strwidth=4,
+    savelabeled=True,
+):
+    """Label frame and save under imagename / cap is not already cropped."""
+    from skimage import io
+
+    imagename1 = os.path.join(tmpfolder, "img" + str(index).zfill(strwidth) + ".png")
+    imagename2 = os.path.join(
+        tmpfolder, "img" + str(index).zfill(strwidth) + "labeled.png"
+    )
+
+    if not os.path.isfile(
+        os.path.join(tmpfolder, "img" + str(index).zfill(strwidth) + ".png")
+    ):
+        plt.axis("off")
+        cap.set_to_frame(index)
+        frame = cap.read_frame()
+        if frame is None:
+            print("Frame could not be read.")
+            return
+        image = img_as_ubyte(frame)
+        if crop:
+            image = image[
+                int(coords[2]) : int(coords[3]), int(coords[0]) : int(coords[1]), :
+            ]
+
+        io.imsave(imagename1, image)
+
+        if savelabeled:
+            if np.ndim(image) > 2:
+                h, w, nc = np.shape(image)
+            else:
+                h, w = np.shape(image)
+
+            bpts = Dataframe.columns.get_level_values("bodyparts")
+            all_bpts = bpts.values[::3]
+            df_x, df_y, df_likelihood = Dataframe.values.reshape(
+                (Dataframe.shape[0], -1, 3)
+            ).T
+            bplist = bpts.unique().to_list()
+            if Dataframe.columns.nlevels == 3:
+                map2bp = list(range(len(all_bpts)))
+            else:
+                map2bp = [bplist.index(bp) for bp in all_bpts]
+            keep = np.flatnonzero(np.isin(all_bpts, bodyparts2plot))
+
+            plt.figure(frameon=False, figsize=(w * 1.0 / 100, h * 1.0 / 100))
+            plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
+            plt.imshow(image)
+            for i, ind in enumerate(keep):
+                if df_likelihood[ind, index] > pcutoff:
+                    plt.scatter(
+                        df_x[ind, index],
+                        df_y[ind, index],
+                        s=dotsize ** 2,
+                        color=colors(map2bp[i]),
+                        alpha=alphavalue,
+                    )
+            plt.xlim(0, w)
+            plt.ylim(0, h)
+            plt.axis("off")
+            plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
+            plt.gca().invert_yaxis()
+            plt.savefig(imagename2)
+            plt.close("all")
+
+
+</clonepair3>
+<clonepair4>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/pose_estimation_tensorflow/predict_videos.py" startline="430" endline="481" pcid="184"></source>
+def GetPoseF(cfg, dlc_cfg, sess, inputs, outputs, cap, nframes, batchsize):
+    """Batchwise prediction of pose"""
+    PredictedData = np.zeros(
+        (nframes, dlc_cfg["num_outputs"] * 3 * len(dlc_cfg["all_joints_names"]))
+    )
+    batch_ind = 0  # keeps track of which image within a batch should be written to
+    batch_num = 0  # keeps track of which batch you are at
+    ny, nx = int(cap.get(4)), int(cap.get(3))
+    if cfg["cropping"]:
+        ny, nx = checkcropping(cfg, cap)
+
+    frames = np.empty(
+        (batchsize, ny, nx, 3), dtype="ubyte"
+    )  # this keeps all frames in a batch
+    pbar = tqdm(total=nframes)
+    counter = 0
+    step = max(10, int(nframes / 100))
+    inds = []
+    while cap.isOpened():
+        if counter % step == 0:
+            pbar.update(step)
+        ret, frame = cap.read()
+        if ret:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            if cfg["cropping"]:
+                frames[batch_ind] = img_as_ubyte(
+                    frame[cfg["y1"] : cfg["y2"], cfg["x1"] : cfg["x2"]]
+                )
+            else:
+                frames[batch_ind] = img_as_ubyte(frame)
+            inds.append(counter)
+            if batch_ind == batchsize - 1:
+                pose = predict.getposeNP(frames, dlc_cfg, sess, inputs, outputs)
+                PredictedData[inds] = pose
+                batch_ind = 0
+                inds.clear()
+                batch_num += 1
+            else:
+                batch_ind += 1
+        elif counter >= nframes:
+            if batch_ind > 0:
+                pose = predict.getposeNP(
+                    frames, dlc_cfg, sess, inputs, outputs
+                )  # process the whole batch (some frames might be from previous batch!)
+                PredictedData[inds[:batch_ind]] = pose[:batch_ind]
+            break
+        counter += 1
+
+    pbar.close()
+    return PredictedData, nframes
+
+
+</clonepair4>
+
+<clonepair4>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/pose_estimation_tensorflow/predict_videos.py" startline="565" endline="625" pcid="187"></source>
+def GetPoseF_GTF(cfg, dlc_cfg, sess, inputs, outputs, cap, nframes, batchsize):
+    """Batchwise prediction of pose"""
+    PredictedData = np.zeros((nframes, 3 * len(dlc_cfg["all_joints_names"])))
+    batch_ind = 0  # keeps track of which image within a batch should be written to
+    batch_num = 0  # keeps track of which batch you are at
+    ny, nx = int(cap.get(4)), int(cap.get(3))
+    if cfg["cropping"]:
+        ny, nx = checkcropping(cfg, cap)
+
+    pose_tensor = predict.extract_GPUprediction(
+        outputs, dlc_cfg
+    )  # extract_output_tensor(outputs, dlc_cfg)
+    frames = np.empty(
+        (batchsize, ny, nx, 3), dtype="ubyte"
+    )  # this keeps all frames in a batch
+    pbar = tqdm(total=nframes)
+    counter = 0
+    step = max(10, int(nframes / 100))
+    inds = []
+    while cap.isOpened():
+        if counter % step == 0:
+            pbar.update(step)
+        ret, frame = cap.read()
+        if ret:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            if cfg["cropping"]:
+                frames[batch_ind] = img_as_ubyte(
+                    frame[cfg["y1"] : cfg["y2"], cfg["x1"] : cfg["x2"]]
+                )
+            else:
+                frames[batch_ind] = img_as_ubyte(frame)
+            inds.append(counter)
+            if batch_ind == batchsize - 1:
+                # pose = predict.getposeNP(frames,dlc_cfg, sess, inputs, outputs)
+                pose = sess.run(pose_tensor, feed_dict={inputs: frames})
+                pose[:, [0, 1, 2]] = pose[
+                    :, [1, 0, 2]
+                ]  # change order to have x,y,confidence
+                pose = np.reshape(
+                    pose, (batchsize, -1)
+                )  # bring into batchsize times x,y,conf etc.
+                PredictedData[inds] = pose
+                batch_ind = 0
+                inds.clear()
+                batch_num += 1
+            else:
+                batch_ind += 1
+        elif counter >= nframes:
+            if batch_ind > 0:
+                # pose = predict.getposeNP(frames, dlc_cfg, sess, inputs, outputs) #process the whole batch (some frames might be from previous batch!)
+                pose = sess.run(pose_tensor, feed_dict={inputs: frames})
+                pose[:, [0, 1, 2]] = pose[:, [1, 0, 2]]
+                pose = np.reshape(pose, (batchsize, -1))
+                PredictedData[inds[:batch_ind]] = pose[:batch_ind]
+            break
+        counter += 1
+
+    pbar.close()
+    return PredictedData, nframes
+
+
+</clonepair4>
+<clonepair5>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/pose_estimation_tensorflow/predict_videos.py" startline="482" endline="519" pcid="185"></source>
+def GetPoseS(cfg, dlc_cfg, sess, inputs, outputs, cap, nframes):
+    """Non batch wise pose estimation for video cap."""
+    if cfg["cropping"]:
+        ny, nx = checkcropping(cfg, cap)
+
+    PredictedData = np.zeros(
+        (nframes, dlc_cfg["num_outputs"] * 3 * len(dlc_cfg["all_joints_names"]))
+    )
+    pbar = tqdm(total=nframes)
+    counter = 0
+    step = max(10, int(nframes / 100))
+    while cap.isOpened():
+        if counter % step == 0:
+            pbar.update(step)
+
+        ret, frame = cap.read()
+        if ret:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            if cfg["cropping"]:
+                frame = img_as_ubyte(
+                    frame[cfg["y1"] : cfg["y2"], cfg["x1"] : cfg["x2"]]
+                )
+            else:
+                frame = img_as_ubyte(frame)
+            pose = predict.getpose(frame, dlc_cfg, sess, inputs, outputs)
+            PredictedData[
+                counter, :
+            ] = (
+                pose.flatten()
+            )  # NOTE: thereby cfg['all_joints_names'] should be same order as bodyparts!
+        elif counter >= nframes:
+            break
+        counter += 1
+
+    pbar.close()
+    return PredictedData, nframes
+
+
+</clonepair5>
+
+<clonepair5>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/pose_estimation_tensorflow/predict_videos.py" startline="520" endline="564" pcid="186"></source>
+def GetPoseS_GTF(cfg, dlc_cfg, sess, inputs, outputs, cap, nframes):
+    """Non batch wise pose estimation for video cap."""
+    if cfg["cropping"]:
+        ny, nx = checkcropping(cfg, cap)
+
+    pose_tensor = predict.extract_GPUprediction(
+        outputs, dlc_cfg
+    )  # extract_output_tensor(outputs, dlc_cfg)
+    PredictedData = np.zeros((nframes, 3 * len(dlc_cfg["all_joints_names"])))
+    pbar = tqdm(total=nframes)
+    counter = 0
+    step = max(10, int(nframes / 100))
+    while cap.isOpened():
+        if counter % step == 0:
+            pbar.update(step)
+
+        ret, frame = cap.read()
+        if ret:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            if cfg["cropping"]:
+                frame = img_as_ubyte(
+                    frame[cfg["y1"] : cfg["y2"], cfg["x1"] : cfg["x2"]]
+                )
+            else:
+                frame = img_as_ubyte(frame)
+
+            pose = sess.run(
+                pose_tensor,
+                feed_dict={inputs: np.expand_dims(frame, axis=0).astype(float)},
+            )
+            pose[:, [0, 1, 2]] = pose[:, [1, 0, 2]]
+            # pose = predict.getpose(frame, dlc_cfg, sess, inputs, outputs)
+            PredictedData[
+                counter, :
+            ] = (
+                pose.flatten()
+            )  # NOTE: thereby cfg['all_joints_names'] should be same order as bodyparts!
+        elif counter >= nframes:
+            break
+        counter += 1
+
+    pbar.close()
+    return PredictedData, nframes
+
+
+</clonepair5>
+<clonepair6>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/multiple_individuals_refinement_toolbox.py" startline="311" endline="343" pcid="479"></source>
+    def OnSliderScroll(self, event):
+        """
+        Adjust marker size for plotting the annotations
+        """
+        self.markerSize = self.slider.GetValue()
+        MainFrame.saveEachImage(self)
+        MainFrame.updateZoomPan(self)
+        self.updatedCoords = []
+
+        img_name = Path(*self.index[self.iter]).name
+        #        self.axes.clear()
+        self.figure.delaxes(self.figure.axes[1])
+        (
+            self.figure,
+            self.axes,
+            self.canvas,
+            self.toolbar,
+            self.ax,
+        ) = self.image_panel.drawplot(
+            self.img,
+            img_name,
+            self.iter,
+            self.index,
+            self.threshold,
+            self.colormap,
+            self.preview,
+            keep_view=True,
+        )
+        self.axes.callbacks.connect("xlim_changed", self.onZoom)
+        self.axes.callbacks.connect("ylim_changed", self.onZoom)
+
+        MainFrame.plot(self, self.img)
+
+</clonepair6>
+
+<clonepair6>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/refinement.py" startline="305" endline="332" pcid="427"></source>
+    def OnSliderScroll(self, event):
+        """
+        Adjust marker size for plotting the annotations
+        """
+        self.markerSize = self.slider.GetValue()
+        MainFrame.saveEachImage(self)
+        MainFrame.updateZoomPan(self)
+        self.updatedCoords = []
+
+        img_name = Path(*self.index[self.iter]).name
+        #        self.axes.clear()
+        self.figure.delaxes(self.figure.axes[1])
+        self.figure, self.axes, self.canvas, self.toolbar = self.image_panel.drawplot(
+            self.img,
+            img_name,
+            self.iter,
+            self.index,
+            self.threshold,
+            self.bodyparts,
+            self.colormap,
+            self.preview,
+            keep_view=True,
+        )
+        self.axes.callbacks.connect("xlim_changed", self.onZoom)
+        self.axes.callbacks.connect("ylim_changed", self.onZoom)
+
+        MainFrame.plot(self, self.img)
+
+</clonepair6>
+<clonepair7>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/train_network.py" startline="236" endline="269" pcid="444"></source>
+    def edit_pose_config(self, event):
+        """
+        """
+        self.shuffles.Enable(True)
+        #self.trainingindex.Enable(True)
+        self.display_iters.Enable(True)
+        self.save_iters.Enable(True)
+        self.max_iters.Enable(True)
+        self.snapshots.Enable(True)
+        # Read the pose config file
+
+        cfg = auxiliaryfunctions.read_config(self.config)
+        trainFraction = cfg["TrainingFraction"]
+        #print(trainFraction[-1])
+        #        print(os.path.join(cfg['project_path'],auxiliaryfunctions.GetModelFolder(trainFraction, self.shuffles.GetValue(),cfg),'train','pose_cfg.yaml'))
+        self.pose_cfg_path = os.path.join(
+            cfg["project_path"],
+            auxiliaryfunctions.GetModelFolder(
+                trainFraction[-1], self.shuffles.GetValue(), cfg
+            ),
+            "train",
+            "pose_cfg.yaml",
+        )
+        # let the user open the file with default text editor. Also make it mac compatible
+        if sys.platform == "darwin":
+            self.file_open_bool = subprocess.call(["open", self.pose_cfg_path])
+            self.file_open_bool = True
+        else:
+            self.file_open_bool = webbrowser.open(self.pose_cfg_path)
+        if self.file_open_bool:
+            self.pose_cfg = auxiliaryfunctions.read_plainconfig(self.pose_cfg_path)
+        else:
+            raise FileNotFoundError("File not found!")
+
+</clonepair7>
+
+<clonepair7>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/evaluate_network.py" startline="229" endline="252" pcid="366"></source>
+    def edit_inf_config(self, event):
+        # Read the infer config file
+        cfg = auxiliaryfunctions.read_config(self.config)
+        #trainingsetindex = self.trainingset.GetValue()
+        trainFraction = cfg["TrainingFraction"]
+        self.inf_cfg_path = os.path.join(
+            cfg["project_path"],
+            auxiliaryfunctions.GetModelFolder(
+                trainFraction[-1], self.shuffles.GetValue(), cfg
+            ),
+            "test",
+            "inference_cfg.yaml",
+        )
+        # let the user open the file with default text editor. Also make it mac compatible
+        if sys.platform == "darwin":
+            self.file_open_bool = subprocess.call(["open", self.inf_cfg_path])
+            self.file_open_bool = True
+        else:
+            self.file_open_bool = webbrowser.open(self.inf_cfg_path)
+        if self.file_open_bool:
+            self.inf_cfg = auxiliaryfunctions.read_config(self.inf_cfg_path)
+        else:
+            raise FileNotFoundError("File not found!")
+
+</clonepair7>
+<clonepair8>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/analyze_videos.py" startline="356" endline="378" pcid="594"></source>
+    def edit_inf_config(self, event):
+        # Read the infer config file
+        cfg = auxiliaryfunctions.read_config(self.config)
+        #trainFraction = cfg["TrainingFraction"][trainingsetindex]
+        self.inf_cfg_path = os.path.join(
+            cfg["project_path"],
+            auxiliaryfunctions.GetModelFolder(
+                trainFraction, self.shuffle.GetValue(), cfg
+            ),
+            "test",
+            "inference_cfg.yaml",
+        )
+        # let the user open the file with default text editor. Also make it mac compatible
+        if sys.platform == "darwin":
+            self.file_open_bool = subprocess.call(["open", self.inf_cfg_path])
+            self.file_open_bool = True
+        else:
+            self.file_open_bool = webbrowser.open(self.inf_cfg_path)
+        if self.file_open_bool:
+            self.inf_cfg = auxiliaryfunctions.read_config(self.inf_cfg_path)
+        else:
+            raise FileNotFoundError("File not found!")
+
+</clonepair8>
+
+<clonepair8>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/train_network.py" startline="236" endline="269" pcid="444"></source>
+    def edit_pose_config(self, event):
+        """
+        """
+        self.shuffles.Enable(True)
+        #self.trainingindex.Enable(True)
+        self.display_iters.Enable(True)
+        self.save_iters.Enable(True)
+        self.max_iters.Enable(True)
+        self.snapshots.Enable(True)
+        # Read the pose config file
+
+        cfg = auxiliaryfunctions.read_config(self.config)
+        trainFraction = cfg["TrainingFraction"]
+        #print(trainFraction[-1])
+        #        print(os.path.join(cfg['project_path'],auxiliaryfunctions.GetModelFolder(trainFraction, self.shuffles.GetValue(),cfg),'train','pose_cfg.yaml'))
+        self.pose_cfg_path = os.path.join(
+            cfg["project_path"],
+            auxiliaryfunctions.GetModelFolder(
+                trainFraction[-1], self.shuffles.GetValue(), cfg
+            ),
+            "train",
+            "pose_cfg.yaml",
+        )
+        # let the user open the file with default text editor. Also make it mac compatible
+        if sys.platform == "darwin":
+            self.file_open_bool = subprocess.call(["open", self.pose_cfg_path])
+            self.file_open_bool = True
+        else:
+            self.file_open_bool = webbrowser.open(self.pose_cfg_path)
+        if self.file_open_bool:
+            self.pose_cfg = auxiliaryfunctions.read_plainconfig(self.pose_cfg_path)
+        else:
+            raise FileNotFoundError("File not found!")
+
+</clonepair8>
+<clonepair9>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/refine_tracklets.py" startline="224" endline="248" pcid="457"></source>
+    def edit_inf_config(self, event):
+        # Read the infer config file
+        #trainingsetindex = self.trainingset.GetValue()
+        trainFraction = self.cfg["TrainingFraction"]
+        self.inf_cfg_path = os.path.join(
+            self.cfg["project_path"],
+            auxiliaryfunctions.GetModelFolder(
+                trainFraction[-1], self.shuffle.GetValue(), self.cfg
+            ),
+            "test",
+            "inference_cfg.yaml",
+        )
+        # let the user open the file with default text editor. Also make it mac compatible
+        if sys.platform == "darwin":
+            self.file_open_bool = subprocess.call(["open", self.inf_cfg_path])
+            self.file_open_bool = True
+        else:
+            import webbrowser
+
+            self.file_open_bool = webbrowser.open(self.inf_cfg_path)
+        if self.file_open_bool:
+            self.inf_cfg = auxiliaryfunctions.read_config(self.inf_cfg_path)
+        else:
+            raise FileNotFoundError("File not found!")
+
+</clonepair9>
+
+<clonepair9>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/evaluate_network.py" startline="229" endline="252" pcid="366"></source>
+    def edit_inf_config(self, event):
+        # Read the infer config file
+        cfg = auxiliaryfunctions.read_config(self.config)
+        #trainingsetindex = self.trainingset.GetValue()
+        trainFraction = cfg["TrainingFraction"]
+        self.inf_cfg_path = os.path.join(
+            cfg["project_path"],
+            auxiliaryfunctions.GetModelFolder(
+                trainFraction[-1], self.shuffles.GetValue(), cfg
+            ),
+            "test",
+            "inference_cfg.yaml",
+        )
+        # let the user open the file with default text editor. Also make it mac compatible
+        if sys.platform == "darwin":
+            self.file_open_bool = subprocess.call(["open", self.inf_cfg_path])
+            self.file_open_bool = True
+        else:
+            self.file_open_bool = webbrowser.open(self.inf_cfg_path)
+        if self.file_open_bool:
+            self.inf_cfg = auxiliaryfunctions.read_config(self.inf_cfg_path)
+        else:
+            raise FileNotFoundError("File not found!")
+
+</clonepair9>
+<clonepair10>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/analyze_videos.py" startline="356" endline="378" pcid="594"></source>
+    def edit_inf_config(self, event):
+        # Read the infer config file
+        cfg = auxiliaryfunctions.read_config(self.config)
+        #trainFraction = cfg["TrainingFraction"][trainingsetindex]
+        self.inf_cfg_path = os.path.join(
+            cfg["project_path"],
+            auxiliaryfunctions.GetModelFolder(
+                trainFraction, self.shuffle.GetValue(), cfg
+            ),
+            "test",
+            "inference_cfg.yaml",
+        )
+        # let the user open the file with default text editor. Also make it mac compatible
+        if sys.platform == "darwin":
+            self.file_open_bool = subprocess.call(["open", self.inf_cfg_path])
+            self.file_open_bool = True
+        else:
+            self.file_open_bool = webbrowser.open(self.inf_cfg_path)
+        if self.file_open_bool:
+            self.inf_cfg = auxiliaryfunctions.read_config(self.inf_cfg_path)
+        else:
+            raise FileNotFoundError("File not found!")
+
+</clonepair10>
+
+<clonepair10>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/refine_tracklets.py" startline="224" endline="248" pcid="457"></source>
+    def edit_inf_config(self, event):
+        # Read the infer config file
+        #trainingsetindex = self.trainingset.GetValue()
+        trainFraction = self.cfg["TrainingFraction"]
+        self.inf_cfg_path = os.path.join(
+            self.cfg["project_path"],
+            auxiliaryfunctions.GetModelFolder(
+                trainFraction[-1], self.shuffle.GetValue(), self.cfg
+            ),
+            "test",
+            "inference_cfg.yaml",
+        )
+        # let the user open the file with default text editor. Also make it mac compatible
+        if sys.platform == "darwin":
+            self.file_open_bool = subprocess.call(["open", self.inf_cfg_path])
+            self.file_open_bool = True
+        else:
+            import webbrowser
+
+            self.file_open_bool = webbrowser.open(self.inf_cfg_path)
+        if self.file_open_bool:
+            self.inf_cfg = auxiliaryfunctions.read_config(self.inf_cfg_path)
+        else:
+            raise FileNotFoundError("File not found!")
+
+</clonepair10>
+<clonepair11>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/utils/auxiliaryfunctions.py" startline="463" endline="479" pcid="158"></source>
+def GetModelFolder(trainFraction, shuffle, cfg, modelprefix=""):
+    Task = cfg["Task"]
+    date = cfg["date"]
+    iterate = "iteration-" + str(cfg["iteration"])
+    return Path(
+        modelprefix,
+        "dlc-models",
+        iterate,
+        Task
+        + date
+        + "-trainset"
+        + str(int(trainFraction * 100))
+        + "shuffle"
+        + str(shuffle),
+    )
+
+
+</clonepair11>
+
+<clonepair11>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/utils/auxiliaryfunctions.py" startline="480" endline="500" pcid="159"></source>
+def GetEvaluationFolder(trainFraction, shuffle, cfg, modelprefix=""):
+    Task = cfg["Task"]
+    date = cfg["date"]
+    iterate = "iteration-" + str(cfg["iteration"])
+    if "eval_prefix" in cfg:
+        eval_prefix = cfg["eval_prefix"]
+    else:
+        eval_prefix = "evaluation-results"
+    return Path(
+        modelprefix,
+        eval_prefix,
+        iterate,
+        Task
+        + date
+        + "-trainset"
+        + str(int(trainFraction * 100))
+        + "shuffle"
+        + str(shuffle),
+    )
+
+
+</clonepair11>
+<clonepair12>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/analyze_videos.py" startline="356" endline="378" pcid="594"></source>
+    def edit_inf_config(self, event):
+        # Read the infer config file
+        cfg = auxiliaryfunctions.read_config(self.config)
+        #trainFraction = cfg["TrainingFraction"][trainingsetindex]
+        self.inf_cfg_path = os.path.join(
+            cfg["project_path"],
+            auxiliaryfunctions.GetModelFolder(
+                trainFraction, self.shuffle.GetValue(), cfg
+            ),
+            "test",
+            "inference_cfg.yaml",
+        )
+        # let the user open the file with default text editor. Also make it mac compatible
+        if sys.platform == "darwin":
+            self.file_open_bool = subprocess.call(["open", self.inf_cfg_path])
+            self.file_open_bool = True
+        else:
+            self.file_open_bool = webbrowser.open(self.inf_cfg_path)
+        if self.file_open_bool:
+            self.inf_cfg = auxiliaryfunctions.read_config(self.inf_cfg_path)
+        else:
+            raise FileNotFoundError("File not found!")
+
+</clonepair12>
+
+<clonepair12>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/evaluate_network.py" startline="229" endline="252" pcid="366"></source>
+    def edit_inf_config(self, event):
+        # Read the infer config file
+        cfg = auxiliaryfunctions.read_config(self.config)
+        #trainingsetindex = self.trainingset.GetValue()
+        trainFraction = cfg["TrainingFraction"]
+        self.inf_cfg_path = os.path.join(
+            cfg["project_path"],
+            auxiliaryfunctions.GetModelFolder(
+                trainFraction[-1], self.shuffles.GetValue(), cfg
+            ),
+            "test",
+            "inference_cfg.yaml",
+        )
+        # let the user open the file with default text editor. Also make it mac compatible
+        if sys.platform == "darwin":
+            self.file_open_bool = subprocess.call(["open", self.inf_cfg_path])
+            self.file_open_bool = True
+        else:
+            self.file_open_bool = webbrowser.open(self.inf_cfg_path)
+        if self.file_open_bool:
+            self.inf_cfg = auxiliaryfunctions.read_config(self.inf_cfg_path)
+        else:
+            raise FileNotFoundError("File not found!")
+
+</clonepair12>

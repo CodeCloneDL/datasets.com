@@ -1,0 +1,493 @@
+<clones>
+<systeminfo processor="nicad6" system="certbot-1.25.0" granularity="functions-blind" threshold="0%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="1258" npairs="24"/>
+<runinfo ncompares="4283" cputime="42611"/>
+<classinfo nclasses="8"/>
+
+<class classid="1" nclones="2" nlines="13" similarity="100">
+<source file="systems/certbot-1.25.0/certbot-apache/certbot_apache/_internal/display_ops.py" startline="18" endline="41" pcid="4">
+def select_vhost_multiple(vhosts: Optional[List[VirtualHost]]) -> List[VirtualHost]:
+    """Select multiple Vhosts to install the certificate for
+
+    :param vhosts: Available Apache VirtualHosts
+    :type vhosts: :class:`list` of type `~VirtualHost`
+
+    :returns: List of VirtualHosts
+    :rtype: :class:`list`of type `~VirtualHost`
+    """
+    if not vhosts:
+        return []
+    tags_list = [vhost.display_repr()+"\n" for vhost in vhosts]
+    # Remove the extra newline from the last entry
+    if tags_list:
+        tags_list[-1] = tags_list[-1][:-1]
+    code, names = display_util.checklist(
+        "Which VirtualHosts would you like to install the wildcard certificate for?",
+        tags=tags_list, force_interactive=True)
+    if code == display_util.OK:
+        return_vhosts = _reversemap_vhosts(names, vhosts)
+        return return_vhosts
+    return []
+
+
+</source>
+<source file="systems/certbot-1.25.0/certbot-nginx/certbot_nginx/_internal/display_ops.py" startline="14" endline="35" pcid="316">
+def select_vhost_multiple(vhosts: Optional[Iterable[VirtualHost]]) -> List[VirtualHost]:
+    """Select multiple Vhosts to install the certificate for
+    :param vhosts: Available Nginx VirtualHosts
+    :type vhosts: :class:`list` of type `~obj.Vhost`
+    :returns: List of VirtualHosts
+    :rtype: :class:`list`of type `~obj.Vhost`
+    """
+    if not vhosts:
+        return []
+    tags_list = [vhost.display_repr()+"\n" for vhost in vhosts]
+    # Remove the extra newline from the last entry
+    if tags_list:
+        tags_list[-1] = tags_list[-1][:-1]
+    code, names = display_util.checklist(
+        "Which server blocks would you like to modify?",
+        tags=tags_list, force_interactive=True)
+    if code == display_util.OK:
+        return_vhosts = _reversemap_vhosts(names, vhosts)
+        return return_vhosts
+    return []
+
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="12" similarity="100">
+<source file="systems/certbot-1.25.0/certbot-apache/tests/debian_test.py" startline="132" endline="146" pcid="54">
+    def test_deploy_cert_newssl_no_fullchain(self):
+        self.config = util.get_apache_configurator(
+            self.config_path, self.vhost_path, self.config_dir,
+            self.work_dir, version=(2, 4, 16))
+        self.config = self.mock_deploy_cert(self.config)
+        self.config.parser.modules["ssl_module"] = None
+        self.config.parser.modules["mod_ssl.c"] = None
+
+        # Get the default 443 vhost
+        self.config.assoc["random.demo"] = self.vh_truth[1]
+        self.assertRaises(errors.PluginError,
+                          lambda: self.config.deploy_cert(
+                              "random.demo", "example/cert.pem",
+                              "example/key.pem"))
+
+</source>
+<source file="systems/certbot-1.25.0/certbot-apache/tests/debian_test.py" startline="147" endline="161" pcid="55">
+    def test_deploy_cert_old_apache_no_chain(self):
+        self.config = util.get_apache_configurator(
+            self.config_path, self.vhost_path, self.config_dir,
+            self.work_dir, version=(2, 4, 7))
+        self.config = self.mock_deploy_cert(self.config)
+        self.config.parser.modules["ssl_module"] = None
+        self.config.parser.modules["mod_ssl.c"] = None
+
+        # Get the default 443 vhost
+        self.config.assoc["random.demo"] = self.vh_truth[1]
+        self.assertRaises(errors.PluginError,
+                          lambda: self.config.deploy_cert(
+                              "random.demo", "example/cert.pem",
+                              "example/key.pem"))
+
+</source>
+</class>
+
+<class classid="3" nclones="6" nlines="21" similarity="100">
+<source file="systems/certbot-1.25.0/certbot-apache/tests/dualnode_test.py" startline="190" endline="212" pcid="145">
+    def test_find_blocks_first_passing(self):
+        youshallnotpass = [augeasparser.AugeasBlockNode(name="notpassing",
+                                                        ancestor=self.block,
+                                                        filepath="/path/to/whatever",
+                                                        metadata=self.metadata)]
+        youshallpass = [augeasparser.AugeasBlockNode(name=assertions.PASS,
+                                                     ancestor=self.block,
+                                                     filepath=assertions.PASS,
+                                                     metadata=self.metadata)]
+        find_blocks_primary = mock.MagicMock(return_value=youshallpass)
+        find_blocks_secondary = mock.MagicMock(return_value=youshallnotpass)
+        self.block.primary.find_blocks = find_blocks_primary
+        self.block.secondary.find_blocks = find_blocks_secondary
+
+        blocks = self.block.find_blocks("something")
+        for block in blocks:
+            try:
+                assertions.assertEqual(block.primary, block.secondary)
+            except AssertionError: # pragma: no cover
+                self.fail("Assertion should have passed")
+            self.assertIs(assertions.isPassDirective(block.primary), True)
+            self.assertIs(assertions.isPassDirective(block.secondary), False)
+
+</source>
+<source file="systems/certbot-1.25.0/certbot-apache/tests/dualnode_test.py" startline="236" endline="258" pcid="147">
+    def test_find_dirs_first_passing(self):
+        notpassing = [augeasparser.AugeasDirectiveNode(name="notpassing",
+                                                       ancestor=self.block,
+                                                       filepath="/path/to/whatever",
+                                                       metadata=self.metadata)]
+        passing = [augeasparser.AugeasDirectiveNode(name=assertions.PASS,
+                                                    ancestor=self.block,
+                                                    filepath=assertions.PASS,
+                                                    metadata=self.metadata)]
+        find_dirs_primary = mock.MagicMock(return_value=passing)
+        find_dirs_secondary = mock.MagicMock(return_value=notpassing)
+        self.block.primary.find_directives = find_dirs_primary
+        self.block.secondary.find_directives = find_dirs_secondary
+
+        directives = self.block.find_directives("something")
+        for directive in directives:
+            try:
+                assertions.assertEqual(directive.primary, directive.secondary)
+            except AssertionError: # pragma: no cover
+                self.fail("Assertion should have passed")
+            self.assertIs(assertions.isPassDirective(directive.primary), True)
+            self.assertIs(assertions.isPassDirective(directive.secondary), False)
+
+</source>
+<source file="systems/certbot-1.25.0/certbot-apache/tests/dualnode_test.py" startline="305" endline="327" pcid="150">
+    def test_find_coms_second_passing(self):
+        notpassing = [augeasparser.AugeasCommentNode(comment="notpassing",
+                                                     ancestor=self.block,
+                                                     filepath="/path/to/whatever",
+                                                     metadata=self.metadata)]
+        passing = [augeasparser.AugeasCommentNode(comment=assertions.PASS,
+                                                  ancestor=self.block,
+                                                  filepath=assertions.PASS,
+                                                  metadata=self.metadata)]
+        find_coms_primary = mock.MagicMock(return_value=notpassing)
+        find_coms_secondary = mock.MagicMock(return_value=passing)
+        self.block.primary.find_comments = find_coms_primary
+        self.block.secondary.find_comments = find_coms_secondary
+
+        comments = self.block.find_comments("something")
+        for comment in comments:
+            try:
+                assertions.assertEqual(comment.primary, comment.secondary)
+            except AssertionError: # pragma: no cover
+                self.fail("Assertion should have passed")
+            self.assertIs(assertions.isPassComment(comment.primary), False)
+            self.assertIs(assertions.isPassComment(comment.secondary), True)
+
+</source>
+<source file="systems/certbot-1.25.0/certbot-apache/tests/dualnode_test.py" startline="213" endline="235" pcid="146">
+    def test_find_blocks_second_passing(self):
+        youshallnotpass = [augeasparser.AugeasBlockNode(name="notpassing",
+                                                        ancestor=self.block,
+                                                        filepath="/path/to/whatever",
+                                                        metadata=self.metadata)]
+        youshallpass = [augeasparser.AugeasBlockNode(name=assertions.PASS,
+                                                     ancestor=self.block,
+                                                     filepath=assertions.PASS,
+                                                     metadata=self.metadata)]
+        find_blocks_primary = mock.MagicMock(return_value=youshallnotpass)
+        find_blocks_secondary = mock.MagicMock(return_value=youshallpass)
+        self.block.primary.find_blocks = find_blocks_primary
+        self.block.secondary.find_blocks = find_blocks_secondary
+
+        blocks = self.block.find_blocks("something")
+        for block in blocks:
+            try:
+                assertions.assertEqual(block.primary, block.secondary)
+            except AssertionError: # pragma: no cover
+                self.fail("Assertion should have passed")
+            self.assertIs(assertions.isPassDirective(block.primary), False)
+            self.assertIs(assertions.isPassDirective(block.secondary), True)
+
+</source>
+<source file="systems/certbot-1.25.0/certbot-apache/tests/dualnode_test.py" startline="259" endline="281" pcid="148">
+    def test_find_dirs_second_passing(self):
+        notpassing = [augeasparser.AugeasDirectiveNode(name="notpassing",
+                                                       ancestor=self.block,
+                                                       filepath="/path/to/whatever",
+                                                       metadata=self.metadata)]
+        passing = [augeasparser.AugeasDirectiveNode(name=assertions.PASS,
+                                                    ancestor=self.block,
+                                                    filepath=assertions.PASS,
+                                                    metadata=self.metadata)]
+        find_dirs_primary = mock.MagicMock(return_value=notpassing)
+        find_dirs_secondary = mock.MagicMock(return_value=passing)
+        self.block.primary.find_directives = find_dirs_primary
+        self.block.secondary.find_directives = find_dirs_secondary
+
+        directives = self.block.find_directives("something")
+        for directive in directives:
+            try:
+                assertions.assertEqual(directive.primary, directive.secondary)
+            except AssertionError: # pragma: no cover
+                self.fail("Assertion should have passed")
+            self.assertIs(assertions.isPassDirective(directive.primary), False)
+            self.assertIs(assertions.isPassDirective(directive.secondary), True)
+
+</source>
+<source file="systems/certbot-1.25.0/certbot-apache/tests/dualnode_test.py" startline="282" endline="304" pcid="149">
+    def test_find_coms_first_passing(self):
+        notpassing = [augeasparser.AugeasCommentNode(comment="notpassing",
+                                                     ancestor=self.block,
+                                                     filepath="/path/to/whatever",
+                                                     metadata=self.metadata)]
+        passing = [augeasparser.AugeasCommentNode(comment=assertions.PASS,
+                                                  ancestor=self.block,
+                                                  filepath=assertions.PASS,
+                                                  metadata=self.metadata)]
+        find_coms_primary = mock.MagicMock(return_value=passing)
+        find_coms_secondary = mock.MagicMock(return_value=notpassing)
+        self.block.primary.find_comments = find_coms_primary
+        self.block.secondary.find_comments = find_coms_secondary
+
+        comments = self.block.find_comments("something")
+        for comment in comments:
+            try:
+                assertions.assertEqual(comment.primary, comment.secondary)
+            except AssertionError: # pragma: no cover
+                self.fail("Assertion should have passed")
+            self.assertIs(assertions.isPassComment(comment.primary), True)
+            self.assertIs(assertions.isPassComment(comment.secondary), False)
+
+</source>
+</class>
+
+<class classid="4" nclones="3" nlines="18" similarity="100">
+<source file="systems/certbot-1.25.0/certbot-apache/tests/dualnode_test.py" startline="328" endline="347" pcid="151">
+    def test_find_blocks_no_pass_equal(self):
+        notpassing1 = [augeasparser.AugeasBlockNode(name="notpassing",
+                                                    ancestor=self.block,
+                                                    filepath="/path/to/whatever",
+                                                    metadata=self.metadata)]
+        notpassing2 = [augeasparser.AugeasBlockNode(name="notpassing",
+                                                    ancestor=self.block,
+                                                    filepath="/path/to/whatever",
+                                                    metadata=self.metadata)]
+        find_blocks_primary = mock.MagicMock(return_value=notpassing1)
+        find_blocks_secondary = mock.MagicMock(return_value=notpassing2)
+        self.block.primary.find_blocks = find_blocks_primary
+        self.block.secondary.find_blocks = find_blocks_secondary
+
+        blocks = self.block.find_blocks("anything")
+        for block in blocks:
+            with self.subTest(block=block):
+                self.assertEqual(block.primary, block.secondary)
+                self.assertIsNot(block.primary, block.secondary)
+
+</source>
+<source file="systems/certbot-1.25.0/certbot-apache/tests/dualnode_test.py" startline="368" endline="387" pcid="153">
+    def test_find_comments_no_pass_equal(self):
+        notpassing1 = [augeasparser.AugeasCommentNode(comment="notpassing",
+                                                      ancestor=self.block,
+                                                      filepath="/path/to/whatever",
+                                                      metadata=self.metadata)]
+        notpassing2 = [augeasparser.AugeasCommentNode(comment="notpassing",
+                                                      ancestor=self.block,
+                                                      filepath="/path/to/whatever",
+                                                      metadata=self.metadata)]
+        find_coms_primary = mock.MagicMock(return_value=notpassing1)
+        find_coms_secondary = mock.MagicMock(return_value=notpassing2)
+        self.block.primary.find_comments = find_coms_primary
+        self.block.secondary.find_comments = find_coms_secondary
+
+        comments = self.block.find_comments("anything")
+        for comment in comments:
+            with self.subTest(comment=comment):
+                self.assertEqual(comment.primary, comment.secondary)
+                self.assertIsNot(comment.primary, comment.secondary)
+
+</source>
+<source file="systems/certbot-1.25.0/certbot-apache/tests/dualnode_test.py" startline="348" endline="367" pcid="152">
+    def test_find_dirs_no_pass_equal(self):
+        notpassing1 = [augeasparser.AugeasDirectiveNode(name="notpassing",
+                                                        ancestor=self.block,
+                                                        filepath="/path/to/whatever",
+                                                        metadata=self.metadata)]
+        notpassing2 = [augeasparser.AugeasDirectiveNode(name="notpassing",
+                                                        ancestor=self.block,
+                                                        filepath="/path/to/whatever",
+                                                        metadata=self.metadata)]
+        find_dirs_primary = mock.MagicMock(return_value=notpassing1)
+        find_dirs_secondary = mock.MagicMock(return_value=notpassing2)
+        self.block.primary.find_directives = find_dirs_primary
+        self.block.secondary.find_directives = find_dirs_secondary
+
+        directives = self.block.find_directives("anything")
+        for directive in directives:
+            with self.subTest(directive=directive):
+                self.assertEqual(directive.primary, directive.secondary)
+                self.assertIsNot(directive.primary, directive.secondary)
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="12" similarity="100">
+<source file="systems/certbot-1.25.0/certbot-dns-gehirn/tests/dns_gehirn_test.py" startline="23" endline="43" pcid="159">
+    def setUp(self):
+        super().setUp()
+
+        from certbot_dns_gehirn._internal.dns_gehirn import Authenticator
+
+        path = os.path.join(self.tempdir, 'file.ini')
+        dns_test_common.write(
+            {"gehirn_api_token": API_TOKEN, "gehirn_api_secret": API_SECRET},
+            path
+        )
+
+        self.config = mock.MagicMock(gehirn_credentials=path,
+                                     gehirn_propagation_seconds=0)  # don't wait during tests
+
+        self.auth = Authenticator(self.config, "gehirn")
+
+        self.mock_client = mock.MagicMock()
+        # _get_gehirn_client | pylint: disable=protected-access
+        self.auth._get_gehirn_client = mock.MagicMock(return_value=self.mock_client)
+
+
+</source>
+<source file="systems/certbot-1.25.0/certbot-dns-sakuracloud/tests/dns_sakuracloud_test.py" startline="23" endline="43" pcid="516">
+    def setUp(self):
+        super().setUp()
+
+        from certbot_dns_sakuracloud._internal.dns_sakuracloud import Authenticator
+
+        path = os.path.join(self.tempdir, 'file.ini')
+        dns_test_common.write(
+            {"sakuracloud_api_token": API_TOKEN, "sakuracloud_api_secret": API_SECRET},
+            path
+        )
+
+        self.config = mock.MagicMock(sakuracloud_credentials=path,
+                                     sakuracloud_propagation_seconds=0)  # don't wait during tests
+
+        self.auth = Authenticator(self.config, "sakuracloud")
+
+        self.mock_client = mock.MagicMock()
+        # _get_sakuracloud_client | pylint: disable=protected-access
+        self.auth._get_sakuracloud_client = mock.MagicMock(return_value=self.mock_client)
+
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="10" similarity="100">
+<source file="systems/certbot-1.25.0/certbot-dns-luadns/tests/dns_luadns_test.py" startline="23" endline="40" pcid="180">
+    def setUp(self):
+        super().setUp()
+
+        from certbot_dns_luadns._internal.dns_luadns import Authenticator
+
+        path = os.path.join(self.tempdir, 'file.ini')
+        dns_test_common.write({"luadns_email": EMAIL, "luadns_token": TOKEN}, path)
+
+        self.config = mock.MagicMock(luadns_credentials=path,
+                                     luadns_propagation_seconds=0)  # don't wait during tests
+
+        self.auth = Authenticator(self.config, "luadns")
+
+        self.mock_client = mock.MagicMock()
+        # _get_luadns_client | pylint: disable=protected-access
+        self.auth._get_luadns_client = mock.MagicMock(return_value=self.mock_client)
+
+
+</source>
+<source file="systems/certbot-1.25.0/certbot-dns-cloudxns/tests/dns_cloudxns_test.py" startline="28" endline="45" pcid="356">
+    def setUp(self):
+        super().setUp()
+
+        from certbot_dns_cloudxns._internal.dns_cloudxns import Authenticator
+
+        path = os.path.join(self.tempdir, 'file.ini')
+        dns_test_common.write({"cloudxns_api_key": API_KEY, "cloudxns_secret_key": SECRET}, path)
+
+        self.config = mock.MagicMock(cloudxns_credentials=path,
+                                     cloudxns_propagation_seconds=0)  # don't wait during tests
+
+        self.auth = Authenticator(self.config, "cloudxns")
+
+        self.mock_client = mock.MagicMock()
+        # _get_cloudxns_client | pylint: disable=protected-access
+        self.auth._get_cloudxns_client = mock.MagicMock(return_value=self.mock_client)
+
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="10" similarity="100">
+<source file="systems/certbot-1.25.0/certbot-dns-nsone/tests/dns_nsone_test.py" startline="23" endline="40" pcid="397">
+    def setUp(self):
+        super().setUp()
+
+        from certbot_dns_nsone._internal.dns_nsone import Authenticator
+
+        path = os.path.join(self.tempdir, 'file.ini')
+        dns_test_common.write({"nsone_api_key": API_KEY}, path)
+
+        self.config = mock.MagicMock(nsone_credentials=path,
+                                     nsone_propagation_seconds=0)  # don't wait during tests
+
+        self.auth = Authenticator(self.config, "nsone")
+
+        self.mock_client = mock.MagicMock()
+        # _get_nsone_client | pylint: disable=protected-access
+        self.auth._get_nsone_client = mock.MagicMock(return_value=self.mock_client)
+
+
+</source>
+<source file="systems/certbot-1.25.0/certbot-dns-dnsimple/tests/dns_dnsimple_test.py" startline="22" endline="39" pcid="473">
+    def setUp(self):
+        super().setUp()
+
+        from certbot_dns_dnsimple._internal.dns_dnsimple import Authenticator
+
+        path = os.path.join(self.tempdir, 'file.ini')
+        dns_test_common.write({"dnsimple_token": TOKEN}, path)
+
+        self.config = mock.MagicMock(dnsimple_credentials=path,
+                                     dnsimple_propagation_seconds=0)  # don't wait during tests
+
+        self.auth = Authenticator(self.config, "dnsimple")
+
+        self.mock_client = mock.MagicMock()
+        # _get_dnsimple_client | pylint: disable=protected-access
+        self.auth._get_dnsimple_client = mock.MagicMock(return_value=self.mock_client)
+
+
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="14" similarity="100">
+<source file="systems/certbot-1.25.0/certbot/tests/lock_test.py" startline="112" endline="126" pcid="530">
+    def test_unexpected_lockf_or_locking_err(self):
+        if POSIX_MODE:
+            mocked_function = 'certbot._internal.lock.fcntl.lockf'
+        else:
+            mocked_function = 'certbot._internal.lock.msvcrt.locking'
+        msg = 'hi there'
+        with mock.patch(mocked_function) as mock_lock:
+            mock_lock.side_effect = IOError(msg)
+            try:
+                self._call(self.lock_path)
+            except IOError as err:
+                self.assertIn(msg, str(err))
+            else:  # pragma: no cover
+                self.fail('IOError not raised')
+
+</source>
+<source file="systems/certbot-1.25.0/certbot/tests/lock_test.py" startline="127" endline="143" pcid="531">
+    def test_unexpected_os_err(self):
+        if POSIX_MODE:
+            mock_function = 'certbot._internal.lock.filesystem.os.stat'
+        else:
+            mock_function = 'certbot._internal.lock.msvcrt.locking'
+        # The only expected errno are ENOENT and EACCES in lock module.
+        msg = 'hi there'
+        with mock.patch(mock_function) as mock_os:
+            mock_os.side_effect = OSError(msg)
+            try:
+                self._call(self.lock_path)
+            except OSError as err:
+                self.assertIn(msg, str(err))
+            else:  # pragma: no cover
+                self.fail('OSError not raised')
+
+
+</source>
+</class>
+
+</clones>

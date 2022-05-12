@@ -1,0 +1,382 @@
+<clonepair1>
+<source file="systems/TTS-0.6.1/tests/tts_tests/test_tacotron_model.py" startline="86" endline="139" pcid="28"></source>
+    def test_train_step():
+        config = config_global.copy()
+        config.use_speaker_embedding = True
+        config.num_speakers = 5
+
+        input_dummy = torch.randint(0, 24, (8, 128)).long().to(device)
+        input_lengths = torch.randint(100, 129, (8,)).long().to(device)
+        input_lengths[-1] = 128
+        mel_spec = torch.rand(8, 30, config.audio["num_mels"]).to(device)
+        linear_spec = torch.rand(8, 30, config.audio["fft_size"] // 2 + 1).to(device)
+        mel_lengths = torch.randint(20, 30, (8,)).long().to(device)
+        mel_lengths[-1] = mel_spec.size(1)
+        stop_targets = torch.zeros(8, 30, 1).float().to(device)
+        speaker_ids = torch.randint(0, 5, (8,)).long().to(device)
+
+        for idx in mel_lengths:
+            stop_targets[:, int(idx.item()) :, 0] = 1.0
+
+        stop_targets = stop_targets.view(input_dummy.shape[0], stop_targets.size(1) // config.r, -1)
+        stop_targets = (stop_targets.sum(2) > 0.0).unsqueeze(2).float().squeeze()
+
+        criterion = L1LossMasked(seq_len_norm=False).to(device)
+        criterion_st = nn.BCEWithLogitsLoss().to(device)
+        config.d_vector_dim = 55
+        model = Tacotron(config).to(device)  # FIXME: missing num_speakers parameter to Tacotron ctor
+        model.train()
+        print(" > Num parameters for Tacotron model:%s" % (count_parameters(model)))
+        model_ref = copy.deepcopy(model)
+        count = 0
+        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+            assert (param - param_ref).sum() == 0, param
+            count += 1
+        optimizer = optim.Adam(model.parameters(), lr=config.lr)
+        for _ in range(5):
+            outputs = model.forward(
+                input_dummy, input_lengths, mel_spec, mel_lengths, aux_input={"speaker_ids": speaker_ids}
+            )
+            optimizer.zero_grad()
+            loss = criterion(outputs["decoder_outputs"], mel_spec, mel_lengths)
+            stop_loss = criterion_st(outputs["stop_tokens"], stop_targets)
+            loss = loss + criterion(outputs["model_outputs"], linear_spec, mel_lengths) + stop_loss
+            loss.backward()
+            optimizer.step()
+        # check parameter changes
+        count = 0
+        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+            # ignore pre-higway layer since it works conditional
+            # if count not in [145, 59]:
+            assert (param != param_ref).any(), "param {} with shape {} not updated!! \n{}\n{}".format(
+                count, param.shape, param, param_ref
+            )
+            count += 1
+
+
+</clonepair1>
+
+<clonepair1>
+<source file="systems/TTS-0.6.1/tests/tts_tests/test_tacotron2_model.py" startline="267" endline="324" pcid="76"></source>
+    def test_train_step():
+
+        config = config_global.copy()
+        config.use_d_vector_file = True
+
+        config.use_gst = True
+        config.gst = GSTConfig()
+
+        input_dummy = torch.randint(0, 24, (8, 128)).long().to(device)
+        input_lengths = torch.randint(100, 128, (8,)).long().to(device)
+        input_lengths = torch.sort(input_lengths, descending=True)[0]
+        mel_spec = torch.rand(8, 30, config.audio["num_mels"]).to(device)
+        mel_postnet_spec = torch.rand(8, 30, config.audio["num_mels"]).to(device)
+        mel_lengths = torch.randint(20, 30, (8,)).long().to(device)
+        mel_lengths[0] = 30
+        stop_targets = torch.zeros(8, 30, 1).float().to(device)
+        speaker_embeddings = torch.rand(8, 55).to(device)
+
+        for idx in mel_lengths:
+            stop_targets[:, int(idx.item()) :, 0] = 1.0
+
+        stop_targets = stop_targets.view(input_dummy.shape[0], stop_targets.size(1) // config.r, -1)
+        stop_targets = (stop_targets.sum(2) > 0.0).unsqueeze(2).float().squeeze()
+        criterion = MSELossMasked(seq_len_norm=False).to(device)
+        criterion_st = nn.BCEWithLogitsLoss().to(device)
+        config.d_vector_dim = 55
+        model = Tacotron2(config).to(device)
+        model.train()
+        model_ref = copy.deepcopy(model)
+        count = 0
+        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+            assert (param - param_ref).sum() == 0, param
+            count += 1
+        optimizer = optim.Adam(model.parameters(), lr=config.lr)
+        for i in range(5):
+            outputs = model.forward(
+                input_dummy, input_lengths, mel_spec, mel_lengths, aux_input={"d_vectors": speaker_embeddings}
+            )
+            assert torch.sigmoid(outputs["stop_tokens"]).data.max() <= 1.0
+            assert torch.sigmoid(outputs["stop_tokens"]).data.min() >= 0.0
+            optimizer.zero_grad()
+            loss = criterion(outputs["decoder_outputs"], mel_spec, mel_lengths)
+            stop_loss = criterion_st(outputs["stop_tokens"], stop_targets)
+            loss = loss + criterion(outputs["model_outputs"], mel_postnet_spec, mel_lengths) + stop_loss
+            loss.backward()
+            optimizer.step()
+        # check parameter changes
+        count = 0
+        for name_param, param_ref in zip(model.named_parameters(), model_ref.parameters()):
+            # ignore pre-higway layer since it works conditional
+            # if count not in [145, 59]:
+            name, param = name_param
+            if name == "gst_layer.encoder.recurrence.weight_hh_l0":
+                continue
+            assert (param != param_ref).any(), "param {} with shape {} not updated!! \n{}\n{}".format(
+                count, param.shape, param, param_ref
+            )
+            count += 1
+</clonepair1>
+<clonepair2>
+<source file="systems/TTS-0.6.1/TTS/tts/models/glow_tts.py" startline="194" endline="262" pcid="278"></source>
+    def forward(
+        self, x, x_lengths, y, y_lengths=None, aux_input={"d_vectors": None, "speaker_ids": None}
+    ):  # pylint: disable=dangerous-default-value
+        """
+        Args:
+            x (torch.Tensor):
+                Input text sequence ids. :math:`[B, T_en]`
+
+            x_lengths (torch.Tensor):
+                Lengths of input text sequences. :math:`[B]`
+
+            y (torch.Tensor):
+                Target mel-spectrogram frames. :math:`[B, T_de, C_mel]`
+
+            y_lengths (torch.Tensor):
+                Lengths of target mel-spectrogram frames. :math:`[B]`
+
+            aux_input (Dict):
+                Auxiliary inputs. `d_vectors` is speaker embedding vectors for a multi-speaker model.
+                :math:`[B, D_vec]`. `speaker_ids` is speaker ids for a multi-speaker model usind speaker-embedding
+                layer. :math:`B`
+
+        Returns:
+            Dict:
+                - z: :math: `[B, T_de, C]`
+                - logdet: :math:`B`
+                - y_mean: :math:`[B, T_de, C]`
+                - y_log_scale: :math:`[B, T_de, C]`
+                - alignments: :math:`[B, T_en, T_de]`
+                - durations_log: :math:`[B, T_en, 1]`
+                - total_durations_log: :math:`[B, T_en, 1]`
+        """
+        # [B, T, C] -> [B, C, T]
+        y = y.transpose(1, 2)
+        y_max_length = y.size(2)
+        # norm speaker embeddings
+        g = self._speaker_embedding(aux_input)
+        # embedding pass
+        o_mean, o_log_scale, o_dur_log, x_mask = self.encoder(x, x_lengths, g=g)
+        # drop redisual frames wrt num_squeeze and set y_lengths.
+        y, y_lengths, y_max_length, attn = self.preprocess(y, y_lengths, y_max_length, None)
+        # create masks
+        y_mask = torch.unsqueeze(sequence_mask(y_lengths, y_max_length), 1).to(x_mask.dtype)
+        # [B, 1, T_en, T_de]
+        attn_mask = torch.unsqueeze(x_mask, -1) * torch.unsqueeze(y_mask, 2)
+        # decoder pass
+        z, logdet = self.decoder(y, y_mask, g=g, reverse=False)
+        # find the alignment path
+        with torch.no_grad():
+            o_scale = torch.exp(-2 * o_log_scale)
+            logp1 = torch.sum(-0.5 * math.log(2 * math.pi) - o_log_scale, [1]).unsqueeze(-1)  # [b, t, 1]
+            logp2 = torch.matmul(o_scale.transpose(1, 2), -0.5 * (z**2))  # [b, t, d] x [b, d, t'] = [b, t, t']
+            logp3 = torch.matmul((o_mean * o_scale).transpose(1, 2), z)  # [b, t, d] x [b, d, t'] = [b, t, t']
+            logp4 = torch.sum(-0.5 * (o_mean**2) * o_scale, [1]).unsqueeze(-1)  # [b, t, 1]
+            logp = logp1 + logp2 + logp3 + logp4  # [b, t, t']
+            attn = maximum_path(logp, attn_mask.squeeze(1)).unsqueeze(1).detach()
+        y_mean, y_log_scale, o_attn_dur = self.compute_outputs(attn, o_mean, o_log_scale, x_mask)
+        attn = attn.squeeze(1).permute(0, 2, 1)
+        outputs = {
+            "z": z.transpose(1, 2),
+            "logdet": logdet,
+            "y_mean": y_mean.transpose(1, 2),
+            "y_log_scale": y_log_scale.transpose(1, 2),
+            "alignments": attn,
+            "durations_log": o_dur_log.transpose(1, 2),
+            "total_durations_log": o_attn_dur.transpose(1, 2),
+        }
+        return outputs
+
+</clonepair2>
+
+<clonepair2>
+<source file="systems/TTS-0.6.1/TTS/tts/models/glow_tts.py" startline="264" endline="318" pcid="279"></source>
+    def inference_with_MAS(
+        self, x, x_lengths, y=None, y_lengths=None, aux_input={"d_vectors": None, "speaker_ids": None}
+    ):  # pylint: disable=dangerous-default-value
+        """
+        It's similar to the teacher forcing in Tacotron.
+        It was proposed in: https://arxiv.org/abs/2104.05557
+
+        Shapes:
+            - x: :math:`[B, T]`
+            - x_lenghts: :math:`B`
+            - y: :math:`[B, T, C]`
+            - y_lengths: :math:`B`
+            - g: :math:`[B, C] or B`
+        """
+        y = y.transpose(1, 2)
+        y_max_length = y.size(2)
+        # norm speaker embeddings
+        g = self._speaker_embedding(aux_input)
+        # embedding pass
+        o_mean, o_log_scale, o_dur_log, x_mask = self.encoder(x, x_lengths, g=g)
+        # drop redisual frames wrt num_squeeze and set y_lengths.
+        y, y_lengths, y_max_length, attn = self.preprocess(y, y_lengths, y_max_length, None)
+        # create masks
+        y_mask = torch.unsqueeze(sequence_mask(y_lengths, y_max_length), 1).to(x_mask.dtype)
+        attn_mask = torch.unsqueeze(x_mask, -1) * torch.unsqueeze(y_mask, 2)
+        # decoder pass
+        z, logdet = self.decoder(y, y_mask, g=g, reverse=False)
+        # find the alignment path between z and encoder output
+        o_scale = torch.exp(-2 * o_log_scale)
+        logp1 = torch.sum(-0.5 * math.log(2 * math.pi) - o_log_scale, [1]).unsqueeze(-1)  # [b, t, 1]
+        logp2 = torch.matmul(o_scale.transpose(1, 2), -0.5 * (z**2))  # [b, t, d] x [b, d, t'] = [b, t, t']
+        logp3 = torch.matmul((o_mean * o_scale).transpose(1, 2), z)  # [b, t, d] x [b, d, t'] = [b, t, t']
+        logp4 = torch.sum(-0.5 * (o_mean**2) * o_scale, [1]).unsqueeze(-1)  # [b, t, 1]
+        logp = logp1 + logp2 + logp3 + logp4  # [b, t, t']
+        attn = maximum_path(logp, attn_mask.squeeze(1)).unsqueeze(1).detach()
+
+        y_mean, y_log_scale, o_attn_dur = self.compute_outputs(attn, o_mean, o_log_scale, x_mask)
+        attn = attn.squeeze(1).permute(0, 2, 1)
+
+        # get predited aligned distribution
+        z = y_mean * y_mask
+
+        # reverse the decoder and predict using the aligned distribution
+        y, logdet = self.decoder(z, y_mask, g=g, reverse=True)
+        outputs = {
+            "model_outputs": z.transpose(1, 2),
+            "logdet": logdet,
+            "y_mean": y_mean.transpose(1, 2),
+            "y_log_scale": y_log_scale.transpose(1, 2),
+            "alignments": attn,
+            "durations_log": o_dur_log.transpose(1, 2),
+            "total_durations_log": o_attn_dur.transpose(1, 2),
+        }
+        return outputs
+
+</clonepair2>
+<clonepair3>
+<source file="systems/TTS-0.6.1/TTS/tts/models/base_tts.py" startline="353" endline="389" pcid="302"></source>
+    def test_run(self, assets: Dict) -> Tuple[Dict, Dict]:
+        """Generic test run for `tts` models used by `Trainer`.
+
+        You can override this for a different behaviour.
+
+        Args:
+            assets (dict): A dict of training assets. For `tts` models, it must include `{'audio_processor': ap}`.
+
+        Returns:
+            Tuple[Dict, Dict]: Test figures and audios to be projected to Tensorboard.
+        """
+        print(" | > Synthesizing test sentences.")
+        test_audios = {}
+        test_figures = {}
+        test_sentences = self.config.test_sentences
+        aux_inputs = self._get_test_aux_input()
+        for idx, sen in enumerate(test_sentences):
+            outputs_dict = synthesis(
+                self,
+                sen,
+                self.config,
+                "cuda" in str(next(self.parameters()).device),
+                speaker_id=aux_inputs["speaker_id"],
+                d_vector=aux_inputs["d_vector"],
+                style_wav=aux_inputs["style_wav"],
+                use_griffin_lim=True,
+                do_trim_silence=False,
+            )
+            test_audios["{}-audio".format(idx)] = outputs_dict["wav"]
+            test_figures["{}-prediction".format(idx)] = plot_spectrogram(
+                outputs_dict["outputs"]["model_outputs"], self.ap, output_fig=False
+            )
+            test_figures["{}-alignment".format(idx)] = plot_alignment(
+                outputs_dict["outputs"]["alignments"], output_fig=False
+            )
+        return test_figures, test_audios
+
+</clonepair3>
+
+<clonepair3>
+<source file="systems/TTS-0.6.1/TTS/tts/models/glow_tts.py" startline="475" endline="510" pcid="287"></source>
+    def test_run(self, assets: Dict) -> Tuple[Dict, Dict]:
+        """Generic test run for `tts` models used by `Trainer`.
+
+        You can override this for a different behaviour.
+
+        Returns:
+            Tuple[Dict, Dict]: Test figures and audios to be projected to Tensorboard.
+        """
+        print(" | > Synthesizing test sentences.")
+        test_audios = {}
+        test_figures = {}
+        test_sentences = self.config.test_sentences
+        aux_inputs = self._get_test_aux_input()
+        if len(test_sentences) == 0:
+            print(" | [!] No test sentences provided.")
+        else:
+            for idx, sen in enumerate(test_sentences):
+                outputs = synthesis(
+                    self,
+                    sen,
+                    self.config,
+                    "cuda" in str(next(self.parameters()).device),
+                    speaker_id=aux_inputs["speaker_id"],
+                    d_vector=aux_inputs["d_vector"],
+                    style_wav=aux_inputs["style_wav"],
+                    use_griffin_lim=True,
+                    do_trim_silence=False,
+                )
+
+                test_audios["{}-audio".format(idx)] = outputs["wav"]
+                test_figures["{}-prediction".format(idx)] = plot_spectrogram(
+                    outputs["outputs"]["model_outputs"], self.ap, output_fig=False
+                )
+                test_figures["{}-alignment".format(idx)] = plot_alignment(outputs["alignments"], output_fig=False)
+        return test_figures, test_audios
+
+</clonepair3>
+<clonepair4>
+<source file="systems/TTS-0.6.1/tests/aux_tests/test_find_unique_phonemes.py" startline="33" endline="55" pcid="21"></source>
+    def test_espeak_phonemes():
+        # prepare the config
+        config = VitsConfig(
+            batch_size=2,
+            eval_batch_size=2,
+            num_loader_workers=0,
+            num_eval_loader_workers=0,
+            text_cleaner="english_cleaners",
+            use_phonemes=True,
+            phoneme_language="en-us",
+            phoneme_cache_path="tests/data/ljspeech/phoneme_cache/",
+            run_eval=True,
+            test_delay_epochs=-1,
+            epochs=1,
+            print_step=1,
+            print_eval=True,
+            datasets=[dataset_config_en, dataset_config_pt],
+        )
+        config.save_json(config_path)
+
+        # run test
+        run_cli(f'CUDA_VISIBLE_DEVICES="" python TTS/bin/find_unique_phonemes.py --config_path "{config_path}"')
+
+</clonepair4>
+
+<clonepair4>
+<source file="systems/TTS-0.6.1/tests/aux_tests/test_find_unique_phonemes.py" startline="57" endline="78" pcid="22"></source>
+    def test_no_espeak_phonemes():
+        # prepare the config
+        config = VitsConfig(
+            batch_size=2,
+            eval_batch_size=2,
+            num_loader_workers=0,
+            num_eval_loader_workers=0,
+            text_cleaner="english_cleaners",
+            use_phonemes=True,
+            phoneme_language="en-us",
+            phoneme_cache_path="tests/data/ljspeech/phoneme_cache/",
+            run_eval=True,
+            test_delay_epochs=-1,
+            epochs=1,
+            print_step=1,
+            print_eval=True,
+            datasets=[dataset_config_en, dataset_config_pt],
+        )
+        config.save_json(config_path)
+
+        # run test
+        run_cli(f'CUDA_VISIBLE_DEVICES="" python TTS/bin/find_unique_phonemes.py --config_path "{config_path}"')
+</clonepair4>

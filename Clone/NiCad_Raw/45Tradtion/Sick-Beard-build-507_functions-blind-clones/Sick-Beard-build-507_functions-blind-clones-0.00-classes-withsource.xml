@@ -1,0 +1,1253 @@
+<clones>
+<systeminfo processor="nicad6" system="Sick-Beard-build-507" granularity="functions-blind" threshold="0%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="4823" npairs="24"/>
+<runinfo ncompares="45172" cputime="71882"/>
+<classinfo nclasses="18"/>
+
+<class classid="1" nclones="2" nlines="28" similarity="100">
+<source file="systems/Sick-Beard-build-507/lib/pythontwitter/__init__.py" startline="3085" endline="3135" pcid="1037">
+      count:
+        The number of status messages to retrieve. [Optional]
+      trim_user:
+        If True the returned payload will only contain the user IDs,
+        otherwise the payload will contain the full user data item.
+        [Optional]
+
+    Returns:
+      A list of twitter.Status instances, which are retweets of statusid
+    '''
+    if not self._oauth_consumer:
+      raise TwitterError("The twitter.Api instsance must be authenticated.")
+    url = '%s/statuses/retweets/%s.json' % (self.base_url, statusid)
+    parameters = {}
+    if trim_user:
+      parameters['trim_user'] = 'true'
+    if count:
+      try:
+        parameters['count'] = int(count)
+      except:
+        raise TwitterError("count must be an integer")
+    json = self._FetchUrl(url, parameters=parameters)
+    data = self._ParseAndCheckTwitter(json)
+    return [Status.NewFromJsonDict(s) for s in data]
+
+  def GetRetweetsOfMe(self,
+                      count=None,
+                      since_id=None,
+                      max_id=None,
+                      trim_user=False,
+                      include_entities=True,
+                      include_user_entities=True):
+    '''Returns up to 100 of the most recent tweets of the user that have been
+    retweeted by others.
+
+    Args:
+      count:
+        The number of retweets to retrieve, up to 100. If omitted, 20 is
+        assumed.
+      since_id:
+        Returns results with an ID greater than (newer than) this ID.
+      max_id:
+        Returns results with an ID less than or equal to this ID.
+      trim_user:
+        When True, the user object for each tweet will only be an ID.
+      include_entities:
+        When True, the tweet entities will be included.
+      include_user_entities:
+        When True, the user entities will be included.
+    '''
+    if not self._oauth_consumer:
+</source>
+<source file="systems/Sick-Beard-build-507/lib/pythontwitter/__init__.py" startline="3253" endline="3303" pcid="1040">
+        result += [x for x in data['ids']]
+        if 'next_cursor' in data:
+          if data['next_cursor'] == 0 or data['next_cursor'] == data['previous_cursor']:
+            break
+          else:
+            cursor = data['next_cursor']
+        else:
+          break
+      return result
+
+
+  def GetFollowerIDs(self, user_id=None, screen_name=None, cursor=-1, stringify_ids=False, count=None, total_count=None):
+      '''Returns a list of twitter user id's for every person
+      that is following the specified user.
+
+      Args:
+        user_id:
+          The id of the user to retrieve the id list for
+          [Optional]
+        screen_name:
+          The screen_name of the user to retrieve the id list for
+          [Optional]
+        cursor:
+          Specifies the Twitter API Cursor location to start at.
+          Note: there are pagination limits.
+          [Optional]
+        stringify_ids:
+          if True then twitter will return the ids as strings instead of integers.
+          [Optional]
+        count:
+          The number of user id's to retrieve per API request. Please be aware that
+          this might get you rate-limited if set to a small number. By default Twitter
+          will retrieve 5000 UIDs per call.
+          [Optional]
+        total_count:
+          The total amount of UIDs to retrieve. Good if the account has many followers
+          and you don't want to get rate limited. The data returned might contain more
+          UIDs if total_count is not a multiple of count (5000 by default).
+          [Optional]
+
+
+      Returns:
+        A list of integers, one for each user id.
+      '''
+      url = '%s/followers/ids.json' % self.base_url
+      if not self._oauth_consumer:
+          raise TwitterError("twitter.Api instance must be authenticated")
+      parameters = {}
+      if user_id is not None:
+        parameters['user_id'] = user_id
+      if screen_name is not None:
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="15" similarity="100">
+<source file="systems/Sick-Beard-build-507/lib/pythontwitter/__init__.py" startline="3614" endline="3645" pcid="1049">
+    '''Destroys the direct message specified in the required ID parameter.
+
+    The twitter.Api instance must be authenticated, and the
+    authenticating user must be the recipient of the specified direct
+    message.
+
+    Args:
+      id: The id of the direct message to be destroyed
+
+    Returns:
+      A twitter.DirectMessage instance representing the message destroyed
+    '''
+    url  = '%s/direct_messages/destroy.json' % self.base_url
+    data = {'id': id}
+    if not include_entities:
+      data['include_entities'] = 'false'
+    json = self._FetchUrl(url, post_data=data)
+    data = self._ParseAndCheckTwitter(json)
+    return DirectMessage.NewFromJsonDict(data)
+
+  def CreateFriendship(self, user_id=None, screen_name=None, follow=True):
+    '''Befriends the user specified by the user_id or screen_name.
+
+    The twitter.Api instance must be authenticated.
+
+    Args:
+      user_id:
+        A user_id to follow [Optional]
+      screen_name:
+        A screen_name to follow [Optional]
+      follow:
+        Set to False to disable notifications for the target user
+</source>
+<source file="systems/Sick-Beard-build-507/lib/pythontwitter/__init__.py" startline="3646" endline="3677" pcid="1050">
+    Returns:
+      A twitter.User instance representing the befriended user.
+    '''
+    url  = '%s/friendships/create.json' % (self.base_url)
+    data = {}
+    if user_id:
+      data['user_id'] = user_id
+    elif screen_name:
+      data['screen_name'] = screen_name
+    else:
+      raise TwitterError("Specify at least one of user_id or screen_name.")
+    if follow:
+      data['follow'] = 'true'
+    else:
+      data['follow'] = 'false'
+    json = self._FetchUrl(url, post_data=data)
+    data = self._ParseAndCheckTwitter(json)
+    return User.NewFromJsonDict(data)
+
+  def DestroyFriendship(self, user_id=None, screen_name=None):
+    '''Discontinues friendship with a user_id or screen_name.
+
+    The twitter.Api instance must be authenticated.
+
+    Args:
+      user_id:
+        A user_id to unfollow [Optional]
+      screen_name:
+        A screen_name to unfollow [Optional]
+    Returns:
+      A twitter.User instance representing the discontinued friend.
+    '''
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="31" similarity="100">
+<source file="systems/Sick-Beard-build-507/lib/pythontwitter/__init__.py" startline="3885" endline="3933" pcid="1055">
+
+    Args:
+      name:
+        New name for the list
+      mode:
+        'public' or 'private'.
+        Defaults to 'public'. [Optional]
+      description:
+        Description of the list. [Optional]
+
+    Returns:
+      A twitter.List instance representing the new list
+    '''
+    url = '%s/lists/create.json' % self.base_url
+
+    if not self._oauth_consumer:
+      raise TwitterError("The twitter.Api instance must be authenticated.")
+    parameters = {'name': name}
+    if mode is not None:
+      parameters['mode'] = mode
+    if description is not None:
+      parameters['description'] = description
+    json = self._FetchUrl(url, post_data=parameters)
+    data = self._ParseAndCheckTwitter(json)
+    return List.NewFromJsonDict(data)
+
+  def DestroyList(self,
+                  owner_screen_name=False,
+                  owner_id=False,
+                  list_id=None,
+                  slug=None):
+    '''
+    Destroys the list identified by list_id or owner_screen_name/owner_id and
+    slug.
+
+    The twitter.Api instance must be authenticated.
+
+    Args:
+      owner_screen_name:
+        The screen_name of the user who owns the list being requested by a slug.
+      owner_id:
+        The user ID of the user who owns the list being requested by a slug.
+      list_id:
+        The numerical id of the list.
+      slug:
+        You can identify a list by its slug instead of its numerical id. If you
+        decide to do so, note that you'll also have to specify the list owner
+        using the owner_id or owner_screen_name parameters.
+    Returns:
+</source>
+<source file="systems/Sick-Beard-build-507/lib/pythontwitter/__init__.py" startline="3934" endline="3982" pcid="1056">
+      A twitter.List instance representing the removed list.
+    '''
+    url  = '%s/lists/destroy.json' % self.base_url
+    data = {}
+    if list_id:
+      try:
+        data['list_id']= long(list_id)
+      except:
+        raise TwitterError("list_id must be an integer")
+    elif slug:
+      data['slug'] = slug
+      if owner_id:
+        try:
+          data['owner_id'] = long(owner_id)
+        except:
+          raise TwitterError("owner_id must be an integer")
+      elif owner_screen_name:
+        data['owner_screen_name'] = owner_screen_name
+      else:
+        raise TwitterError("Identify list by list_id or owner_screen_name/owner_id and slug")
+    else:
+      raise TwitterError("Identify list by list_id or owner_screen_name/owner_id and slug")
+
+    json = self._FetchUrl(url, post_data=data)
+    data = self._ParseAndCheckTwitter(json)
+    return List.NewFromJsonDict(data)
+
+  def CreateSubscription(self,
+                  owner_screen_name=False,
+                  owner_id=False,
+                  list_id=None,
+                  slug=None):
+    '''Creates a subscription to a list by the authenticated user
+
+    The twitter.Api instance must be authenticated.
+
+    Args:
+      owner_screen_name:
+        The screen_name of the user who owns the list being requested by a slug.
+      owner_id:
+        The user ID of the user who owns the list being requested by a slug.
+      list_id:
+        The numerical id of the list.
+      slug:
+        You can identify a list by its slug instead of its numerical id. If you
+        decide to do so, note that you'll also have to specify the list owner
+        using the owner_id or owner_screen_name parameters.
+    Returns:
+      A twitter.List instance representing the list subscribed to
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="12" similarity="100">
+<source file="systems/Sick-Beard-build-507/lib/hachoir_parser/audio/8svx.py" startline="80" endline="92" pcid="2029">
+    def createFields(self):
+        yield String(self, "type", 4, "Signature (FORM)", charset="ASCII")
+        yield filesizeHandler(UInt32(self, "size"))
+        size = self["size"].value
+        if size:
+            if self._parser:
+                for field in self._parser(self):
+                    yield field
+                if size % 2:
+                    yield NullBytes(self, "padding", 1)
+            else:
+                yield RawBytes(self, "data", size)
+
+</source>
+<source file="systems/Sick-Beard-build-507/lib/hachoir_parser/audio/aiff.py" startline="80" endline="92" pcid="2085">
+    def createFields(self):
+        yield String(self, "type", 4, "Signature (FORM)", charset="ASCII")
+        yield filesizeHandler(UInt32(self, "size"))
+        size = self["size"].value
+        if size:
+            if self._parser:
+                for field in self._parser(self):
+                    yield field
+                if size % 2:
+                    yield NullBytes(self, "padding", 1)
+            else:
+                yield RawBytes(self, "data", size)
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="10" similarity="100">
+<source file="systems/Sick-Beard-build-507/cherrypy/wsgiserver/__init__.py" startline="257" endline="268" pcid="3250">
+    def read(self, size=None):
+        if self.remaining == 0:
+            return ''
+        if size is None:
+            size = self.remaining
+        else:
+            size = min(size, self.remaining)
+        
+        data = self.rfile.read(size)
+        self.remaining -= len(data)
+        return data
+    
+</source>
+<source file="systems/Sick-Beard-build-507/cherrypy/wsgiserver/__init__.py" startline="269" endline="280" pcid="3251">
+    def readline(self, size=None):
+        if self.remaining == 0:
+            return ''
+        if size is None:
+            size = self.remaining
+        else:
+            size = min(size, self.remaining)
+        
+        data = self.rfile.readline(size)
+        self.remaining -= len(data)
+        return data
+    
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="11" similarity="100">
+<source file="systems/Sick-Beard-build-507/cherrypy/wsgiserver/__init__.py" startline="281" endline="293" pcid="3252">
+    def readlines(self, sizehint=0):
+        # Shamelessly stolen from StringIO
+        total = 0
+        lines = []
+        line = self.readline(sizehint)
+        while line:
+            lines.append(line)
+            total += len(line)
+            if 0 < sizehint <= total:
+                break
+            line = self.readline(sizehint)
+        return lines
+    
+</source>
+<source file="systems/Sick-Beard-build-507/cherrypy/wsgiserver/__init__.py" startline="411" endline="423" pcid="3260">
+    def readlines(self, sizehint=0):
+        # Shamelessly stolen from StringIO
+        total = 0
+        lines = []
+        line = self.readline(sizehint)
+        while line:
+            lines.append(line)
+            total += len(line)
+            if 0 < sizehint <= total:
+                break
+            line = self.readline(sizehint)
+        return lines
+    
+</source>
+</class>
+
+<class classid="7" nclones="3" nlines="10" similarity="100">
+<source file="systems/Sick-Beard-build-507/sickbeard/searchBacklog.py" startline="79" endline="89" pcid="3817">
+        def titler(x):
+            if not x:
+                return x
+            if not x.lower().startswith('a to ') and x.lower().startswith('a '):
+                    x = x[2:]
+            elif x.lower().startswith('an '):
+                    x = x[3:]
+            elif x.lower().startswith('the '):
+                    x = x[4:]
+            return x
+        # sort shows the same way we show them, makes it easier to follow along
+</source>
+<source file="systems/Sick-Beard-build-507/sickbeard/webapi.py" startline="136" endline="147" pcid="4505">
+        def titler(x):
+            if not x:
+                return x
+            if not x.lower().startswith('a to ') and x.lower().startswith('a '):
+                    x = x[2:]
+            elif x.lower().startswith('an '):
+                    x = x[3:]
+            elif x.lower().startswith('the '):
+                    x = x[4:]
+            return x
+
+        # enforce a 100 show limit to ensure performance
+</source>
+<source file="systems/Sick-Beard-build-507/sickbeard/webserve.py" startline="2264" endline="2273" pcid="4108">
+        def titler(x):
+            if not x:
+                return x
+            if not x.lower().startswith('a to ') and x.lower().startswith('a '):
+                    x = x[2:]
+            elif x.lower().startswith('an '):
+                    x = x[3:]
+            elif x.lower().startswith('the '):
+                    x = x[4:]
+            return x
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="11" similarity="100">
+<source file="systems/Sick-Beard-build-507/sickbeard/config.py" startline="48" endline="63" pcid="3917">
+def change_HTTPS_CERT(https_cert):
+
+    if https_cert == '':
+        sickbeard.HTTPS_CERT = ''
+        return True
+
+    if os.path.normpath(sickbeard.HTTPS_CERT) != os.path.normpath(https_cert):
+        if helpers.makeDir(os.path.dirname(os.path.abspath(https_cert))):
+            sickbeard.HTTPS_CERT = os.path.normpath(https_cert)
+            logger.log(u"Changed https cert path to " + https_cert)
+        else:
+            return False
+
+    return True
+
+
+</source>
+<source file="systems/Sick-Beard-build-507/sickbeard/config.py" startline="64" endline="79" pcid="3918">
+def change_HTTPS_KEY(https_key):
+
+    if https_key == '':
+        sickbeard.HTTPS_KEY = ''
+        return True
+
+    if os.path.normpath(sickbeard.HTTPS_KEY) != os.path.normpath(https_key):
+        if helpers.makeDir(os.path.dirname(os.path.abspath(https_key))):
+            sickbeard.HTTPS_KEY = os.path.normpath(https_key)
+            logger.log(u"Changed https key path to " + https_key)
+        else:
+            return False
+
+    return True
+
+
+</source>
+</class>
+
+<class classid="9" nclones="3" nlines="11" similarity="100">
+<source file="systems/Sick-Beard-build-507/sickbeard/config.py" startline="114" endline="129" pcid="3920">
+def change_NZB_DIR(nzb_dir):
+
+    if nzb_dir == '':
+        sickbeard.NZB_DIR = ''
+        return True
+
+    if os.path.normpath(sickbeard.NZB_DIR) != os.path.normpath(nzb_dir):
+        if helpers.makeDir(nzb_dir):
+            sickbeard.NZB_DIR = os.path.normpath(nzb_dir)
+            logger.log(u"Changed NZB folder to " + nzb_dir)
+        else:
+            return False
+
+    return True
+
+
+</source>
+<source file="systems/Sick-Beard-build-507/sickbeard/config.py" startline="130" endline="145" pcid="3921">
+def change_TORRENT_DIR(torrent_dir):
+
+    if torrent_dir == '':
+        sickbeard.TORRENT_DIR = ''
+        return True
+
+    if os.path.normpath(sickbeard.TORRENT_DIR) != os.path.normpath(torrent_dir):
+        if helpers.makeDir(torrent_dir):
+            sickbeard.TORRENT_DIR = os.path.normpath(torrent_dir)
+            logger.log(u"Changed torrent folder to " + torrent_dir)
+        else:
+            return False
+
+    return True
+
+
+</source>
+<source file="systems/Sick-Beard-build-507/sickbeard/config.py" startline="146" endline="161" pcid="3922">
+def change_TV_DOWNLOAD_DIR(tv_download_dir):
+
+    if tv_download_dir == '':
+        sickbeard.TV_DOWNLOAD_DIR = ''
+        return True
+
+    if os.path.normpath(sickbeard.TV_DOWNLOAD_DIR) != os.path.normpath(tv_download_dir):
+        if helpers.makeDir(tv_download_dir):
+            sickbeard.TV_DOWNLOAD_DIR = os.path.normpath(tv_download_dir)
+            logger.log(u"Changed TV download folder to " + tv_download_dir)
+        else:
+            return False
+
+    return True
+
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="12" similarity="100">
+<source file="systems/Sick-Beard-build-507/sickbeard/config.py" startline="316" endline="332" pcid="3932">
+def check_setting_int(config, cfg_name, item_name, def_val):
+    try:
+        my_val = int(config[cfg_name][item_name])
+    except:
+        my_val = def_val
+        try:
+            config[cfg_name][item_name] = my_val
+        except:
+            config[cfg_name] = {}
+            config[cfg_name][item_name] = my_val
+    logger.log(item_name + " -> " + str(my_val), logger.DEBUG)
+    return my_val
+
+
+################################################################################
+# Check_setting_float                                                          #
+################################################################################
+</source>
+<source file="systems/Sick-Beard-build-507/sickbeard/config.py" startline="333" endline="350" pcid="3933">
+def check_setting_float(config, cfg_name, item_name, def_val):
+    try:
+        my_val = float(config[cfg_name][item_name])
+    except:
+        my_val = def_val
+        try:
+            config[cfg_name][item_name] = my_val
+        except:
+            config[cfg_name] = {}
+            config[cfg_name][item_name] = my_val
+
+    logger.log(item_name + " -> " + str(my_val), logger.DEBUG)
+    return my_val
+
+
+################################################################################
+# Check_setting_str                                                            #
+################################################################################
+</source>
+</class>
+
+<class classid="11" nclones="2" nlines="10" similarity="100">
+<source file="systems/Sick-Beard-build-507/sickbeard/postProcessor.py" startline="219" endline="238" pcid="3999">
+    def _move(self, file_path, new_path, new_base_name, associated_files=False):
+        """
+        file_path: The full path of the media file to move
+        new_path: Destination path where we want to move the file to
+        new_base_name: The base filename (no extension) to use during the move. Use None to keep the same name.
+        associated_files: Boolean, whether we should move similarly-named files too
+        """
+
+        def _int_move(cur_file_path, new_file_path):
+
+            self._log(u"Moving file from " + cur_file_path + " to " + new_file_path, logger.DEBUG)
+            try:
+                helpers.moveFile(cur_file_path, new_file_path)
+                helpers.chmodAsParent(new_file_path)
+            except (IOError, OSError), e:
+                self._log(u"Unable to move file " + cur_file_path + " to " + new_file_path + ": " + ex(e), logger.ERROR)
+                raise e
+
+        self._combined_file_operation(file_path, new_path, new_base_name, associated_files, action=_int_move)
+
+</source>
+<source file="systems/Sick-Beard-build-507/sickbeard/postProcessor.py" startline="239" endline="258" pcid="4001">
+    def _copy(self, file_path, new_path, new_base_name, associated_files=False):
+        """
+        file_path: The full path of the media file to copy
+        new_path: Destination path where we want to copy the file to
+        new_base_name: The base filename (no extension) to use during the copy. Use None to keep the same name.
+        associated_files: Boolean, whether we should copy similarly-named files too
+        """
+
+        def _int_copy(cur_file_path, new_file_path):
+
+            self._log(u"Copying file from " + cur_file_path + " to " + new_file_path, logger.DEBUG)
+            try:
+                helpers.copyFile(cur_file_path, new_file_path)
+                helpers.chmodAsParent(new_file_path)
+            except (IOError, OSError), e:
+                logger.log(u"Unable to copy file " + cur_file_path + " to " + new_file_path + ": " + ex(e), logger.ERROR)
+                raise e
+
+        self._combined_file_operation(file_path, new_path, new_base_name, associated_files, action=_int_copy)
+
+</source>
+</class>
+
+<class classid="12" nclones="2" nlines="12" similarity="100">
+<source file="systems/Sick-Beard-build-507/sickbeard/webserve.py" startline="1999" endline="2014" pcid="4091">
+    def testXBMC(self, host=None, username=None, password=None):
+        cherrypy.response.headers['Cache-Control'] = "max-age=0,no-cache,no-store"
+
+        host = config.clean_hosts(host)
+        finalResult = ''
+
+        for curHost in [x.strip() for x in host.split(",")]:
+            curResult = notifiers.xbmc_notifier.test_notify(urllib.unquote_plus(curHost), username, password)
+            if len(curResult.split(":")) > 2 and 'OK' in curResult.split(":")[2]:
+                finalResult += "Test XBMC notice sent successfully to " + urllib.unquote_plus(curHost)
+            else:
+                finalResult += "Test XBMC notice failed to " + urllib.unquote_plus(curHost)
+            finalResult += "<br />\n"
+
+        return finalResult
+
+</source>
+<source file="systems/Sick-Beard-build-507/sickbeard/webserve.py" startline="2016" endline="2031" pcid="4092">
+    def testPLEX(self, host=None, username=None, password=None):
+        cherrypy.response.headers['Cache-Control'] = "max-age=0,no-cache,no-store"
+
+        host = config.clean_hosts(host)
+        finalResult = ''
+
+        for curHost in [x.strip() for x in host.split(",")]:
+            curResult = notifiers.plex_notifier.test_notify(urllib.unquote_plus(curHost), username, password)
+            if len(curResult.split(":")) > 2 and 'OK' in curResult.split(":")[2]:
+                finalResult += "Test Plex notice sent successfully to " + urllib.unquote_plus(curHost)
+            else:
+                finalResult += "Test Plex notice failed to " + urllib.unquote_plus(curHost)
+            finalResult += "<br />\n"
+
+        return finalResult
+
+</source>
+</class>
+
+<class classid="13" nclones="2" nlines="34" similarity="100">
+<source file="systems/Sick-Beard-build-507/sickbeard/metadata/ps3.py" startline="37" endline="77" pcid="4211">
+    def __init__(self,
+                 show_metadata=False,
+                 episode_metadata=False,
+                 fanart=False,
+                 poster=False,
+                 banner=False,
+                 episode_thumbnails=False,
+                 season_posters=False,
+                 season_banners=False,
+                 season_all_poster=False,
+                 season_all_banner=False):
+
+        generic.GenericMetadata.__init__(self,
+                                         show_metadata,
+                                         episode_metadata,
+                                         fanart,
+                                         poster,
+                                         banner,
+                                         episode_thumbnails,
+                                         season_posters,
+                                         season_banners,
+                                         season_all_poster,
+                                         season_all_banner)
+
+        self.name = "Sony PS3"
+
+        self.poster_name = "cover.jpg"
+
+        # web-ui metadata template
+        self.eg_show_metadata = "<i>not supported</i>"
+        self.eg_episode_metadata = "<i>not supported</i>"
+        self.eg_fanart = "<i>not supported</i>"
+        self.eg_poster = "cover.jpg"
+        self.eg_banner = "<i>not supported</i>"
+        self.eg_episode_thumbnails = "Season##\\<i>filename</i>.ext.cover.jpg"
+        self.eg_season_posters = "<i>not supported</i>"
+        self.eg_season_banners = "<i>not supported</i>"
+        self.eg_season_all_poster = "<i>not supported</i>"
+        self.eg_season_all_banner = "<i>not supported</i>"
+
+    # Override with empty methods for unsupported features
+</source>
+<source file="systems/Sick-Beard-build-507/sickbeard/metadata/tivo.py" startline="47" endline="87" pcid="4223">
+    def __init__(self,
+                 show_metadata=False,
+                 episode_metadata=False,
+                 fanart=False,
+                 poster=False,
+                 banner=False,
+                 episode_thumbnails=False,
+                 season_posters=False,
+                 season_banners=False,
+                 season_all_poster=False,
+                 season_all_banner=False):
+
+        generic.GenericMetadata.__init__(self,
+                                         show_metadata,
+                                         episode_metadata,
+                                         fanart,
+                                         poster,
+                                         banner,
+                                         episode_thumbnails,
+                                         season_posters,
+                                         season_banners,
+                                         season_all_poster,
+                                         season_all_banner)
+
+        self.name = 'TIVO'
+
+        self._ep_nfo_extension = "txt"
+
+        # web-ui metadata template
+        self.eg_show_metadata = "<i>not supported</i>"
+        self.eg_episode_metadata = "Season##\\.meta\\<i>filename</i>.ext.txt"
+        self.eg_fanart = "<i>not supported</i>"
+        self.eg_poster = "<i>not supported</i>"
+        self.eg_banner = "<i>not supported</i>"
+        self.eg_episode_thumbnails = "<i>not supported</i>"
+        self.eg_season_posters = "<i>not supported</i>"
+        self.eg_season_banners = "<i>not supported</i>"
+        self.eg_season_all_poster = "<i>not supported</i>"
+        self.eg_season_all_banner = "<i>not supported</i>"
+
+    # Override with empty methods for unsupported features
+</source>
+</class>
+
+<class classid="14" nclones="2" nlines="35" similarity="100">
+<source file="systems/Sick-Beard-build-507/sickbeard/metadata/wdtv.py" startline="51" endline="93" pcid="4239">
+    def __init__(self,
+                 show_metadata=False,
+                 episode_metadata=False,
+                 fanart=False,
+                 poster=False,
+                 banner=False,
+                 episode_thumbnails=False,
+                 season_posters=False,
+                 season_banners=False,
+                 season_all_poster=False,
+                 season_all_banner=False):
+
+        generic.GenericMetadata.__init__(self,
+                                         show_metadata,
+                                         episode_metadata,
+                                         fanart,
+                                         poster,
+                                         banner,
+                                         episode_thumbnails,
+                                         season_posters,
+                                         season_banners,
+                                         season_all_poster,
+                                         season_all_banner)
+
+        self.name = 'WDTV'
+
+        self._ep_nfo_extension = 'xml'
+
+        self.poster_name = "folder.jpg"
+
+        # web-ui metadata template
+        self.eg_show_metadata = "<i>not supported</i>"
+        self.eg_episode_metadata = "Season##\\<i>filename</i>.xml"
+        self.eg_fanart = "<i>not supported</i>"
+        self.eg_poster = "folder.jpg"
+        self.eg_banner = "<i>not supported</i>"
+        self.eg_episode_thumbnails = "Season##\\<i>filename</i>.metathumb"
+        self.eg_season_posters = "Season##\\folder.jpg"
+        self.eg_season_banners = "<i>not supported</i>"
+        self.eg_season_all_poster = "<i>not supported</i>"
+        self.eg_season_all_banner = "<i>not supported</i>"
+
+    # Override with empty methods for unsupported features
+</source>
+<source file="systems/Sick-Beard-build-507/sickbeard/metadata/xbmc_12plus.py" startline="53" endline="93" pcid="4304">
+    def __init__(self,
+                 show_metadata=False,
+                 episode_metadata=False,
+                 fanart=False,
+                 poster=False,
+                 banner=False,
+                 episode_thumbnails=False,
+                 season_posters=False,
+                 season_banners=False,
+                 season_all_poster=False,
+                 season_all_banner=False):
+
+        generic.GenericMetadata.__init__(self,
+                                         show_metadata,
+                                         episode_metadata,
+                                         fanart,
+                                         poster,
+                                         banner,
+                                         episode_thumbnails,
+                                         season_posters,
+                                         season_banners,
+                                         season_all_poster,
+                                         season_all_banner)
+
+        self.name = 'XBMC 12+'
+
+        self.poster_name = "poster.jpg"
+        self.season_all_poster_name = "season-all-poster.jpg"
+
+        # web-ui metadata template
+        self.eg_show_metadata = "tvshow.nfo"
+        self.eg_episode_metadata = "Season##\\<i>filename</i>.nfo"
+        self.eg_fanart = "fanart.jpg"
+        self.eg_poster = "poster.jpg"
+        self.eg_banner = "banner.jpg"
+        self.eg_episode_thumbnails = "Season##\\<i>filename</i>-thumb.jpg"
+        self.eg_season_posters = "season##-poster.jpg"
+        self.eg_season_banners = "season##-banner.jpg"
+        self.eg_season_all_poster = "season-all-poster.jpg"
+        self.eg_season_all_banner = "season-all-banner.jpg"
+
+</source>
+</class>
+
+<class classid="15" nclones="3" nlines="20" similarity="100">
+<source file="systems/Sick-Beard-build-507/sickbeard/metadata/wdtv.py" startline="133" endline="168" pcid="4249">
+    def get_season_poster_path(self, show_obj, season):
+        """
+        Season thumbs for WDTV go in Show Dir/Season X/folder.jpg
+
+        If no season folder exists, None is returned
+        """
+
+        dir_list = [x for x in ek.ek(os.listdir, show_obj.location) if ek.ek(os.path.isdir, ek.ek(os.path.join, show_obj.location, x))]
+
+        season_dir_regex = '^Season\s+(\d+)$'
+
+        season_dir = None
+
+        for cur_dir in dir_list:
+            if season == 0 and cur_dir == "Specials":
+                season_dir = cur_dir
+                break
+
+            match = re.match(season_dir_regex, cur_dir, re.I)
+            if not match:
+                continue
+
+            cur_season = int(match.group(1))
+
+            if cur_season == season:
+                season_dir = cur_dir
+                break
+
+        if not season_dir:
+            logger.log(u"Unable to find a season dir for season " + str(season), logger.DEBUG)
+            return None
+
+        logger.log(u"Using " + str(season_dir) + "/folder.jpg as season dir for season " + str(season), logger.DEBUG)
+
+        return ek.ek(os.path.join, show_obj.location, season_dir, 'folder.jpg')
+
+</source>
+<source file="systems/Sick-Beard-build-507/sickbeard/metadata/mediabrowser.py" startline="143" endline="181" pcid="4313">
+    def get_season_poster_path(self, show_obj, season):
+        """
+        Season thumbs for MediaBrowser go in Show Dir/Season X/folder.jpg
+
+        If no season folder exists, None is returned
+        """
+
+        dir_list = [x for x in ek.ek(os.listdir, show_obj.location) if ek.ek(os.path.isdir, ek.ek(os.path.join, show_obj.location, x))]
+
+        season_dir_regex = '^Season\s+(\d+)$'
+
+        season_dir = None
+
+        for cur_dir in dir_list:
+            # MediaBrowser 1.x only supports 'Specials'
+            # MediaBrowser 2.x looks to only support 'Season 0'
+            # MediaBrowser 3.x looks to mimic XBMC/Plex support
+            if season == 0 and cur_dir == "Specials":
+                season_dir = cur_dir
+                break
+
+            match = re.match(season_dir_regex, cur_dir, re.I)
+            if not match:
+                continue
+
+            cur_season = int(match.group(1))
+
+            if cur_season == season:
+                season_dir = cur_dir
+                break
+
+        if not season_dir:
+            logger.log(u"Unable to find a season dir for season " + str(season), logger.DEBUG)
+            return None
+
+        logger.log(u"Using " + str(season_dir) + "/folder.jpg as season dir for season " + str(season), logger.DEBUG)
+
+        return ek.ek(os.path.join, show_obj.location, season_dir, 'folder.jpg')
+
+</source>
+<source file="systems/Sick-Beard-build-507/sickbeard/metadata/mediabrowser.py" startline="182" endline="220" pcid="4314">
+    def get_season_banner_path(self, show_obj, season):
+        """
+        Season thumbs for MediaBrowser go in Show Dir/Season X/banner.jpg
+
+        If no season folder exists, None is returned
+        """
+
+        dir_list = [x for x in ek.ek(os.listdir, show_obj.location) if ek.ek(os.path.isdir, ek.ek(os.path.join, show_obj.location, x))]
+
+        season_dir_regex = '^Season\s+(\d+)$'
+
+        season_dir = None
+
+        for cur_dir in dir_list:
+            # MediaBrowser 1.x only supports 'Specials'
+            # MediaBrowser 2.x looks to only support 'Season 0'
+            # MediaBrowser 3.x looks to mimic XBMC/Plex support
+            if season == 0 and cur_dir == "Specials":
+                season_dir = cur_dir
+                break
+
+            match = re.match(season_dir_regex, cur_dir, re.I)
+            if not match:
+                continue
+
+            cur_season = int(match.group(1))
+
+            if cur_season == season:
+                season_dir = cur_dir
+                break
+
+        if not season_dir:
+            logger.log(u"Unable to find a season dir for season " + str(season), logger.DEBUG)
+            return None
+
+        logger.log(u"Using " + str(season_dir) + "/banner.jpg as season dir for season " + str(season), logger.DEBUG)
+
+        return ek.ek(os.path.join, show_obj.location, season_dir, 'banner.jpg')
+
+</source>
+</class>
+
+<class classid="16" nclones="2" nlines="20" similarity="100">
+<source file="systems/Sick-Beard-build-507/sickbeard/metadata/generic.py" startline="372" endline="413" pcid="4289">
+    def write_show_file(self, show_obj):
+        """
+        Generates and writes show_obj's metadata under the given path to the
+        filename given by get_show_file_path()
+
+        show_obj: TVShow object for which to create the metadata
+
+        path: An absolute or relative path where we should put the file. Note that
+                the file name will be the default show_file_name.
+
+        Note that this method expects that _show_data will return an ElementTree
+        object. If your _show_data returns data in another format you'll need to
+        override this method.
+        """
+
+        data = self._show_data(show_obj)
+
+        if not data:
+            return False
+
+        nfo_file_path = self.get_show_file_path(show_obj)
+        nfo_file_dir = ek.ek(os.path.dirname, nfo_file_path)
+
+        try:
+            if not ek.ek(os.path.isdir, nfo_file_dir):
+                logger.log(u"Metadata dir didn't exist, creating it at " + nfo_file_dir, logger.DEBUG)
+                ek.ek(os.makedirs, nfo_file_dir)
+                helpers.chmodAsParent(nfo_file_dir)
+
+            logger.log(u"Writing show nfo file to " + nfo_file_path, logger.DEBUG)
+
+            nfo_file = ek.ek(open, nfo_file_path, 'w')
+
+            data.write(nfo_file, encoding="utf-8")
+            nfo_file.close()
+            helpers.chmodAsParent(nfo_file_path)
+        except IOError, e:
+            logger.log(u"Unable to write file to " + nfo_file_path + " - are you sure the folder is writable? " + ex(e), logger.ERROR)
+            return False
+
+        return True
+
+</source>
+<source file="systems/Sick-Beard-build-507/sickbeard/metadata/generic.py" startline="414" endline="457" pcid="4290">
+    def write_ep_file(self, ep_obj):
+        """
+        Generates and writes ep_obj's metadata under the given path with the
+        given filename root. Uses the episode's name with the extension in
+        _ep_nfo_extension.
+
+        ep_obj: TVEpisode object for which to create the metadata
+
+        file_name_path: The file name to use for this metadata. Note that the extension
+                will be automatically added based on _ep_nfo_extension. This should
+                include an absolute path.
+
+        Note that this method expects that _ep_data will return an ElementTree
+        object. If your _ep_data returns data in another format you'll need to
+        override this method.
+        """
+
+        data = self._ep_data(ep_obj)
+
+        if not data:
+            return False
+
+        nfo_file_path = self.get_episode_file_path(ep_obj)
+        nfo_file_dir = ek.ek(os.path.dirname, nfo_file_path)
+
+        try:
+            if not ek.ek(os.path.isdir, nfo_file_dir):
+                logger.log(u"Metadata dir didn't exist, creating it at " + nfo_file_dir, logger.DEBUG)
+                ek.ek(os.makedirs, nfo_file_dir)
+                helpers.chmodAsParent(nfo_file_dir)
+
+            logger.log(u"Writing episode nfo file to " + nfo_file_path, logger.DEBUG)
+
+            nfo_file = ek.ek(open, nfo_file_path, 'w')
+
+            data.write(nfo_file, encoding="utf-8")
+            nfo_file.close()
+            helpers.chmodAsParent(nfo_file_path)
+        except IOError, e:
+            logger.log(u"Unable to write file to " + nfo_file_path + " - are you sure the folder is writable? " + ex(e), logger.ERROR)
+            return False
+
+        return True
+
+</source>
+</class>
+
+<class classid="17" nclones="2" nlines="22" similarity="100">
+<source file="systems/Sick-Beard-build-507/sickbeard/metadata/generic.py" startline="549" endline="595" pcid="4295">
+    def save_season_posters(self, show_obj, season):
+        """
+        Saves all season posters to disk for the given show.
+
+        show_obj: a TVShow object for which to save the season thumbs
+
+        Cycles through all seasons and saves the season posters if possible. This
+        method should not need to be overridden by implementing classes, changing
+        _season_posters_dict and get_season_poster_path should be good enough.
+        """
+
+        season_dict = self._season_posters_dict(show_obj, season)
+        result = []
+
+        # Returns a nested dictionary of season art with the season
+        # number as primary key. It's really overkill but gives the option
+        # to present to user via ui to pick down the road.
+        for cur_season in season_dict:
+
+            cur_season_art = season_dict[cur_season]
+
+            if len(cur_season_art) == 0:
+                continue
+
+            # Just grab whatever's there for now
+            art_id, season_url = cur_season_art.popitem()  # @UnusedVariable
+
+            season_poster_file_path = self.get_season_poster_path(show_obj, cur_season)
+
+            if not season_poster_file_path:
+                logger.log(u"Path for season " + str(cur_season) + " came back blank, skipping this season", logger.DEBUG)
+                continue
+
+            seasonData = metadata_helpers.getShowImage(season_url)
+
+            if not seasonData:
+                logger.log(u"No season poster data available, skipping this season", logger.DEBUG)
+                continue
+
+            result = result + [self._write_image(seasonData, season_poster_file_path)]
+        if result:
+            return all(result)
+        else:
+            return False
+
+        return True
+
+</source>
+<source file="systems/Sick-Beard-build-507/sickbeard/metadata/generic.py" startline="596" endline="642" pcid="4296">
+    def save_season_banners(self, show_obj, season):
+        """
+        Saves all season banners to disk for the given show.
+
+        show_obj: a TVShow object for which to save the season thumbs
+
+        Cycles through all seasons and saves the season banners if possible. This
+        method should not need to be overridden by implementing classes, changing
+        _season_banners_dict and get_season_banner_path should be good enough.
+        """
+
+        season_dict = self._season_banners_dict(show_obj, season)
+        result = []
+
+        # Returns a nested dictionary of season art with the season
+        # number as primary key. It's really overkill but gives the option
+        # to present to user via ui to pick down the road.
+        for cur_season in season_dict:
+
+            cur_season_art = season_dict[cur_season]
+
+            if len(cur_season_art) == 0:
+                continue
+
+            # Just grab whatever's there for now
+            art_id, season_url = cur_season_art.popitem()  # @UnusedVariable
+
+            season_banner_file_path = self.get_season_banner_path(show_obj, cur_season)
+
+            if not season_banner_file_path:
+                logger.log(u"Path for season " + str(cur_season) + " came back blank, skipping this season", logger.DEBUG)
+                continue
+
+            seasonData = metadata_helpers.getShowImage(season_url)
+
+            if not seasonData:
+                logger.log(u"No season banner data available, skipping this season", logger.DEBUG)
+                continue
+
+            result = result + [self._write_image(seasonData, season_banner_file_path)]
+        if result:
+            return all(result)
+        else:
+            return False
+
+        return True
+
+</source>
+</class>
+
+<class classid="18" nclones="2" nlines="20" similarity="100">
+<source file="systems/Sick-Beard-build-507/sickbeard/metadata/generic.py" startline="740" endline="786" pcid="4301">
+    def _season_posters_dict(self, show_obj, season):
+        """
+        Should return a dict like:
+
+        result = {<season number>:
+                    {1: '<url 1>', 2: <url 2>, ...},}
+        """
+
+        # This holds our resulting dictionary of season art
+        result = {}
+
+        tvdb_lang = show_obj.lang
+
+        try:
+            # There's gotta be a better way of doing this but we don't wanna
+            # change the language value elsewhere
+            ltvdb_api_parms = sickbeard.TVDB_API_PARMS.copy()
+
+            if tvdb_lang and not tvdb_lang == 'en':
+                ltvdb_api_parms['language'] = tvdb_lang
+
+            t = tvdb_api.Tvdb(banners=True, **ltvdb_api_parms)
+            tvdb_show_obj = t[show_obj.tvdbid]
+        except (tvdb_exceptions.tvdb_error, IOError), e:
+            logger.log(u"Unable to look up show on TVDB, not downloading images: " + ex(e), logger.ERROR)
+            return result
+
+        # if we have no season banners then just finish
+        if 'season' not in tvdb_show_obj['_banners'] or 'season' not in tvdb_show_obj['_banners']['season']:
+            return result
+
+        # Give us just the normal poster-style season graphics
+        seasonsArtObj = tvdb_show_obj['_banners']['season']['season']
+
+        # Returns a nested dictionary of season art with the season
+        # number as primary key. It's really overkill but gives the option
+        # to present to user via ui to pick down the road.
+
+        result[season] = {}
+
+        # find the correct season in the tvdb object and just copy the dict into our result dict
+        for seasonArtID in seasonsArtObj.keys():
+            if int(seasonsArtObj[seasonArtID]['season']) == season and seasonsArtObj[seasonArtID]['language'] == 'en':
+                result[season][seasonArtID] = seasonsArtObj[seasonArtID]['_bannerpath']
+
+        return result
+
+</source>
+<source file="systems/Sick-Beard-build-507/sickbeard/metadata/generic.py" startline="787" endline="833" pcid="4302">
+    def _season_banners_dict(self, show_obj, season):
+        """
+        Should return a dict like:
+
+        result = {<season number>:
+                    {1: '<url 1>', 2: <url 2>, ...},}
+        """
+
+        # This holds our resulting dictionary of season art
+        result = {}
+
+        tvdb_lang = show_obj.lang
+
+        try:
+            # There's gotta be a better way of doing this but we don't wanna
+            # change the language value elsewhere
+            ltvdb_api_parms = sickbeard.TVDB_API_PARMS.copy()
+
+            if tvdb_lang and not tvdb_lang == 'en':
+                ltvdb_api_parms['language'] = tvdb_lang
+
+            t = tvdb_api.Tvdb(banners=True, **ltvdb_api_parms)
+            tvdb_show_obj = t[show_obj.tvdbid]
+        except (tvdb_exceptions.tvdb_error, IOError), e:
+            logger.log(u"Unable to look up show on TVDB, not downloading images: " + ex(e), logger.ERROR)
+            return result
+
+        # if we have no season banners then just finish
+        if 'season' not in tvdb_show_obj['_banners'] or 'seasonwide' not in tvdb_show_obj['_banners']['season']:
+            return result
+
+        # Give us just the normal season graphics
+        seasonsArtObj = tvdb_show_obj['_banners']['season']['seasonwide']
+
+        # Returns a nested dictionary of season art with the season
+        # number as primary key. It's really overkill but gives the option
+        # to present to user via ui to pick down the road.
+
+        result[season] = {}
+
+        # find the correct season in the tvdb object and just copy the dict into our result dict
+        for seasonArtID in seasonsArtObj.keys():
+            if int(seasonsArtObj[seasonArtID]['season']) == season and seasonsArtObj[seasonArtID]['language'] == 'en':
+                result[season][seasonArtID] = seasonsArtObj[seasonArtID]['_bannerpath']
+
+        return result
+
+</source>
+</class>
+
+</clones>

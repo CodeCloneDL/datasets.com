@@ -1,0 +1,824 @@
+<html>
+<head>
+    <title>NiCad6 Clone Report</title>
+    <style type="text/css">
+        body {font-family:sans-serif;}
+        table {background-color:white; border:0px; padding:0px; border-spacing:4px; width:auto; margin-left:30px; margin-right:auto;}
+        td {background-color:rgba(192,212,238,0.8); border:0px; padding:8px; width:auto; vertical-align:top; border-radius:8px}
+        pre {background-color:white; padding:4px;}
+        a {color:darkblue;}
+    </style>
+</head>
+<body>
+<h2>NiCad6 Clone Report</h2>
+<table>
+<tr style="font-size:14pt">
+<td><b>System:</b> &nbsp; GPflow-2.3.0</td>
+<td><b>Clone pairs:</b> &nbsp; 14</td>
+<td><b>Clone classes:</b> &nbsp; 10</td>
+</tr>
+<tr style="font-size:12pt">
+<td style="background-color:white">Clone type: &nbsp; 3-2</td>
+<td style="background-color:white">Granularity: &nbsp; functions-blind</td>
+<td style="background-color:white">Max diff threshold: &nbsp; 30%</td>
+<td style="background-color:white">Clone size: &nbsp; 10 - 2500 lines</td>
+<td style="background-color:white">Total functions-blind: &nbsp; 623</td>
+</tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 1:</b> &nbsp; 2 fragments, nominal size 25 lines, similarity 80%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag114')" href="javascript:;">
+GPflow-2.3.0/tests/integration/test_dynamic_shapes.py: 41-74
+</a>
+<div class="mid" id="frag114" style="display:none"><pre>
+def test_svgp(whiten, q_diag):
+    model = gpflow.models.SVGP(
+        gpflow.kernels.SquaredExponential(),
+        gpflow.likelihoods.Gaussian(),
+        inducing_variable=Datum.X.copy(),
+        q_diag=q_diag,
+        whiten=whiten,
+        mean_function=gpflow.mean_functions.Constant(),
+        num_latent_gps=Datum.Y.shape[1],
+    )
+    gpflow.set_trainable(model.inducing_variable, False)
+
+    # test with explicitly unknown shapes:
+    tensor_spec = tf.TensorSpec(shape=None, dtype=default_float())
+    elbo = tf.function(
+        model.elbo,
+        input_signature=[(tensor_spec, tensor_spec)],
+    )
+
+    @tf.function
+    def model_closure():
+        return -elbo(Datum.data)
+
+    opt = gpflow.optimizers.Scipy()
+
+    # simply test whether it runs without erroring...:
+    opt.minimize(
+        model_closure,
+        variables=model.trainable_variables,
+        options=dict(maxiter=3),
+        compile=True,
+    )
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag116')" href="javascript:;">
+GPflow-2.3.0/tests/integration/test_dynamic_shapes.py: 75-104
+</a>
+<div class="mid" id="frag116" style="display:none"><pre>
+def test_multiclass():
+    num_classes = 3
+    model = gpflow.models.SVGP(
+        gpflow.kernels.SquaredExponential(),
+        gpflow.likelihoods.MultiClass(num_classes=num_classes),
+        inducing_variable=Datum.X.copy(),
+        num_latent_gps=num_classes,
+    )
+    gpflow.set_trainable(model.inducing_variable, False)
+
+    # test with explicitly unknown shapes:
+    tensor_spec = tf.TensorSpec(shape=None, dtype=default_float())
+    elbo = tf.function(
+        model.elbo,
+        input_signature=[(tensor_spec, tensor_spec)],
+    )
+
+    @tf.function
+    def model_closure():
+        return -elbo(Datum.cdata)
+
+    opt = gpflow.optimizers.Scipy()
+
+    # simply test whether it runs without erroring...:
+    opt.minimize(
+        model_closure,
+        variables=model.trainable_variables,
+        options=dict(maxiter=3),
+        compile=True,
+    )
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 2:</b> &nbsp; 2 fragments, nominal size 12 lines, similarity 75%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag121')" href="javascript:;">
+GPflow-2.3.0/tests/gpflow/test_mean_functions.py: 104-124
+</a>
+<div class="mid" id="frag121" style="display:none"><pre>
+def test_mean_functions_distributive_property(mean_functions):
+    """
+    Tests that distributive property of addition and multiplication holds for mean functions
+    (both Constant and Linear): A * (B + C) = A * B + A * C
+    """
+    X, Y = rng.randn(Datum.N, Datum.input_dim), rng.randn(Datum.N, Datum.output_dim)
+    Xtest = rng.randn(30, Datum.input_dim)
+    A, B, C = mean_functions[0], mean_functions[1], mean_functions[2]
+    lhs = Product(A, Additive(B, C))  # A * (B + C)
+    rhs = Additive(Product(A, B), Product(A, C))  # A * B + A * C
+
+    model_lhs = _create_GPR_model_with_bias(X, Y, mean_function=lhs)
+    model_rhs = _create_GPR_model_with_bias(X, Y, mean_function=rhs)
+
+    mu_lhs, var_lhs = model_lhs.predict_f(Xtest)
+    mu_rhs, var_rhs = model_rhs.predict_f(Xtest)
+
+    assert_allclose(mu_lhs, mu_rhs)
+    assert_allclose(var_lhs, var_rhs)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag122')" href="javascript:;">
+GPflow-2.3.0/tests/gpflow/test_mean_functions.py: 126-146
+</a>
+<div class="mid" id="frag122" style="display:none"><pre>
+def test_mean_functions_A_minus_A_equals_zero(mean_functions):
+    """
+    Tests that the addition the inverse of a mean function to itself is equivalent to having a
+    Zero mean function: A + (-A) = 0
+    """
+    X, Y = rng.randn(Datum.N, Datum.input_dim), rng.randn(Datum.N, Datum.output_dim)
+    Xtest = rng.randn(30, Datum.input_dim)
+    A, A_inverse = mean_functions[0], mean_functions[-1]
+    lhs = Additive(A, A_inverse)  # A + (-A)
+    rhs = Zero()  # 0
+
+    model_lhs = _create_GPR_model_with_bias(X, Y, mean_function=lhs)
+    model_rhs = _create_GPR_model_with_bias(X, Y, mean_function=rhs)
+
+    mu_lhs, var_lhs = model_lhs.predict_f(Xtest)
+    mu_rhs, var_rhs = model_rhs.predict_f(Xtest)
+
+    assert_allclose(mu_lhs, mu_rhs)
+    assert_allclose(var_lhs, var_rhs)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 3:</b> &nbsp; 2 fragments, nominal size 15 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag139')" href="javascript:;">
+GPflow-2.3.0/tests/gpflow/likelihoods/test_switched_likelihood.py: 54-75
+</a>
+<div class="mid" id="frag139" style="display:none"><pre>
+def test_switched_likelihood_predict_log_density(Y_list, F_list, Fvar_list, Y_label):
+    Y_perm = list(range(3 + 4 + 5))
+    np.random.shuffle(Y_perm)
+    # shuffle the original data
+    Y_sw = np.hstack([np.concatenate(Y_list), np.concatenate(Y_label)])[Y_perm, :3]
+    F_sw = np.concatenate(F_list)[Y_perm, :]
+    Fvar_sw = np.concatenate(Fvar_list)[Y_perm, :]
+
+    likelihoods = [Gaussian()] * 3
+    for lik in likelihoods:
+        lik.variance = np.exp(np.random.randn(1)).squeeze().astype(np.float32)
+    switched_likelihood = SwitchedLikelihood(likelihoods)
+
+    switched_results = switched_likelihood.predict_log_density(F_sw, Fvar_sw, Y_sw)
+    # likelihood
+    results = [
+        lik.predict_log_density(f, fvar, y)
+        for lik, y, f, fvar in zip(likelihoods, Y_list, F_list, Fvar_list)
+    ]
+    assert_allclose(switched_results, np.concatenate(results)[Y_perm])
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag140')" href="javascript:;">
+GPflow-2.3.0/tests/gpflow/likelihoods/test_switched_likelihood.py: 80-100
+</a>
+<div class="mid" id="frag140" style="display:none"><pre>
+def test_switched_likelihood_variational_expectations(Y_list, F_list, Fvar_list, Y_label):
+    Y_perm = list(range(3 + 4 + 5))
+    np.random.shuffle(Y_perm)
+    # shuffle the original data
+    Y_sw = np.hstack([np.concatenate(Y_list), np.concatenate(Y_label)])[Y_perm, :3]
+    F_sw = np.concatenate(F_list)[Y_perm, :]
+    Fvar_sw = np.concatenate(Fvar_list)[Y_perm, :]
+
+    likelihoods = [Gaussian()] * 3
+    for lik in likelihoods:
+        lik.variance = np.exp(np.random.randn(1)).squeeze().astype(np.float32)
+    switched_likelihood = SwitchedLikelihood(likelihoods)
+
+    switched_results = switched_likelihood.variational_expectations(F_sw, Fvar_sw, Y_sw)
+    results = [
+        lik.variational_expectations(f, fvar, y)
+        for lik, y, f, fvar in zip(likelihoods, Y_list, F_list, Fvar_list)
+    ]
+    assert_allclose(switched_results, np.concatenate(results)[Y_perm])
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 4:</b> &nbsp; 2 fragments, nominal size 15 lines, similarity 86%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag186')" href="javascript:;">
+GPflow-2.3.0/tests/gpflow/models/test_sgpr_posterior.py: 63-84
+</a>
+<div class="mid" id="frag186" style="display:none"><pre>
+def test_old_vs_new_gp_fused(
+    sgpr_deprecated_model: SGPR_deprecated,
+    sgpr_model: SGPR,
+    dummy_data,
+    full_cov: bool,
+    full_output_cov: bool,
+) -&gt; None:
+    _, X_new, _ = dummy_data
+
+    mu_old, var2_old = sgpr_deprecated_model.predict_f(
+        X_new, full_cov=full_cov, full_output_cov=full_output_cov
+    )
+    mu_new_fuse, var2_new_fuse = sgpr_model.predict_f(
+        X_new, full_cov=full_cov, full_output_cov=full_output_cov
+    )
+
+    # check new fuse is same as old version
+    np.testing.assert_allclose(mu_new_fuse, mu_old)
+    np.testing.assert_allclose(var2_new_fuse, var2_old)
+
+
+# TODO: move to common test_model_utils
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag187')" href="javascript:;">
+GPflow-2.3.0/tests/gpflow/models/test_sgpr_posterior.py: 88-107
+</a>
+<div class="mid" id="frag187" style="display:none"><pre>
+def test_old_vs_new_with_posterior(
+    sgpr_deprecated_model: SGPR_deprecated,
+    sgpr_model: SGPR,
+    dummy_data,
+    cache_type: PrecomputeCacheType,
+    full_cov: bool,
+    full_output_cov: bool,
+) -&gt; None:
+    _, X_new, _ = dummy_data
+
+    mu_old, var2_old = sgpr_deprecated_model.predict_f(
+        X_new, full_cov=full_cov, full_output_cov=full_output_cov
+    )
+    mu_new_cache, var2_new_cache = sgpr_model.posterior(cache_type).predict_f(
+        X_new, full_cov=full_cov, full_output_cov=full_output_cov
+    )
+
+    # check new cache is same as old version
+    np.testing.assert_allclose(mu_old, mu_new_cache)
+    np.testing.assert_allclose(var2_old, var2_new_cache)
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 5:</b> &nbsp; 2 fragments, nominal size 10 lines, similarity 90%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag192')" href="javascript:;">
+GPflow-2.3.0/tests/gpflow/models/test_gpr_posterior.py: 33-47
+</a>
+<div class="mid" id="frag192" style="display:none"><pre>
+def test_old_vs_new_gp_fused(
+    cache_type: PrecomputeCacheType, full_cov: bool, full_output_cov: bool
+):
+    X, X_new, Y = _get_data_for_tests()
+    mold, mnew = make_models((X, Y))
+
+    mu_old, var2_old = mold.predict_f(X_new, full_cov=full_cov, full_output_cov=full_output_cov)
+    mu_new_fuse, var2_new_fuse = mnew.predict_f(
+        X_new, full_cov=full_cov, full_output_cov=full_output_cov
+    )
+    # check new fuse is same as old version
+    np.testing.assert_allclose(mu_new_fuse, mu_old)
+    np.testing.assert_allclose(var2_new_fuse, var2_old)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag193')" href="javascript:;">
+GPflow-2.3.0/tests/gpflow/models/test_gpr_posterior.py: 51-64
+</a>
+<div class="mid" id="frag193" style="display:none"><pre>
+def test_old_vs_new_with_posterior(
+    cache_type: PrecomputeCacheType, full_cov: bool, full_output_cov: bool
+):
+    X, X_new, Y = _get_data_for_tests()
+    mold, mnew = make_models((X, Y))
+
+    mu_old, var2_old = mold.predict_f(X_new, full_cov=full_cov, full_output_cov=full_output_cov)
+    mu_new_cache, var2_new_cache = mnew.posterior(cache_type).predict_f(
+        X_new, full_cov=full_cov, full_output_cov=full_output_cov
+    )
+
+    # check new cache is same as old version
+    np.testing.assert_allclose(mu_old, mu_new_cache)
+    np.testing.assert_allclose(var2_old, var2_new_cache)
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 6:</b> &nbsp; 2 fragments, nominal size 12 lines, similarity 75%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag334')" href="javascript:;">
+GPflow-2.3.0/tests/gpflow/quadrature/test_quadrature.py: 36-49
+</a>
+<div class="mid" id="frag334" style="display:none"><pre>
+def test_diagquad_2d(mu1, var1, mu2, var2):
+    alpha = 2.5
+    # using logspace=True we can reduce this, see test_diagquad_logspace
+    num_gauss_hermite_points = 35
+    quad = quadrature.ndiagquad(
+        lambda *X: tf.exp(X[0] + alpha * X[1]),
+        num_gauss_hermite_points,
+        [mu1, mu2],
+        [var1, var2],
+    )
+    expected = np.exp(mu1 + var1 / 2 + alpha * mu2 + alpha ** 2 * var2 / 2)
+    assert_allclose(quad, expected)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag335')" href="javascript:;">
+GPflow-2.3.0/tests/gpflow/quadrature/test_quadrature.py: 54-67
+</a>
+<div class="mid" id="frag335" style="display:none"><pre>
+def test_diagquad_logspace(mu1, var1, mu2, var2):
+    alpha = 2.5
+    num_gauss_hermite_points = 25
+    quad = quadrature.ndiagquad(
+        lambda *X: (X[0] + alpha * X[1]),
+        num_gauss_hermite_points,
+        [mu1, mu2],
+        [var1, var2],
+        logspace=True,
+    )
+    expected = mu1 + var1 / 2 + alpha * mu2 + alpha ** 2 * var2 / 2
+    assert_allclose(quad, expected)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 7:</b> &nbsp; 2 fragments, nominal size 17 lines, similarity 77%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag343')" href="javascript:;">
+GPflow-2.3.0/tests/gpflow/quadrature/test_quadrature_equivalence.py: 37-55
+</a>
+<div class="mid" id="frag343" style="display:none"><pre>
+def test_diagquad_2d(mu1, var1, mu2, var2):
+    alpha = 2.5
+    # using logspace=True we can reduce this, see test_diagquad_logspace
+    num_gauss_hermite_points = 35
+    quad = ndiagquad(
+        lambda *X: tf.exp(X[0] + alpha * X[1]),
+        num_gauss_hermite_points,
+        [mu1, mu2],
+        [var1, var2],
+    )
+    quad_old = ndiagquad_old(
+        lambda *X: tf.exp(X[0] + alpha * X[1]),
+        num_gauss_hermite_points,
+        [mu1, mu2],
+        [var1, var2],
+    )
+    assert_allclose(quad, quad_old)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag344')" href="javascript:;">
+GPflow-2.3.0/tests/gpflow/quadrature/test_quadrature_equivalence.py: 60-79
+</a>
+<div class="mid" id="frag344" style="display:none"><pre>
+def test_diagquad_logspace(mu1, var1, mu2, var2):
+    alpha = 2.5
+    num_gauss_hermite_points = 25
+    quad = ndiagquad(
+        lambda *X: (X[0] + alpha * X[1]),
+        num_gauss_hermite_points,
+        [mu1, mu2],
+        [var1, var2],
+        logspace=True,
+    )
+    quad_old = ndiagquad_old(
+        lambda *X: (X[0] + alpha * X[1]),
+        num_gauss_hermite_points,
+        [mu1, mu2],
+        [var1, var2],
+        logspace=True,
+    )
+    assert_allclose(quad, quad_old)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 8:</b> &nbsp; 3 fragments, nominal size 12 lines, similarity 83%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag396')" href="javascript:;">
+GPflow-2.3.0/tests/gpflow/kernels/test_coregion.py: 125-138
+</a>
+<div class="mid" id="frag396" style="display:none"><pre>
+def test_likelihood_variance():
+    vgp0, vgp1, cvgp = _prepare_models()
+    assert_allclose(
+        vgp0.likelihood.variance.numpy(),
+        cvgp.likelihood.likelihoods[0].variance.numpy(),
+        atol=1e-2,
+    )
+    assert_allclose(
+        vgp1.likelihood.variance.numpy(),
+        cvgp.likelihood.likelihoods[1].variance.numpy(),
+        atol=1e-2,
+    )
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag398')" href="javascript:;">
+GPflow-2.3.0/tests/gpflow/kernels/test_coregion.py: 153-166
+</a>
+<div class="mid" id="frag398" style="display:none"><pre>
+def test_mean_values():
+    vgp0, vgp1, cvgp = _prepare_models()
+    assert_allclose(
+        vgp0.mean_function.c.numpy(),
+        cvgp.mean_function.meanfunctions[0].c.numpy(),
+        atol=1.0e-4,
+    )
+    assert_allclose(
+        vgp1.mean_function.c.numpy(),
+        cvgp.mean_function.meanfunctions[1].c.numpy(),
+        atol=1.0e-4,
+    )
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag397')" href="javascript:;">
+GPflow-2.3.0/tests/gpflow/kernels/test_coregion.py: 139-152
+</a>
+<div class="mid" id="frag397" style="display:none"><pre>
+def test_kernel_variance():
+    vgp0, vgp1, cvgp = _prepare_models()
+    assert_allclose(
+        vgp0.kernel.variance.numpy(),
+        cvgp.kernel.kernels[1].kappa.numpy()[0],
+        atol=1.0e-4,
+    )
+    assert_allclose(
+        vgp1.kernel.variance.numpy(),
+        cvgp.kernel.kernels[1].kappa.numpy()[1],
+        atol=1.0e-4,
+    )
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 9:</b> &nbsp; 4 fragments, nominal size 17 lines, similarity 72%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag430')" href="javascript:;">
+GPflow-2.3.0/gpflow/models/sgpmc.py: 66-90
+</a>
+<div class="mid" id="frag430" style="display:none"><pre>
+    def __init__(
+        self,
+        data: RegressionData,
+        kernel: Kernel,
+        likelihood: Likelihood,
+        mean_function: Optional[MeanFunction] = None,
+        num_latent_gps: Optional[int] = None,
+        inducing_variable: Optional[InducingPoints] = None,
+    ):
+        """
+        data is a tuple of X, Y with X, a data matrix, size [N, D] and Y, a data matrix, size [N, R]
+        Z is a data matrix, of inducing inputs, size [M, D]
+        kernel, likelihood, mean_function are appropriate GPflow objects
+        """
+        if num_latent_gps is None:
+            num_latent_gps = self.calc_num_latent_gps_from_data(data, kernel, likelihood)
+        super().__init__(kernel, likelihood, mean_function, num_latent_gps=num_latent_gps)
+        self.data = data_input_to_tensor(data)
+        self.num_data = data[0].shape[0]
+        self.inducing_variable = inducingpoint_wrapper(inducing_variable)
+        self.V = Parameter(np.zeros((self.inducing_variable.num_inducing, self.num_latent_gps)))
+        self.V.prior = tfp.distributions.Normal(
+            loc=to_default_float(0.0), scale=to_default_float(1.0)
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag451')" href="javascript:;">
+GPflow-2.3.0/gpflow/models/gpmc.py: 34-67
+</a>
+<div class="mid" id="frag451" style="display:none"><pre>
+    def __init__(
+        self,
+        data: RegressionData,
+        kernel: Kernel,
+        likelihood: Likelihood,
+        mean_function: Optional[MeanFunction] = None,
+        num_latent_gps: Optional[int] = None,
+    ):
+        """
+        data is a tuple of X, Y with X, a data matrix, size [N, D] and Y, a data matrix, size [N, R]
+        kernel, likelihood, mean_function are appropriate GPflow objects
+
+        This is a vanilla implementation of a GP with a non-Gaussian
+        likelihood. The latent function values are represented by centered
+        (whitened) variables, so
+
+            v ~ N(0, I)
+            f = Lv + m(x)
+
+        with
+
+            L L^T = K
+
+        """
+        if num_latent_gps is None:
+            num_latent_gps = self.calc_num_latent_gps_from_data(data, kernel, likelihood)
+        super().__init__(kernel, likelihood, mean_function, num_latent_gps)
+        self.data = data_input_to_tensor(data)
+        self.num_data = self.data[0].shape[0]
+        self.V = Parameter(np.zeros((self.num_data, self.num_latent_gps)))
+        self.V.prior = tfp.distributions.Normal(
+            loc=to_default_float(0.0), scale=to_default_float(1.0)
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag447')" href="javascript:;">
+GPflow-2.3.0/gpflow/models/vgp.py: 157-180
+</a>
+<div class="mid" id="frag447" style="display:none"><pre>
+    def __init__(
+        self,
+        data: RegressionData,
+        kernel: Kernel,
+        likelihood: Likelihood,
+        mean_function: Optional[MeanFunction] = None,
+        num_latent_gps: Optional[int] = None,
+    ):
+        """
+        data = (X, Y) contains the input points [N, D] and the observations [N, P]
+        kernel, likelihood, mean_function are appropriate GPflow objects
+        """
+        if num_latent_gps is None:
+            num_latent_gps = self.calc_num_latent_gps_from_data(data, kernel, likelihood)
+        super().__init__(kernel, likelihood, mean_function, num_latent_gps)
+
+        self.data = data_input_to_tensor(data)
+        X_data, Y_data = self.data
+        self.num_data = X_data.shape[0]
+        self.q_alpha = Parameter(np.zeros((self.num_data, self.num_latent_gps)))
+        self.q_lambda = Parameter(
+            np.ones((self.num_data, self.num_latent_gps)), transform=gpflow.utilities.positive()
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag443')" href="javascript:;">
+GPflow-2.3.0/gpflow/models/vgp.py: 54-78
+</a>
+<div class="mid" id="frag443" style="display:none"><pre>
+    def __init__(
+        self,
+        data: RegressionData,
+        kernel: Kernel,
+        likelihood: Likelihood,
+        mean_function: Optional[MeanFunction] = None,
+        num_latent_gps: Optional[int] = None,
+    ):
+        """
+        data = (X, Y) contains the input points [N, D] and the observations [N, P]
+        kernel, likelihood, mean_function are appropriate GPflow objects
+        """
+        if num_latent_gps is None:
+            num_latent_gps = self.calc_num_latent_gps_from_data(data, kernel, likelihood)
+        super().__init__(kernel, likelihood, mean_function, num_latent_gps)
+
+        self.data = data_input_to_tensor(data)
+        X_data, Y_data = self.data
+        num_data = X_data.shape[0]
+        self.num_data = num_data
+
+        self.q_mu = Parameter(np.zeros((num_data, self.num_latent_gps)))
+        q_sqrt = np.array([np.eye(num_data) for _ in range(self.num_latent_gps)])
+        self.q_sqrt = Parameter(q_sqrt, transform=triangular())
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 10:</b> &nbsp; 2 fragments, nominal size 21 lines, similarity 80%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag549')" href="javascript:;">
+GPflow-2.3.0/gpflow/expectations/squared_exponentials.py: 81-119
+</a>
+<div class="mid" id="frag549" style="display:none"><pre>
+def _E(p, mean, _, kernel, inducing_variable, nghp=None):
+    """
+    Compute the expectation:
+    expectation[n] = &lt;x_n K_{x_n, Z}&gt;_p(x_n)
+        - K_{.,.} :: RBF kernel
+
+    :return: NxDxM
+    """
+    Xmu, Xcov = p.mu, p.cov
+
+    D = tf.shape(Xmu)[1]
+
+    lengthscales = kernel.lengthscales
+    if not kernel.ard:
+        lengthscales = tf.zeros((D,), dtype=lengthscales.dtype) + lengthscales
+
+    chol_L_plus_Xcov = tf.linalg.cholesky(tf.linalg.diag(lengthscales ** 2) + Xcov)  # NxDxD
+    all_diffs = tf.transpose(inducing_variable.Z) - tf.expand_dims(Xmu, 2)  # NxDxM
+
+    sqrt_det_L = tf.reduce_prod(lengthscales)
+    sqrt_det_L_plus_Xcov = tf.exp(
+        tf.reduce_sum(tf.math.log(tf.linalg.diag_part(chol_L_plus_Xcov)), axis=1)
+    )
+    determinants = sqrt_det_L / sqrt_det_L_plus_Xcov  # N
+
+    exponent_mahalanobis = tf.linalg.cholesky_solve(chol_L_plus_Xcov, all_diffs)  # NxDxM
+    non_exponent_term = tf.linalg.matmul(Xcov, exponent_mahalanobis, transpose_a=True)
+    non_exponent_term = tf.expand_dims(Xmu, 2) + non_exponent_term  # NxDxM
+
+    exponent_mahalanobis = tf.reduce_sum(all_diffs * exponent_mahalanobis, 1)  # NxM
+    exponent_mahalanobis = tf.exp(-0.5 * exponent_mahalanobis)  # NxM
+
+    return (
+        kernel.variance
+        * (determinants[:, None] * exponent_mahalanobis)[:, None, :]
+        * non_exponent_term
+    )
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag550')" href="javascript:;">
+GPflow-2.3.0/gpflow/expectations/squared_exponentials.py: 123-161
+</a>
+<div class="mid" id="frag550" style="display:none"><pre>
+def _E(p, mean, _, kernel, inducing_variable, nghp=None):
+    """
+    Compute the expectation:
+    expectation[n] = &lt;x_{n+1} K_{x_n, Z}&gt;_p(x_{n:n+1})
+        - K_{.,.} :: RBF kernel
+        - p       :: MarkovGaussian distribution (p.cov 2x(N+1)xDxD)
+
+    :return: NxDxM
+    """
+    Xmu, Xcov = p.mu, p.cov
+
+    D = tf.shape(Xmu)[1]
+    lengthscales = kernel.lengthscales
+    if not kernel.ard:
+        lengthscales = tf.zeros((D,), dtype=lengthscales.dtype) + lengthscales
+
+    chol_L_plus_Xcov = tf.linalg.cholesky(tf.linalg.diag(lengthscales ** 2) + Xcov[0, :-1])  # NxDxD
+    all_diffs = tf.transpose(inducing_variable.Z) - tf.expand_dims(Xmu[:-1], 2)  # NxDxM
+
+    sqrt_det_L = tf.reduce_prod(lengthscales)
+    sqrt_det_L_plus_Xcov = tf.exp(
+        tf.reduce_sum(tf.math.log(tf.linalg.diag_part(chol_L_plus_Xcov)), axis=1)
+    )
+    determinants = sqrt_det_L / sqrt_det_L_plus_Xcov  # N
+
+    exponent_mahalanobis = tf.linalg.cholesky_solve(chol_L_plus_Xcov, all_diffs)  # NxDxM
+    non_exponent_term = tf.linalg.matmul(Xcov[1, :-1], exponent_mahalanobis, transpose_a=True)
+    non_exponent_term = tf.expand_dims(Xmu[1:], 2) + non_exponent_term  # NxDxM
+
+    exponent_mahalanobis = tf.reduce_sum(all_diffs * exponent_mahalanobis, 1)  # NxM
+    exponent_mahalanobis = tf.exp(-0.5 * exponent_mahalanobis)  # NxM
+
+    return (
+        kernel.variance
+        * (determinants[:, None] * exponent_mahalanobis)[:, None, :]
+        * non_exponent_term
+    )
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<script language="JavaScript">
+function ShowHide(divId) { 
+    if(document.getElementById(divId).style.display == 'none') {
+        document.getElementById(divId).style.display='block';
+    } else { 
+        document.getElementById(divId).style.display = 'none';
+    } 
+}
+</script>
+</body>
+</html>

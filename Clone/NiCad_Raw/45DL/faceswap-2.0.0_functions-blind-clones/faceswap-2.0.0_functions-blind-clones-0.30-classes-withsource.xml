@@ -1,0 +1,1676 @@
+<clones>
+<systeminfo processor="nicad6" system="faceswap-2.0.0" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="1230" npairs="61"/>
+<runinfo ncompares="56253" cputime="58334"/>
+<classinfo nclasses="27"/>
+
+<class classid="1" nclones="2" nlines="32" similarity="87">
+<source file="systems/faceswap-2.0.0/tools/preview/cli.py" startline="17" endline="50" pcid="74">
+    def get_argument_list(self):
+
+        argument_list = list()
+        argument_list.append(dict(
+            opts=("-i", "--input-dir"),
+            action=DirOrFileFullPaths,
+            filetypes="video",
+            dest="input_dir",
+            group="data",
+            required=True,
+            help="Input directory or video. Either a directory containing the image files you "
+                 "wish to process or path to a video file."))
+        argument_list.append(dict(
+            opts=("-al", "--alignments"),
+            action=FileFullPaths,
+            filetypes="alignments",
+            type=str,
+            group="data",
+            dest="alignments_path",
+            help="Path to the alignments file for the input, if not at the default location"))
+        argument_list.append(dict(
+            opts=("-m", "--model-dir"),
+            action=DirFullPaths,
+            dest="model_dir",
+            group="data",
+            required=True,
+            help="Model directory. A directory containing the trained model you wish to process."))
+        argument_list.append(dict(
+            opts=("-s", "--swap-model"),
+            action="store_true",
+            dest="swap_model",
+            default=False,
+            help="Swap the model. Instead of A -> B, swap B -> A"))
+        return argument_list
+</source>
+<source file="systems/faceswap-2.0.0/tools/manual/cli.py" startline="19" endline="56" pcid="237">
+    def get_argument_list():
+        """ Generate the command line argument list for the Manual Tool. """
+        argument_list = list()
+        argument_list.append(dict(
+            opts=("-al", "--alignments"),
+            action=FileFullPaths,
+            filetypes="alignments",
+            type=str,
+            group="data",
+            dest="alignments_path",
+            help="Path to the alignments file for the input, if not at the default location"))
+        argument_list.append(dict(
+            opts=("-fr", "--frames"),
+            action=DirOrFileFullPaths,
+            filetypes="video",
+            required=True,
+            group="data",
+            help="Video file or directory containing source frames that faces were extracted "
+                 "from."))
+        argument_list.append(dict(
+            opts=("-t", "--thumb-regen"),
+            action="store_true",
+            dest="thumb_regen",
+            default=False,
+            group="options",
+            help="Force regeneration of the low resolution jpg thumbnails in the alignments "
+                 "file."))
+        argument_list.append(dict(
+            opts=("-s", "--single-process"),
+            action="store_true",
+            dest="single_process",
+            default=False,
+            group="options",
+            help="The process attempts to speed up generation of thumbnails by extracting from "
+                 "the video in parallel threads. For some videos, this causes the caching "
+                 "process to hang. If this happens, then set this option to generate the "
+                 "thumbnails in a slower, but more stable single thread."))
+        return argument_list
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="19" similarity="73">
+<source file="systems/faceswap-2.0.0/tools/sort/sort.py" startline="188" endline="208" pcid="88">
+    def sort_face_cnn(self):
+        """ Sort by landmark similarity """
+        logger.info("Sorting by landmark similarity...")
+        filename_list, _, landmarks = self._get_landmarks()
+        img_list = list(zip(filename_list, landmarks))
+
+        logger.info("Comparing landmarks and sorting...")
+        img_list_len = len(img_list)
+        for i in tqdm(range(0, img_list_len - 1), desc="Comparing...", file=sys.stdout):
+            min_score = float("inf")
+            j_min_score = i + 1
+            for j in range(i + 1, img_list_len):
+                fl1 = img_list[i][1]
+                fl2 = img_list[j][1]
+                score = np.sum(np.absolute((fl2 - fl1).flatten()))
+                if score < min_score:
+                    min_score = score
+                    j_min_score = j
+            (img_list[i + 1], img_list[j_min_score]) = (img_list[j_min_score], img_list[i + 1])
+        return img_list
+
+</source>
+<source file="systems/faceswap-2.0.0/tools/sort/sort.py" startline="245" endline="267" pcid="91">
+    def sort_hist(self):
+        """ Sort by image histogram similarity """
+        logger.info("Sorting by histogram similarity...")
+        filename_list, image_list = self._get_images()
+        distance = cv2.HISTCMP_BHATTACHARYYA
+
+        logger.info("Calculating histograms...")
+        histograms = [cv2.calcHist([img], [0], None, [256], [0, 256]) for img in image_list]
+        img_list = list(zip(filename_list, histograms))
+
+        logger.info("Comparing histograms and sorting...")
+        img_list_len = len(img_list)
+        for i in tqdm(range(0, img_list_len - 1), desc="Comparing", file=sys.stdout):
+            min_score = float("inf")
+            j_min_score = i + 1
+            for j in range(i + 1, img_list_len):
+                score = cv2.compareHist(img_list[i][1], img_list[j][1], distance)
+                if score < min_score:
+                    min_score = score
+                    j_min_score = j
+            (img_list[i + 1], img_list[j_min_score]) = (img_list[j_min_score], img_list[i + 1])
+        return img_list
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="14" similarity="100">
+<source file="systems/faceswap-2.0.0/tools/sort/sort.py" startline="319" endline="342" pcid="94">
+    def group_blur(self, img_list):
+        """ Group into bins by blur """
+        # Starting the binning process
+        num_bins = self.args.num_bins
+
+        # The last bin will get all extra images if it's
+        # not possible to distribute them evenly
+        num_per_bin = len(img_list) // num_bins
+        remainder = len(img_list) % num_bins
+
+        logger.info("Grouping by blur...")
+        bins = [[] for _ in range(num_bins)]
+        idx = 0
+        for i in range(num_bins):
+            for _ in range(num_per_bin):
+                bins[i].append(img_list[idx][0])
+                idx += 1
+
+        # If remainder is 0, nothing gets added to the last bin.
+        for i in range(1, remainder + 1):
+            bins[-1].append(img_list[-i][0])
+
+        return bins
+
+</source>
+<source file="systems/faceswap-2.0.0/tools/sort/sort.py" startline="388" endline="411" pcid="96">
+    def group_face_yaw(self, img_list):
+        """ Group into bins by yaw of face """
+        # Starting the binning process
+        num_bins = self.args.num_bins
+
+        # The last bin will get all extra images if it's
+        # not possible to distribute them evenly
+        num_per_bin = len(img_list) // num_bins
+        remainder = len(img_list) % num_bins
+
+        logger.info("Grouping by face-yaw...")
+        bins = [[] for _ in range(num_bins)]
+        idx = 0
+        for i in range(num_bins):
+            for _ in range(num_per_bin):
+                bins[i].append(img_list[idx][0])
+                idx += 1
+
+        # If remainder is 0, nothing gets added to the last bin.
+        for i in range(1, remainder + 1):
+            bins[-1].append(img_list[-i][0])
+
+        return bins
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="10" similarity="90">
+<source file="systems/faceswap-2.0.0/tools/effmpeg/effmpeg.py" startline="52" endline="63" pcid="354">
+    def set_name(self, name=None):
+        """ Set the name """
+        if name is None and self.path is not None:
+            self.name = os.path.basename(self.path)
+        elif name is not None and self.path is None:
+            self.name = os.path.basename(name)
+        elif name is not None and self.path is not None:
+            self.name = os.path.basename(name)
+        else:
+            self.name = None
+        logger.debug(self.name)
+
+</source>
+<source file="systems/faceswap-2.0.0/tools/effmpeg/effmpeg.py" startline="82" endline="93" pcid="356">
+    def set_dirname(self, path=None):
+        """ Set the folder name """
+        if path is None and self.path is not None:
+            self.dirname = os.path.dirname(self.path)
+        elif path is not None and self.path is None:
+            self.dirname = os.path.dirname(path)
+        elif path is not None and self.path is not None:
+            self.dirname = os.path.dirname(path)
+        else:
+            self.dirname = None
+        logger.debug("path: '%s', dirname: '%s'", path, self.dirname)
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="13" similarity="71">
+<source file="systems/faceswap-2.0.0/tools/effmpeg/effmpeg.py" startline="330" endline="342" pcid="364">
+        _outputs = {output.path: _output_opts}
+        logger.debug("_inputs: %s, _outputs: %s", _inputs, _outputs)
+        Effmpeg.__run_ffmpeg(exe=exe, inputs=_inputs, outputs=_outputs)
+
+    @staticmethod
+    def get_fps(input_=None, print_=False, **kwargs):
+        """ Get Frames per Second """
+        logger.debug("input_: %s, print_: %s, kwargs: %s", input_, print_, kwargs)
+        input_ = input_ if isinstance(input_, str) else input_.path
+        logger.debug("input: %s", input_)
+        reader = imageio.get_reader(input_, "ffmpeg")
+        _fps = reader.get_meta_data()["fps"]
+        logger.debug(_fps)
+</source>
+<source file="systems/faceswap-2.0.0/tools/effmpeg/effmpeg.py" startline="344" endline="359" pcid="365">
+        if print_:
+            logger.info("Video fps: %s", _fps)
+        return _fps
+
+    @staticmethod
+    def get_info(input_=None, print_=False, **kwargs):
+        """ Get video Info """
+        logger.debug("input_: %s, print_: %s, kwargs: %s", input_, print_, kwargs)
+        input_ = input_ if isinstance(input_, str) else input_.path
+        logger.debug("input: %s", input_)
+        reader = imageio.get_reader(input_, "ffmpeg")
+        out = reader.get_meta_data()
+        logger.debug(out)
+        reader.close()
+        if print_:
+            logger.info("======== Video Info ========",)
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="11" similarity="81">
+<source file="systems/faceswap-2.0.0/lib/sysinfo.py" startline="222" endline="239" pcid="457">
+    def _cudnn_checkfiles_linux():
+        """ Obtain the location of the files to check for cuDNN location in Linux.
+
+        Returns
+        str:
+            The location of the header files for cuDNN
+        """
+        chk = os.popen("ldconfig -p | grep -P \"libcudnn.so.\\d+\" | head -n 1").read()
+        if "libcudnn.so." not in chk:
+            return list()
+        chk = chk.strip().replace("libcudnn.so.", "")
+        cudnn_vers = chk[0]
+        cudnn_path = chk[chk.find("=>") + 3:chk.find("libcudnn") - 1]
+        cudnn_path = cudnn_path.replace("lib", "include")
+        cudnn_checkfiles = [os.path.join(cudnn_path, "cudnn_v{}.h".format(cudnn_vers)),
+                            os.path.join(cudnn_path, "cudnn.h")]
+        return cudnn_checkfiles
+
+</source>
+<source file="systems/faceswap-2.0.0/setup.py" startline="535" endline="547" pcid="1214">
+    def cudnn_checkfiles_linux():
+        """ Return the checkfile locations for linux """
+        chk = os.popen("ldconfig -p | grep -P \"libcudnn.so.\\d+\" | head -n 1").read()
+        chk = chk.strip().replace("libcudnn.so.", "")
+        if not chk:
+            return list()
+        cudnn_vers = chk[0]
+        cudnn_path = chk[chk.find("=>") + 3:chk.find("libcudnn") - 1]
+        cudnn_path = cudnn_path.replace("lib", "include")
+        cudnn_checkfiles = [os.path.join(cudnn_path, "cudnn_v{}.h".format(cudnn_vers)),
+                            os.path.join(cudnn_path, "cudnn.h")]
+        return cudnn_checkfiles
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="26" similarity="100">
+<source file="systems/faceswap-2.0.0/lib/model/losses_tf.py" startline="89" endline="140" pcid="619">
+    def call(self, y_true, y_pred):
+        """ Call the DSSIM Loss Function.
+
+        Parameters
+        ----------
+        y_true: tensor or variable
+            The ground truth value
+        y_pred: tensor or variable
+            The predicted value
+
+        Returns
+        -------
+        tensor
+            The DSSIM Loss value
+
+        Notes
+        -----
+        There are additional parameters for this function. some of the 'modes' for edge behavior
+        do not yet have a gradient definition in the Theano tree and cannot be used for learning
+        """
+
+        kernel = [self.kernel_size, self.kernel_size]
+        y_true = K.reshape(y_true, [-1] + list(self.__int_shape(y_pred)[1:]))
+        y_pred = K.reshape(y_pred, [-1] + list(self.__int_shape(y_pred)[1:]))
+        patches_pred = self.extract_image_patches(y_pred,
+                                                  kernel,
+                                                  kernel,
+                                                  'valid',
+                                                  self.dim_ordering)
+        patches_true = self.extract_image_patches(y_true,
+                                                  kernel,
+                                                  kernel,
+                                                  'valid',
+                                                  self.dim_ordering)
+
+        # Get mean
+        u_true = K.mean(patches_true, axis=-1)
+        u_pred = K.mean(patches_pred, axis=-1)
+        # Get variance
+        var_true = K.var(patches_true, axis=-1)
+        var_pred = K.var(patches_pred, axis=-1)
+        # Get standard deviation
+        covar_true_pred = K.mean(
+            patches_true * patches_pred, axis=-1) - u_true * u_pred
+
+        ssim = (2 * u_true * u_pred + self.c_1) * (
+            2 * covar_true_pred + self.c_2)
+        denom = (K.square(u_true) + K.square(u_pred) + self.c_1) * (
+            var_pred + var_true + self.c_2)
+        ssim /= denom  # no need for clipping, c_1 + c_2 make the denorm non-zero
+        return K.mean((1.0 - ssim) / 2.0)
+
+</source>
+<source file="systems/faceswap-2.0.0/lib/model/losses_plaid.py" startline="93" endline="144" pcid="639">
+    def __call__(self, y_true, y_pred):
+        """ Call the DSSIM Loss Function.
+
+        Parameters
+        ----------
+        y_true: tensor or variable
+            The ground truth value
+        y_pred: tensor or variable
+            The predicted value
+
+        Returns
+        -------
+        tensor
+            The DSSIM Loss value
+
+        Notes
+        -----
+        There are additional parameters for this function. some of the 'modes' for edge behavior
+        do not yet have a gradient definition in the Theano tree and cannot be used for learning
+        """
+
+        kernel = [self.kernel_size, self.kernel_size]
+        y_true = K.reshape(y_true, [-1] + list(self.__int_shape(y_pred)[1:]))
+        y_pred = K.reshape(y_pred, [-1] + list(self.__int_shape(y_pred)[1:]))
+        patches_pred = self.extract_image_patches(y_pred,
+                                                  kernel,
+                                                  kernel,
+                                                  'valid',
+                                                  self.dim_ordering)
+        patches_true = self.extract_image_patches(y_true,
+                                                  kernel,
+                                                  kernel,
+                                                  'valid',
+                                                  self.dim_ordering)
+
+        # Get mean
+        u_true = K.mean(patches_true, axis=-1)
+        u_pred = K.mean(patches_pred, axis=-1)
+        # Get variance
+        var_true = K.var(patches_true, axis=-1)
+        var_pred = K.var(patches_pred, axis=-1)
+        # Get standard deviation
+        covar_true_pred = K.mean(
+            patches_true * patches_pred, axis=-1) - u_true * u_pred
+
+        ssim = (2 * u_true * u_pred + self.c_1) * (
+            2 * covar_true_pred + self.c_2)
+        denom = (K.square(u_true) + K.square(u_pred) + self.c_1) * (
+            var_pred + var_true + self.c_2)
+        ssim /= denom  # no need for clipping, c_1 + c_2 make the denorm non-zero
+        return K.mean((1.0 - ssim) / 2.0)
+
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="12" similarity="100">
+<source file="systems/faceswap-2.0.0/lib/model/losses_tf.py" startline="348" endline="375" pcid="629">
+    def call(self, y_true, y_pred):
+        """ Call the gradient loss function.
+
+        Parameters
+        ----------
+        y_true: tensor or variable
+            The ground truth value
+        y_pred: tensor or variable
+            The predicted value
+
+        Returns
+        -------
+        tensor
+            The loss value
+        """
+        tv_weight = 1.0
+        tv2_weight = 1.0
+        loss = 0.0
+        loss += tv_weight * (self.generalized_loss(self._diff_x(y_true), self._diff_x(y_pred)) +
+                             self.generalized_loss(self._diff_y(y_true), self._diff_y(y_pred)))
+        loss += tv2_weight * (self.generalized_loss(self._diff_xx(y_true), self._diff_xx(y_pred)) +
+                              self.generalized_loss(self._diff_yy(y_true), self._diff_yy(y_pred)) +
+                              self.generalized_loss(self._diff_xy(y_true), self._diff_xy(y_pred))
+                              * 2.)
+        loss = loss / (tv_weight + tv2_weight)
+        # TODO simplify to use MSE instead
+        return loss
+
+</source>
+<source file="systems/faceswap-2.0.0/lib/model/losses_plaid.py" startline="353" endline="380" pcid="649">
+    def __call__(self, y_true, y_pred):
+        """ Call the gradient loss function.
+
+        Parameters
+        ----------
+        y_true: tensor or variable
+            The ground truth value
+        y_pred: tensor or variable
+            The predicted value
+
+        Returns
+        -------
+        tensor
+            The loss value
+        """
+        tv_weight = 1.0
+        tv2_weight = 1.0
+        loss = 0.0
+        loss += tv_weight * (self.generalized_loss(self._diff_x(y_true), self._diff_x(y_pred)) +
+                             self.generalized_loss(self._diff_y(y_true), self._diff_y(y_pred)))
+        loss += tv2_weight * (self.generalized_loss(self._diff_xx(y_true), self._diff_xx(y_pred)) +
+                              self.generalized_loss(self._diff_yy(y_true), self._diff_yy(y_pred)) +
+                              self.generalized_loss(self._diff_xy(y_true), self._diff_xy(y_pred))
+                              * 2.)
+        loss = loss / (tv_weight + tv2_weight)
+        # TODO simplify to use MSE instead
+        return loss
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="28" similarity="100">
+<source file="systems/faceswap-2.0.0/lib/model/losses_tf.py" startline="413" endline="451" pcid="634">
+    def _diff_xy(cls, img):
+        """ X-Y Difference """
+        # xout1
+        top_left = img[:, 1:2, 1:2, :] + img[:, 0:1, 0:1, :]
+        inner_left = img[:, 2:, 1:2, :] + img[:, :-2, 0:1, :]
+        bot_left = img[:, -1:, 1:2, :] + img[:, -2:-1, 0:1, :]
+        xy_left = K.concatenate([top_left, inner_left, bot_left], axis=1)
+
+        top_mid = img[:, 1:2, 2:, :] + img[:, 0:1, :-2, :]
+        mid_mid = img[:, 2:, 2:, :] + img[:, :-2, :-2, :]
+        bot_mid = img[:, -1:, 2:, :] + img[:, -2:-1, :-2, :]
+        xy_mid = K.concatenate([top_mid, mid_mid, bot_mid], axis=1)
+
+        top_right = img[:, 1:2, -1:, :] + img[:, 0:1, -2:-1, :]
+        inner_right = img[:, 2:, -1:, :] + img[:, :-2, -2:-1, :]
+        bot_right = img[:, -1:, -1:, :] + img[:, -2:-1, -2:-1, :]
+        xy_right = K.concatenate([top_right, inner_right, bot_right], axis=1)
+
+        # Xout2
+        top_left = img[:, 0:1, 1:2, :] + img[:, 1:2, 0:1, :]
+        inner_left = img[:, :-2, 1:2, :] + img[:, 2:, 0:1, :]
+        bot_left = img[:, -2:-1, 1:2, :] + img[:, -1:, 0:1, :]
+        xy_left = K.concatenate([top_left, inner_left, bot_left], axis=1)
+
+        top_mid = img[:, 0:1, 2:, :] + img[:, 1:2, :-2, :]
+        mid_mid = img[:, :-2, 2:, :] + img[:, 2:, :-2, :]
+        bot_mid = img[:, -2:-1, 2:, :] + img[:, -1:, :-2, :]
+        xy_mid = K.concatenate([top_mid, mid_mid, bot_mid], axis=1)
+
+        top_right = img[:, 0:1, -1:, :] + img[:, 1:2, -2:-1, :]
+        inner_right = img[:, :-2, -1:, :] + img[:, 2:, -2:-1, :]
+        bot_right = img[:, -2:-1, -1:, :] + img[:, -1:, -2:-1, :]
+        xy_right = K.concatenate([top_right, inner_right, bot_right], axis=1)
+
+        xy_out1 = K.concatenate([xy_left, xy_mid, xy_right], axis=2)
+        xy_out2 = K.concatenate([xy_left, xy_mid, xy_right], axis=2)
+        return (xy_out1 - xy_out2) * 0.25
+
+
+</source>
+<source file="systems/faceswap-2.0.0/lib/model/losses_plaid.py" startline="418" endline="456" pcid="654">
+    def _diff_xy(cls, img):
+        """ X-Y Difference """
+        # xout1
+        top_left = img[:, 1:2, 1:2, :] + img[:, 0:1, 0:1, :]
+        inner_left = img[:, 2:, 1:2, :] + img[:, :-2, 0:1, :]
+        bot_left = img[:, -1:, 1:2, :] + img[:, -2:-1, 0:1, :]
+        xy_left = K.concatenate([top_left, inner_left, bot_left], axis=1)
+
+        top_mid = img[:, 1:2, 2:, :] + img[:, 0:1, :-2, :]
+        mid_mid = img[:, 2:, 2:, :] + img[:, :-2, :-2, :]
+        bot_mid = img[:, -1:, 2:, :] + img[:, -2:-1, :-2, :]
+        xy_mid = K.concatenate([top_mid, mid_mid, bot_mid], axis=1)
+
+        top_right = img[:, 1:2, -1:, :] + img[:, 0:1, -2:-1, :]
+        inner_right = img[:, 2:, -1:, :] + img[:, :-2, -2:-1, :]
+        bot_right = img[:, -1:, -1:, :] + img[:, -2:-1, -2:-1, :]
+        xy_right = K.concatenate([top_right, inner_right, bot_right], axis=1)
+
+        # Xout2
+        top_left = img[:, 0:1, 1:2, :] + img[:, 1:2, 0:1, :]
+        inner_left = img[:, :-2, 1:2, :] + img[:, 2:, 0:1, :]
+        bot_left = img[:, -2:-1, 1:2, :] + img[:, -1:, 0:1, :]
+        xy_left = K.concatenate([top_left, inner_left, bot_left], axis=1)
+
+        top_mid = img[:, 0:1, 2:, :] + img[:, 1:2, :-2, :]
+        mid_mid = img[:, :-2, 2:, :] + img[:, 2:, :-2, :]
+        bot_mid = img[:, -2:-1, 2:, :] + img[:, -1:, :-2, :]
+        xy_mid = K.concatenate([top_mid, mid_mid, bot_mid], axis=1)
+
+        top_right = img[:, 0:1, -1:, :] + img[:, 1:2, -2:-1, :]
+        inner_right = img[:, :-2, -1:, :] + img[:, 2:, -2:-1, :]
+        bot_right = img[:, -2:-1, -1:, :] + img[:, -1:, -2:-1, :]
+        xy_right = K.concatenate([top_right, inner_right, bot_right], axis=1)
+
+        xy_out1 = K.concatenate([xy_left, xy_mid, xy_right], axis=2)
+        xy_out2 = K.concatenate([xy_left, xy_mid, xy_right], axis=2)
+        return (xy_out1 - xy_out2) * 0.25
+
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="11" similarity="90">
+<source file="systems/faceswap-2.0.0/lib/model/losses_tf.py" startline="463" endline="488" pcid="635">
+    def call(self, y_true, y_pred):
+        """ Return the Gradient Magnitude Similarity Deviation Loss.
+
+
+        Parameters
+        ----------
+        y_true: tensor or variable
+            The ground truth value
+        y_pred: tensor or variable
+            The predicted value
+
+        Returns
+        -------
+        tensor
+            The loss value
+        """
+        true_edge = self._scharr_edges(y_true, True)
+        pred_edge = self._scharr_edges(y_pred, True)
+        ephsilon = 0.0025
+        upper = 2.0 * true_edge * pred_edge
+        lower = K.square(true_edge) + K.square(pred_edge)
+        gms = (upper + ephsilon) / (lower + ephsilon)
+        gmsd = K.std(gms, axis=(1, 2, 3), keepdims=True)
+        gmsd = K.squeeze(gmsd, axis=-1)
+        return gmsd
+
+</source>
+<source file="systems/faceswap-2.0.0/lib/model/losses_plaid.py" startline="468" endline="495" pcid="655">
+    def __call__(self, y_true, y_pred):
+        """ Return the Gradient Magnitude Similarity Deviation Loss.
+
+        Parameters
+        ----------
+        y_true: tensor or variable
+            The ground truth value
+        y_pred: tensor or variable
+            The predicted value
+
+        Returns
+        -------
+        tensor
+            The loss value
+        """
+        raise FaceswapError("GMSD Loss is not currently compatible with PlaidML. Please select a "
+                            "different Loss method.")
+
+        true_edge = self._scharr_edges(y_true, True)
+        pred_edge = self._scharr_edges(y_pred, True)
+        ephsilon = 0.0025
+        upper = 2.0 * true_edge * pred_edge
+        lower = K.square(true_edge) + K.square(pred_edge)
+        gms = (upper + ephsilon) / (lower + ephsilon)
+        gmsd = K.std(gms, axis=(1, 2, 3), keepdims=True)
+        gmsd = K.squeeze(gmsd, axis=-1)
+        return gmsd
+
+</source>
+</class>
+
+<class classid="11" nclones="2" nlines="40" similarity="97">
+<source file="systems/faceswap-2.0.0/lib/model/losses_tf.py" startline="490" endline="556" pcid="636">
+    def _scharr_edges(cls, image, magnitude):
+        """ Returns a tensor holding modified Scharr edge maps.
+
+        Parameters
+        ----------
+        image: tensor
+            Image tensor with shape [batch_size, h, w, d] and type float32. The image(s) must be
+            2x2 or larger.
+        magnitude: bool
+            Boolean to determine if the edge magnitude or edge direction is returned
+
+        Returns
+        -------
+        tensor
+            Tensor holding edge maps for each channel. Returns a tensor with shape `[batch_size, h,
+            w, d, 2]` where the last two dimensions hold `[[dy[0], dx[0]], [dy[1], dx[1]], ...,
+            [dy[d-1], dx[d-1]]]` calculated using the Scharr filter.
+        """
+
+        # Define vertical and horizontal Scharr filters.
+        static_image_shape = image.get_shape()
+        image_shape = K.shape(image)
+
+        # 5x5 modified Scharr kernel ( reshape to (5,5,1,2) )
+        matrix = np.array([[[[0.00070, 0.00070]],
+                            [[0.00520, 0.00370]],
+                            [[0.03700, 0.00000]],
+                            [[0.00520, -0.0037]],
+                            [[0.00070, -0.0007]]],
+                           [[[0.00370, 0.00520]],
+                            [[0.11870, 0.11870]],
+                            [[0.25890, 0.00000]],
+                            [[0.11870, -0.1187]],
+                            [[0.00370, -0.0052]]],
+                           [[[0.00000, 0.03700]],
+                            [[0.00000, 0.25890]],
+                            [[0.00000, 0.00000]],
+                            [[0.00000, -0.2589]],
+                            [[0.00000, -0.0370]]],
+                           [[[-0.0037, 0.00520]],
+                            [[-0.1187, 0.11870]],
+                            [[-0.2589, 0.00000]],
+                            [[-0.1187, -0.1187]],
+                            [[-0.0037, -0.0052]]],
+                           [[[-0.0007, 0.00070]],
+                            [[-0.0052, 0.00370]],
+                            [[-0.0370, 0.00000]],
+                            [[-0.0052, -0.0037]],
+                            [[-0.0007, -0.0007]]]])
+        num_kernels = [2]
+        kernels = K.constant(matrix, dtype='float32')
+        kernels = K.tile(kernels, [1, 1, image_shape[-1], 1])
+
+        # Use depth-wise convolution to calculate edge maps per channel.
+        # Output tensor has shape [batch_size, h, w, d * num_kernels].
+        pad_sizes = [[0, 0], [2, 2], [2, 2], [0, 0]]
+        padded = tf.pad(image, pad_sizes, mode='REFLECT')
+        output = K.depthwise_conv2d(padded, kernels)
+
+        if not magnitude:  # direction of edges
+            # Reshape to [batch_size, h, w, d, num_kernels].
+            shape = K.concatenate([image_shape, num_kernels], axis=0)
+            output = K.reshape(output, shape=shape)
+            output.set_shape(static_image_shape.concatenate(num_kernels))
+            output = tf.atan(K.squeeze(output[:, :, :, :, 0] / output[:, :, :, :, 1], axis=None))
+        # magnitude of edges -- unified x & y edges don't work well with Neural Networks
+        return output
+</source>
+<source file="systems/faceswap-2.0.0/lib/model/losses_plaid.py" startline="497" endline="564" pcid="656">
+    def _scharr_edges(cls, image, magnitude):
+        """ Returns a tensor holding modified Scharr edge maps.
+
+        Parameters
+        ----------
+        image: tensor
+            Image tensor with shape [batch_size, h, w, d] and type float32. The image(s) must be
+            2x2 or larger.
+        magnitude: bool
+            Boolean to determine if the edge magnitude or edge direction is returned
+
+        Returns
+        -------
+        tensor
+            Tensor holding edge maps for each channel. Returns a tensor with shape `[batch_size, h,
+            w, d, 2]` where the last two dimensions hold `[[dy[0], dx[0]], [dy[1], dx[1]], ...,
+            [dy[d-1], dx[d-1]]]` calculated using the Scharr filter.
+        """
+
+        # Define vertical and horizontal Scharr filters.
+        # TODO PlaidML: AttributeError: 'Value' object has no attribute 'get_shape'
+        static_image_shape = image.get_shape()
+        image_shape = K.shape(image)
+
+        # 5x5 modified Scharr kernel ( reshape to (5,5,1,2) )
+        matrix = np.array([[[[0.00070, 0.00070]],
+                            [[0.00520, 0.00370]],
+                            [[0.03700, 0.00000]],
+                            [[0.00520, -0.0037]],
+                            [[0.00070, -0.0007]]],
+                           [[[0.00370, 0.00520]],
+                            [[0.11870, 0.11870]],
+                            [[0.25890, 0.00000]],
+                            [[0.11870, -0.1187]],
+                            [[0.00370, -0.0052]]],
+                           [[[0.00000, 0.03700]],
+                            [[0.00000, 0.25890]],
+                            [[0.00000, 0.00000]],
+                            [[0.00000, -0.2589]],
+                            [[0.00000, -0.0370]]],
+                           [[[-0.0037, 0.00520]],
+                            [[-0.1187, 0.11870]],
+                            [[-0.2589, 0.00000]],
+                            [[-0.1187, -0.1187]],
+                            [[-0.0037, -0.0052]]],
+                           [[[-0.0007, 0.00070]],
+                            [[-0.0052, 0.00370]],
+                            [[-0.0370, 0.00000]],
+                            [[-0.0052, -0.0037]],
+                            [[-0.0007, -0.0007]]]])
+        num_kernels = [2]
+        kernels = K.constant(matrix, dtype='float32')
+        kernels = K.tile(kernels, [1, 1, image_shape[-1], 1])
+
+        # Use depth-wise convolution to calculate edge maps per channel.
+        # Output tensor has shape [batch_size, h, w, d * num_kernels].
+        pad_sizes = [[0, 0], [2, 2], [2, 2], [0, 0]]
+        padded = pad(image, pad_sizes, mode='REFLECT')
+        output = K.depthwise_conv2d(padded, kernels)
+
+        if not magnitude:  # direction of edges
+            # Reshape to [batch_size, h, w, d, num_kernels].
+            shape = K.concatenate([image_shape, num_kernels], axis=0)
+            output = K.reshape(output, shape=shape)
+            output.set_shape(static_image_shape.concatenate(num_kernels))
+            output = tf.atan(K.squeeze(output[:, :, :, :, 0] / output[:, :, :, :, 1], axis=None))
+        # magnitude of edges -- unified x & y edges don't work well with Neural Networks
+        return output
+</source>
+</class>
+
+<class classid="12" nclones="2" nlines="13" similarity="71">
+<source file="systems/faceswap-2.0.0/lib/plaidml_tools.py" startline="181" endline="200" pcid="696">
+    def _get_supported_devices(self):
+        """ Obtain GPU devices from PlaidML that are marked as "supported".
+
+        Returns
+        -------
+        list
+            The :class:`pladml._DeviceConfig` objects for GPUs that PlaidML has discovered.
+        """
+        experimental_setting = plaidml.settings.experimental
+        plaidml.settings.experimental = False
+        devices = plaidml.devices(self._ctx, limit=100, return_all=True)[0]
+        plaidml.settings.experimental = experimental_setting
+
+        supported = [device for device in devices
+                     if device.details
+                     and json.loads(device.details.decode()).get("type", "cpu").lower() == "gpu"]
+        if _LOGGER:
+            _LOGGER.debug(supported)
+        return supported
+
+</source>
+<source file="systems/faceswap-2.0.0/lib/plaidml_tools.py" startline="201" endline="223" pcid="697">
+    def _get_all_devices(self):
+        """ Obtain all available (experimental and supported) GPU devices from PlaidML.
+
+        Returns
+        -------
+        list
+            The :class:`pladml._DeviceConfig` objects for GPUs that PlaidML has discovered.
+        """
+        experimental_setting = plaidml.settings.experimental
+        plaidml.settings.experimental = True
+        devices, _ = plaidml.devices(self._ctx, limit=100, return_all=True)
+        plaidml.settings.experimental = experimental_setting
+
+        experi = [device for device in devices
+                  if device.details
+                  and json.loads(device.details.decode()).get("type", "cpu").lower() == "gpu"]
+        if _LOGGER:
+            _LOGGER.debug("Experimental Devices: %s", experi)
+        all_devices = experi + self._supported_devices
+        if _LOGGER:
+            _LOGGER.debug(all_devices)
+        return all_devices
+
+</source>
+</class>
+
+<class classid="13" nclones="2" nlines="15" similarity="70">
+<source file="systems/faceswap-2.0.0/lib/gui/menu.py" startline="495" endline="510" pcid="747">
+    def _project_btns(self):
+        frame = ttk.Frame(self._btn_frame)
+        frame.pack(side=tk.LEFT, anchor=tk.W, expand=False, padx=2)
+
+        for btntype in ("new", "load", "save", "save_as", "reload"):
+            logger.debug("Adding button: '%s'", btntype)
+
+            loader, kwargs = self._loader_and_kwargs(btntype)
+            cmd = getattr(self._config.project, loader)
+            btn = ttk.Button(frame,
+                             image=get_images().icons[btntype],
+                             command=lambda fn=cmd, kw=kwargs: fn(**kw))
+            btn.pack(side=tk.LEFT, anchor=tk.W)
+            hlp = self.set_help(btntype)
+            Tooltip(btn, text=hlp, wraplength=200)
+
+</source>
+<source file="systems/faceswap-2.0.0/lib/gui/menu.py" startline="511" endline="530" pcid="748">
+    def _task_btns(self):
+        frame = ttk.Frame(self._btn_frame)
+        frame.pack(side=tk.LEFT, anchor=tk.W, expand=False, padx=2)
+
+        for loadtype in ("load", "save", "save_as", "clear", "reload"):
+            btntype = "{}2".format(loadtype)
+            logger.debug("Adding button: '%s'", btntype)
+
+            loader, kwargs = self._loader_and_kwargs(loadtype)
+            if loadtype == "load":
+                kwargs["current_tab"] = True
+            cmd = getattr(self._config.tasks, loader)
+            btn = ttk.Button(
+                frame,
+                image=get_images().icons[btntype],
+                command=lambda fn=cmd, kw=kwargs: fn(**kw))
+            btn.pack(side=tk.LEFT, anchor=tk.W)
+            hlp = self.set_help(btntype)
+            Tooltip(btn, text=hlp, wraplength=200)
+
+</source>
+</class>
+
+<class classid="14" nclones="2" nlines="11" similarity="81">
+<source file="systems/faceswap-2.0.0/lib/gui/display_command.py" startline="81" endline="92" pcid="820">
+    def add_option_refresh(self):
+        """ Add refresh button to refresh preview immediately """
+        logger.debug("Adding refresh option")
+        btnrefresh = ttk.Button(self.optsframe,
+                                image=get_images().icons["reload"],
+                                command=preview_trigger().set)
+        btnrefresh.pack(padx=2, side=tk.RIGHT)
+        Tooltip(btnrefresh,
+                text="Preview updates at every model save. Click to refresh now.",
+                wraplength=200)
+        logger.debug("Added refresh option")
+
+</source>
+<source file="systems/faceswap-2.0.0/lib/gui/display_command.py" startline="203" endline="215" pcid="832">
+    def add_option_refresh(self):
+        """ Add refresh button to refresh graph immediately """
+        logger.debug("Adding refresh option")
+        tk_var = get_config().tk_vars["refreshgraph"]
+        btnrefresh = ttk.Button(self.optsframe,
+                                image=get_images().icons["reload"],
+                                command=lambda: tk_var.set(True))
+        btnrefresh.pack(padx=2, side=tk.RIGHT)
+        Tooltip(btnrefresh,
+                text="Graph updates at every model save. Click to refresh now.",
+                wraplength=200)
+        logger.debug("Added refresh option")
+
+</source>
+</class>
+
+<class classid="15" nclones="2" nlines="11" similarity="100">
+<source file="systems/faceswap-2.0.0/plugins/plugin_loader.py" startline="167" endline="192" pcid="871">
+    def get_available_extractors(extractor_type, add_none=False):
+        """ Return a list of available extractors of the given type
+
+        Parameters
+        ----------
+        extractor_type: {'aligner', 'detector', 'masker'}
+            The type of extractor to return the plugins for
+        add_none: bool, optional
+            Append "none" to the list of returned plugins. Default: False
+        Returns
+        -------
+        list:
+            A list of the available extractor plugin names for the given type
+        """
+        extractpath = os.path.join(os.path.dirname(__file__),
+                                   "extract",
+                                   extractor_type)
+        extractors = sorted(item.name.replace(".py", "").replace("_", "-")
+                            for item in os.scandir(extractpath)
+                            if not item.name.startswith("_")
+                            and not item.name.endswith("defaults.py")
+                            and item.name.endswith(".py"))
+        if add_none:
+            extractors.insert(0, "none")
+        return extractors
+
+</source>
+<source file="systems/faceswap-2.0.0/plugins/plugin_loader.py" startline="224" endline="250" pcid="874">
+    def get_available_convert_plugins(convert_category, add_none=True):
+        """ Return a list of available converter plugins in the given category
+
+        Parameters
+        ----------
+        convert_category: {'color', 'mask', 'scaling', 'writer'}
+            The category of converter plugin to return the plugins for
+        add_none: bool, optional
+            Append "none" to the list of returned plugins. Default: True
+
+        Returns
+        -------
+        list
+            A list of the available converter plugin names in the given category
+        """
+
+        convertpath = os.path.join(os.path.dirname(__file__),
+                                   "convert",
+                                   convert_category)
+        converters = sorted(item.name.replace(".py", "").replace("_", "-")
+                            for item in os.scandir(convertpath)
+                            if not item.name.startswith("_")
+                            and not item.name.endswith("defaults.py")
+                            and item.name.endswith(".py"))
+        if add_none:
+            converters.insert(0, "none")
+        return converters
+</source>
+</class>
+
+<class classid="16" nclones="8" nlines="10" similarity="75">
+<source file="systems/faceswap-2.0.0/plugins/extract/detect/cv2_dnn.py" startline="11" endline="21" pcid="875">
+    def __init__(self, **kwargs):
+        git_model_id = 4
+        model_filename = ["resnet_ssd_v1.caffemodel", "resnet_ssd_v1.prototxt"]
+        super().__init__(git_model_id=git_model_id, model_filename=model_filename, **kwargs)
+        self.name = "cv2-DNN Detector"
+        self.input_size = 300
+        self.vram = 0  # CPU Only. Doesn't use VRAM
+        self.vram_per_batch = 0
+        self.batchsize = 1
+        self.confidence = self.config["confidence"] / 100
+
+</source>
+<source file="systems/faceswap-2.0.0/plugins/extract/mask/vgg_clear.py" startline="24" endline="34" pcid="946">
+    def __init__(self, **kwargs):
+        git_model_id = 8
+        model_filename = "Nirkin_300_softmax_v1.h5"
+        super().__init__(git_model_id=git_model_id, model_filename=model_filename, **kwargs)
+        self.name = "VGG Clear"
+        self.input_size = 300
+        self.vram = 2944
+        self.vram_warnings = 1088  # at BS 1. OOMs at higher batch sizes
+        self.vram_per_batch = 400
+        self.batchsize = self.config["batch-size"]
+
+</source>
+<source file="systems/faceswap-2.0.0/plugins/extract/mask/unet_dfl.py" startline="23" endline="33" pcid="941">
+    def __init__(self, **kwargs):
+        git_model_id = 6
+        model_filename = "DFL_256_sigmoid_v1.h5"
+        super().__init__(git_model_id=git_model_id, model_filename=model_filename, **kwargs)
+        self.name = "U-Net"
+        self.input_size = 256
+        self.vram = 3424
+        self.vram_warnings = 256
+        self.vram_per_batch = 80
+        self.batchsize = self.config["batch-size"]
+
+</source>
+<source file="systems/faceswap-2.0.0/plugins/extract/align/cv2_dnn.py" startline="35" endline="46" pcid="963">
+    def __init__(self, **kwargs):
+        git_model_id = 1
+        model_filename = "cnn-facial-landmark_v1.pb"
+        super().__init__(git_model_id=git_model_id, model_filename=model_filename, **kwargs)
+
+        self.name = "cv2-DNN Aligner"
+        self.input_size = 128
+        self.color_format = "RGB"
+        self.vram = 0  # Doesn't use GPU
+        self.vram_per_batch = 0
+        self.batchsize = 1
+
+</source>
+<source file="systems/faceswap-2.0.0/plugins/extract/detect/s3fd.py" startline="20" endline="30" pcid="904">
+    def __init__(self, **kwargs):
+        git_model_id = 11
+        model_filename = "s3fd_keras_v1.h5"
+        super().__init__(git_model_id=git_model_id, model_filename=model_filename, **kwargs)
+        self.name = "S3FD"
+        self.input_size = 640
+        self.vram = 4112
+        self.vram_warnings = 1024  # Will run at this with warnings
+        self.vram_per_batch = 208
+        self.batchsize = self.config["batch-size"]
+
+</source>
+<source file="systems/faceswap-2.0.0/plugins/extract/mask/vgg_obstructed.py" startline="24" endline="34" pcid="936">
+    def __init__(self, **kwargs):
+        git_model_id = 5
+        model_filename = "Nirkin_500_softmax_v1.h5"
+        super().__init__(git_model_id=git_model_id, model_filename=model_filename, **kwargs)
+        self.name = "VGG Obstructed"
+        self.input_size = 500
+        self.vram = 3936
+        self.vram_warnings = 1088  # at BS 1. OOMs at higher batch sizes
+        self.vram_per_batch = 304
+        self.batchsize = self.config["batch-size"]
+
+</source>
+<source file="systems/faceswap-2.0.0/plugins/extract/detect/mtcnn.py" startline="16" endline="28" pcid="881">
+    def __init__(self, **kwargs):
+        git_model_id = 2
+        model_filename = ["mtcnn_det_v2.1.h5", "mtcnn_det_v2.2.h5", "mtcnn_det_v2.3.h5"]
+        super().__init__(git_model_id=git_model_id, model_filename=model_filename, **kwargs)
+        self.name = "MTCNN"
+        self.input_size = 640
+        self.vram = 320
+        self.vram_warnings = 64  # Will run at this with warnings
+        self.vram_per_batch = 32
+        self.batchsize = self.config["batch-size"]
+        self.kwargs = self.validate_kwargs()
+        self.color_format = "RGB"
+
+</source>
+<source file="systems/faceswap-2.0.0/plugins/extract/align/fan.py" startline="15" endline="27" pcid="973">
+    def __init__(self, **kwargs):
+        git_model_id = 13
+        model_filename = "face-alignment-network_2d4_keras_v2.h5"
+        super().__init__(git_model_id=git_model_id, model_filename=model_filename, **kwargs)
+        self.name = "FAN"
+        self.input_size = 256
+        self.color_format = "RGB"
+        self.vram = 2240
+        self.vram_warnings = 512  # Will run at this with warnings
+        self.vram_per_batch = 64
+        self.batchsize = self.config["batch-size"]
+        self.reference_scale = 200. / 195.
+
+</source>
+</class>
+
+<class classid="17" nclones="2" nlines="19" similarity="76">
+<source file="systems/faceswap-2.0.0/plugins/extract/detect/mtcnn.py" startline="146" endline="167" pcid="890">
+    def model_definition():
+        """ Keras R-Network for MTCNN """
+        input_ = Input(shape=(24, 24, 3))
+        var_x = Conv2D(28, (3, 3), strides=1, padding='valid', name='conv1')(input_)
+        var_x = PReLU(shared_axes=[1, 2], name='prelu1')(var_x)
+        var_x = MaxPool2D(pool_size=3, strides=2, padding='same')(var_x)
+
+        var_x = Conv2D(48, (3, 3), strides=1, padding='valid', name='conv2')(var_x)
+        var_x = PReLU(shared_axes=[1, 2], name='prelu2')(var_x)
+        var_x = MaxPool2D(pool_size=3, strides=2)(var_x)
+
+        var_x = Conv2D(64, (2, 2), strides=1, padding='valid', name='conv3')(var_x)
+        var_x = PReLU(shared_axes=[1, 2], name='prelu3')(var_x)
+        var_x = Permute((3, 2, 1))(var_x)
+        var_x = Flatten()(var_x)
+        var_x = Dense(128, name='conv4')(var_x)
+        var_x = PReLU(name='prelu4')(var_x)
+        classifier = Dense(2, activation='softmax', name='conv5-1')(var_x)
+        bbox_regress = Dense(4, name='conv5-2')(var_x)
+        return [input_], [classifier, bbox_regress]
+
+
+</source>
+<source file="systems/faceswap-2.0.0/plugins/extract/detect/mtcnn.py" startline="179" endline="203" pcid="892">
+    def model_definition():
+        """ Keras O-Network for MTCNN """
+        input_ = Input(shape=(48, 48, 3))
+        var_x = Conv2D(32, (3, 3), strides=1, padding='valid', name='conv1')(input_)
+        var_x = PReLU(shared_axes=[1, 2], name='prelu1')(var_x)
+        var_x = MaxPool2D(pool_size=3, strides=2, padding='same')(var_x)
+        var_x = Conv2D(64, (3, 3), strides=1, padding='valid', name='conv2')(var_x)
+        var_x = PReLU(shared_axes=[1, 2], name='prelu2')(var_x)
+        var_x = MaxPool2D(pool_size=3, strides=2)(var_x)
+        var_x = Conv2D(64, (3, 3), strides=1, padding='valid', name='conv3')(var_x)
+        var_x = PReLU(shared_axes=[1, 2], name='prelu3')(var_x)
+        var_x = MaxPool2D(pool_size=2)(var_x)
+        var_x = Conv2D(128, (2, 2), strides=1, padding='valid', name='conv4')(var_x)
+        var_x = PReLU(shared_axes=[1, 2], name='prelu4')(var_x)
+        var_x = Permute((3, 2, 1))(var_x)
+        var_x = Flatten()(var_x)
+        var_x = Dense(256, name='conv5')(var_x)
+        var_x = PReLU(name='prelu5')(var_x)
+
+        classifier = Dense(2, activation='softmax', name='conv6-1')(var_x)
+        bbox_regress = Dense(4, name='conv6-2')(var_x)
+        landmark_regress = Dense(10, name='conv6-3')(var_x)
+        return [input_], [classifier, bbox_regress, landmark_regress]
+
+
+</source>
+</class>
+
+<class classid="18" nclones="3" nlines="11" similarity="90">
+<source file="systems/faceswap-2.0.0/plugins/extract/mask/vgg_obstructed.py" startline="35" endline="46" pcid="937">
+    def init_model(self):
+        self.model = KSession(self.name,
+                              self.model_path,
+                              model_kwargs=dict(),
+                              allow_growth=self.config["allow_growth"],
+                              exclude_gpus=self._exclude_gpus)
+        self.model.load_model()
+        self.model.append_softmax_activation(layer_index=-1)
+        placeholder = np.zeros((self.batchsize, self.input_size, self.input_size, 3),
+                               dtype="float32")
+        self.model.predict(placeholder)
+
+</source>
+<source file="systems/faceswap-2.0.0/plugins/extract/mask/unet_dfl.py" startline="34" endline="44" pcid="942">
+    def init_model(self):
+        self.model = KSession(self.name,
+                              self.model_path,
+                              model_kwargs=dict(),
+                              allow_growth=self.config["allow_growth"],
+                              exclude_gpus=self._exclude_gpus)
+        self.model.load_model()
+        placeholder = np.zeros((self.batchsize, self.input_size, self.input_size, 3),
+                               dtype="float32")
+        self.model.predict(placeholder)
+
+</source>
+<source file="systems/faceswap-2.0.0/plugins/extract/mask/vgg_clear.py" startline="35" endline="46" pcid="947">
+    def init_model(self):
+        self.model = KSession(self.name,
+                              self.model_path,
+                              model_kwargs=dict(),
+                              allow_growth=self.config["allow_growth"],
+                              exclude_gpus=self._exclude_gpus)
+        self.model.load_model()
+        self.model.append_softmax_activation(layer_index=-1)
+        placeholder = np.zeros((self.batchsize, self.input_size, self.input_size, 3),
+                               dtype="float32")
+        self.model.predict(placeholder)
+
+</source>
+</class>
+
+<class classid="19" nclones="3" nlines="13" similarity="92">
+<source file="systems/faceswap-2.0.0/plugins/extract/_config.py" startline="18" endline="32" pcid="982">
+    def set_defaults(self):
+        """ Set the default values for config """
+        logger.debug("Setting defaults")
+        self.set_globals()
+        current_dir = os.path.dirname(__file__)
+        for dirpath, _, filenames in os.walk(current_dir):
+            default_files = [fname for fname in filenames if fname.endswith("_defaults.py")]
+            if not default_files:
+                continue
+            base_path = os.path.dirname(os.path.realpath(sys.argv[0]))
+            import_path = ".".join(full_path_split(dirpath.replace(base_path, ""))[1:])
+            plugin_type = import_path.split(".")[-1]
+            for filename in default_files:
+                self.load_module(filename, import_path, plugin_type)
+
+</source>
+<source file="systems/faceswap-2.0.0/plugins/train/_config.py" startline="23" endline="37" pcid="1116">
+    def set_defaults(self):
+        """ Set the default values for config """
+        logger.debug("Setting defaults")
+        self.set_globals()
+        current_dir = os.path.dirname(__file__)
+        for dirpath, _, filenames in os.walk(current_dir):
+            default_files = [fname for fname in filenames if fname.endswith("_defaults.py")]
+            if not default_files:
+                continue
+            base_path = os.path.dirname(os.path.realpath(sys.argv[0]))
+            import_path = ".".join(full_path_split(dirpath.replace(base_path, ""))[1:])
+            plugin_type = import_path.split(".")[-1]
+            for filename in default_files:
+                self.load_module(filename, import_path, plugin_type)
+
+</source>
+<source file="systems/faceswap-2.0.0/plugins/convert/_config.py" startline="19" endline="32" pcid="1114">
+    def set_defaults(self):
+        """ Set the default values for config """
+        logger.debug("Setting defaults")
+        current_dir = os.path.dirname(__file__)
+        for dirpath, _, filenames in os.walk(current_dir):
+            default_files = [fname for fname in filenames if fname.endswith("_defaults.py")]
+            if not default_files:
+                continue
+            base_path = os.path.dirname(os.path.realpath(sys.argv[0]))
+            import_path = ".".join(full_path_split(dirpath.replace(base_path, ""))[1:])
+            plugin_type = import_path.split(".")[-1]
+            for filename in default_files:
+                self.load_module(filename, import_path, plugin_type)
+
+</source>
+</class>
+
+<class classid="20" nclones="3" nlines="11" similarity="76">
+<source file="systems/faceswap-2.0.0/plugins/extract/_config.py" startline="33" endline="45" pcid="983">
+    def load_module(self, filename, module_path, plugin_type):
+        """ Load the defaults module and add defaults """
+        logger.debug("Adding defaults: (filename: %s, module_path: %s, plugin_type: %s",
+                     filename, module_path, plugin_type)
+        module = os.path.splitext(filename)[0]
+        section = ".".join((plugin_type, module.replace("_defaults", "")))
+        logger.debug("Importing defaults module: %s.%s", module_path, module)
+        mod = import_module("{}.{}".format(module_path, module))
+        self.add_section(title=section, info=mod._HELPTEXT)  # pylint:disable=protected-access
+        for key, val in mod._DEFAULTS.items():  # pylint:disable=protected-access
+            self.add_item(section=section, title=key, **val)
+        logger.debug("Added defaults: %s", section)
+
+</source>
+<source file="systems/faceswap-2.0.0/plugins/convert/_config.py" startline="33" endline="44" pcid="1115">
+    def load_module(self, filename, module_path, plugin_type):
+        """ Load the defaults module and add defaults """
+        logger.debug("Adding defaults: (filename: %s, module_path: %s, plugin_type: %s",
+                     filename, module_path, plugin_type)
+        module = os.path.splitext(filename)[0]
+        section = ".".join((plugin_type, module.replace("_defaults", "")))
+        logger.debug("Importing defaults module: %s.%s", module_path, module)
+        mod = import_module("{}.{}".format(module_path, module))
+        self.add_section(title=section, info=mod._HELPTEXT)  # pylint:disable=protected-access
+        for key, val in mod._DEFAULTS.items():  # pylint:disable=protected-access
+            self.add_item(section=section, title=key, **val)
+        logger.debug("Added defaults: %s", section)
+</source>
+<source file="systems/faceswap-2.0.0/plugins/train/_config.py" startline="204" endline="217" pcid="1118">
+    def load_module(self, filename, module_path, plugin_type):
+        """ Load the defaults module and add defaults """
+        logger.debug("Adding defaults: (filename: %s, module_path: %s, plugin_type: %s",
+                     filename, module_path, plugin_type)
+        module = os.path.splitext(filename)[0]
+        section = ".".join((plugin_type, module.replace("_defaults", "")))
+        logger.debug("Importing defaults module: %s.%s", module_path, module)
+        mod = import_module("{}.{}".format(module_path, module))
+        helptext = mod._HELPTEXT  # pylint:disable=protected-access
+        helptext += ADDITIONAL_INFO if module_path.endswith("model") else ""
+        self.add_section(title=section, info=helptext)
+        for key, val in mod._DEFAULTS.items():  # pylint:disable=protected-access
+            self.add_item(section=section, title=key, **val)
+        logger.debug("Added defaults: %s", section)
+</source>
+</class>
+
+<class classid="21" nclones="3" nlines="11" similarity="83">
+<source file="systems/faceswap-2.0.0/plugins/extract/pipeline.py" startline="505" endline="517" pcid="1008">
+    def _load_align(self, aligner, configfile, normalize_method):
+        """ Set global arguments and load aligner plugin """
+        if aligner is None or aligner.lower() == "none":
+            logger.debug("No aligner selected. Returning None")
+            return None
+        aligner_name = aligner.replace("-", "_").lower()
+        logger.debug("Loading Aligner: '%s'", aligner_name)
+        aligner = PluginLoader.get_aligner(aligner_name)(exclude_gpus=self._exclude_gpus,
+                                                         configfile=configfile,
+                                                         normalize_method=normalize_method,
+                                                         instance=self._instance)
+        return aligner
+
+</source>
+<source file="systems/faceswap-2.0.0/plugins/extract/pipeline.py" startline="532" endline="544" pcid="1010">
+    def _load_mask(self, masker, image_is_aligned, configfile):
+        """ Set global arguments and load masker plugin """
+        if masker is None or masker.lower() == "none":
+            logger.debug("No masker selected. Returning None")
+            return None
+        masker_name = masker.replace("-", "_").lower()
+        logger.debug("Loading Masker: '%s'", masker_name)
+        masker = PluginLoader.get_masker(masker_name)(exclude_gpus=self._exclude_gpus,
+                                                      image_is_aligned=image_is_aligned,
+                                                      configfile=configfile,
+                                                      instance=self._instance)
+        return masker
+
+</source>
+<source file="systems/faceswap-2.0.0/plugins/extract/pipeline.py" startline="518" endline="531" pcid="1009">
+    def _load_detect(self, detector, rotation, min_size, configfile):
+        """ Set global arguments and load detector plugin """
+        if detector is None or detector.lower() == "none":
+            logger.debug("No detector selected. Returning None")
+            return None
+        detector_name = detector.replace("-", "_").lower()
+        logger.debug("Loading Detector: '%s'", detector_name)
+        detector = PluginLoader.get_detector(detector_name)(exclude_gpus=self._exclude_gpus,
+                                                            rotation=rotation,
+                                                            min_size=min_size,
+                                                            configfile=configfile,
+                                                            instance=self._instance)
+        return detector
+
+</source>
+</class>
+
+<class classid="22" nclones="3" nlines="11" similarity="75">
+<source file="systems/faceswap-2.0.0/plugins/convert/scaling/_base.py" startline="26" endline="39" pcid="1074">
+    def set_config(self, configfile, config):
+        """ Set the config to either global config or passed in config """
+        section = ".".join(self.__module__.split(".")[-2:])
+        if config is None:
+            logger.debug("Loading base config")
+            retval = get_config(section, configfile=configfile)
+        else:
+            logger.debug("Loading passed in config")
+            config.section = section
+            retval = config.config_dict
+            config.section = None
+        logger.debug("Config: %s", retval)
+        return retval
+
+</source>
+<source file="systems/faceswap-2.0.0/plugins/convert/mask/_base.py" startline="81" endline="109" pcid="1095">
+    def _set_config(self, configfile, config):
+        """ Set the correct configuration for the plugin based on whether a config file
+        or pre-loaded config has been passed in.
+
+        Parameters
+        ----------
+        configfile: str
+            Location of custom configuration ``ini`` file. If ``None`` then use the
+            default config location
+        config: :class:`lib.config.FaceswapConfig`
+            Pre-loaded :class:`lib.config.FaceswapConfig`. If passed, then this will be
+            used over any configuration on disk. If ``None`` then it is ignored.
+
+        Returns
+        -------
+        dict
+            The configuration in dictionary form for the given from
+            :attr:`lib.config.FaceswapConfig.config_dict`
+        """
+        section = ".".join(self.__module__.split(".")[-2:])
+        if config is None:
+            retval = _get_config(section, configfile=configfile)
+        else:
+            config.section = section
+            retval = config.config_dict
+            config.section = None
+        logger.debug("Config: %s", retval)
+        return retval
+
+</source>
+<source file="systems/faceswap-2.0.0/plugins/convert/color/_base.py" startline="26" endline="37" pcid="1106">
+    def set_config(self, configfile, config):
+        """ Set the config to either global config or passed in config """
+        section = ".".join(self.__module__.split(".")[-2:])
+        if config is None:
+            retval = get_config(section, configfile)
+        else:
+            config.section = section
+            retval = config.config_dict
+            config.section = None
+        logger.debug("Config: %s", retval)
+        return retval
+
+</source>
+</class>
+
+<class classid="23" nclones="2" nlines="13" similarity="84">
+<source file="systems/faceswap-2.0.0/plugins/convert/scaling/_base.py" startline="44" endline="59" pcid="1076">
+    def run(self, new_face):
+        """ Perform selected adjustment on face """
+        logger.trace("Performing scaling adjustment")
+        # Remove Mask for processing
+        reinsert_mask = False
+        if new_face.shape[2] == 4:
+            reinsert_mask = True
+            final_mask = new_face[:, :, -1]
+            new_face = new_face[:, :, :3]
+        new_face = self.process(new_face)
+        new_face = np.clip(new_face, 0.0, 1.0)
+        if reinsert_mask and new_face.shape[2] != 4:
+            # Reinsert Mask
+            new_face = np.concatenate((new_face, np.expand_dims(final_mask, axis=-1)), -1)
+        logger.trace("Performed scaling adjustment")
+        return new_face
+</source>
+<source file="systems/faceswap-2.0.0/plugins/convert/color/_base.py" startline="42" endline="57" pcid="1108">
+    def run(self, old_face, new_face, raw_mask):
+        """ Perform selected adjustment on face """
+        logger.trace("Performing color adjustment")
+        # Remove Mask for processing
+        reinsert_mask = False
+        if new_face.shape[2] == 4:
+            reinsert_mask = True
+            final_mask = new_face[:, :, -1]
+            new_face = new_face[:, :, :3]
+        new_face = self.process(old_face, new_face, raw_mask)
+        new_face = np.clip(new_face, 0.0, 1.0)
+        if reinsert_mask and new_face.shape[2] != 4:
+            # Reinsert Mask
+            new_face = np.concatenate((new_face, np.expand_dims(final_mask, axis=-1)), -1)
+        logger.trace("Performed color adjustment")
+        return new_face
+</source>
+</class>
+
+<class classid="24" nclones="2" nlines="12" similarity="84">
+<source file="systems/faceswap-2.0.0/plugins/train/model/lightweight.py" startline="19" endline="31" pcid="1122">
+    def encoder(self):
+        """ Encoder Network """
+        input_ = Input(shape=self.input_shape)
+        var_x = input_
+        var_x = Conv2DBlock(128)(var_x)
+        var_x = Conv2DBlock(256)(var_x)
+        var_x = Conv2DBlock(512)(var_x)
+        var_x = Dense(self.encoder_dim)(Flatten()(var_x))
+        var_x = Dense(4 * 4 * 512)(var_x)
+        var_x = Reshape((4, 4, 512))(var_x)
+        var_x = UpscaleBlock(256)(var_x)
+        return KerasModel(input_, var_x, name="encoder")
+
+</source>
+<source file="systems/faceswap-2.0.0/plugins/train/model/original.py" startline="100" endline="125" pcid="1129">
+    def encoder(self):
+        """ The original Faceswap Encoder Network.
+
+        The encoder for the original model has it's weights shared between both the "A" and "B"
+        side of the model, so only one instance is created :func:`build_model`. However this same
+        instance is then used twice (once for A and once for B) meaning that the weights get
+        shared.
+
+        Returns
+        -------
+        :class:`keras.models.Model`
+            The Keras encoder model, for sharing between inputs from both sides.
+        """
+        input_ = Input(shape=self.input_shape)
+        var_x = input_
+        var_x = Conv2DBlock(128)(var_x)
+        var_x = Conv2DBlock(256)(var_x)
+        var_x = Conv2DBlock(512)(var_x)
+        if not self.low_mem:
+            var_x = Conv2DBlock(1024)(var_x)
+        var_x = Dense(self.encoder_dim)(Flatten()(var_x))
+        var_x = Dense(4 * 4 * 1024)(var_x)
+        var_x = Reshape((4, 4, 1024))(var_x)
+        var_x = UpscaleBlock(512)(var_x)
+        return KerasModel(input_, var_x, name="encoder")
+
+</source>
+</class>
+
+<class classid="25" nclones="2" nlines="17" similarity="72">
+<source file="systems/faceswap-2.0.0/plugins/train/model/lightweight.py" startline="32" endline="51" pcid="1123">
+    def decoder(self, side):
+        """ Decoder Network """
+        input_ = Input(shape=(8, 8, 256))
+        var_x = input_
+        var_x = UpscaleBlock(512)(var_x)
+        var_x = UpscaleBlock(256)(var_x)
+        var_x = UpscaleBlock(128)(var_x)
+        var_x = Conv2DOutput(3, 5, activation="sigmoid", name="face_out_{}".format(side))(var_x)
+        outputs = [var_x]
+
+        if self.config.get("learn_mask", False):
+            var_y = input_
+            var_y = UpscaleBlock(512)(var_y)
+            var_y = UpscaleBlock(256)(var_y)
+            var_y = UpscaleBlock(128)(var_y)
+            var_y = Conv2DOutput(1, 5,
+                                 activation="sigmoid",
+                                 name="mask_out_{}".format(side))(var_y)
+            outputs.append(var_y)
+        return KerasModel(input_, outputs=outputs, name="decoder_{}".format(side))
+</source>
+<source file="systems/faceswap-2.0.0/plugins/train/model/original.py" startline="126" endline="158" pcid="1130">
+    def decoder(self, side):
+        """ The original Faceswap Decoder Network.
+
+        The decoders for the original model have separate weights for each side "A" and "B", so two
+        instances are created in :func:`build_model`, one for each side.
+
+        Parameters
+        ----------
+        side: str
+            Either `"a` or `"b"`. This is used for naming the decoder model.
+
+        Returns
+        -------
+        :class:`keras.models.Model`
+            The Keras decoder model. This will be called twice, once for each side.
+        """
+        input_ = Input(shape=(8, 8, 512))
+        var_x = input_
+        var_x = UpscaleBlock(256)(var_x)
+        var_x = UpscaleBlock(128)(var_x)
+        var_x = UpscaleBlock(64)(var_x)
+        var_x = Conv2DOutput(3, 5, name="face_out_{}".format(side))(var_x)
+        outputs = [var_x]
+
+        if self.learn_mask:
+            var_y = input_
+            var_y = UpscaleBlock(256)(var_y)
+            var_y = UpscaleBlock(128)(var_y)
+            var_y = UpscaleBlock(64)(var_y)
+            var_y = Conv2DOutput(1, 5, name="mask_out_{}".format(side))(var_y)
+            outputs.append(var_y)
+        return KerasModel(input_, outputs=outputs, name="decoder_{}".format(side))
+
+</source>
+</class>
+
+<class classid="26" nclones="2" nlines="22" similarity="95">
+<source file="systems/faceswap-2.0.0/plugins/train/model/dlight.py" startline="99" endline="130" pcid="1149">
+    def decoder_a(self):
+        """ DeLight Decoder A(old face) Network """
+        input_ = Input(shape=(4, 4, 1024))
+        decoder_a_complexity = 256
+        mask_complexity = 128
+
+        var_xy = input_
+        var_xy = UpSampling2D(self.upscale_ratio, interpolation='bilinear')(var_xy)
+
+        var_x = var_xy
+        var_x = Upscale2xBlock(decoder_a_complexity, fast=False)(var_x)
+        var_x = Upscale2xBlock(decoder_a_complexity // 2, fast=False)(var_x)
+        var_x = Upscale2xBlock(decoder_a_complexity // 4, fast=False)(var_x)
+        var_x = Upscale2xBlock(decoder_a_complexity // 8, fast=False)(var_x)
+
+        var_x = Conv2DOutput(3, 5, name="face_out")(var_x)
+
+        outputs = [var_x]
+
+        if self.config.get("learn_mask", False):
+            var_y = var_xy  # mask decoder
+            var_y = Upscale2xBlock(mask_complexity, fast=False)(var_y)
+            var_y = Upscale2xBlock(mask_complexity // 2, fast=False)(var_y)
+            var_y = Upscale2xBlock(mask_complexity // 4, fast=False)(var_y)
+            var_y = Upscale2xBlock(mask_complexity // 8, fast=False)(var_y)
+
+            var_y = Conv2DOutput(1, 5, name="mask_out")(var_y)
+
+            outputs.append(var_y)
+
+        return KerasModel([input_], outputs=outputs, name="decoder_a")
+
+</source>
+<source file="systems/faceswap-2.0.0/plugins/train/model/dlight.py" startline="131" endline="165" pcid="1150">
+    def decoder_b_fast(self):
+        """ DeLight Fast Decoder B(new face) Network  """
+        input_ = Input(shape=(4, 4, 1024))
+
+        decoder_b_complexity = 512
+        mask_complexity = 128
+
+        var_xy = input_
+
+        var_xy = UpscaleBlock(512, scale_factor=self.upscale_ratio)(var_xy)
+        var_x = var_xy
+
+        var_x = Upscale2xBlock(decoder_b_complexity, fast=True)(var_x)
+        var_x = Upscale2xBlock(decoder_b_complexity // 2, fast=True)(var_x)
+        var_x = Upscale2xBlock(decoder_b_complexity // 4, fast=True)(var_x)
+        var_x = Upscale2xBlock(decoder_b_complexity // 8, fast=True)(var_x)
+
+        var_x = Conv2DOutput(3, 5, name="face_out")(var_x)
+
+        outputs = [var_x]
+
+        if self.config.get("learn_mask", False):
+            var_y = var_xy  # mask decoder
+
+            var_y = Upscale2xBlock(mask_complexity, fast=False)(var_y)
+            var_y = Upscale2xBlock(mask_complexity // 2, fast=False)(var_y)
+            var_y = Upscale2xBlock(mask_complexity // 4, fast=False)(var_y)
+            var_y = Upscale2xBlock(mask_complexity // 8, fast=False)(var_y)
+
+            var_y = Conv2DOutput(1, 5, name="mask_out")(var_y)
+
+            outputs.append(var_y)
+
+        return KerasModel([input_], outputs=outputs, name="decoder_b_fast")
+
+</source>
+</class>
+
+<class classid="27" nclones="2" nlines="28" similarity="71">
+<source file="systems/faceswap-2.0.0/plugins/train/model/realface.py" startline="94" endline="133" pcid="1170">
+    def decoder_b(self):
+        """ RealFace Decoder Network """
+        input_filters = self.config["complexity_encoder"] * 2**(self.downscalers_no-1)
+        input_width = self.config["input_size"] // self._downscale_ratio
+        input_ = Input(shape=(input_width, input_width, input_filters))
+
+        var_xy = input_
+
+        var_xy = Dense(self.config["dense_nodes"])(Flatten()(var_xy))
+        var_xy = Dense(self.dense_width * self.dense_width * self.dense_filters)(var_xy)
+        var_xy = Reshape((self.dense_width, self.dense_width, self.dense_filters))(var_xy)
+        var_xy = UpscaleBlock(self.dense_filters)(var_xy)
+
+        var_x = var_xy
+        var_x = ResidualBlock(self.dense_filters, use_bias=False)(var_x)
+
+        decoder_b_complexity = self.config["complexity_decoder"]
+        for idx in range(self.upscalers_no - 2):
+            var_x = UpscaleBlock(decoder_b_complexity // 2**idx)(var_x)
+            var_x = ResidualBlock(decoder_b_complexity // 2**idx, use_bias=False)(var_x)
+            var_x = ResidualBlock(decoder_b_complexity // 2**idx, use_bias=True)(var_x)
+        var_x = UpscaleBlock(decoder_b_complexity // 2**(idx + 1))(var_x)
+
+        var_x = Conv2DOutput(3, 5, name="face_out_b")(var_x)
+
+        outputs = [var_x]
+
+        if self.config.get("learn_mask", False):
+            var_y = var_xy
+            mask_b_complexity = 384
+            for idx in range(self.upscalers_no-2):
+                var_y = UpscaleBlock(mask_b_complexity // 2**idx)(var_y)
+            var_y = UpscaleBlock(mask_b_complexity // 2**(idx + 1))(var_y)
+
+            var_y = Conv2DOutput(1, 5, name="mask_out_b")(var_y)
+
+            outputs += [var_y]
+
+        return KerasModel(input_, outputs=outputs, name="decoder_b")
+
+</source>
+<source file="systems/faceswap-2.0.0/plugins/train/model/realface.py" startline="134" endline="175" pcid="1171">
+    def decoder_a(self):
+        """ RealFace Decoder (A) Network """
+        input_filters = self.config["complexity_encoder"] * 2**(self.downscalers_no-1)
+        input_width = self.config["input_size"] // self._downscale_ratio
+        input_ = Input(shape=(input_width, input_width, input_filters))
+
+        var_xy = input_
+
+        dense_nodes = int(self.config["dense_nodes"]/1.5)
+        dense_filters = int(self.dense_filters/1.5)
+
+        var_xy = Dense(dense_nodes)(Flatten()(var_xy))
+        var_xy = Dense(self.dense_width * self.dense_width * dense_filters)(var_xy)
+        var_xy = Reshape((self.dense_width, self.dense_width, dense_filters))(var_xy)
+
+        var_xy = UpscaleBlock(dense_filters)(var_xy)
+
+        var_x = var_xy
+        var_x = ResidualBlock(dense_filters, use_bias=False)(var_x)
+
+        decoder_a_complexity = int(self.config["complexity_decoder"] / 1.5)
+        for idx in range(self.upscalers_no-2):
+            var_x = UpscaleBlock(decoder_a_complexity // 2**idx)(var_x)
+        var_x = UpscaleBlock(decoder_a_complexity // 2**(idx + 1))(var_x)
+
+        var_x = Conv2DOutput(3, 5, name="face_out_a")(var_x)
+
+        outputs = [var_x]
+
+        if self.config.get("learn_mask", False):
+            var_y = var_xy
+            mask_a_complexity = 384
+            for idx in range(self.upscalers_no-2):
+                var_y = UpscaleBlock(mask_a_complexity // 2**idx)(var_y)
+            var_y = UpscaleBlock(mask_a_complexity // 2**(idx + 1))(var_y)
+
+            var_y = Conv2DOutput(1, 5, name="mask_out_a")(var_y)
+
+            outputs += [var_y]
+
+        return KerasModel(input_, outputs=outputs, name="decoder_a")
+
+</source>
+</class>
+
+</clones>

@@ -1,0 +1,1936 @@
+<clonepair1>
+<source file="systems/tfx-1.5.0/tfx/dsl/compiler/testdata/iris_pipeline_async.py" startline="38" endline="141" pcid="1134"></source>
+def create_test_pipeline():
+  """Builds an Iris example pipeline with slight changes."""
+  pipeline_name = "iris"
+  iris_root = "iris_root"
+  serving_model_dir = os.path.join(iris_root, "serving_model", pipeline_name)
+  tfx_root = "tfx_root"
+  data_path = os.path.join(tfx_root, "data_path")
+  pipeline_root = os.path.join(tfx_root, "pipelines", pipeline_name)
+
+  example_gen = CsvExampleGen(input_base=data_path)
+
+  statistics_gen = StatisticsGen(examples=example_gen.outputs["examples"])
+
+  importer = ImporterNode(
+      source_uri="m/y/u/r/i",
+      properties={
+          "split_names": "['train', 'eval']",
+      },
+      custom_properties={
+          "int_custom_property": 42,
+          "str_custom_property": "42",
+      },
+      artifact_type=standard_artifacts.Examples).with_id("my_importer")
+
+  schema_gen = SchemaGen(
+      statistics=statistics_gen.outputs["statistics"], infer_feature_shape=True)
+
+  example_validator = ExampleValidator(
+      statistics=statistics_gen.outputs["statistics"],
+      schema=schema_gen.outputs["schema"])
+
+  trainer = Trainer(
+      # Use RuntimeParameter as module_file to test out RuntimeParameter in
+      # compiler.
+      module_file=data_types.RuntimeParameter(
+          name="module_file",
+          default=os.path.join(iris_root, "iris_utils.py"),
+          ptype=str),
+      custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
+      examples=example_gen.outputs["examples"],
+      schema=schema_gen.outputs["schema"],
+      train_args=trainer_pb2.TrainArgs(num_steps=2000),
+      # Attaching `TrainerArgs` as platform config is not sensible practice,
+      # but is only for testing purpose.
+      eval_args=trainer_pb2.EvalArgs(num_steps=5)).with_platform_config(
+          config=trainer_pb2.TrainArgs(num_steps=2000))
+
+  model_resolver = resolver.Resolver(
+      strategy_class=latest_blessed_model_strategy.LatestBlessedModelStrategy,
+      baseline_model=Channel(
+          type=standard_artifacts.Model, producer_component_id="Trainer"),
+      # Cannot add producer_component_id="Evaluator" for model_blessing as it
+      # raises "producer component should have already been compiled" error.
+      model_blessing=Channel(type=standard_artifacts.ModelBlessing)).with_id(
+          "latest_blessed_model_resolver")
+
+  eval_config = tfma.EvalConfig(
+      model_specs=[tfma.ModelSpec(signature_name="eval")],
+      slicing_specs=[tfma.SlicingSpec()],
+      metrics_specs=[
+          tfma.MetricsSpec(
+              thresholds={
+                  "sparse_categorical_accuracy":
+                      tfma.MetricThreshold(
+                          value_threshold=tfma.GenericValueThreshold(
+                              lower_bound={"value": 0.6}),
+                          change_threshold=tfma.GenericChangeThreshold(
+                              direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                              absolute={"value": -1e-10}))
+              })
+      ])
+  evaluator = Evaluator(
+      examples=example_gen.outputs["examples"],
+      model=trainer.outputs["model"],
+      baseline_model=model_resolver.outputs["baseline_model"],
+      eval_config=eval_config)
+
+  pusher = Pusher(
+      model=trainer.outputs["model"],
+      model_blessing=evaluator.outputs["blessing"],
+      push_destination=pusher_pb2.PushDestination(
+          filesystem=pusher_pb2.PushDestination.Filesystem(
+              base_directory=serving_model_dir)))
+
+  return pipeline.Pipeline(
+      pipeline_name=pipeline_name,
+      pipeline_root=pipeline_root,
+      components=[
+          example_gen,
+          statistics_gen,
+          importer,
+          schema_gen,
+          example_validator,
+          trainer,
+          model_resolver,
+          evaluator,
+          pusher,
+      ],
+      enable_cache=False,
+      beam_pipeline_args=["--my_testing_beam_pipeline_args=bar"],
+      # Attaching `TrainerArgs` as platform config is not sensible practice,
+      # but is only for testing purpose.
+      platform_config=trainer_pb2.TrainArgs(num_steps=2000),
+      execution_mode=pipeline.ExecutionMode.ASYNC)
+</clonepair1>
+
+<clonepair1>
+<source file="systems/tfx-1.5.0/tfx/dsl/compiler/testdata/iris_pipeline_sync.py" startline="38" endline="141" pcid="1135"></source>
+def create_test_pipeline():
+  """Builds an Iris example pipeline with slight changes."""
+  pipeline_name = "iris"
+  iris_root = "iris_root"
+  serving_model_dir = os.path.join(iris_root, "serving_model", pipeline_name)
+  tfx_root = "tfx_root"
+  data_path = os.path.join(tfx_root, "data_path")
+  pipeline_root = os.path.join(tfx_root, "pipelines", pipeline_name)
+
+  example_gen = CsvExampleGen(input_base=data_path)
+
+  statistics_gen = StatisticsGen(examples=example_gen.outputs["examples"])
+
+  importer = ImporterNode(
+      source_uri="m/y/u/r/i",
+      properties={
+          "split_names": "['train', 'eval']",
+      },
+      custom_properties={
+          "int_custom_property": 42,
+          "str_custom_property": "42",
+      },
+      artifact_type=standard_artifacts.Examples).with_id("my_importer")
+  another_statistics_gen = StatisticsGen(
+      examples=importer.outputs["result"]).with_id("another_statistics_gen")
+
+  schema_gen = SchemaGen(statistics=statistics_gen.outputs["statistics"])
+
+  example_validator = ExampleValidator(
+      statistics=statistics_gen.outputs["statistics"],
+      schema=schema_gen.outputs["schema"])
+
+  trainer = Trainer(
+      # Use RuntimeParameter as module_file to test out RuntimeParameter in
+      # compiler.
+      module_file=data_types.RuntimeParameter(
+          name="module_file",
+          default=os.path.join(iris_root, "iris_utils.py"),
+          ptype=str),
+      custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
+      examples=example_gen.outputs["examples"],
+      schema=schema_gen.outputs["schema"],
+      train_args=trainer_pb2.TrainArgs(num_steps=2000),
+      # Attaching `TrainerArgs` as platform config is not sensible practice,
+      # but is only for testing purpose.
+      eval_args=trainer_pb2.EvalArgs(num_steps=5)).with_platform_config(
+          config=trainer_pb2.TrainArgs(num_steps=2000))
+
+  model_resolver = resolver.Resolver(
+      strategy_class=latest_blessed_model_strategy.LatestBlessedModelStrategy,
+      model=Channel(
+          type=standard_artifacts.Model, producer_component_id=trainer.id),
+      model_blessing=Channel(type=standard_artifacts.ModelBlessing)).with_id(
+          "latest_blessed_model_resolver")
+
+  eval_config = tfma.EvalConfig(
+      model_specs=[tfma.ModelSpec(signature_name="eval")],
+      slicing_specs=[tfma.SlicingSpec()],
+      metrics_specs=[
+          tfma.MetricsSpec(
+              thresholds={
+                  "sparse_categorical_accuracy":
+                      tfma.MetricThreshold(
+                          value_threshold=tfma.GenericValueThreshold(
+                              lower_bound={"value": 0.6}),
+                          change_threshold=tfma.GenericChangeThreshold(
+                              direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                              absolute={"value": -1e-10}))
+              })
+      ])
+  evaluator = Evaluator(
+      examples=example_gen.outputs["examples"],
+      model=trainer.outputs["model"],
+      baseline_model=model_resolver.outputs["model"],
+      eval_config=eval_config)
+
+  pusher = Pusher(
+      model=trainer.outputs["model"],
+      model_blessing=evaluator.outputs["blessing"],
+      push_destination=pusher_pb2.PushDestination(
+          filesystem=pusher_pb2.PushDestination.Filesystem(
+              base_directory=serving_model_dir)))
+
+  return pipeline.Pipeline(
+      pipeline_name=pipeline_name,
+      pipeline_root=pipeline_root,
+      components=[
+          example_gen,
+          statistics_gen,
+          another_statistics_gen,
+          importer,
+          schema_gen,
+          example_validator,
+          trainer,
+          model_resolver,
+          evaluator,
+          pusher,
+      ],
+      enable_cache=True,
+      beam_pipeline_args=["--my_testing_beam_pipeline_args=foo"],
+      # Attaching `TrainerArgs` as platform config is not sensible practice,
+      # but is only for testing purpose.
+      platform_config=trainer_pb2.TrainArgs(num_steps=2000),
+      execution_mode=pipeline.ExecutionMode.SYNC)
+</clonepair1>
+<clonepair2>
+<source file="systems/tfx-1.5.0/tfx/extensions/google_cloud_ai_platform/bulk_inferrer/executor_test.py" startline="76" endline="139" pcid="789"></source>
+  def testDoWithBlessedModel(self, mock_runner, mock_run_model_inference, _):
+    input_dict = {
+        'examples': [self._examples],
+        'model': [self._model],
+        'model_blessing': [self._model_blessing],
+    }
+    output_dict = {
+        'inference_result': [self._inference_result],
+    }
+    ai_platform_serving_args = {
+        'model_name': 'model_name',
+        'project_id': 'project_id'
+    }
+    # Create exe properties.
+    exec_properties = {
+        'data_spec':
+            proto_utils.proto_to_json(bulk_inferrer_pb2.DataSpec()),
+        'custom_config':
+            json_utils.dumps({
+                executor.SERVING_ARGS_KEY:
+                    ai_platform_serving_args,
+                constants.ENDPOINT_ARGS_KEY:
+                    'https://us-central1-ml.googleapis.com',
+            }),
+    }
+    mock_runner.get_service_name_and_api_version.return_value = ('ml', 'v1')
+    mock_runner.create_model_for_aip_prediction_if_not_exist.return_value = True
+
+    # Run executor.
+    bulk_inferrer = executor.Executor(self._context)
+    bulk_inferrer.Do(input_dict, output_dict, exec_properties)
+
+    ai_platform_prediction_model_spec = (
+        model_spec_pb2.AIPlatformPredictionModelSpec(
+            project_id='project_id',
+            model_name='model_name',
+            version_name=self._model_version))
+    ai_platform_prediction_model_spec.use_serialization_config = True
+    inference_endpoint = model_spec_pb2.InferenceSpecType()
+    inference_endpoint.ai_platform_prediction_model_spec.CopyFrom(
+        ai_platform_prediction_model_spec)
+    mock_run_model_inference.assert_called_once_with(mock.ANY, mock.ANY,
+                                                     mock.ANY, mock.ANY,
+                                                     mock.ANY,
+                                                     inference_endpoint)
+    executor_class_path = '%s.%s' % (bulk_inferrer.__class__.__module__,
+                                     bulk_inferrer.__class__.__name__)
+    with telemetry_utils.scoped_labels(
+        {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
+      job_labels = telemetry_utils.make_labels_dict()
+    mock_runner.deploy_model_for_aip_prediction.assert_called_once_with(
+        serving_path=path_utils.serving_model_path(self._model.uri),
+        model_version_name=mock.ANY,
+        ai_platform_serving_args=ai_platform_serving_args,
+        labels=job_labels,
+        api=mock.ANY,
+        skip_model_endpoint_creation=True,
+        set_default=False)
+    mock_runner.delete_model_from_aip_if_exists.assert_called_once_with(
+        model_version_name=mock.ANY,
+        ai_platform_serving_args=ai_platform_serving_args,
+        api=mock.ANY,
+        delete_model_endpoint=True)
+
+</clonepair2>
+
+<clonepair2>
+<source file="systems/tfx-1.5.0/tfx/extensions/google_cloud_ai_platform/bulk_inferrer/executor_test.py" startline="145" endline="205" pcid="790"></source>
+  def testDoSkippedModelCreation(self, mock_runner, mock_run_model_inference,
+                                 _):
+    input_dict = {
+        'examples': [self._examples],
+        'model': [self._model],
+        'model_blessing': [self._model_blessing],
+    }
+    output_dict = {
+        'inference_result': [self._inference_result],
+    }
+    ai_platform_serving_args = {
+        'model_name': 'model_name',
+        'project_id': 'project_id'
+    }
+    # Create exe properties.
+    exec_properties = {
+        'data_spec':
+            proto_utils.proto_to_json(bulk_inferrer_pb2.DataSpec()),
+        'custom_config':
+            json_utils.dumps(
+                {executor.SERVING_ARGS_KEY: ai_platform_serving_args}),
+    }
+    mock_runner.get_service_name_and_api_version.return_value = ('ml', 'v1')
+    mock_runner.create_model_for_aip_prediction_if_not_exist.return_value = False
+
+    # Run executor.
+    bulk_inferrer = executor.Executor(self._context)
+    bulk_inferrer.Do(input_dict, output_dict, exec_properties)
+
+    ai_platform_prediction_model_spec = (
+        model_spec_pb2.AIPlatformPredictionModelSpec(
+            project_id='project_id',
+            model_name='model_name',
+            version_name=self._model_version))
+    ai_platform_prediction_model_spec.use_serialization_config = True
+    inference_endpoint = model_spec_pb2.InferenceSpecType()
+    inference_endpoint.ai_platform_prediction_model_spec.CopyFrom(
+        ai_platform_prediction_model_spec)
+    mock_run_model_inference.assert_called_once_with(mock.ANY, mock.ANY,
+                                                     mock.ANY, mock.ANY,
+                                                     mock.ANY,
+                                                     inference_endpoint)
+    executor_class_path = '%s.%s' % (bulk_inferrer.__class__.__module__,
+                                     bulk_inferrer.__class__.__name__)
+    with telemetry_utils.scoped_labels(
+        {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
+      job_labels = telemetry_utils.make_labels_dict()
+    mock_runner.deploy_model_for_aip_prediction.assert_called_once_with(
+        serving_path=path_utils.serving_model_path(self._model.uri),
+        model_version_name=mock.ANY,
+        ai_platform_serving_args=ai_platform_serving_args,
+        labels=job_labels,
+        api=mock.ANY,
+        skip_model_endpoint_creation=True,
+        set_default=False)
+    mock_runner.delete_model_from_aip_if_exists.assert_called_once_with(
+        model_version_name=mock.ANY,
+        ai_platform_serving_args=ai_platform_serving_args,
+        api=mock.ANY,
+        delete_model_endpoint=False)
+
+</clonepair2>
+<clonepair3>
+<source file="systems/tfx-1.5.0/tfx/orchestration/experimental/core/pipeline_ops_test.py" startline="178" endline="225" pcid="1712"></source>
+  def test_initiate_pipeline_start_with_partial_run(self, mock_snapshot):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
+      node_example_gen = pipeline.nodes.add().pipeline_node
+      node_example_gen.node_info.id = 'ExampleGen'
+      node_example_gen.downstream_nodes.extend(['Transform'])
+      node_transform = pipeline.nodes.add().pipeline_node
+      node_transform.node_info.id = 'Transform'
+      node_transform.upstream_nodes.extend(['ExampleGen'])
+      node_transform.downstream_nodes.extend(['Trainer'])
+      node_trainer = pipeline.nodes.add().pipeline_node
+      node_trainer.node_info.id = 'Trainer'
+      node_trainer.upstream_nodes.extend(['Transform'])
+
+      latest_pipeline_snapshot_settings = pipeline_pb2.SnapshotSettings()
+      latest_pipeline_snapshot_settings.latest_pipeline_run_strategy.SetInParent(
+      )
+
+      incorrect_partial_run_option = pipeline_pb2.PartialRun(
+          from_nodes=['InvalidaNode'],
+          to_nodes=['Trainer'],
+          snapshot_settings=latest_pipeline_snapshot_settings)
+      with self.assertRaisesRegex(
+          status_lib.StatusNotOkError,
+          'specified in from_nodes/to_nodes are not present in the pipeline.'):
+        pipeline_ops.initiate_pipeline_start(
+            m, pipeline, partial_run_option=incorrect_partial_run_option)
+
+      expected_pipeline = copy.deepcopy(pipeline)
+      expected_pipeline.runtime_spec.snapshot_settings.latest_pipeline_run_strategy.SetInParent(
+      )
+      expected_pipeline.nodes[
+          0].pipeline_node.execution_options.skip.reuse_artifacts = True
+      expected_pipeline.nodes[
+          1].pipeline_node.execution_options.run.perform_snapshot = True
+      expected_pipeline.nodes[
+          1].pipeline_node.execution_options.run.depends_on_snapshot = True
+      expected_pipeline.nodes[
+          2].pipeline_node.execution_options.run.SetInParent()
+
+      partial_run_option = pipeline_pb2.PartialRun(
+          from_nodes=['Transform'],
+          to_nodes=['Trainer'],
+          snapshot_settings=latest_pipeline_snapshot_settings)
+      with pipeline_ops.initiate_pipeline_start(
+          m, pipeline, partial_run_option=partial_run_option) as pipeline_state:
+        self.assertEqual(expected_pipeline, pipeline_state.pipeline)
+
+</clonepair3>
+
+<clonepair3>
+<source file="systems/tfx-1.5.0/tfx/orchestration/experimental/core/pipeline_ops_test.py" startline="227" endline="264" pcid="1713"></source>
+  def test_initiate_pipeline_start_with_partial_run_default_to_nodes(
+      self, mock_snapshot):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
+      node_example_gen = pipeline.nodes.add().pipeline_node
+      node_example_gen.node_info.id = 'ExampleGen'
+      node_example_gen.downstream_nodes.extend(['Transform'])
+      node_transform = pipeline.nodes.add().pipeline_node
+      node_transform.node_info.id = 'Transform'
+      node_transform.upstream_nodes.extend(['ExampleGen'])
+      node_transform.downstream_nodes.extend(['Trainer'])
+      node_trainer = pipeline.nodes.add().pipeline_node
+      node_trainer.node_info.id = 'Trainer'
+      node_trainer.upstream_nodes.extend(['Transform'])
+
+      latest_pipeline_snapshot_settings = pipeline_pb2.SnapshotSettings()
+      latest_pipeline_snapshot_settings.latest_pipeline_run_strategy.SetInParent(
+      )
+
+      expected_pipeline = copy.deepcopy(pipeline)
+      expected_pipeline.runtime_spec.snapshot_settings.latest_pipeline_run_strategy.SetInParent(
+      )
+      expected_pipeline.nodes[
+          0].pipeline_node.execution_options.skip.reuse_artifacts = True
+      expected_pipeline.nodes[
+          1].pipeline_node.execution_options.run.perform_snapshot = True
+      expected_pipeline.nodes[
+          1].pipeline_node.execution_options.run.depends_on_snapshot = True
+      expected_pipeline.nodes[
+          2].pipeline_node.execution_options.run.SetInParent()
+
+      partial_run_option = pipeline_pb2.PartialRun(
+          from_nodes=['Transform'],
+          snapshot_settings=latest_pipeline_snapshot_settings)
+      with pipeline_ops.initiate_pipeline_start(
+          m, pipeline, partial_run_option=partial_run_option) as pipeline_state:
+        self.assertEqual(expected_pipeline, pipeline_state.pipeline)
+
+</clonepair3>
+<clonepair4>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/importer_node_handler_test.py" startline="63" endline="183" pcid="1918"></source>
+  def testLauncher_importer_mode_reimport_enabled(self):
+    handler = importer_node_handler.ImporterNodeHandler()
+    execution_info = handler.run(
+        mlmd_connection=self._mlmd_connection,
+        pipeline_node=self._importer,
+        pipeline_info=self._pipeline_info,
+        pipeline_runtime_spec=self._pipeline_runtime_spec)
+
+    with self._mlmd_connection as m:
+      [artifact] = m.store.get_artifacts_by_type('Schema')
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          uri: "my_url"
+          custom_properties {
+            key: "int_custom_property"
+            value {
+              int_value: 123
+            }
+          }
+          custom_properties {
+            key: "str_custom_property"
+            value {
+              string_value: "abc"
+            }
+          }
+          custom_properties {
+            key: "tfx_version"
+            value {
+              string_value: "0.123.4.dev"
+            }
+          }
+          state: LIVE""",
+          artifact,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+      [execution] = m.store.get_executions_by_id([execution_info.execution_id])
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          last_known_state: COMPLETE
+          custom_properties {
+            key: "artifact_uri"
+            value {
+              string_value: "my_url"
+            }
+          }
+          custom_properties {
+            key: "reimport"
+            value {
+              int_value: 1
+            }
+          }
+          """,
+          execution,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+
+    execution_info = handler.run(
+        mlmd_connection=self._mlmd_connection,
+        pipeline_node=self._importer,
+        pipeline_info=self._pipeline_info,
+        pipeline_runtime_spec=self._pipeline_runtime_spec)
+    with self._mlmd_connection as m:
+      new_artifact = m.store.get_artifacts_by_type('Schema')[1]
+      self.assertProtoPartiallyEquals(
+          """
+          id: 2
+          uri: "my_url"
+          custom_properties {
+            key: "int_custom_property"
+            value {
+              int_value: 123
+            }
+          }
+          custom_properties {
+            key: "str_custom_property"
+            value {
+              string_value: "abc"
+            }
+          }
+          custom_properties {
+            key: "tfx_version"
+            value {
+              string_value: "0.123.4.dev"
+            }
+          }
+          state: LIVE""",
+          new_artifact,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+      [execution] = m.store.get_executions_by_id([execution_info.execution_id])
+      self.assertProtoPartiallyEquals(
+          """
+          id: 2
+          last_known_state: COMPLETE
+          custom_properties {
+            key: "artifact_uri"
+            value {
+              string_value: "my_url"
+            }
+          }
+          custom_properties {
+            key: "reimport"
+            value {
+              int_value: 1
+            }
+          }
+          """,
+          execution,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+
+</clonepair4>
+
+<clonepair4>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/importer_node_handler_test.py" startline="184" endline="281" pcid="1919"></source>
+  def testLauncher_importer_mode_reimport_disabled(self):
+    self._importer.parameters.parameters['reimport'].field_value.int_value = 0
+    handler = importer_node_handler.ImporterNodeHandler()
+    execution_info = handler.run(
+        mlmd_connection=self._mlmd_connection,
+        pipeline_node=self._importer,
+        pipeline_info=self._pipeline_info,
+        pipeline_runtime_spec=self._pipeline_runtime_spec)
+
+    with self._mlmd_connection as m:
+      [artifact] = m.store.get_artifacts_by_type('Schema')
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          uri: "my_url"
+          custom_properties {
+            key: "int_custom_property"
+            value {
+              int_value: 123
+            }
+          }
+          custom_properties {
+            key: "str_custom_property"
+            value {
+              string_value: "abc"
+            }
+          }
+          custom_properties {
+            key: "tfx_version"
+            value {
+              string_value: "0.123.4.dev"
+            }
+          }
+          state: LIVE""",
+          artifact,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+      [execution] = m.store.get_executions_by_id([execution_info.execution_id])
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          last_known_state: COMPLETE
+          custom_properties {
+            key: "artifact_uri"
+            value {
+              string_value: "my_url"
+            }
+          }
+          custom_properties {
+            key: "reimport"
+            value {
+              int_value: 0
+            }
+          }
+          """,
+          execution,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+
+    # Run the 2nd execution. Since the reimport is disabled, no new schema
+    # is imported and the corresponding execution is published as CACHED.
+    execution_info = handler.run(
+        mlmd_connection=self._mlmd_connection,
+        pipeline_node=self._importer,
+        pipeline_info=self._pipeline_info,
+        pipeline_runtime_spec=self._pipeline_runtime_spec)
+    with self._mlmd_connection as m:
+      # No new Schema is produced.
+      self.assertLen(m.store.get_artifacts_by_type('Schema'), 1)
+      [execution] = m.store.get_executions_by_id([execution_info.execution_id])
+      self.assertProtoPartiallyEquals(
+          """
+          id: 2
+          last_known_state: CACHED
+          custom_properties {
+            key: "artifact_uri"
+            value {
+              string_value: "my_url"
+            }
+          }
+          custom_properties {
+            key: "reimport"
+            value {
+              int_value: 0
+            }
+          }
+          """,
+          execution,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+
+
+</clonepair4>
+<clonepair5>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/inputs_utils_test.py" startline="506" endline="546" pcid="1999"></source>
+  def testLatestUnprocessedArtifacts_IgnoreAlreadyProcessed(self):
+    pipeline = self.load_pipeline_proto(
+        'pipeline_for_input_resolver_test.pbtxt')
+    my_example_gen = pipeline.nodes[0].pipeline_node
+    my_transform = pipeline.nodes[2].pipeline_node
+
+    step1_pb = my_transform.inputs.resolver_config.resolver_steps.add()
+    step1_pb.class_path = (
+        'tfx.dsl.resolvers.unprocessed_artifacts_resolver'
+        '.UnprocessedArtifactsResolver')
+    step1_pb.config_json = '{"execution_type_name": "Transform"}'
+    step2_pb = my_transform.inputs.resolver_config.resolver_steps.add()
+    step2_pb.class_path = (
+        'tfx.dsl.input_resolution.strategies.latest_artifact_strategy'
+        '.LatestArtifactStrategy')
+    step2_pb.config_json = '{}'
+
+    with self.get_metadata() as m:
+      ex1 = self.make_examples(uri='a')
+      ex2 = self.make_examples(uri='b')
+      output_artifacts = self.fake_execute(
+          m,
+          my_example_gen,
+          input_map=None,
+          output_map={'output_examples': [ex1]})
+      ex1 = output_artifacts['output_examples'][0]
+      output_artifacts = self.fake_execute(
+          m,
+          my_example_gen,
+          input_map=None,
+          output_map={'output_examples': [ex2]})
+      ex2 = output_artifacts['output_examples'][0]
+      self.fake_execute(
+          m, my_transform, input_map={'examples': [ex2]}, output_map=None)
+
+      result = inputs_utils.resolve_input_artifacts(
+          metadata_handler=m,
+          node_inputs=my_transform.inputs)
+
+    self.assertArtifactMapEqual({'examples': [ex1]}, result)
+
+</clonepair5>
+
+<clonepair5>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/inputs_utils_test.py" startline="549" endline="593" pcid="2000"></source>
+  def testLatestUnprocessedArtifacts_NoneIfEverythingProcessed(self):
+    pipeline = self.load_pipeline_proto(
+        'pipeline_for_input_resolver_test.pbtxt')
+    my_example_gen = pipeline.nodes[0].pipeline_node
+    my_transform = pipeline.nodes[2].pipeline_node
+
+    step1_pb = my_transform.inputs.resolver_config.resolver_steps.add()
+    step1_pb.class_path = (
+        'tfx.dsl.resolvers.unprocessed_artifacts_resolver'
+        '.UnprocessedArtifactsResolver')
+    step1_pb.config_json = '{"execution_type_name": "Transform"}'
+    step2_pb = my_transform.inputs.resolver_config.resolver_steps.add()
+    step2_pb.class_path = (
+        'tfx.dsl.input_resolution.strategies.latest_artifact_strategy'
+        '.LatestArtifactStrategy')
+    step2_pb.config_json = '{}'
+
+    with self.get_metadata() as m:
+      ex1 = self.make_examples(uri='a')
+      ex2 = self.make_examples(uri='b')
+      output_artifacts = self.fake_execute(
+          m,
+          my_example_gen,
+          input_map=None,
+          output_map={'output_examples': [ex1]})
+      ex1 = output_artifacts['output_examples'][0]
+      output_artifacts = self.fake_execute(
+          m,
+          my_example_gen,
+          input_map=None,
+          output_map={'output_examples': [ex2]})
+      ex2 = output_artifacts['output_examples'][0]
+      self.fake_execute(m, my_transform,
+                        input_map={'examples': [ex1]},
+                        output_map=None)
+      self.fake_execute(m, my_transform,
+                        input_map={'examples': [ex2]},
+                        output_map=None)
+
+      result = inputs_utils.resolve_input_artifacts(
+          metadata_handler=m,
+          node_inputs=my_transform.inputs)
+
+    self.assertIsNone(result)
+
+</clonepair5>
+<clonepair6>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/inputs_utils_test.py" startline="465" endline="503" pcid="1998"></source>
+  def testLatestUnprocessedArtifacts(self):
+    pipeline = self.load_pipeline_proto(
+        'pipeline_for_input_resolver_test.pbtxt')
+    my_example_gen = pipeline.nodes[0].pipeline_node
+    my_transform = pipeline.nodes[2].pipeline_node
+
+    step1_pb = my_transform.inputs.resolver_config.resolver_steps.add()
+    step1_pb.class_path = (
+        'tfx.dsl.resolvers.unprocessed_artifacts_resolver'
+        '.UnprocessedArtifactsResolver')
+    step1_pb.config_json = '{"execution_type_name": "Transform"}'
+    step2_pb = my_transform.inputs.resolver_config.resolver_steps.add()
+    step2_pb.class_path = (
+        'tfx.dsl.input_resolution.strategies.latest_artifact_strategy'
+        '.LatestArtifactStrategy')
+    step2_pb.config_json = '{}'
+
+    with self.get_metadata() as m:
+      ex1 = self.make_examples(uri='a')
+      ex2 = self.make_examples(uri='b')
+      output_artifacts = self.fake_execute(
+          m,
+          my_example_gen,
+          input_map=None,
+          output_map={'output_examples': [ex1]})
+      ex1 = output_artifacts['output_examples'][0]
+      output_artifacts = self.fake_execute(
+          m,
+          my_example_gen,
+          input_map=None,
+          output_map={'output_examples': [ex2]})
+      ex2 = output_artifacts['output_examples'][0]
+
+      result = inputs_utils.resolve_input_artifacts(
+          metadata_handler=m,
+          node_inputs=my_transform.inputs)
+
+    self.assertArtifactMapEqual({'examples': [ex2]}, result)
+
+</clonepair6>
+
+<clonepair6>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/inputs_utils_test.py" startline="549" endline="593" pcid="2000"></source>
+  def testLatestUnprocessedArtifacts_NoneIfEverythingProcessed(self):
+    pipeline = self.load_pipeline_proto(
+        'pipeline_for_input_resolver_test.pbtxt')
+    my_example_gen = pipeline.nodes[0].pipeline_node
+    my_transform = pipeline.nodes[2].pipeline_node
+
+    step1_pb = my_transform.inputs.resolver_config.resolver_steps.add()
+    step1_pb.class_path = (
+        'tfx.dsl.resolvers.unprocessed_artifacts_resolver'
+        '.UnprocessedArtifactsResolver')
+    step1_pb.config_json = '{"execution_type_name": "Transform"}'
+    step2_pb = my_transform.inputs.resolver_config.resolver_steps.add()
+    step2_pb.class_path = (
+        'tfx.dsl.input_resolution.strategies.latest_artifact_strategy'
+        '.LatestArtifactStrategy')
+    step2_pb.config_json = '{}'
+
+    with self.get_metadata() as m:
+      ex1 = self.make_examples(uri='a')
+      ex2 = self.make_examples(uri='b')
+      output_artifacts = self.fake_execute(
+          m,
+          my_example_gen,
+          input_map=None,
+          output_map={'output_examples': [ex1]})
+      ex1 = output_artifacts['output_examples'][0]
+      output_artifacts = self.fake_execute(
+          m,
+          my_example_gen,
+          input_map=None,
+          output_map={'output_examples': [ex2]})
+      ex2 = output_artifacts['output_examples'][0]
+      self.fake_execute(m, my_transform,
+                        input_map={'examples': [ex1]},
+                        output_map=None)
+      self.fake_execute(m, my_transform,
+                        input_map={'examples': [ex2]},
+                        output_map=None)
+
+      result = inputs_utils.resolve_input_artifacts(
+          metadata_handler=m,
+          node_inputs=my_transform.inputs)
+
+    self.assertIsNone(result)
+
+</clonepair6>
+<clonepair7>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/inputs_utils_test.py" startline="465" endline="503" pcid="1998"></source>
+  def testLatestUnprocessedArtifacts(self):
+    pipeline = self.load_pipeline_proto(
+        'pipeline_for_input_resolver_test.pbtxt')
+    my_example_gen = pipeline.nodes[0].pipeline_node
+    my_transform = pipeline.nodes[2].pipeline_node
+
+    step1_pb = my_transform.inputs.resolver_config.resolver_steps.add()
+    step1_pb.class_path = (
+        'tfx.dsl.resolvers.unprocessed_artifacts_resolver'
+        '.UnprocessedArtifactsResolver')
+    step1_pb.config_json = '{"execution_type_name": "Transform"}'
+    step2_pb = my_transform.inputs.resolver_config.resolver_steps.add()
+    step2_pb.class_path = (
+        'tfx.dsl.input_resolution.strategies.latest_artifact_strategy'
+        '.LatestArtifactStrategy')
+    step2_pb.config_json = '{}'
+
+    with self.get_metadata() as m:
+      ex1 = self.make_examples(uri='a')
+      ex2 = self.make_examples(uri='b')
+      output_artifacts = self.fake_execute(
+          m,
+          my_example_gen,
+          input_map=None,
+          output_map={'output_examples': [ex1]})
+      ex1 = output_artifacts['output_examples'][0]
+      output_artifacts = self.fake_execute(
+          m,
+          my_example_gen,
+          input_map=None,
+          output_map={'output_examples': [ex2]})
+      ex2 = output_artifacts['output_examples'][0]
+
+      result = inputs_utils.resolve_input_artifacts(
+          metadata_handler=m,
+          node_inputs=my_transform.inputs)
+
+    self.assertArtifactMapEqual({'examples': [ex2]}, result)
+
+</clonepair7>
+
+<clonepair7>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/inputs_utils_test.py" startline="506" endline="546" pcid="1999"></source>
+  def testLatestUnprocessedArtifacts_IgnoreAlreadyProcessed(self):
+    pipeline = self.load_pipeline_proto(
+        'pipeline_for_input_resolver_test.pbtxt')
+    my_example_gen = pipeline.nodes[0].pipeline_node
+    my_transform = pipeline.nodes[2].pipeline_node
+
+    step1_pb = my_transform.inputs.resolver_config.resolver_steps.add()
+    step1_pb.class_path = (
+        'tfx.dsl.resolvers.unprocessed_artifacts_resolver'
+        '.UnprocessedArtifactsResolver')
+    step1_pb.config_json = '{"execution_type_name": "Transform"}'
+    step2_pb = my_transform.inputs.resolver_config.resolver_steps.add()
+    step2_pb.class_path = (
+        'tfx.dsl.input_resolution.strategies.latest_artifact_strategy'
+        '.LatestArtifactStrategy')
+    step2_pb.config_json = '{}'
+
+    with self.get_metadata() as m:
+      ex1 = self.make_examples(uri='a')
+      ex2 = self.make_examples(uri='b')
+      output_artifacts = self.fake_execute(
+          m,
+          my_example_gen,
+          input_map=None,
+          output_map={'output_examples': [ex1]})
+      ex1 = output_artifacts['output_examples'][0]
+      output_artifacts = self.fake_execute(
+          m,
+          my_example_gen,
+          input_map=None,
+          output_map={'output_examples': [ex2]})
+      ex2 = output_artifacts['output_examples'][0]
+      self.fake_execute(
+          m, my_transform, input_map={'examples': [ex2]}, output_map=None)
+
+      result = inputs_utils.resolve_input_artifacts(
+          metadata_handler=m,
+          node_inputs=my_transform.inputs)
+
+    self.assertArtifactMapEqual({'examples': [ex1]}, result)
+
+</clonepair7>
+<clonepair8>
+<source file="systems/tfx-1.5.0/tfx/components/example_gen/custom_executors/avro_component_test.py" startline="55" endline="97" pcid="507"></source>
+  def testRun(self, mock_publisher):
+    mock_publisher.return_value.publish_execution.return_value = {}
+
+    example_gen = FileBasedExampleGen(
+        custom_executor_spec=executor_spec.ExecutorClassSpec(
+            avro_executor.Executor),
+        input_base=self.avro_dir_path,
+        input_config=self.input_config,
+        output_config=self.output_config).with_id('AvroExampleGen')
+
+    output_data_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
+    pipeline_root = os.path.join(output_data_dir, 'Test')
+    fileio.makedirs(pipeline_root)
+    pipeline_info = data_types.PipelineInfo(
+        pipeline_name='Test', pipeline_root=pipeline_root, run_id='123')
+
+    driver_args = data_types.DriverArgs(enable_cache=True)
+
+    connection_config = metadata_store_pb2.ConnectionConfig()
+    connection_config.sqlite.SetInParent()
+    metadata_connection = metadata.Metadata(connection_config)
+
+    launcher = in_process_component_launcher.InProcessComponentLauncher.create(
+        component=example_gen,
+        pipeline_info=pipeline_info,
+        driver_args=driver_args,
+        metadata_connection=metadata_connection,
+        beam_pipeline_args=[],
+        additional_pipeline_args={})
+    self.assertEqual(
+        launcher._component_info.component_type,
+        '.'.join([FileBasedExampleGen.__module__,
+                  FileBasedExampleGen.__name__]))
+
+    launcher.launch()
+    mock_publisher.return_value.publish_execution.assert_called_once()
+
+    # Check output paths.
+    self.assertTrue(fileio.exists(os.path.join(pipeline_root, example_gen.id)))
+
+
+</clonepair8>
+
+<clonepair8>
+<source file="systems/tfx-1.5.0/tfx/components/example_gen/custom_executors/parquet_component_test.py" startline="56" endline="98" pcid="519"></source>
+  def testRun(self, mock_publisher):
+    mock_publisher.return_value.publish_execution.return_value = {}
+
+    example_gen = FileBasedExampleGen(
+        custom_executor_spec=executor_spec.ExecutorClassSpec(
+            parquet_executor.Executor),
+        input_base=self.parquet_dir_path,
+        input_config=self.input_config,
+        output_config=self.output_config).with_id('ParquetExampleGen')
+
+    output_data_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
+    pipeline_root = os.path.join(output_data_dir, 'Test')
+    fileio.makedirs(pipeline_root)
+    pipeline_info = data_types.PipelineInfo(
+        pipeline_name='Test', pipeline_root=pipeline_root, run_id='123')
+
+    driver_args = data_types.DriverArgs(enable_cache=True)
+
+    connection_config = metadata_store_pb2.ConnectionConfig()
+    connection_config.sqlite.SetInParent()
+    metadata_connection = metadata.Metadata(connection_config)
+
+    launcher = in_process_component_launcher.InProcessComponentLauncher.create(
+        component=example_gen,
+        pipeline_info=pipeline_info,
+        driver_args=driver_args,
+        metadata_connection=metadata_connection,
+        beam_pipeline_args=[],
+        additional_pipeline_args={})
+    self.assertEqual(
+        launcher._component_info.component_type,
+        '.'.join([FileBasedExampleGen.__module__,
+                  FileBasedExampleGen.__name__]))
+
+    launcher.launch()
+    mock_publisher.return_value.publish_execution.assert_called_once()
+
+    # Check output paths.
+    self.assertTrue(fileio.exists(os.path.join(pipeline_root, example_gen.id)))
+
+
+</clonepair8>
+<clonepair9>
+<source file="systems/tfx-1.5.0/tfx/extensions/google_cloud_ai_platform/pusher/executor_test.py" startline="118" endline="145" pcid="880"></source>
+  def testDoBlessed(self, mock_runner, _):
+    self._model_blessing.uri = os.path.join(self._source_data_dir,
+                                            'model_validator/blessed')
+    self._model_blessing.set_int_custom_property('blessed', 1)
+    mock_runner.get_service_name_and_api_version.return_value = ('ml', 'v1')
+    version = self._model_push.get_string_custom_property('pushed_version')
+    mock_runner.deploy_model_for_aip_prediction.return_value = (
+        'projects/project_id/models/model_name/versions/{}'.format(version))
+
+    self._executor.Do(self._input_dict, self._output_dict,
+                      self._serialize_custom_config_under_test())
+    executor_class_path = '%s.%s' % (self._executor.__class__.__module__,
+                                     self._executor.__class__.__name__)
+    with telemetry_utils.scoped_labels(
+        {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
+      job_labels = telemetry_utils.make_labels_dict()
+    mock_runner.deploy_model_for_aip_prediction.assert_called_once_with(
+        serving_path=self._model_push.uri,
+        model_version_name=mock.ANY,
+        ai_platform_serving_args=mock.ANY,
+        api=mock.ANY,
+        labels=job_labels,
+    )
+    self.assertPushed()
+    self.assertEqual(
+        self._model_push.get_string_custom_property('pushed_destination'),
+        'projects/project_id/models/model_name/versions/{}'.format(version))
+
+</clonepair9>
+
+<clonepair9>
+<source file="systems/tfx-1.5.0/tfx/extensions/google_cloud_ai_platform/pusher/executor_test.py" startline="186" endline="222" pcid="883"></source>
+  def testDoBlessedOnRegionalEndpoint(self, mock_runner, _):
+    self._exec_properties = {
+        'custom_config': {
+            constants.SERVING_ARGS_KEY: {
+                'model_name': 'model_name',
+                'project_id': 'project_id'
+            },
+            constants.ENDPOINT_ARGS_KEY: 'https://ml-us-west1.googleapis.com',
+        },
+    }
+    self._model_blessing.uri = os.path.join(self._source_data_dir,
+                                            'model_validator/blessed')
+    self._model_blessing.set_int_custom_property('blessed', 1)
+    mock_runner.get_service_name_and_api_version.return_value = ('ml', 'v1')
+    version = self._model_push.get_string_custom_property('pushed_version')
+    mock_runner.deploy_model_for_aip_prediction.return_value = (
+        'projects/project_id/models/model_name/versions/{}'.format(version))
+
+    self._executor.Do(self._input_dict, self._output_dict,
+                      self._serialize_custom_config_under_test())
+    executor_class_path = '%s.%s' % (self._executor.__class__.__module__,
+                                     self._executor.__class__.__name__)
+    with telemetry_utils.scoped_labels(
+        {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
+      job_labels = telemetry_utils.make_labels_dict()
+    mock_runner.deploy_model_for_aip_prediction.assert_called_once_with(
+        serving_path=self._model_push.uri,
+        model_version_name=mock.ANY,
+        ai_platform_serving_args=mock.ANY,
+        api=mock.ANY,
+        labels=job_labels,
+    )
+    self.assertPushed()
+    self.assertEqual(
+        self._model_push.get_string_custom_property('pushed_destination'),
+        'projects/project_id/models/model_name/versions/{}'.format(version))
+
+</clonepair9>
+<clonepair10>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/execution_publish_utils_test.py" startline="55" endline="106" pcid="1860"></source>
+  def testRegisterExecution(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      contexts = self._generate_contexts(m)
+      input_example = standard_artifacts.Examples()
+      execution_publish_utils.register_execution(
+          m,
+          self._execution_type,
+          contexts,
+          input_artifacts={'examples': [input_example]},
+          exec_properties={
+              'p1': 1,
+          })
+      [execution] = m.store.get_executions()
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          custom_properties {
+            key: 'p1'
+            value {int_value: 1}
+          }
+          last_known_state: RUNNING
+          """,
+          execution,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+      [event] = m.store.get_events_by_execution_ids([execution.id])
+      self.assertProtoPartiallyEquals(
+          """
+          artifact_id: 1
+          execution_id: 1
+          path {
+            steps {
+              key: 'examples'
+            }
+            steps {
+              index: 0
+            }
+          }
+          type: INPUT
+          """,
+          event,
+          ignored_fields=['milliseconds_since_epoch'])
+      # Verifies the context-execution edges are set up.
+      self.assertCountEqual(
+          [c.id for c in contexts],
+          [c.id for c in m.store.get_contexts_by_execution(execution.id)])
+      self.assertCountEqual(
+          [c.id for c in contexts],
+          [c.id for c in m.store.get_contexts_by_artifact(input_example.id)])
+
+</clonepair10>
+
+<clonepair10>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/execution_publish_utils_test.py" startline="107" endline="153" pcid="1861"></source>
+  def testPublishCachedExecution(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      contexts = self._generate_contexts(m)
+      execution_id = execution_publish_utils.register_execution(
+          m, self._execution_type, contexts).id
+      output_example = standard_artifacts.Examples()
+      execution_publish_utils.publish_cached_execution(
+          m,
+          contexts,
+          execution_id,
+          output_artifacts={'examples': [output_example]})
+      [execution] = m.store.get_executions()
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          last_known_state: CACHED
+          """,
+          execution,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+      [event] = m.store.get_events_by_execution_ids([execution.id])
+      self.assertProtoPartiallyEquals(
+          """
+          artifact_id: 1
+          execution_id: 1
+          path {
+            steps {
+              key: 'examples'
+            }
+            steps {
+              index: 0
+            }
+          }
+          type: OUTPUT
+          """,
+          event,
+          ignored_fields=['milliseconds_since_epoch'])
+      # Verifies the context-execution edges are set up.
+      self.assertCountEqual(
+          [c.id for c in contexts],
+          [c.id for c in m.store.get_contexts_by_execution(execution.id)])
+      self.assertCountEqual(
+          [c.id for c in contexts],
+          [c.id for c in m.store.get_contexts_by_artifact(output_example.id)])
+
+</clonepair10>
+<clonepair11>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/execution_publish_utils_test.py" startline="55" endline="106" pcid="1860"></source>
+  def testRegisterExecution(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      contexts = self._generate_contexts(m)
+      input_example = standard_artifacts.Examples()
+      execution_publish_utils.register_execution(
+          m,
+          self._execution_type,
+          contexts,
+          input_artifacts={'examples': [input_example]},
+          exec_properties={
+              'p1': 1,
+          })
+      [execution] = m.store.get_executions()
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          custom_properties {
+            key: 'p1'
+            value {int_value: 1}
+          }
+          last_known_state: RUNNING
+          """,
+          execution,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+      [event] = m.store.get_events_by_execution_ids([execution.id])
+      self.assertProtoPartiallyEquals(
+          """
+          artifact_id: 1
+          execution_id: 1
+          path {
+            steps {
+              key: 'examples'
+            }
+            steps {
+              index: 0
+            }
+          }
+          type: INPUT
+          """,
+          event,
+          ignored_fields=['milliseconds_since_epoch'])
+      # Verifies the context-execution edges are set up.
+      self.assertCountEqual(
+          [c.id for c in contexts],
+          [c.id for c in m.store.get_contexts_by_execution(execution.id)])
+      self.assertCountEqual(
+          [c.id for c in contexts],
+          [c.id for c in m.store.get_contexts_by_artifact(input_example.id)])
+
+</clonepair11>
+
+<clonepair11>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/execution_publish_utils_test.py" startline="513" endline="560" pcid="1870"></source>
+  def testPublishInternalExecution(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      contexts = self._generate_contexts(m)
+      execution_id = execution_publish_utils.register_execution(
+          m, self._execution_type, contexts).id
+      output_example = standard_artifacts.Examples()
+      execution_publish_utils.publish_internal_execution(
+          m,
+          contexts,
+          execution_id,
+          output_artifacts={'examples': [output_example]})
+      [execution] = m.store.get_executions()
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          last_known_state: COMPLETE
+          """,
+          execution,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+      [event] = m.store.get_events_by_execution_ids([execution.id])
+      self.assertProtoPartiallyEquals(
+          """
+          artifact_id: 1
+          execution_id: 1
+          path {
+            steps {
+              key: 'examples'
+            }
+            steps {
+              index: 0
+            }
+          }
+          type: INTERNAL_OUTPUT
+          """,
+          event,
+          ignored_fields=['milliseconds_since_epoch'])
+      # Verifies the context-execution edges are set up.
+      self.assertCountEqual(
+          [c.id for c in contexts],
+          [c.id for c in m.store.get_contexts_by_execution(execution.id)])
+      self.assertCountEqual(
+          [c.id for c in contexts],
+          [c.id for c in m.store.get_contexts_by_artifact(output_example.id)])
+
+
+</clonepair11>
+<clonepair12>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/execution_publish_utils_test.py" startline="107" endline="153" pcid="1861"></source>
+  def testPublishCachedExecution(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      contexts = self._generate_contexts(m)
+      execution_id = execution_publish_utils.register_execution(
+          m, self._execution_type, contexts).id
+      output_example = standard_artifacts.Examples()
+      execution_publish_utils.publish_cached_execution(
+          m,
+          contexts,
+          execution_id,
+          output_artifacts={'examples': [output_example]})
+      [execution] = m.store.get_executions()
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          last_known_state: CACHED
+          """,
+          execution,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+      [event] = m.store.get_events_by_execution_ids([execution.id])
+      self.assertProtoPartiallyEquals(
+          """
+          artifact_id: 1
+          execution_id: 1
+          path {
+            steps {
+              key: 'examples'
+            }
+            steps {
+              index: 0
+            }
+          }
+          type: OUTPUT
+          """,
+          event,
+          ignored_fields=['milliseconds_since_epoch'])
+      # Verifies the context-execution edges are set up.
+      self.assertCountEqual(
+          [c.id for c in contexts],
+          [c.id for c in m.store.get_contexts_by_execution(execution.id)])
+      self.assertCountEqual(
+          [c.id for c in contexts],
+          [c.id for c in m.store.get_contexts_by_artifact(output_example.id)])
+
+</clonepair12>
+
+<clonepair12>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/execution_publish_utils_test.py" startline="513" endline="560" pcid="1870"></source>
+  def testPublishInternalExecution(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      contexts = self._generate_contexts(m)
+      execution_id = execution_publish_utils.register_execution(
+          m, self._execution_type, contexts).id
+      output_example = standard_artifacts.Examples()
+      execution_publish_utils.publish_internal_execution(
+          m,
+          contexts,
+          execution_id,
+          output_artifacts={'examples': [output_example]})
+      [execution] = m.store.get_executions()
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          last_known_state: COMPLETE
+          """,
+          execution,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+      [event] = m.store.get_events_by_execution_ids([execution.id])
+      self.assertProtoPartiallyEquals(
+          """
+          artifact_id: 1
+          execution_id: 1
+          path {
+            steps {
+              key: 'examples'
+            }
+            steps {
+              index: 0
+            }
+          }
+          type: INTERNAL_OUTPUT
+          """,
+          event,
+          ignored_fields=['milliseconds_since_epoch'])
+      # Verifies the context-execution edges are set up.
+      self.assertCountEqual(
+          [c.id for c in contexts],
+          [c.id for c in m.store.get_contexts_by_execution(execution.id)])
+      self.assertCountEqual(
+          [c.id for c in contexts],
+          [c.id for c in m.store.get_contexts_by_artifact(output_example.id)])
+
+
+</clonepair12>
+<clonepair13>
+<source file="systems/tfx-1.5.0/tfx/extensions/google_cloud_ai_platform/pusher/executor_test.py" startline="118" endline="145" pcid="880"></source>
+  def testDoBlessed(self, mock_runner, _):
+    self._model_blessing.uri = os.path.join(self._source_data_dir,
+                                            'model_validator/blessed')
+    self._model_blessing.set_int_custom_property('blessed', 1)
+    mock_runner.get_service_name_and_api_version.return_value = ('ml', 'v1')
+    version = self._model_push.get_string_custom_property('pushed_version')
+    mock_runner.deploy_model_for_aip_prediction.return_value = (
+        'projects/project_id/models/model_name/versions/{}'.format(version))
+
+    self._executor.Do(self._input_dict, self._output_dict,
+                      self._serialize_custom_config_under_test())
+    executor_class_path = '%s.%s' % (self._executor.__class__.__module__,
+                                     self._executor.__class__.__name__)
+    with telemetry_utils.scoped_labels(
+        {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
+      job_labels = telemetry_utils.make_labels_dict()
+    mock_runner.deploy_model_for_aip_prediction.assert_called_once_with(
+        serving_path=self._model_push.uri,
+        model_version_name=mock.ANY,
+        ai_platform_serving_args=mock.ANY,
+        api=mock.ANY,
+        labels=job_labels,
+    )
+    self.assertPushed()
+    self.assertEqual(
+        self._model_push.get_string_custom_property('pushed_destination'),
+        'projects/project_id/models/model_name/versions/{}'.format(version))
+
+</clonepair13>
+
+<clonepair13>
+<source file="systems/tfx-1.5.0/tfx/extensions/google_cloud_ai_platform/pusher/executor_test.py" startline="224" endline="250" pcid="884"></source>
+  def testDoBlessed_Vertex(self, mock_runner):
+    endpoint_uri = 'projects/project_id/locations/us-central1/endpoints/12345'
+    mock_runner.deploy_model_for_aip_prediction.return_value = endpoint_uri
+    self._model_blessing.uri = os.path.join(self._source_data_dir,
+                                            'model_validator/blessed')
+    self._model_blessing.set_int_custom_property('blessed', 1)
+    self._executor.Do(self._input_dict, self._output_dict,
+                      self._serialize_custom_config_under_test_vertex())
+    executor_class_path = '%s.%s' % (self._executor.__class__.__module__,
+                                     self._executor.__class__.__name__)
+    with telemetry_utils.scoped_labels(
+        {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
+      job_labels = telemetry_utils.make_labels_dict()
+    mock_runner.deploy_model_for_aip_prediction.assert_called_once_with(
+        serving_container_image_uri=self._container_image_uri_vertex,
+        model_version_name=mock.ANY,
+        ai_platform_serving_args=mock.ANY,
+        labels=job_labels,
+        serving_path=self._model_push.uri,
+        endpoint_region='us-central1',
+        enable_vertex=True,
+    )
+    self.assertPushed()
+    self.assertEqual(
+        self._model_push.get_string_custom_property('pushed_destination'),
+        endpoint_uri)
+
+</clonepair13>
+<clonepair14>
+<source file="systems/tfx-1.5.0/tfx/extensions/google_cloud_ai_platform/tuner/executor_test.py" startline="31" endline="59" pcid="806"></source>
+  def setUp(self):
+    super().setUp()
+
+    self._output_data_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
+    self._job_dir = os.path.join(self._output_data_dir, 'jobDir')
+    self._project_id = '12345'
+    self._inputs = {}
+    self._outputs = {}
+    # Dict format of exec_properties. custom_config needs to be serialized
+    # before being passed into Do function.
+    self._exec_properties = {
+        'custom_config': {
+            ai_platform_tuner_executor.TUNING_ARGS_KEY: {
+                'project': self._project_id,
+                'jobDir': self._job_dir,
+            },
+        },
+    }
+    self._executor_class_path = '%s.%s' % (
+        ai_platform_tuner_executor._WorkerExecutor.__module__,
+        ai_platform_tuner_executor._WorkerExecutor.__name__)
+
+    self.addCleanup(mock.patch.stopall)
+    self.mock_runner = mock.patch(
+        'tfx.extensions.google_cloud_ai_platform.tuner.executor.runner').start(
+        )
+
+</clonepair14>
+
+<clonepair14>
+<source file="systems/tfx-1.5.0/tfx/extensions/google_cloud_ai_platform/trainer/executor_test.py" startline="31" endline="62" pcid="899"></source>
+  def setUp(self):
+    super().setUp()
+
+    self._output_data_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
+    self._job_dir = os.path.join(self._output_data_dir, 'jobDir')
+    self._project_id = '12345'
+    self._inputs = {}
+    self._outputs = {}
+    # Dict format of exec_properties. custom_config needs to be serialized
+    # before being passed into Do function.
+    self._exec_properties = {
+        standard_component_specs.CUSTOM_CONFIG_KEY: {
+            ai_platform_trainer_executor.TRAINING_ARGS_KEY: {
+                'project': self._project_id,
+                'jobDir': self._job_dir,
+            },
+        },
+    }
+    self._executor_class_path = '%s.%s' % (
+        tfx_trainer_executor.Executor.__module__,
+        tfx_trainer_executor.Executor.__name__)
+    self._generic_executor_class_path = '%s.%s' % (
+        tfx_trainer_executor.GenericExecutor.__module__,
+        tfx_trainer_executor.GenericExecutor.__name__)
+
+    self.addCleanup(mock.patch.stopall)
+    self.mock_runner = mock.patch(
+        'tfx.extensions.google_cloud_ai_platform.trainer.executor.runner'
+    ).start()
+
+</clonepair14>
+<clonepair15>
+<source file="systems/tfx-1.5.0/tfx/dsl/component/experimental/decorators_test.py" startline="169" endline="188" pcid="1046"></source>
+  def testBeamExecutionSuccess(self):
+    """Test execution with return values; success case."""
+    instance_1 = _injector_1(foo=9, bar='secret')
+    instance_2 = _simple_component(
+        a=instance_1.outputs['a'],
+        b=instance_1.outputs['b'],
+        c=instance_1.outputs['c'],
+        d=instance_1.outputs['d'])
+    instance_3 = _verify(e=instance_2.outputs['e'], f=instance_2.outputs['f'])  # pylint: disable=assignment-from-no-return
+
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
+    test_pipeline = pipeline.Pipeline(
+        pipeline_name='test_pipeline_1',
+        pipeline_root=self._test_dir,
+        metadata_connection_config=metadata_config,
+        components=[instance_1, instance_2, instance_3])
+
+    beam_dag_runner.BeamDagRunner().run(test_pipeline)
+
+</clonepair15>
+
+<clonepair15>
+<source file="systems/tfx-1.5.0/tfx/dsl/component/experimental/decorators_test.py" startline="189" endline="211" pcid="1047"></source>
+  def testBeamExecutionFailure(self):
+    """Test execution with return values; failure case."""
+    instance_1 = _injector_1(foo=9, bar='secret')
+    instance_2 = _simple_component(
+        a=instance_1.outputs['a'],
+        b=instance_1.outputs['b'],
+        c=instance_1.outputs['c'],
+        d=instance_1.outputs['d'])
+    # Swapped 'e' and 'f'.
+    instance_3 = _verify(e=instance_2.outputs['f'], f=instance_2.outputs['e'])  # pylint: disable=assignment-from-no-return
+
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
+    test_pipeline = pipeline.Pipeline(
+        pipeline_name='test_pipeline_1',
+        pipeline_root=self._test_dir,
+        metadata_connection_config=metadata_config,
+        components=[instance_1, instance_2, instance_3])
+
+    with self.assertRaisesRegex(RuntimeError,
+                                r'AssertionError: \(220.0, 32.0\)'):
+      beam_dag_runner.BeamDagRunner().run(test_pipeline)
+
+</clonepair15>
+<clonepair16>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/execution_publish_utils_test.py" startline="407" endline="446" pcid="1867"></source>
+  def testPublishSuccessExecutionRecordExecutionResult(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      executor_output = text_format.Parse(
+          """
+        execution_result {
+          code: 0
+          result_message: 'info message.'
+         }
+      """, execution_result_pb2.ExecutorOutput())
+      contexts = self._generate_contexts(m)
+      execution_id = execution_publish_utils.register_execution(
+          m, self._execution_type, contexts).id
+      execution_publish_utils.publish_failed_execution(m, contexts,
+                                                       execution_id,
+                                                       executor_output)
+      [execution] = m.store.get_executions_by_id([execution_id])
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          last_known_state: FAILED
+          custom_properties {
+            key: '__execution_result__'
+            value {
+              string_value: '{\\n  "resultMessage": "info message."\\n}'
+            }
+          }
+          """,
+          execution,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+      # No events because there is no artifact published.
+      events = m.store.get_events_by_execution_ids([execution.id])
+      self.assertEmpty(events)
+      # Verifies the context-execution edges are set up.
+      self.assertCountEqual(
+          [c.id for c in contexts],
+          [c.id for c in m.store.get_contexts_by_execution(execution.id)])
+
+</clonepair16>
+
+<clonepair16>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/execution_publish_utils_test.py" startline="473" endline="512" pcid="1869"></source>
+  def testPublishFailedExecution(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      executor_output = text_format.Parse(
+          """
+        execution_result {
+          code: 1
+          result_message: 'error message.'
+         }
+      """, execution_result_pb2.ExecutorOutput())
+      contexts = self._generate_contexts(m)
+      execution_id = execution_publish_utils.register_execution(
+          m, self._execution_type, contexts).id
+      execution_publish_utils.publish_failed_execution(m, contexts,
+                                                       execution_id,
+                                                       executor_output)
+      [execution] = m.store.get_executions_by_id([execution_id])
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          last_known_state: FAILED
+          custom_properties {
+            key: '__execution_result__'
+            value {
+              string_value: '{\\n  "resultMessage": "error message.",\\n  "code": 1\\n}'
+            }
+          }
+          """,
+          execution,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+      # No events because there is no artifact published.
+      events = m.store.get_events_by_execution_ids([execution.id])
+      self.assertEmpty(events)
+      # Verifies the context-execution edges are set up.
+      self.assertCountEqual(
+          [c.id for c in contexts],
+          [c.id for c in m.store.get_contexts_by_execution(execution.id)])
+
+</clonepair16>
+<clonepair17>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/execution_publish_utils_test.py" startline="447" endline="472" pcid="1868"></source>
+  def testPublishSuccessExecutionDropsEmptyResult(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      executor_output = text_format.Parse(
+          """
+        execution_result {
+          code: 0
+         }
+      """, execution_result_pb2.ExecutorOutput())
+      contexts = self._generate_contexts(m)
+      execution_id = execution_publish_utils.register_execution(
+          m, self._execution_type, contexts).id
+      execution_publish_utils.publish_failed_execution(m, contexts,
+                                                       execution_id,
+                                                       executor_output)
+      [execution] = m.store.get_executions_by_id([execution_id])
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          last_known_state: FAILED
+          """,
+          execution,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+
+</clonepair17>
+
+<clonepair17>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/execution_publish_utils_test.py" startline="473" endline="512" pcid="1869"></source>
+  def testPublishFailedExecution(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      executor_output = text_format.Parse(
+          """
+        execution_result {
+          code: 1
+          result_message: 'error message.'
+         }
+      """, execution_result_pb2.ExecutorOutput())
+      contexts = self._generate_contexts(m)
+      execution_id = execution_publish_utils.register_execution(
+          m, self._execution_type, contexts).id
+      execution_publish_utils.publish_failed_execution(m, contexts,
+                                                       execution_id,
+                                                       executor_output)
+      [execution] = m.store.get_executions_by_id([execution_id])
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          last_known_state: FAILED
+          custom_properties {
+            key: '__execution_result__'
+            value {
+              string_value: '{\\n  "resultMessage": "error message.",\\n  "code": 1\\n}'
+            }
+          }
+          """,
+          execution,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+      # No events because there is no artifact published.
+      events = m.store.get_events_by_execution_ids([execution.id])
+      self.assertEmpty(events)
+      # Verifies the context-execution edges are set up.
+      self.assertCountEqual(
+          [c.id for c in contexts],
+          [c.id for c in m.store.get_contexts_by_execution(execution.id)])
+
+</clonepair17>
+<clonepair18>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/execution_publish_utils_test.py" startline="407" endline="446" pcid="1867"></source>
+  def testPublishSuccessExecutionRecordExecutionResult(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      executor_output = text_format.Parse(
+          """
+        execution_result {
+          code: 0
+          result_message: 'info message.'
+         }
+      """, execution_result_pb2.ExecutorOutput())
+      contexts = self._generate_contexts(m)
+      execution_id = execution_publish_utils.register_execution(
+          m, self._execution_type, contexts).id
+      execution_publish_utils.publish_failed_execution(m, contexts,
+                                                       execution_id,
+                                                       executor_output)
+      [execution] = m.store.get_executions_by_id([execution_id])
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          last_known_state: FAILED
+          custom_properties {
+            key: '__execution_result__'
+            value {
+              string_value: '{\\n  "resultMessage": "info message."\\n}'
+            }
+          }
+          """,
+          execution,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+      # No events because there is no artifact published.
+      events = m.store.get_events_by_execution_ids([execution.id])
+      self.assertEmpty(events)
+      # Verifies the context-execution edges are set up.
+      self.assertCountEqual(
+          [c.id for c in contexts],
+          [c.id for c in m.store.get_contexts_by_execution(execution.id)])
+
+</clonepair18>
+
+<clonepair18>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/execution_publish_utils_test.py" startline="447" endline="472" pcid="1868"></source>
+  def testPublishSuccessExecutionDropsEmptyResult(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      executor_output = text_format.Parse(
+          """
+        execution_result {
+          code: 0
+         }
+      """, execution_result_pb2.ExecutorOutput())
+      contexts = self._generate_contexts(m)
+      execution_id = execution_publish_utils.register_execution(
+          m, self._execution_type, contexts).id
+      execution_publish_utils.publish_failed_execution(m, contexts,
+                                                       execution_id,
+                                                       executor_output)
+      [execution] = m.store.get_executions_by_id([execution_id])
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          last_known_state: FAILED
+          """,
+          execution,
+          ignored_fields=[
+              'type_id', 'create_time_since_epoch',
+              'last_update_time_since_epoch'
+          ])
+
+</clonepair18>
+<clonepair19>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/resolver_node_handler_test.py" startline="173" endline="195" pcid="1912"></source>
+  def testRun_InputResolutionError_ExecutionFailed(self, mock_resolve):
+    mock_resolve.side_effect = exceptions.InputResolutionError('Meh')
+    handler = resolver_node_handler.ResolverNodeHandler()
+
+    execution_info = handler.run(
+        mlmd_connection=self._mlmd_connection,
+        pipeline_node=self._my_resolver,
+        pipeline_info=self._pipeline_info,
+        pipeline_runtime_spec=self._pipeline_runtime_spec)
+
+    with self._mlmd_connection as m:
+      self.assertTrue(execution_info.execution_id)
+      [execution] = m.store.get_executions_by_id([execution_info.execution_id])
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          last_known_state: FAILED
+          """,
+          execution,
+          ignored_fields=['type_id', 'custom_properties',
+                          'create_time_since_epoch',
+                          'last_update_time_since_epoch'])
+
+</clonepair19>
+
+<clonepair19>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/resolver_node_handler_test.py" startline="197" endline="223" pcid="1913"></source>
+  def testRun_MultipleInputs_ExecutionFailed(self, mock_resolve):
+    mock_resolve.return_value = inputs_utils.Trigger([
+        {'model': [self._create_model_artifact(uri='/tmp/model/1')]},
+        {'model': [self._create_model_artifact(uri='/tmp/model/2')]},
+    ])
+    handler = resolver_node_handler.ResolverNodeHandler()
+
+    execution_info = handler.run(
+        mlmd_connection=self._mlmd_connection,
+        pipeline_node=self._my_resolver,
+        pipeline_info=self._pipeline_info,
+        pipeline_runtime_spec=self._pipeline_runtime_spec)
+
+    with self._mlmd_connection as m:
+      self.assertTrue(execution_info.execution_id)
+      [execution] = m.store.get_executions_by_id([execution_info.execution_id])
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          last_known_state: FAILED
+          """,
+          execution,
+          ignored_fields=['type_id', 'custom_properties',
+                          'create_time_since_epoch',
+                          'last_update_time_since_epoch'])
+
+
+</clonepair19>
+<clonepair20>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/python_executor_operator_test.py" startline="89" endline="109" pcid="1902"></source>
+  def testRunExecutor_with_InprocessExecutor(self):
+    executor_sepc = text_format.Parse(
+        """
+      class_path: "tfx.orchestration.portable.python_executor_operator_test.InprocessExecutor"
+    """, executable_spec_pb2.PythonClassExecutableSpec())
+    operator = python_executor_operator.PythonExecutorOperator(executor_sepc)
+    input_dict = {'input_key': [standard_artifacts.Examples()]}
+    output_dict = {'output_key': [standard_artifacts.Model()]}
+    exec_properties = {'key': 'value'}
+    executor_output = operator.run_executor(
+        self._get_execution_info(input_dict, output_dict, exec_properties))
+    self.assertProtoPartiallyEquals(
+        """
+          output_artifacts {
+            key: "output_key"
+            value {
+              artifacts {
+              }
+            }
+          }""", executor_output)
+
+</clonepair20>
+
+<clonepair20>
+<source file="systems/tfx-1.5.0/tfx/orchestration/portable/python_executor_operator_test.py" startline="110" endline="130" pcid="1903"></source>
+  def testRunExecutor_with_NotInprocessExecutor(self):
+    executor_sepc = text_format.Parse(
+        """
+      class_path: "tfx.orchestration.portable.python_executor_operator_test.NotInprocessExecutor"
+    """, executable_spec_pb2.PythonClassExecutableSpec())
+    operator = python_executor_operator.PythonExecutorOperator(executor_sepc)
+    input_dict = {'input_key': [standard_artifacts.Examples()]}
+    output_dict = {'output_key': [standard_artifacts.Model()]}
+    exec_properties = {'key': 'value'}
+    executor_output = operator.run_executor(
+        self._get_execution_info(input_dict, output_dict, exec_properties))
+    self.assertProtoPartiallyEquals(
+        """
+          output_artifacts {
+            key: "output_key"
+            value {
+              artifacts {
+              }
+            }
+          }""", executor_output)
+
+</clonepair20>

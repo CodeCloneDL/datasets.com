@@ -1,0 +1,2233 @@
+<clones>
+<systeminfo processor="nicad6" system="coach-0.11.0" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="1586" npairs="44"/>
+<runinfo ncompares="42823" cputime="55594"/>
+<classinfo nclasses="32"/>
+
+<class classid="1" nclones="2" nlines="16" similarity="87">
+<source file="systems/coach-0.11.0/rl_coach/data_stores/nfs_data_store.py" startline="244" endline="264" pcid="127">
+    def undeploy_k8s_nfs(self) -> bool:
+        from kubernetes import client as k8sclient
+
+        del_options = k8sclient.V1DeleteOptions()
+
+        k8s_apps_v1_api_client = k8sclient.AppsV1Api()
+        try:
+            k8s_apps_v1_api_client.delete_namespaced_deployment(self.params.name, self.params.namespace, del_options)
+        except k8sclient.rest.ApiException as e:
+            print("Got exception: %s\n while deleting nfs-server", e)
+            return False
+
+        k8s_core_v1_api_client = k8sclient.CoreV1Api()
+        try:
+            k8s_core_v1_api_client.delete_namespaced_service(self.params.svc_name, self.params.namespace, del_options)
+        except k8sclient.rest.ApiException as e:
+            print("Got exception: %s\n while deleting the service for nfs-server", e)
+            return False
+
+        return True
+
+</source>
+<source file="systems/coach-0.11.0/rl_coach/data_stores/nfs_data_store.py" startline="265" endline="286" pcid="128">
+    def delete_k8s_nfs_resources(self) -> bool:
+        """
+        Delete NFS resources such as PV and PVC from the Kubernetes orchestrator.
+        """
+        from kubernetes import client as k8sclient
+
+        del_options = k8sclient.V1DeleteOptions()
+        k8s_api_client = k8sclient.CoreV1Api()
+
+        try:
+            k8s_api_client.delete_persistent_volume(self.params.pv_name, del_options)
+        except k8sclient.rest.ApiException as e:
+            print("Got exception: %s\n while deleting NFS PV", e)
+            return False
+
+        try:
+            k8s_api_client.delete_namespaced_persistent_volume_claim(self.params.pvc_name, self.params.namespace, del_options)
+        except k8sclient.rest.ApiException as e:
+            print("Got exception: %s\n while deleting NFS PVC", e)
+            return False
+
+        return True
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="28" similarity="78">
+<source file="systems/coach-0.11.0/rl_coach/agents/categorical_dqn_agent.py" startline="93" endline="155" pcid="137">
+    def learn_from_batch(self, batch):
+        network_keys = self.ap.network_wrappers['main'].input_embedders_parameters.keys()
+
+        # for the action we actually took, the error is calculated by the atoms distribution
+        # for all other actions, the error is 0
+        distributional_q_st_plus_1, TD_targets = self.networks['main'].parallel_prediction([
+            (self.networks['main'].target_network, batch.next_states(network_keys)),
+            (self.networks['main'].online_network, batch.states(network_keys))
+        ])
+
+        # select the optimal actions for the next state
+        target_actions = np.argmax(self.distribution_prediction_to_q_values(distributional_q_st_plus_1), axis=1)
+        m = np.zeros((self.ap.network_wrappers['main'].batch_size, self.z_values.size))
+
+        batches = np.arange(self.ap.network_wrappers['main'].batch_size)
+
+        # an alternative to the for loop. 3.7x perf improvement vs. the same code done with for looping.
+        # only 10% speedup overall - leaving commented out as the code is not as clear.
+
+        # tzj_ = np.fmax(np.fmin(batch.rewards() + (1.0 - batch.game_overs()) * self.ap.algorithm.discount *
+        #                        np.transpose(np.repeat(self.z_values[np.newaxis, :], batch.size, axis=0), (1, 0)),
+        #                     self.z_values[-1]),
+        #             self.z_values[0])
+        #
+        # bj_ = (tzj_ - self.z_values[0]) / (self.z_values[1] - self.z_values[0])
+        # u_ = (np.ceil(bj_)).astype(int)
+        # l_ = (np.floor(bj_)).astype(int)
+        # m_ = np.zeros((self.ap.network_wrappers['main'].batch_size, self.z_values.size))
+        # np.add.at(m_, [batches, l_],
+        #           np.transpose(distributional_q_st_plus_1[batches, target_actions], (1, 0)) * (u_ - bj_))
+        # np.add.at(m_, [batches, u_],
+        #           np.transpose(distributional_q_st_plus_1[batches, target_actions], (1, 0)) * (bj_ - l_))
+
+        for j in range(self.z_values.size):
+            tzj = np.fmax(np.fmin(batch.rewards() +
+                                  (1.0 - batch.game_overs()) * self.ap.algorithm.discount * self.z_values[j],
+                                  self.z_values[-1]),
+                          self.z_values[0])
+            bj = (tzj - self.z_values[0])/(self.z_values[1] - self.z_values[0])
+            u = (np.ceil(bj)).astype(int)
+            l = (np.floor(bj)).astype(int)
+            m[batches, l] += (distributional_q_st_plus_1[batches, target_actions, j] * (u - bj))
+            m[batches, u] += (distributional_q_st_plus_1[batches, target_actions, j] * (bj - l))
+
+        # total_loss = cross entropy between actual result above and predicted result for the given action
+        # only update the action that we have actually done in this transition
+        TD_targets[batches, batch.actions()] = m
+
+        # update errors in prioritized replay buffer
+        importance_weights = batch.info('weight') if isinstance(self.memory, PrioritizedExperienceReplay) else None
+
+        result = self.networks['main'].train_and_sync_networks(batch.states(network_keys), TD_targets,
+                                                               importance_weights=importance_weights)
+
+        total_loss, losses, unclipped_grads = result[:3]
+
+        # TODO: fix this spaghetti code
+        if isinstance(self.memory, PrioritizedExperienceReplay):
+            errors = losses[0][np.arange(batch.size), batch.actions()]
+            self.call_memory('update_priorities', (batch.info('idx'), errors))
+
+        return total_loss, losses, unclipped_grads
+
+</source>
+<source file="systems/coach-0.11.0/rl_coach/agents/rainbow_dqn_agent.py" startline="83" endline="130" pcid="214">
+        super().__init__(agent_parameters, parent)
+
+    def learn_from_batch(self, batch):
+        network_keys = self.ap.network_wrappers['main'].input_embedders_parameters.keys()
+
+        ddqn_selected_actions = np.argmax(self.distribution_prediction_to_q_values(
+            self.networks['main'].online_network.predict(batch.next_states(network_keys))), axis=1)
+
+        # for the action we actually took, the error is calculated by the atoms distribution
+        # for all other actions, the error is 0
+        distributional_q_st_plus_n, TD_targets = self.networks['main'].parallel_prediction([
+            (self.networks['main'].target_network, batch.next_states(network_keys)),
+            (self.networks['main'].online_network, batch.states(network_keys))
+        ])
+
+        # only update the action that we have actually done in this transition (using the Double-DQN selected actions)
+        target_actions = ddqn_selected_actions
+        m = np.zeros((self.ap.network_wrappers['main'].batch_size, self.z_values.size))
+
+        batches = np.arange(self.ap.network_wrappers['main'].batch_size)
+        for j in range(self.z_values.size):
+            # we use batch.info('should_bootstrap_next_state') instead of (1 - batch.game_overs()) since with n-step,
+            # we will not bootstrap for the last n-step transitions in the episode
+            tzj = np.fmax(np.fmin(batch.n_step_discounted_rewards() + batch.info('should_bootstrap_next_state') *
+                                  (self.ap.algorithm.discount ** self.ap.algorithm.n_step) * self.z_values[j],
+                                  self.z_values[-1]), self.z_values[0])
+            bj = (tzj - self.z_values[0])/(self.z_values[1] - self.z_values[0])
+            u = (np.ceil(bj)).astype(int)
+            l = (np.floor(bj)).astype(int)
+            m[batches, l] += (distributional_q_st_plus_n[batches, target_actions, j] * (u - bj))
+            m[batches, u] += (distributional_q_st_plus_n[batches, target_actions, j] * (bj - l))
+
+        # total_loss = cross entropy between actual result above and predicted result for the given action
+        TD_targets[batches, batch.actions()] = m
+
+        # update errors in prioritized replay buffer
+        importance_weights = batch.info('weight') if isinstance(self.memory, PrioritizedExperienceReplay) else None
+
+        result = self.networks['main'].train_and_sync_networks(batch.states(network_keys), TD_targets,
+                                                               importance_weights=importance_weights)
+
+        total_loss, losses, unclipped_grads = result[:3]
+
+        # TODO: fix this spaghetti code
+        if isinstance(self.memory, PrioritizedExperienceReplay):
+            errors = losses[0][np.arange(batch.size), batch.actions()]
+            self.call_memory('update_priorities', (batch.info('idx'), errors))
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="16" similarity="87">
+<source file="systems/coach-0.11.0/rl_coach/agents/dqn_agent.py" startline="71" endline="97" pcid="196">
+
+    def learn_from_batch(self, batch):
+        network_keys = self.ap.network_wrappers['main'].input_embedders_parameters.keys()
+
+        # for the action we actually took, the error is:
+        # TD error = r + discount*max(q_st_plus_1) - q_st
+        # # for all other actions, the error is 0
+        q_st_plus_1, TD_targets = self.networks['main'].parallel_prediction([
+            (self.networks['main'].target_network, batch.next_states(network_keys)),
+            (self.networks['main'].online_network, batch.states(network_keys))
+        ])
+
+        #  only update the action that we have actually done in this transition
+        TD_errors = []
+        for i in range(self.ap.network_wrappers['main'].batch_size):
+            new_target = batch.rewards()[i] +\
+                         (1.0 - batch.game_overs()[i]) * self.ap.algorithm.discount * np.max(q_st_plus_1[i], 0)
+            TD_errors.append(np.abs(new_target - TD_targets[i, batch.actions()[i]]))
+            TD_targets[i, batch.actions()[i]] = new_target
+
+        # update errors in prioritized replay buffer
+        importance_weights = self.update_transition_priorities_and_get_weights(TD_errors, batch)
+
+        result = self.networks['main'].train_and_sync_networks(batch.states(network_keys), TD_targets,
+                                                               importance_weights=importance_weights)
+
+        total_loss, losses, unclipped_grads = result[:3]
+</source>
+<source file="systems/coach-0.11.0/rl_coach/agents/ddqn_agent.py" startline="44" endline="68" pcid="332">
+    def learn_from_batch(self, batch):
+        network_keys = self.ap.network_wrappers['main'].input_embedders_parameters.keys()
+
+        selected_actions = np.argmax(self.networks['main'].online_network.predict(batch.next_states(network_keys)), 1)
+        q_st_plus_1, TD_targets = self.networks['main'].parallel_prediction([
+            (self.networks['main'].target_network, batch.next_states(network_keys)),
+            (self.networks['main'].online_network, batch.states(network_keys))
+        ])
+
+        # initialize with the current prediction so that we will
+        #  only update the action that we have actually done in this transition
+        TD_errors = []
+        for i in range(self.ap.network_wrappers['main'].batch_size):
+            new_target = batch.rewards()[i] + \
+                         (1.0 - batch.game_overs()[i]) * self.ap.algorithm.discount * q_st_plus_1[i][selected_actions[i]]
+            TD_errors.append(np.abs(new_target - TD_targets[i, batch.actions()[i]]))
+            TD_targets[i, batch.actions()[i]] = new_target
+
+        # update errors in prioritized replay buffer
+        importance_weights = self.update_transition_priorities_and_get_weights(TD_errors, batch)
+
+        result = self.networks['main'].train_and_sync_networks(batch.states(network_keys), TD_targets,
+                                                               importance_weights=importance_weights)
+        total_loss, losses, unclipped_grads = result[:3]
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="11" similarity="72">
+<source file="systems/coach-0.11.0/rl_coach/agents/policy_optimization_agent.py" startline="60" endline="71" pcid="248">
+    def log_to_screen(self):
+        # log to screen
+        log = OrderedDict()
+        log["Name"] = self.full_name_id
+        if self.task_id is not None:
+            log["Worker"] = self.task_id
+        log["Episode"] = self.current_episode
+        log["Total reward"] = round(self.total_reward_in_current_episode, 2)
+        log["Steps"] = self.total_steps_counter
+        log["Training iteration"] = self.training_iteration
+        screen.log_dict(log, prefix=self.phase.value)
+
+</source>
+<source file="systems/coach-0.11.0/rl_coach/agents/agent.py" startline="423" endline="440" pcid="267">
+            result = getattr(self.memory, func)(*args)
+        return result
+
+    def log_to_screen(self) -> None:
+        """
+        Write an episode summary line to the terminal
+
+        :return: None
+        """
+        # log to screen
+        log = OrderedDict()
+        log["Name"] = self.full_name_id
+        if self.task_id is not None:
+            log["Worker"] = self.task_id
+        log["Episode"] = self.current_episode
+        log["Total reward"] = np.round(self.total_reward_in_current_episode, 2)
+        log["Exploration"] = np.round(self.exploration_policy.get_control_param(), 2)
+        log["Steps"] = self.total_steps_counter
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="14" similarity="71">
+<source file="systems/coach-0.11.0/rl_coach/agents/agent.py" startline="580" endline="601" pcid="273">
+        :param batch: A list of transitions
+        :return: The total loss of the training, the loss per head and the unclipped gradients
+        """
+        return 0, [], []
+
+    def _should_update_online_weights_to_target(self):
+        """
+        Determine if online weights should be copied to the target.
+
+        :return: boolean: True if the online weights should be copied to the target.
+        """
+
+        # update the target network of every network that has a target network
+        step_method = self.ap.algorithm.num_steps_between_copying_online_weights_to_target
+        if step_method.__class__ == TrainingSteps:
+            should_update = (self.training_iteration - self.last_target_network_update_step) >= step_method.num_steps
+            if should_update:
+                self.last_target_network_update_step = self.training_iteration
+        elif step_method.__class__ == EnvironmentSteps:
+            should_update = (self.total_steps_counter - self.last_target_network_update_step) >= step_method.num_steps
+            if should_update:
+                self.last_target_network_update_step = self.total_steps_counter
+</source>
+<source file="systems/coach-0.11.0/rl_coach/agents/agent.py" startline="621" endline="640" pcid="275">
+            if step_method.__class__ == EnvironmentSteps:
+                self.last_training_phase_step = self.total_steps_counter
+
+        return should_update
+
+    def _should_train_helper(self):
+        wait_for_full_episode = self.ap.algorithm.act_for_full_episodes
+        step_method = self.ap.algorithm.num_consecutive_playing_steps
+
+        if step_method.__class__ == EnvironmentEpisodes:
+            should_update = (self.current_episode - self.last_training_phase_step) >= step_method.num_steps
+            should_update = should_update and self.call_memory('length') > 0
+
+        elif step_method.__class__ == EnvironmentSteps:
+            should_update = (self.total_steps_counter - self.last_training_phase_step) >= step_method.num_steps
+            should_update = should_update and self.call_memory('num_transitions') > 0
+
+            if wait_for_full_episode:
+                should_update = should_update and self.current_episode_buffer.is_complete
+        else:
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="13" similarity="76">
+<source file="systems/coach-0.11.0/rl_coach/agents/ddpg_agent.py" startline="36" endline="50" pcid="320">
+class DDPGCriticNetworkParameters(NetworkParameters):
+    def __init__(self):
+        super().__init__()
+        self.input_embedders_parameters = {'observation': InputEmbedderParameters(batchnorm=True),
+                                            'action': InputEmbedderParameters(scheme=EmbedderScheme.Shallow)}
+        self.middleware_parameters = FCMiddlewareParameters()
+        self.heads_parameters = [VHeadParameters()]
+        self.optimizer_type = 'Adam'
+        self.batch_size = 64
+        self.async_training = False
+        self.learning_rate = 0.001
+        self.create_target_network = True
+        self.shared_optimizer = True
+        self.scale_down_gradients_by_number_of_workers_for_sync_training = False
+
+</source>
+<source file="systems/coach-0.11.0/rl_coach/agents/ddpg_agent.py" startline="52" endline="65" pcid="321">
+class DDPGActorNetworkParameters(NetworkParameters):
+    def __init__(self):
+        super().__init__()
+        self.input_embedders_parameters = {'observation': InputEmbedderParameters(batchnorm=True)}
+        self.middleware_parameters = FCMiddlewareParameters(batchnorm=True)
+        self.heads_parameters = [DDPGActorHeadParameters()]
+        self.optimizer_type = 'Adam'
+        self.batch_size = 64
+        self.async_training = False
+        self.learning_rate = 0.0001
+        self.create_target_network = True
+        self.shared_optimizer = True
+        self.scale_down_gradients_by_number_of_workers_for_sync_training = False
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="11" similarity="72">
+<source file="systems/coach-0.11.0/rl_coach/filters/filter.py" startline="132" endline="152" pcid="423">
+
+    def filter(self, action_info: ActionInfo) -> ActionInfo:
+        """
+        A wrapper around _filter which first copies the action_info so that we don't change the original one
+        This function should not be updated!
+        :param action_info: the input action_info
+        :return: the filtered action_info
+        """
+        if self.i_am_a_reference_filter:
+            raise Exception("The filter being used is a reference filter. It is not to be used directly. "
+                            "Instead get a duplicate from it by calling __call__.")
+        if len(self.action_filters.values()) == 0:
+            return action_info
+        filtered_action_info = copy.deepcopy(action_info)
+        filtered_action = filtered_action_info.action
+        for filter in reversed(self.action_filters.values()):
+            filtered_action = filter.filter(filtered_action)
+
+        filtered_action_info.action = filtered_action
+
+        return filtered_action_info
+</source>
+<source file="systems/coach-0.11.0/rl_coach/filters/filter.py" startline="153" endline="172" pcid="424">
+
+    def reverse_filter(self, action_info: ActionInfo) -> ActionInfo:
+        """
+        A wrapper around _reverse_filter which first copies the action_info so that we don't change the original one
+        This function should not be updated!
+        :param action_info: the input action_info
+        :return: the filtered action_info
+        """
+        if self.i_am_a_reference_filter:
+            raise Exception("The filter being used is a reference filter. It is not to be used directly. "
+                            "Instead get a duplicate from it by calling __call__.")
+        filtered_action_info = copy.deepcopy(action_info)
+        filtered_action = filtered_action_info.action
+        for filter in self.action_filters.values():
+            filter.validate_output_action(filtered_action)
+            filtered_action = filter.reverse_filter(filtered_action)
+
+        filtered_action_info.action = filtered_action
+
+        return filtered_action_info
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="12" similarity="91">
+<source file="systems/coach-0.11.0/rl_coach/filters/filter.py" startline="457" endline="476" pcid="451">
+
+    def save_state_to_checkpoint(self, checkpoint_dir, checkpoint_prefix):
+        """
+        Save the filter's internal state to a checkpoint to file, so that it can be later restored.
+        :param checkpoint_dir: the directory in which to save the filter's state
+        :param checkpoint_prefix: the prefix of the checkpoint file to save
+        :return: None
+        """
+        checkpoint_prefix = '.'.join([checkpoint_prefix, 'filters'])
+        if self.name is not None:
+            checkpoint_prefix = '.'.join([checkpoint_prefix, self.name])
+        for filter_name, filter in self._reward_filters.items():
+            checkpoint_prefix = '.'.join([checkpoint_prefix, 'reward_filters', filter_name])
+            filter.save_state_to_checkpoint(checkpoint_dir, checkpoint_prefix)
+
+        for observation_name, filters_dict in self._observation_filters.items():
+            for filter_name, filter in filters_dict.items():
+                checkpoint_prefix = '.'.join([checkpoint_prefix, 'observation_filters', observation_name,
+                                                                 filter_name])
+                filter.save_state_to_checkpoint(checkpoint_dir, checkpoint_prefix)
+</source>
+<source file="systems/coach-0.11.0/rl_coach/filters/filter.py" startline="477" endline="497" pcid="452">
+
+    def restore_state_from_checkpoint(self, checkpoint_dir, checkpoint_prefix)->None:
+        """
+        Save the filter's internal state to a checkpoint to file, so that it can be later restored.
+        :param checkpoint_dir: the directory from which to restore
+        :param checkpoint_prefix: the checkpoint prefix to look for
+        :return: None
+        """
+        checkpoint_prefix = '.'.join([checkpoint_prefix, 'filters'])
+        if self.name is not None:
+            checkpoint_prefix = '.'.join([checkpoint_prefix, self.name])
+        for filter_name, filter in self._reward_filters.items():
+            checkpoint_prefix = '.'.join([checkpoint_prefix, 'reward_filters', filter_name])
+            filter.restore_state_from_checkpoint(checkpoint_dir, checkpoint_prefix)
+
+        for observation_name, filters_dict in self._observation_filters.items():
+            for filter_name, filter in filters_dict.items():
+                checkpoint_prefix = '.'.join([checkpoint_prefix, 'observation_filters', observation_name,
+                                                                 filter_name])
+                filter.restore_state_from_checkpoint(checkpoint_dir, checkpoint_prefix)
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="62" similarity="91">
+<source file="systems/coach-0.11.0/rl_coach/orchestrators/kubernetes_orchestrator.py" startline="133" endline="212" pcid="556">
+    def deploy_trainer(self) -> bool:
+        """
+        Deploys the training worker in Kubernetes.
+        """
+
+        trainer_params = self.params.run_type_params.get(str(RunType.TRAINER), None)
+        if not trainer_params:
+            return False
+
+        trainer_params.command += ['--memory_backend_params', json.dumps(self.params.memory_backend_parameters.__dict__)]
+        trainer_params.command += ['--data_store_params', json.dumps(self.params.data_store_params.__dict__)]
+
+        name = "{}-{}".format(trainer_params.run_type, uuid.uuid4())
+
+        if self.params.data_store_params.store_type == "nfs":
+            container = k8sclient.V1Container(
+                name=name,
+                image=trainer_params.image,
+                command=trainer_params.command,
+                args=trainer_params.arguments,
+                image_pull_policy='Always',
+                volume_mounts=[k8sclient.V1VolumeMount(
+                    name='nfs-pvc',
+                    mount_path=trainer_params.checkpoint_dir
+                )],
+                stdin=True,
+                tty=True
+            )
+            template = k8sclient.V1PodTemplateSpec(
+                metadata=k8sclient.V1ObjectMeta(labels={'app': name}),
+                spec=k8sclient.V1PodSpec(
+                    containers=[container],
+                    volumes=[k8sclient.V1Volume(
+                        name="nfs-pvc",
+                        persistent_volume_claim=self.nfs_pvc
+                    )],
+                    restart_policy='OnFailure'
+                ),
+            )
+        else:
+            container = k8sclient.V1Container(
+                name=name,
+                image=trainer_params.image,
+                command=trainer_params.command,
+                args=trainer_params.arguments,
+                image_pull_policy='Always',
+                env=[k8sclient.V1EnvVar("ACCESS_KEY_ID", self.s3_access_key),
+                     k8sclient.V1EnvVar("SECRET_ACCESS_KEY", self.s3_secret_key)],
+                stdin=True,
+                tty=True
+            )
+            template = k8sclient.V1PodTemplateSpec(
+                metadata=k8sclient.V1ObjectMeta(labels={'app': name}),
+                spec=k8sclient.V1PodSpec(
+                    containers=[container],
+                    restart_policy='OnFailure'
+                ),
+            )
+
+        job_spec = k8sclient.V1JobSpec(
+            completions=1,
+            template=template
+        )
+
+        job = k8sclient.V1Job(
+            api_version="batch/v1",
+            kind="Job",
+            metadata=k8sclient.V1ObjectMeta(name=name),
+            spec=job_spec
+        )
+
+        api_client = k8sclient.BatchV1Api()
+        try:
+            api_client.create_namespaced_job(self.params.namespace, job)
+            trainer_params.orchestration_params['job_name'] = name
+            return True
+        except k8sclient.rest.ApiException as e:
+            print("Got exception: %s\n while creating job", e)
+            return False
+
+</source>
+<source file="systems/coach-0.11.0/rl_coach/orchestrators/kubernetes_orchestrator.py" startline="213" endline="294" pcid="557">
+    def deploy_worker(self):
+        """
+        Deploys the rollout worker(s) in Kubernetes.
+        """
+
+        worker_params = self.params.run_type_params.get(str(RunType.ROLLOUT_WORKER), None)
+        if not worker_params:
+            return False
+
+        worker_params.command += ['--memory_backend_params', json.dumps(self.params.memory_backend_parameters.__dict__)]
+        worker_params.command += ['--data_store_params', json.dumps(self.params.data_store_params.__dict__)]
+        worker_params.command += ['--num_workers', '{}'.format(worker_params.num_replicas)]
+
+        name = "{}-{}".format(worker_params.run_type, uuid.uuid4())
+
+        if self.params.data_store_params.store_type == "nfs":
+            container = k8sclient.V1Container(
+                name=name,
+                image=worker_params.image,
+                command=worker_params.command,
+                args=worker_params.arguments,
+                image_pull_policy='Always',
+                volume_mounts=[k8sclient.V1VolumeMount(
+                    name='nfs-pvc',
+                    mount_path=worker_params.checkpoint_dir
+                )],
+                stdin=True,
+                tty=True
+            )
+            template = k8sclient.V1PodTemplateSpec(
+                metadata=k8sclient.V1ObjectMeta(labels={'app': name}),
+                spec=k8sclient.V1PodSpec(
+                    containers=[container],
+                    volumes=[k8sclient.V1Volume(
+                        name="nfs-pvc",
+                        persistent_volume_claim=self.nfs_pvc
+                    )],
+                    restart_policy='OnFailure'
+                ),
+            )
+        else:
+            container = k8sclient.V1Container(
+                name=name,
+                image=worker_params.image,
+                command=worker_params.command,
+                args=worker_params.arguments,
+                image_pull_policy='Always',
+                env=[k8sclient.V1EnvVar("ACCESS_KEY_ID", self.s3_access_key),
+                     k8sclient.V1EnvVar("SECRET_ACCESS_KEY", self.s3_secret_key)],
+                stdin=True,
+                tty=True
+            )
+            template = k8sclient.V1PodTemplateSpec(
+                metadata=k8sclient.V1ObjectMeta(labels={'app': name}),
+                spec=k8sclient.V1PodSpec(
+                    containers=[container],
+                    restart_policy='OnFailure'
+                )
+            )
+
+        job_spec = k8sclient.V1JobSpec(
+            completions=worker_params.num_replicas,
+            parallelism=worker_params.num_replicas,
+            template=template
+        )
+
+        job = k8sclient.V1Job(
+            api_version="batch/v1",
+            kind="Job",
+            metadata=k8sclient.V1ObjectMeta(name=name),
+            spec=job_spec
+        )
+
+        api_client = k8sclient.BatchV1Api()
+        try:
+            api_client.create_namespaced_job(self.params.namespace, job)
+            worker_params.orchestration_params['job_name'] = name
+            return True
+        except k8sclient.rest.ApiException as e:
+            print("Got exception: %s\n while creating Job", e)
+            return False
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="16" similarity="75">
+<source file="systems/coach-0.11.0/rl_coach/orchestrators/kubernetes_orchestrator.py" startline="295" endline="320" pcid="558">
+    def worker_logs(self, path='./logs'):
+        """
+        :param path: Path to store the worker logs.
+        """
+        worker_params = self.params.run_type_params.get(str(RunType.ROLLOUT_WORKER), None)
+        if not worker_params:
+            return
+
+        api_client = k8sclient.CoreV1Api()
+        pods = None
+        try:
+            pods = api_client.list_namespaced_pod(self.params.namespace, label_selector='app={}'.format(
+                worker_params.orchestration_params['job_name']
+            ))
+
+            # pod = pods.items[0]
+        except k8sclient.rest.ApiException as e:
+            print("Got exception: %s\n while reading pods", e)
+            return
+
+        if not pods or len(pods.items) == 0:
+            return
+
+        for pod in pods.items:
+            Process(target=self._tail_log_file, args=(pod.metadata.name, api_client, self.params.namespace, path)).start()
+
+</source>
+<source file="systems/coach-0.11.0/rl_coach/orchestrators/kubernetes_orchestrator.py" startline="328" endline="352" pcid="560">
+    def trainer_logs(self):
+        """
+        Get the logs from trainer.
+        """
+        trainer_params = self.params.run_type_params.get(str(RunType.TRAINER), None)
+        if not trainer_params:
+            return
+
+        api_client = k8sclient.CoreV1Api()
+        pod = None
+        try:
+            pods = api_client.list_namespaced_pod(self.params.namespace, label_selector='app={}'.format(
+                trainer_params.orchestration_params['job_name']
+            ))
+
+            pod = pods.items[0]
+        except k8sclient.rest.ApiException as e:
+            print("Got exception: %s\n while reading pods", e)
+            return
+
+        if not pod:
+            return
+
+        self.tail_log(pod.metadata.name, api_client)
+
+</source>
+</class>
+
+<class classid="11" nclones="2" nlines="24" similarity="83">
+<source file="systems/coach-0.11.0/rl_coach/orchestrators/kubernetes_orchestrator.py" startline="353" endline="385" pcid="561">
+    def tail_log(self, pod_name, corev1_api):
+        while True:
+            time.sleep(10)
+            # Try to tail the pod logs
+            try:
+                for line in corev1_api.read_namespaced_pod_log(
+                            pod_name, self.params.namespace, follow=True,
+                            _preload_content=False
+                        ):
+                    print(line.decode('utf-8'), flush=True, end='')
+            except k8sclient.rest.ApiException as e:
+                pass
+
+            # This part will get executed if the pod is one of the following phases: not ready, failed or terminated.
+            # Check if the pod has errored out, else just try again.
+            # Get the pod
+            try:
+                pod = corev1_api.read_namespaced_pod(pod_name, self.params.namespace)
+            except k8sclient.rest.ApiException as e:
+                continue
+
+            if not hasattr(pod, 'status') or not pod.status:
+                continue
+            if not hasattr(pod.status, 'container_statuses') or not pod.status.container_statuses:
+                continue
+
+            for container_status in pod.status.container_statuses:
+                if container_status.state.waiting is not None:
+                    if container_status.state.waiting.reason == 'Error' or \
+                       container_status.state.waiting.reason == 'CrashLoopBackOff' or \
+                       container_status.state.waiting.reason == 'ImagePullBackOff' or \
+                       container_status.state.waiting.reason == 'ErrImagePull':
+                        return
+</source>
+<source file="systems/coach-0.11.0/rl_coach/tests/test_eks.py" startline="66" endline="96" pcid="640">
+    def print_logs(self):
+        while True:
+            time.sleep(10)
+            # Try to tail the pod logs
+            try:
+                for line in self.corev1_api.read_namespaced_pod_log(
+                    self.test_name, self.namespace, follow=True,
+                    _preload_content=False
+                ):
+                    print(line.decode('utf-8'), flush=True, end='')
+
+            except client.rest.ApiException as e:
+                pass
+
+            try:
+                pod = self.corev1_api.read_namespaced_pod(self.test_name, self.namespace)
+            except client.rest.ApiException as e:
+                continue
+
+            if not hasattr(pod, 'status') or not pod.status:
+                continue
+            if not hasattr(pod.status, 'container_statuses') or not pod.status.container_statuses:
+                continue
+
+            for container_status in pod.status.container_statuses:
+                if container_status.state.waiting is not None:
+                    if container_status.state.waiting.reason == 'Error' or \
+                       container_status.state.waiting.reason == 'CrashLoopBackOff' or \
+                       container_status.state.waiting.reason == 'ImagePullBackOff' or \
+                       container_status.state.waiting.reason == 'ErrImagePull':
+                        return
+</source>
+</class>
+
+<class classid="12" nclones="2" nlines="22" similarity="90">
+<source file="systems/coach-0.11.0/rl_coach/graph_managers/hac_graph_manager.py" startline="31" endline="70" pcid="610">
+    """
+    def __init__(self, agents_params: List[AgentParameters], env_params: EnvironmentParameters,
+                 schedule_params: ScheduleParameters, vis_params: VisualizationParameters,
+                 consecutive_steps_to_run_non_top_levels: Union[EnvironmentSteps, List[EnvironmentSteps]],
+                 preset_validation_params: PresetValidationParameters = PresetValidationParameters()):
+        """
+        :param agents_params: the parameters of all the agents in the hierarchy starting from the top level of the
+                              hierarchy to the bottom level
+        :param env_params: the parameters of the environment
+        :param schedule_params: the parameters for scheduling the graph
+        :param vis_params: the visualization parameters
+        :param consecutive_steps_to_run_non_top_levels: the number of time steps that each level is ran.
+            for example, when the top level gives the bottom level a goal, the bottom level can act for
+            consecutive_steps_to_run_each_level steps and try to reach that goal. This is expected to be either
+            an EnvironmentSteps which will be used for all levels, or an EnvironmentSteps for each level as a list.
+        """
+        super().__init__('hac_graph', schedule_params, vis_params)
+        self.agents_params = agents_params
+        self.env_params = env_params
+        self.preset_validation_params = preset_validation_params
+        self.should_test_current_sub_goal = None  # will be filled by the top level agent, and is used by all levels
+
+        if isinstance(consecutive_steps_to_run_non_top_levels, list):
+            if len(consecutive_steps_to_run_non_top_levels) != len(self.agents_params):
+                raise ValueError("If the consecutive_steps_to_run_each_level is given as a list, it should match "
+                                 "the number of levels in the hierarchy. Alternatively, it is possible to use a single "
+                                 "value for all the levels, by passing an EnvironmentSteps")
+        elif isinstance(consecutive_steps_to_run_non_top_levels, EnvironmentSteps):
+            self.consecutive_steps_to_run_non_top_levels = consecutive_steps_to_run_non_top_levels
+
+        for agent_params in agents_params:
+            agent_params.visualization = self.visualization_parameters
+            if agent_params.input_filter is None:
+                agent_params.input_filter = self.env_params.default_input_filter()
+            if agent_params.output_filter is None:
+                agent_params.output_filter = self.env_params.default_output_filter()
+
+        if len(self.agents_params) < 2:
+            raise ValueError("The HAC graph manager must receive the agent parameters for at least two levels of the "
+                             "hierarchy. Otherwise, use the basic RL graph manager.")
+</source>
+<source file="systems/coach-0.11.0/rl_coach/graph_managers/hrl_graph_manager.py" startline="32" endline="69" pcid="612">
+    """
+    def __init__(self, agents_params: List[AgentParameters], env_params: EnvironmentParameters,
+                 schedule_params: ScheduleParameters, vis_params: VisualizationParameters,
+                 consecutive_steps_to_run_each_level: Union[EnvironmentSteps, List[EnvironmentSteps]],
+                 preset_validation_params: PresetValidationParameters = PresetValidationParameters()):
+        """
+        :param agents_params: the parameters of all the agents in the hierarchy starting from the top level of the
+                              hierarchy to the bottom level
+        :param env_params: the parameters of the environment
+        :param schedule_params: the parameters for scheduling the graph
+        :param vis_params: the visualization parameters
+        :param consecutive_steps_to_run_each_level: the number of time steps that each level is ran.
+            for example, when the top level gives the bottom level a goal, the bottom level can act for
+            consecutive_steps_to_run_each_level steps and try to reach that goal. This is expected to be either
+            an EnvironmentSteps which will be used for all levels, or an EnvironmentSteps for each level as a list.
+        """
+        super().__init__('hrl_graph', schedule_params, vis_params)
+        self.agents_params = agents_params
+        self.env_params = env_params
+        self.preset_validation_params = preset_validation_params
+        if isinstance(consecutive_steps_to_run_each_level, list):
+            if len(consecutive_steps_to_run_each_level) != len(self.agents_params):
+                raise ValueError("If the consecutive_steps_to_run_each_level is given as a list, it should match "
+                                 "the number of levels in the hierarchy. Alternatively, it is possible to use a single "
+                                 "value for all the levels, by passing an EnvironmentSteps")
+        elif isinstance(consecutive_steps_to_run_each_level, EnvironmentSteps):
+            self.consecutive_steps_to_run_each_level = [consecutive_steps_to_run_each_level] * len(self.agents_params)
+
+        for agent_params in agents_params:
+            agent_params.visualization = self.visualization_parameters
+            if agent_params.input_filter is None:
+                agent_params.input_filter = self.env_params.default_input_filter()
+            if agent_params.output_filter is None:
+                agent_params.output_filter = self.env_params.default_output_filter()
+
+        if len(self.agents_params) < 2:
+            raise ValueError("The HRL graph manager must receive the agent parameters for at least two levels of the "
+                             "hierarchy. Otherwise, use the basic RL graph manager.")
+</source>
+</class>
+
+<class classid="13" nclones="2" nlines="22" similarity="90">
+<source file="systems/coach-0.11.0/rl_coach/graph_managers/hac_graph_manager.py" startline="71" endline="105" pcid="611">
+
+    def _create_graph(self, task_parameters: TaskParameters) -> Tuple[List[LevelManager], List[Environment]]:
+        env = short_dynamic_import(self.env_params.path)(**self.env_params.__dict__,
+                                                         visualization_parameters=self.visualization_parameters)
+
+        for agent_params in self.agents_params:
+            agent_params.task_parameters = task_parameters
+
+        # we need to build the hierarchy in reverse order (from the bottom up) in order for the spaces of each level
+        # to be known
+        level_managers = []
+        current_env = env
+        # out_action_space = env.action_space
+        for level_idx, agent_params in reversed(list(enumerate(self.agents_params))):
+            agent_params.name = "agent_{}".format(level_idx)
+            agent_params.is_a_highest_level_agent = level_idx == 0
+            agent_params.is_a_lowest_level_agent = level_idx == len(self.agents_params) - 1
+
+            agent = short_dynamic_import(agent_params.path)(agent_params)
+
+            level_manager = LevelManager(
+                agents=agent,
+                environment=current_env,
+                real_environment=env,
+                steps_limit=EnvironmentSteps(1) if level_idx == 0
+                            else self.consecutive_steps_to_run_non_top_levels,
+                should_reset_agent_state_after_time_limit_passes=level_idx > 0,
+                name="level_{}".format(level_idx)
+            )
+            current_env = level_manager
+            level_managers.insert(0, level_manager)
+
+        return level_managers, [env]
+
+
+</source>
+<source file="systems/coach-0.11.0/rl_coach/graph_managers/hrl_graph_manager.py" startline="70" endline="116" pcid="613">
+
+    def _create_graph(self, task_parameters: TaskParameters) -> Tuple[List[LevelManager], List[Environment]]:
+        self.env_params.seed = task_parameters.seed
+        env = short_dynamic_import(self.env_params.path)(**self.env_params.__dict__,
+                                                         visualization_parameters=self.visualization_parameters)
+
+        for agent_params in self.agents_params:
+            agent_params.task_parameters = task_parameters
+
+        # we need to build the hierarchy in reverse order (from the bottom up) in order for the spaces of each level
+        # to be known
+        level_managers = []
+        current_env = env
+        # out_action_space = env.action_space
+        for level_idx, agent_params in reversed(list(enumerate(self.agents_params))):
+            # TODO: the code below is specific for HRL on observation scale
+            # in action space
+            # if level_idx == 0:
+            #     # top level agents do not get directives
+            #     in_action_space = None
+            # else:
+            #     pass
+
+                # attention_size = (env.state_space['observation'].shape - 1)//4
+                # in_action_space = AttentionActionSpace(shape=2, low=0, high=env.state_space['observation'].shape - 1,
+                #                             forced_attention_size=attention_size)
+                # agent_params.output_filter.action_filters['masking'].set_masking(0, attention_size)
+
+            agent_params.name = "agent_{}".format(level_idx)
+            agent_params.is_a_highest_level_agent = level_idx == 0
+            agent = short_dynamic_import(agent_params.path)(agent_params)
+
+            level_manager = LevelManager(
+                agents=agent,
+                environment=current_env,
+                real_environment=env,
+                steps_limit=self.consecutive_steps_to_run_each_level[level_idx],
+                should_reset_agent_state_after_time_limit_passes=level_idx > 0,
+                name="level_{}".format(level_idx)
+            )
+            current_env = level_manager
+            level_managers.insert(0, level_manager)
+
+            # out_action_space = in_action_space
+
+        return level_managers, [env]
+
+</source>
+</class>
+
+<class classid="14" nclones="2" nlines="10" similarity="100">
+<source file="systems/coach-0.11.0/rl_coach/tests/test_golden.py" startline="36" endline="47" pcid="649">
+def read_csv_paths(test_path, filename_pattern, read_csv_tries=100):
+    csv_paths = []
+    tries_counter = 0
+    while not csv_paths:
+        csv_paths = glob.glob(path.join(test_path, '*', filename_pattern))
+        if tries_counter > read_csv_tries:
+            break
+        tries_counter += 1
+        time.sleep(1)
+    return csv_paths
+
+
+</source>
+<source file="systems/coach-0.11.0/rl_coach/tests/trace_tests.py" startline="51" endline="62" pcid="732">
+def read_csv_paths(test_path, filename_pattern, read_csv_tries=100):
+    csv_paths = []
+    tries_counter = 0
+    while not csv_paths:
+        csv_paths = glob.glob(path.join(test_path, '*', filename_pattern))
+        if tries_counter > read_csv_tries:
+            break
+        tries_counter += 1
+        time.sleep(1)
+    return csv_paths
+
+
+</source>
+</class>
+
+<class classid="15" nclones="2" nlines="11" similarity="90">
+<source file="systems/coach-0.11.0/rl_coach/tests/filters/action/test_box_masking.py" startline="12" endline="27" pcid="701">
+def test_filter():
+    filter = BoxMasking(10, 20)
+
+    # passing an output space that is wrong
+    with pytest.raises(ValueError):
+        filter.validate_output_action_space(DiscreteActionSpace(10))
+
+    # 1 dimensional box
+    output_space = BoxActionSpace(1, 5, 30)
+    input_space = filter.get_unfiltered_action_space(output_space)
+
+    action = np.array([2])
+    result = filter.filter(action)
+    assert result == np.array([12])
+    assert output_space.val_matches_space_definition(result)
+
+</source>
+<source file="systems/coach-0.11.0/rl_coach/tests/filters/action/test_linear_box_to_box_map.py" startline="12" endline="29" pcid="704">
+def test_filter():
+    filter = LinearBoxToBoxMap(10, 20)
+
+    # passing an output space that is wrong
+    with pytest.raises(ValueError):
+        filter.validate_output_action_space(DiscreteActionSpace(10))
+
+    # 1 dimensional box
+    output_space = BoxActionSpace(1, 5, 35)
+    input_space = filter.get_unfiltered_action_space(output_space)
+
+    action = np.array([2])
+
+    action = np.array([12])
+    result = filter.filter(action)
+    assert result == np.array([11])
+    assert output_space.val_matches_space_definition(result)
+
+</source>
+</class>
+
+<class classid="16" nclones="2" nlines="20" similarity="73">
+<source file="systems/coach-0.11.0/rl_coach/tests/memories/test_prioritized_experience_replay.py" startline="43" endline="61" pcid="727">
+def test_min_tree():
+    min_tree = SegmentTree(size=4, operation=SegmentTree.Operation.MIN)
+    min_tree.add(10, "10")
+    assert min_tree.total_value() == 10
+    min_tree.add(20, "20")
+    assert min_tree.total_value() == 10
+    min_tree.add(5, "5")
+    assert min_tree.total_value() == 5
+    min_tree.add(7.5, "7.5")
+    assert min_tree.total_value() == 5
+    min_tree.add(2, "2")
+    assert min_tree.total_value() == 2
+    min_tree.add(3, "3")
+    min_tree.add(3, "3")
+    min_tree.add(3, "3")
+    min_tree.add(5, "5")
+    assert min_tree.total_value() == 3
+
+
+</source>
+<source file="systems/coach-0.11.0/rl_coach/tests/memories/test_prioritized_experience_replay.py" startline="63" endline="89" pcid="728">
+def test_max_tree():
+    max_tree = SegmentTree(size=4, operation=SegmentTree.Operation.MAX)
+    max_tree.add(10, "10")
+    assert max_tree.total_value() == 10
+    max_tree.add(20, "20")
+    assert max_tree.total_value() == 20
+    max_tree.add(5, "5")
+    assert max_tree.total_value() == 20
+    max_tree.add(7.5, "7.5")
+    assert max_tree.total_value() == 20
+    max_tree.add(2, "2")
+    assert max_tree.total_value() == 20
+    max_tree.add(3, "3")
+    max_tree.add(3, "3")
+    max_tree.add(3, "3")
+    max_tree.add(5, "5")
+    assert max_tree.total_value() == 5
+
+    # update
+    max_tree.update(1, 10)
+    assert max_tree.total_value() == 10
+    assert max_tree.__str__() == "[10.]\n[10.  3.]\n[ 5. 10.  3.  3.]\n"
+    max_tree.update(1, 2)
+    assert max_tree.total_value() == 5
+    assert max_tree.__str__() == "[5.]\n[5. 3.]\n[5. 2. 3. 3.]\n"
+
+
+</source>
+</class>
+
+<class classid="17" nclones="2" nlines="16" similarity="81">
+<source file="systems/coach-0.11.0/rl_coach/tests/architectures/mxnet_components/heads/test_q_head.py" startline="15" endline="33" pcid="772">
+def test_q_head_loss():
+    loss_fn = QHeadLoss()
+    # example with batch_size of 3, and num_actions of 2
+    target_q_values = mx.nd.array(((3, 5), (-1, -2), (0, 2)))
+    pred_q_values_worse = mx.nd.array(((6, 5), (-1, -2), (0, 2)))
+    pred_q_values_better = mx.nd.array(((4, 5), (-2, -2), (1, 2)))
+    loss_worse = loss_fn(pred_q_values_worse, target_q_values)
+    loss_better = loss_fn(pred_q_values_better, target_q_values)
+    assert len(loss_worse) == 1  # (LOSS)
+    loss_worse_val = loss_worse[0]
+    assert loss_worse_val.ndim == 1
+    assert loss_worse_val.shape[0] == 1
+    assert len(loss_better) == 1  # (LOSS)
+    loss_better_val = loss_better[0]
+    assert loss_better_val.ndim == 1
+    assert loss_better_val.shape[0] == 1
+    assert loss_worse_val > loss_better_val
+
+
+</source>
+<source file="systems/coach-0.11.0/rl_coach/tests/architectures/mxnet_components/heads/test_v_head.py" startline="15" endline="32" pcid="775">
+def test_v_head_loss():
+    loss_fn = VHeadLoss()
+    target_values = mx.nd.array((3, -1, 0))
+    pred_values_worse = mx.nd.array((0, 0, 1))
+    pred_values_better = mx.nd.array((2, -1, 0))
+    loss_worse = loss_fn(pred_values_worse, target_values)
+    loss_better = loss_fn(pred_values_better, target_values)
+    assert len(loss_worse) == 1  # (LOSS)
+    loss_worse_val = loss_worse[0]
+    assert loss_worse_val.ndim == 1
+    assert loss_worse_val.shape[0] == 1
+    assert len(loss_better) == 1  # (LOSS)
+    loss_better_val = loss_better[0]
+    assert loss_better_val.ndim == 1
+    assert loss_better_val.shape[0] == 1
+    assert loss_worse_val > loss_better_val
+
+
+</source>
+</class>
+
+<class classid="18" nclones="4" nlines="14" similarity="80">
+<source file="systems/coach-0.11.0/rl_coach/tests/architectures/mxnet_components/heads/test_q_head.py" startline="46" endline="60" pcid="774">
+def test_ppo_v_head():
+    agent_parameters = ClippedPPOAgentParameters()
+    num_actions = 5
+    action_space = DiscreteActionSpace(num_actions=num_actions)
+    spaces = SpacesDefinition(state=None, goal=None, action=action_space, reward=None)
+    value_net = QHead(agent_parameters=agent_parameters,
+                      spaces=spaces,
+                      network_name="test_q_head")
+    value_net.initialize()
+    batch_size = 15
+    middleware_data = mx.nd.random.uniform(shape=(batch_size, 100))
+    values = value_net(middleware_data)
+    assert values.ndim == 2  # (batch_size, num_actions)
+    assert values.shape[0] == batch_size
+    assert values.shape[1] == num_actions
+</source>
+<source file="systems/coach-0.11.0/rl_coach/tests/architectures/mxnet_components/heads/test_v_head.py" startline="45" endline="57" pcid="777">
+def test_ppo_v_head():
+    agent_parameters = ClippedPPOAgentParameters()
+    action_space = DiscreteActionSpace(num_actions=5)
+    spaces = SpacesDefinition(state=None, goal=None, action=action_space, reward=None)
+    value_net = VHead(agent_parameters=agent_parameters,
+                      spaces=spaces,
+                      network_name="test_v_head")
+    value_net.initialize()
+    batch_size = 15
+    middleware_data = mx.nd.random.uniform(shape=(batch_size, 100))
+    values = value_net(middleware_data)
+    assert values.ndim == 1  # (batch_size)
+    assert values.shape[0] == batch_size
+</source>
+<source file="systems/coach-0.11.0/rl_coach/tests/architectures/mxnet_components/heads/test_ppo_v_head.py" startline="78" endline="90" pcid="781">
+def test_ppo_v_head():
+    agent_parameters = ClippedPPOAgentParameters()
+    action_space = DiscreteActionSpace(num_actions=5)
+    spaces = SpacesDefinition(state=None, goal=None, action=action_space, reward=None)
+    value_net = PPOVHead(agent_parameters=agent_parameters,
+                         spaces=spaces,
+                         network_name="test_ppo_v_head")
+    value_net.initialize()
+    batch_size = 15
+    middleware_data = mx.nd.random.uniform(shape=(batch_size, 100))
+    values = value_net(middleware_data)
+    assert values.ndim == 1  # (batch_size)
+    assert values.shape[0] == batch_size
+</source>
+<source file="systems/coach-0.11.0/rl_coach/tests/architectures/mxnet_components/heads/test_ppo_head.py" startline="389" endline="405" pcid="801">
+@pytest.mark.unit_test
+def test_ppo_head():
+    agent_parameters = ClippedPPOAgentParameters()
+    num_actions = 5
+    action_space = DiscreteActionSpace(num_actions=num_actions)
+    spaces = SpacesDefinition(state=None, goal=None, action=action_space, reward=None)
+    head = PPOHead(agent_parameters=agent_parameters,
+                   spaces=spaces,
+                   network_name="test_ppo_head")
+
+    head.initialize()
+
+    batch_size = 15
+    middleware_data = mx.nd.random.uniform(shape=(batch_size, 100))
+    probs = head(middleware_data)
+    assert probs.ndim == 2  # (batch_size, num_actions)
+    assert probs.shape[0] == batch_size
+</source>
+</class>
+
+<class classid="19" nclones="2" nlines="24" similarity="95">
+<source file="systems/coach-0.11.0/rl_coach/tests/architectures/mxnet_components/heads/test_ppo_head.py" startline="223" endline="257" pcid="795">
+@pytest.mark.unit_test
+def test_clipped_ppo_loss_discrete_batch():
+    # check lower loss for policy with better probabilities:
+    # i.e. higher probability on high advantage actions, low probability on low advantage actions.
+    loss_fn = ClippedPPOLossDiscrete(num_actions=2,
+                                     clip_likelihood_ratio_using_epsilon=None,
+                                     use_kl_regularization=True,
+                                     initial_kl_coefficient=1)
+    loss_fn.initialize()
+
+    # actual actions taken, of shape (batch_size)
+    actions = mx.nd.array((0, 1, 0))
+    # advantages from taking action, of shape (batch_size)
+    advantages = mx.nd.array((-2, 2, 1))
+    # action probabilities, of shape (batch_size, num_actions)
+    old_policy_probs = mx.nd.array(((0.7, 0.3), (0.2, 0.8), (0.4, 0.6)))
+    new_policy_probs_worse = mx.nd.array(((0.9, 0.1), (0.2, 0.8), (0.4, 0.6)))
+    new_policy_probs_better = mx.nd.array(((0.5, 0.5), (0.2, 0.8), (0.4, 0.6)))
+
+    clip_param_rescaler = mx.nd.array((1,))
+
+    loss_worse = loss_fn(new_policy_probs_worse, actions, old_policy_probs, clip_param_rescaler, advantages)
+    loss_better = loss_fn(new_policy_probs_better, actions, old_policy_probs, clip_param_rescaler, advantages)
+
+    assert len(loss_worse) == 6  # (LOSS, REGULARIZATION, KL, ENTROPY, LIKELIHOOD_RATIO, CLIPPED_LIKELIHOOD_RATIO)
+    lw_loss, lw_reg, lw_kl, lw_ent, lw_lr, lw_clip_lr = loss_worse
+    assert lw_loss.ndim == 1
+    assert lw_loss.shape[0] == 1
+    assert len(loss_better) == 6  # (LOSS, REGULARIZATION, KL, ENTROPY, LIKELIHOOD_RATIO, CLIPPED_LIKELIHOOD_RATIO)
+    lb_loss, lb_reg, lb_kl, lb_ent, lb_lr, lb_clip_lr = loss_better
+    assert lb_loss.ndim == 1
+    assert lb_loss.shape[0] == 1
+    assert lw_loss > lb_loss
+    assert lw_kl > lb_kl
+
+</source>
+<source file="systems/coach-0.11.0/rl_coach/tests/architectures/mxnet_components/heads/test_ppo_head.py" startline="259" endline="293" pcid="796">
+@pytest.mark.unit_test
+def test_clipped_ppo_loss_discrete_batch_kl_div():
+    # check lower loss for policy with better probabilities:
+    # i.e. higher probability on high advantage actions, low probability on low advantage actions.
+    loss_fn = ClippedPPOLossDiscrete(num_actions=2,
+                                     clip_likelihood_ratio_using_epsilon=None,
+                                     use_kl_regularization=True,
+                                     initial_kl_coefficient=0.5)
+    loss_fn.initialize()
+
+    # actual actions taken, of shape (batch_size)
+    actions = mx.nd.array((0, 1, 0))
+    # advantages from taking action, of shape (batch_size)
+    advantages = mx.nd.array((-2, 2, 1))
+    # action probabilities, of shape (batch_size, num_actions)
+    old_policy_probs = mx.nd.array(((0.7, 0.3), (0.2, 0.8), (0.4, 0.6)))
+    new_policy_probs_worse = mx.nd.array(((0.9, 0.1), (0.2, 0.8), (0.4, 0.6)))
+    new_policy_probs_better = mx.nd.array(((0.5, 0.5), (0.2, 0.8), (0.4, 0.6)))
+
+    clip_param_rescaler = mx.nd.array((1,))
+
+    loss_worse = loss_fn(new_policy_probs_worse, actions, old_policy_probs, clip_param_rescaler, advantages)
+    loss_better = loss_fn(new_policy_probs_better, actions, old_policy_probs, clip_param_rescaler, advantages)
+
+    assert len(loss_worse) == 6  # (LOSS, REGULARIZATION, KL, ENTROPY, LIKELIHOOD_RATIO, CLIPPED_LIKELIHOOD_RATIO)
+    lw_loss, lw_reg, lw_kl, lw_ent, lw_lr, lw_clip_lr = loss_worse
+    assert lw_kl.ndim == 1
+    assert lw_kl.shape[0] == 1
+    assert len(loss_better) == 6  # (LOSS, REGULARIZATION, KL, ENTROPY, LIKELIHOOD_RATIO, CLIPPED_LIKELIHOOD_RATIO)
+    lb_loss, lb_reg, lb_kl, lb_ent, lb_lr, lb_clip_lr = loss_better
+    assert lb_kl.ndim == 1
+    assert lb_kl.shape[0] == 1
+    assert lw_kl > lb_kl
+    assert lw_reg > lb_reg
+
+</source>
+</class>
+
+<class classid="20" nclones="2" nlines="17" similarity="76">
+<source file="systems/coach-0.11.0/rl_coach/tests/architectures/tensorflow_components/embedders/test_image_embedder.py" startline="72" endline="99" pcid="807">
+def test_activation_function(reset):
+    # creating a deep image embedder with relu
+    embedder = ImageEmbedder(np.array([100, 100, 10]), name="relu", scheme=EmbedderScheme.Deep,
+                             activation_function=tf.nn.relu)
+
+    # call the embedder
+    embedder()
+
+    # try feeding a batch of one example
+    input = np.random.rand(1, 100, 100, 10)
+    sess = tf.Session()
+    sess.run(tf.global_variables_initializer())
+    output = sess.run(embedder.output, {embedder.input: input})
+    assert np.all(output >= 0)  # should have flattened the input
+
+    # creating a deep image embedder with tanh
+    embedder_tanh = ImageEmbedder(np.array([100, 100, 10]), name="tanh", scheme=EmbedderScheme.Deep,
+                                  activation_function=tf.nn.tanh)
+
+    # call the embedder
+    embedder_tanh()
+
+    # try feeding a batch of one example
+    input = np.random.rand(1, 100, 100, 10)
+    sess = tf.Session()
+    sess.run(tf.global_variables_initializer())
+    output = sess.run(embedder_tanh.output, {embedder_tanh.input: input})
+    assert np.all(output >= -1) and np.all(output <= 1)
+</source>
+<source file="systems/coach-0.11.0/rl_coach/tests/architectures/tensorflow_components/embedders/test_vector_embedder.py" startline="68" endline="95" pcid="811">
+def test_activation_function(reset):
+    # creating a deep vector embedder with relu
+    embedder = VectorEmbedder(np.array([10]), name="relu", scheme=EmbedderScheme.Deep,
+                              activation_function=tf.nn.relu)
+
+    # call the embedder
+    embedder()
+
+    # try feeding a batch of one example
+    input = np.random.rand(1, 10)
+    sess = tf.Session()
+    sess.run(tf.global_variables_initializer())
+    output = sess.run(embedder.output, {embedder.input: input})
+    assert np.all(output >= 0)  # should have flattened the input
+
+    # creating a deep vector embedder with tanh
+    embedder_tanh = VectorEmbedder(np.array([10]), name="tanh", scheme=EmbedderScheme.Deep,
+                                   activation_function=tf.nn.tanh)
+
+    # call the embedder
+    embedder_tanh()
+
+    # try feeding a batch of one example
+    input = np.random.rand(1, 10)
+    sess = tf.Session()
+    sess.run(tf.global_variables_initializer())
+    output = sess.run(embedder_tanh.output, {embedder_tanh.input: input})
+    assert np.all(output >= -1) and np.all(output <= 1)
+</source>
+</class>
+
+<class classid="21" nclones="2" nlines="10" similarity="100">
+<source file="systems/coach-0.11.0/rl_coach/memories/episodic/episodic_experience_replay.py" startline="205" endline="222" pcid="905">
+    def get_episode(self, episode_index: int, lock: bool=True) -> Union[None, Episode]:
+        """
+        Returns the episode in the given index. If the episode does not exist, returns None instead.
+        :param episode_index: the index of the episode to return
+        :return: the corresponding episode
+        """
+        if lock:
+            self.reader_writer_lock.lock_writing()
+
+        if self.length() == 0 or episode_index >= self.length():
+            episode = None
+        else:
+            episode = self._buffer[episode_index]
+
+        if lock:
+            self.reader_writer_lock.release_writing()
+        return episode
+
+</source>
+<source file="systems/coach-0.11.0/rl_coach/memories/non_episodic/experience_replay.py" startline="128" endline="147" pcid="924">
+    def get_transition(self, transition_index: int, lock: bool=True) -> Union[None, Transition]:
+        """
+        Returns the transition in the given index. If the transition does not exist, returns None instead.
+        :param transition_index: the index of the transition to return
+        :param lock: use write locking if this is a shared memory
+        :return: the corresponding transition
+        """
+        if lock:
+            self.reader_writer_lock.lock_writing()
+
+        if self.length() == 0 or transition_index >= self.length():
+            transition = None
+        else:
+            transition = self.transitions[transition_index]
+
+        if lock:
+            self.reader_writer_lock.release_writing()
+
+        return transition
+
+</source>
+</class>
+
+<class classid="22" nclones="2" nlines="11" similarity="81">
+<source file="systems/coach-0.11.0/rl_coach/core_types.py" startline="440" endline="461" pcid="1046">
+    def states(self, fetches: List[str], expand_dims=False) -> Dict[str, np.ndarray]:
+        """
+        follow the keys in fetches to extract the corresponding items from the states in the batch
+        if these keys were not already extracted before. return only the values corresponding to those keys
+
+        :param fetches: the keys of the state dictionary to extract
+        :param expand_dims: add an extra dimension to each of the value batches
+        :return: a dictionary containing a batch of values correponding to each of the given fetches keys
+        """
+        current_states = {}
+        # there are cases (e.g. ddpg) where the state does not contain all the information needed for running
+        # through the network and this has to be added externally (e.g. ddpg where the action needs to be given in
+        # addition to the current_state, so that all the inputs of the network will be filled)
+        for key in set(fetches).intersection(self.transitions[0].state.keys()):
+            if key not in self._states.keys():
+                self._states[key] = np.array([np.array(transition.state[key]) for transition in self.transitions])
+            if expand_dims:
+                current_states[key] = np.expand_dims(self._states[key], -1)
+            else:
+                current_states[key] = self._states[key]
+        return current_states
+
+</source>
+<source file="systems/coach-0.11.0/rl_coach/core_types.py" startline="516" endline="538" pcid="1051">
+    def next_states(self, fetches: List[str], expand_dims=False) -> Dict[str, np.ndarray]:
+        """
+        follow the keys in fetches to extract the corresponding items from the next states in the batch
+        if these keys were not already extracted before. return only the values corresponding to those keys
+
+        :param fetches: the keys of the state dictionary to extract
+        :param expand_dims: add an extra dimension to each of the value batches
+        :return: a dictionary containing a batch of values correponding to each of the given fetches keys
+        """
+        next_states = {}
+        # there are cases (e.g. ddpg) where the state does not contain all the information needed for running
+        # through the network and this has to be added externally (e.g. ddpg where the action needs to be given in
+        # addition to the current_state, so that all the inputs of the network will be filled)
+        for key in set(fetches).intersection(self.transitions[0].next_state.keys()):
+            if key not in self._next_states.keys():
+                self._next_states[key] = np.array(
+                    [np.array(transition.next_state[key]) for transition in self.transitions])
+            if expand_dims:
+                next_states[key] = np.expand_dims(self._next_states[key], -1)
+            else:
+                next_states[key] = self._next_states[key]
+        return next_states
+
+</source>
+</class>
+
+<class classid="23" nclones="2" nlines="18" similarity="78">
+<source file="systems/coach-0.11.0/rl_coach/exploration_policies/additive_noise.py" startline="69" endline="100" pcid="1202">
+
+    def get_action(self, action_values: List[ActionType]) -> ActionType:
+        # TODO-potential-bug consider separating internally defined stdev and externally defined stdev into 2 policies
+
+        # set the current noise percentage
+        if self.phase == RunPhase.TEST:
+            current_noise_precentage = self.evaluation_noise_percentage
+        else:
+            current_noise_precentage = self.noise_percentage_schedule.current_value
+
+        # scale the noise to the action space range
+        action_values_std = current_noise_precentage * (self.action_space.high - self.action_space.low)
+
+        # extract the mean values
+        if isinstance(action_values, list):
+            # the action values are expected to be a list with the action mean and optionally the action stdev
+            action_values_mean = action_values[0].squeeze()
+        else:
+            # the action values are expected to be a numpy array representing the action mean
+            action_values_mean = action_values.squeeze()
+
+        # step the noise schedule
+        if self.phase == RunPhase.TRAIN:
+            self.noise_percentage_schedule.step()
+            # the second element of the list is assumed to be the standard deviation
+            if isinstance(action_values, list) and len(action_values) > 1:
+                action_values_std = action_values[1].squeeze()
+
+        # add noise to the action means
+        action = np.random.normal(action_values_mean, action_values_std)
+
+        return action
+</source>
+<source file="systems/coach-0.11.0/rl_coach/exploration_policies/truncated_normal.py" startline="75" endline="107" pcid="1237">
+
+    def get_action(self, action_values: List[ActionType]) -> ActionType:
+        # set the current noise percentage
+        if self.phase == RunPhase.TEST:
+            current_noise_precentage = self.evaluation_noise_percentage
+        else:
+            current_noise_precentage = self.noise_percentage_schedule.current_value
+
+        # scale the noise to the action space range
+        action_values_std = current_noise_precentage * (self.action_space.high - self.action_space.low)
+
+        # extract the mean values
+        if isinstance(action_values, list):
+            # the action values are expected to be a list with the action mean and optionally the action stdev
+            action_values_mean = action_values[0].squeeze()
+        else:
+            # the action values are expected to be a numpy array representing the action mean
+            action_values_mean = action_values.squeeze()
+
+        # step the noise schedule
+        if self.phase == RunPhase.TRAIN:
+            self.noise_percentage_schedule.step()
+            # the second element of the list is assumed to be the standard deviation
+            if isinstance(action_values, list) and len(action_values) > 1:
+                action_values_std = action_values[1].squeeze()
+
+        # sample from truncated normal distribution
+        normalized_low = (self.clip_low - action_values_mean) / action_values_std
+        normalized_high = (self.clip_high - action_values_mean) / action_values_std
+        distribution = truncnorm(normalized_low, normalized_high, loc=action_values_mean, scale=action_values_std)
+        action = distribution.rvs(1)
+
+        return action
+</source>
+</class>
+
+<class classid="24" nclones="3" nlines="15" similarity="93">
+<source file="systems/coach-0.11.0/rl_coach/architectures/mxnet_components/middlewares/fc_middleware.py" startline="39" endline="68" pcid="1342">
+    def schemes(self) -> dict:
+        """
+        Schemes are the pre-defined network architectures of various depths and complexities that can be used for the
+        Middleware. Are used to create Block when FCMiddleware is initialised.
+
+        :return: dictionary of schemes, with key of type MiddlewareScheme enum and value being list of mxnet.gluon.Block.
+        """
+        return {
+            MiddlewareScheme.Empty:
+                [],
+
+            # Use for PPO
+            MiddlewareScheme.Shallow:
+                [
+                    Dense(units=64)
+                ],
+
+            # Use for DQN
+            MiddlewareScheme.Medium:
+                [
+                    Dense(units=512)
+                ],
+
+            MiddlewareScheme.Deep:
+                [
+                    Dense(units=128),
+                    Dense(units=128),
+                    Dense(units=128)
+                ]
+        }
+</source>
+<source file="systems/coach-0.11.0/rl_coach/architectures/mxnet_components/embedders/vector_embedder.py" startline="28" endline="58" pcid="1421">
+    def schemes(self):
+        """
+        Schemes are the pre-defined network architectures of various depths and complexities that can be used. Are used
+        to create Block when VectorEmbedder is initialised.
+
+        :return: dictionary of schemes, with key of type EmbedderScheme enum and value being list of mxnet.gluon.Block.
+        """
+        return {
+            EmbedderScheme.Empty:
+                [],
+
+            EmbedderScheme.Shallow:
+                [
+                    Dense(units=128)
+                ],
+
+            # Use for DQN
+            EmbedderScheme.Medium:
+                [
+                    Dense(units=256)
+                ],
+
+            # Use for Carla
+            EmbedderScheme.Deep:
+                [
+                    Dense(units=128),
+                    Dense(units=128),
+                    Dense(units=128)
+                ]
+        }
+
+</source>
+<source file="systems/coach-0.11.0/rl_coach/architectures/mxnet_components/middlewares/lstm_middleware.py" startline="50" endline="80" pcid="1344">
+    def schemes(self) -> dict:
+        """
+        Schemes are the pre-defined network architectures of various depths and complexities that can be used for the
+        Middleware. Are used to create Block when LSTMMiddleware is initialised, and are applied before the LSTM.
+
+        :return: dictionary of schemes, with key of type MiddlewareScheme enum and value being list of mxnet.gluon.Block.
+        """
+        return {
+            MiddlewareScheme.Empty:
+                [],
+
+            # Use for PPO
+            MiddlewareScheme.Shallow:
+                [
+                    Dense(units=64)
+                ],
+
+            # Use for DQN
+            MiddlewareScheme.Medium:
+                [
+                    Dense(units=512)
+                ],
+
+            MiddlewareScheme.Deep:
+                [
+                    Dense(units=128),
+                    Dense(units=128),
+                    Dense(units=128)
+                ]
+        }
+
+</source>
+</class>
+
+<class classid="25" nclones="2" nlines="18" similarity="89">
+<source file="systems/coach-0.11.0/rl_coach/architectures/mxnet_components/middlewares/middleware.py" startline="30" endline="57" pcid="1346">
+    def __init__(self, params: MiddlewareParameters):
+        """
+        Middleware is the middle part of the network. It takes the embeddings from the input embedders,
+        after they were aggregated in some method (for example, concatenation) and passes it through a neural network
+        which can be customizable but shared between the heads of the network.
+
+        :param params: parameters object containing batchnorm, activation_function and dropout properties.
+        """
+        super(Middleware, self).__init__()
+        self.scheme = params.scheme
+
+        with self.name_scope():
+            self.net = nn.HybridSequential()
+            if isinstance(self.scheme, MiddlewareScheme):
+                blocks = self.schemes[self.scheme]
+            else:
+                # if scheme is specified directly, convert to MX layer if it's not a callable object
+                # NOTE: if layer object is callable, it must return a gluon block when invoked
+                blocks = [convert_layer(l) for l in self.scheme]
+            for block in blocks:
+                self.net.add(block())
+                if params.batchnorm:
+                    self.net.add(nn.BatchNorm())
+                if params.activation_function:
+                    self.net.add(nn.Activation(params.activation_function))
+                if params.dropout_rate:
+                    self.net.add(nn.Dropout(rate=params.dropout_rate))
+
+</source>
+<source file="systems/coach-0.11.0/rl_coach/architectures/mxnet_components/embedders/embedder.py" startline="14" endline="44" pcid="1423">
+    def __init__(self, params: InputEmbedderParameters):
+        """
+        An input embedder is the first part of the network, which takes the input from the state and produces a vector
+        embedding by passing it through a neural network. The embedder will mostly be input type dependent, and there
+        can be multiple embedders in a single network.
+
+        :param params: parameters object containing input_clipping, input_rescaling, batchnorm, activation_function
+            and dropout properties.
+        """
+        super(InputEmbedder, self).__init__()
+        self.embedder_name = params.name
+        self.input_clipping = params.input_clipping
+        self.scheme = params.scheme
+
+        with self.name_scope():
+            self.net = nn.HybridSequential()
+            if isinstance(self.scheme, EmbedderScheme):
+                blocks = self.schemes[self.scheme]
+            else:
+                # if scheme is specified directly, convert to MX layer if it's not a callable object
+                # NOTE: if layer object is callable, it must return a gluon block when invoked
+                blocks = [convert_layer(l) for l in self.scheme]
+            for block in blocks:
+                self.net.add(block())
+                if params.batchnorm:
+                    self.net.add(nn.BatchNorm())
+                if params.activation_function:
+                    self.net.add(nn.Activation(params.activation_function))
+                if params.dropout_rate:
+                    self.net.add(nn.Dropout(rate=params.dropout_rate))
+
+</source>
+</class>
+
+<class classid="26" nclones="2" nlines="23" similarity="95">
+<source file="systems/coach-0.11.0/rl_coach/architectures/mxnet_components/heads/ppo_head.py" startline="306" endline="342" pcid="1363">
+
+class ClippedPPOLossDiscrete(HeadLoss):
+    def __init__(self,
+                 num_actions: int,
+                 clip_likelihood_ratio_using_epsilon: float,
+                 beta: float=0,
+                 use_kl_regularization: bool=False,
+                 initial_kl_coefficient: float=1,
+                 kl_cutoff: float=0,
+                 high_kl_penalty_coefficient: float=1,
+                 weight: float=1,
+                 batch_axis: int=0) -> None:
+        """
+        Loss for discrete version of Clipped PPO.
+
+        :param num_actions: number of actions in action space.
+        :param clip_likelihood_ratio_using_epsilon: epsilon to use for likelihood ratio clipping.
+        :param beta: loss coefficient applied to entropy
+        :param use_kl_regularization: option to add kl divergence loss
+        :param initial_kl_coefficient: loss coefficient applied kl divergence loss (also see high_kl_penalty_coefficient).
+        :param kl_cutoff: threshold for using high_kl_penalty_coefficient
+        :param high_kl_penalty_coefficient: loss coefficient applied to kv divergence above kl_cutoff
+        :param weight: scalar used to adjust relative weight of loss (if using this loss with others).
+        :param batch_axis: axis used for mini-batch (default is 0) and excluded from loss aggregation.
+        """
+        super(ClippedPPOLossDiscrete, self).__init__(weight=weight, batch_axis=batch_axis)
+        self.weight = weight
+        self.num_actions = num_actions
+        self.clip_likelihood_ratio_using_epsilon = clip_likelihood_ratio_using_epsilon
+        self.beta = beta
+        self.use_kl_regularization = use_kl_regularization
+        self.initial_kl_coefficient = initial_kl_coefficient if self.use_kl_regularization else 0.0
+        self.kl_coefficient = self.params.get('kl_coefficient',
+                                              shape=(1,),
+                                              init=mx.init.Constant([initial_kl_coefficient,]),
+                                              differentiable=False)
+        self.kl_cutoff = kl_cutoff
+</source>
+<source file="systems/coach-0.11.0/rl_coach/architectures/mxnet_components/heads/ppo_head.py" startline="440" endline="477" pcid="1366">
+
+class ClippedPPOLossContinuous(HeadLoss):
+    def __init__(self,
+                 num_actions: int,
+                 clip_likelihood_ratio_using_epsilon: float,
+                 beta: float=0,
+                 use_kl_regularization: bool=False,
+                 initial_kl_coefficient: float=1,
+                 kl_cutoff: float=0,
+                 high_kl_penalty_coefficient: float=1,
+                 weight: float=1,
+                 batch_axis: int=0):
+        """
+        Loss for continuous version of Clipped PPO.
+
+        :param num_actions: number of actions in action space.
+        :param clip_likelihood_ratio_using_epsilon: epsilon to use for likelihood ratio clipping.
+        :param beta: loss coefficient applied to entropy
+        :param batch_axis: axis used for mini-batch (default is 0) and excluded from loss aggregation.
+        :param use_kl_regularization: option to add kl divergence loss
+        :param initial_kl_coefficient: initial loss coefficient applied kl divergence loss (also see high_kl_penalty_coefficient).
+        :param kl_cutoff: threshold for using high_kl_penalty_coefficient
+        :param high_kl_penalty_coefficient: loss coefficient applied to kv divergence above kl_cutoff
+        :param weight: scalar used to adjust relative weight of loss (if using this loss with others).
+        :param batch_axis: axis used for mini-batch (default is 0) and excluded from loss aggregation.
+        """
+        super(ClippedPPOLossContinuous, self).__init__(weight=weight, batch_axis=batch_axis)
+        self.weight = weight
+        self.num_actions = num_actions
+        self.clip_likelihood_ratio_using_epsilon = clip_likelihood_ratio_using_epsilon
+        self.beta = beta
+        self.use_kl_regularization = use_kl_regularization
+        self.initial_kl_coefficient = initial_kl_coefficient if self.use_kl_regularization else 0.0
+        self.kl_coefficient = self.params.get('kl_coefficient',
+                                              shape=(1,),
+                                              init=mx.init.Constant([initial_kl_coefficient,]),
+                                              differentiable=False)
+        self.kl_cutoff = kl_cutoff
+</source>
+</class>
+
+<class classid="27" nclones="2" nlines="47" similarity="78">
+<source file="systems/coach-0.11.0/rl_coach/architectures/mxnet_components/heads/ppo_head.py" startline="351" endline="438" pcid="1365">
+        )
+
+    def loss_forward(self,
+                     F: ModuleType,
+                     new_policy_probs: nd_sym_type,
+                     actions: nd_sym_type,
+                     old_policy_probs: nd_sym_type,
+                     clip_param_rescaler: nd_sym_type,
+                     advantages: nd_sym_type,
+                     kl_coefficient: nd_sym_type) -> List[Tuple[nd_sym_type, str]]:
+        """
+        Used for forward pass through loss computations.
+        Works with batches of data, and optionally time_steps, but be consistent in usage: i.e. if using time_step,
+        new_policy_probs, old_policy_probs, actions and advantages all must include a time_step dimension.
+
+        NOTE: order of input arguments MUST NOT CHANGE because it matches the order
+        parameters are passed in ppo_agent:train_network()
+
+        :param (mx.nd or mx.sym) F: backend api (mx.sym if block has been hybridized).
+        :param new_policy_probs: action probabilities predicted by DiscretePPOHead network,
+            of shape (batch_size, num_actions) or
+            of shape (batch_size, time_step, num_actions).
+        :param old_policy_probs: action probabilities for previous policy,
+            of shape (batch_size, num_actions) or
+            of shape (batch_size, time_step, num_actions).
+        :param actions: true actions taken during rollout,
+            of shape (batch_size) or
+            of shape (batch_size, time_step).
+        :param clip_param_rescaler: scales epsilon to use for likelihood ratio clipping.
+        :param advantages: change in state value after taking action (a.k.a advantage)
+            of shape (batch_size) or
+            of shape (batch_size, time_step).
+        :param kl_coefficient: loss coefficient applied kl divergence loss (also see high_kl_penalty_coefficient).
+        :return: loss, of shape (batch_size).
+        """
+
+        old_policy_dist = CategoricalDist(self.num_actions, old_policy_probs, F=F)
+        action_probs_wrt_old_policy = old_policy_dist.log_prob(actions)
+
+        new_policy_dist = CategoricalDist(self.num_actions, new_policy_probs, F=F)
+        action_probs_wrt_new_policy = new_policy_dist.log_prob(actions)
+
+        entropy_loss = - self.beta * new_policy_dist.entropy().mean()
+
+        if self.use_kl_regularization:
+            kl_div = old_policy_dist.kl_div(new_policy_dist).mean()
+            weighted_kl_div = kl_coefficient * kl_div
+            high_kl_div = F.stack(F.zeros_like(kl_div), kl_div - self.kl_cutoff).max().square()
+            weighted_high_kl_div = self.high_kl_penalty_coefficient * high_kl_div
+            kl_div_loss = weighted_kl_div + weighted_high_kl_div
+        else:
+            kl_div_loss = F.zeros(shape=(1,))
+
+        # working with log probs, so minus first, then exponential (same as division)
+        likelihood_ratio = (action_probs_wrt_new_policy - action_probs_wrt_old_policy).exp()
+
+        if self.clip_likelihood_ratio_using_epsilon is not None:
+            # clipping of likelihood ratio
+            min_value = 1 - self.clip_likelihood_ratio_using_epsilon * clip_param_rescaler
+            max_value = 1 + self.clip_likelihood_ratio_using_epsilon * clip_param_rescaler
+
+            # can't use F.clip (with variable clipping bounds), hence custom implementation
+            clipped_likelihood_ratio = hybrid_clip(F, likelihood_ratio, clip_lower=min_value, clip_upper=max_value)
+
+            # lower bound of original, and clipped versions or each scaled advantage
+            # element-wise min between the two ndarrays
+            unclipped_scaled_advantages = likelihood_ratio * advantages
+            clipped_scaled_advantages = clipped_likelihood_ratio * advantages
+            scaled_advantages = F.stack(unclipped_scaled_advantages, clipped_scaled_advantages).min(axis=0)
+        else:
+            scaled_advantages = likelihood_ratio * advantages
+            clipped_likelihood_ratio = F.zeros_like(likelihood_ratio)
+
+        # for each batch, calculate expectation of scaled_advantages across time steps,
+        # but want code to work with data without time step too, so reshape to add timestep if doesn't exist.
+        scaled_advantages_w_time = scaled_advantages.reshape(shape=(0, -1))
+        expected_scaled_advantages = scaled_advantages_w_time.mean(axis=1)
+        # want to maximize expected_scaled_advantages, add minus so can minimize.
+        surrogate_loss = (-expected_scaled_advantages * self.weight).mean()
+
+        return [
+            (surrogate_loss, LOSS_OUT_TYPE_LOSS),
+            (entropy_loss + kl_div_loss, LOSS_OUT_TYPE_REGULARIZATION),
+            (kl_div_loss, LOSS_OUT_TYPE_KL),
+            (entropy_loss, LOSS_OUT_TYPE_ENTROPY),
+            (likelihood_ratio, LOSS_OUT_TYPE_LIKELIHOOD_RATIO),
+            (clipped_likelihood_ratio, LOSS_OUT_TYPE_CLIPPED_LIKELIHOOD_RATIO)
+        ]
+</source>
+<source file="systems/coach-0.11.0/rl_coach/architectures/mxnet_components/heads/ppo_head.py" startline="486" endline="587" pcid="1368">
+        )
+
+    def loss_forward(self,
+                     F: ModuleType,
+                     new_policy_means: nd_sym_type,
+                     new_policy_stds: nd_sym_type,
+                     actions: nd_sym_type,
+                     old_policy_means: nd_sym_type,
+                     old_policy_stds: nd_sym_type,
+                     clip_param_rescaler: nd_sym_type,
+                     advantages: nd_sym_type,
+                     kl_coefficient: nd_sym_type) -> List[Tuple[nd_sym_type, str]]:
+        """
+        Used for forward pass through loss computations.
+        Works with batches of data, and optionally time_steps, but be consistent in usage: i.e. if using time_step,
+        new_policy_means, old_policy_means, actions and advantages all must include a time_step dimension.
+
+        :param (mx.nd or mx.sym) F: backend api (mx.sym if block has been hybridized).
+        :param new_policy_means: action means predicted by MultivariateNormalDist network,
+            of shape (batch_size, num_actions) or
+            of shape (batch_size, time_step, num_actions).
+        :param new_policy_stds: action standard deviation returned by head,
+            of shape (batch_size, num_actions) or
+            of shape (batch_size, time_step, num_actions).
+        :param actions: true actions taken during rollout,
+            of shape (batch_size, num_actions) or
+            of shape (batch_size, time_step, num_actions).
+        :param old_policy_means: action means for previous policy,
+            of shape (batch_size, num_actions) or
+            of shape (batch_size, time_step, num_actions).
+        :param old_policy_stds: action standard deviation returned by head previously,
+            of shape (batch_size, num_actions) or
+            of shape (batch_size, time_step, num_actions).
+        :param clip_param_rescaler: scales epsilon to use for likelihood ratio clipping.
+        :param advantages: change in state value after taking action (a.k.a advantage)
+            of shape (batch_size,) or
+            of shape (batch_size, time_step).
+        :param kl_coefficient: loss coefficient applied kl divergence loss (also see high_kl_penalty_coefficient).
+        :return: loss, of shape (batch_size).
+        """
+
+        def diagonal_covariance(stds, size):
+            vars = stds ** 2
+            # sets diagonal in (batch size and time step) covariance matrices
+            vars_tiled = vars.expand_dims(2).tile((1, 1, size))
+            covars = F.broadcast_mul(vars_tiled, F.eye(size))
+            return covars
+
+        old_covar = diagonal_covariance(stds=old_policy_stds, size=self.num_actions)
+        old_policy_dist = MultivariateNormalDist(self.num_actions, old_policy_means, old_covar, F=F)
+        action_probs_wrt_old_policy = old_policy_dist.log_prob(actions)
+
+        new_covar = diagonal_covariance(stds=new_policy_stds, size=self.num_actions)
+        new_policy_dist = MultivariateNormalDist(self.num_actions, new_policy_means, new_covar, F=F)
+        action_probs_wrt_new_policy = new_policy_dist.log_prob(actions)
+
+        entropy_loss = - self.beta * new_policy_dist.entropy().mean()
+
+        if self.use_kl_regularization:
+            kl_div = old_policy_dist.kl_div(new_policy_dist).mean()
+            weighted_kl_div = kl_coefficient * kl_div
+            high_kl_div = F.stack(F.zeros_like(kl_div), kl_div - self.kl_cutoff).max().square()
+            weighted_high_kl_div = self.high_kl_penalty_coefficient * high_kl_div
+            kl_div_loss = weighted_kl_div + weighted_high_kl_div
+        else:
+            kl_div_loss = F.zeros(shape=(1,))
+
+        # working with log probs, so minus first, then exponential (same as division)
+        likelihood_ratio = (action_probs_wrt_new_policy - action_probs_wrt_old_policy).exp()
+
+        if self.clip_likelihood_ratio_using_epsilon is not None:
+            # clipping of likelihood ratio
+            min_value = 1 - self.clip_likelihood_ratio_using_epsilon * clip_param_rescaler
+            max_value = 1 + self.clip_likelihood_ratio_using_epsilon * clip_param_rescaler
+
+            # can't use F.clip (with variable clipping bounds), hence custom implementation
+            clipped_likelihood_ratio = hybrid_clip(F, likelihood_ratio, clip_lower=min_value, clip_upper=max_value)
+
+            # lower bound of original, and clipped versions or each scaled advantage
+            # element-wise min between the two ndarrays
+            unclipped_scaled_advantages = likelihood_ratio * advantages
+            clipped_scaled_advantages = clipped_likelihood_ratio * advantages
+            scaled_advantages = F.stack(unclipped_scaled_advantages, clipped_scaled_advantages).min(axis=0)
+        else:
+            scaled_advantages = likelihood_ratio * advantages
+            clipped_likelihood_ratio = F.zeros_like(likelihood_ratio)
+
+        # for each batch, calculate expectation of scaled_advantages across time steps,
+        # but want code to work with data without time step too, so reshape to add timestep if doesn't exist.
+        scaled_advantages_w_time = scaled_advantages.reshape(shape=(0, -1))
+        expected_scaled_advantages = scaled_advantages_w_time.mean(axis=1)
+        # want to maximize expected_scaled_advantages, add minus so can minimize.
+        surrogate_loss = (-expected_scaled_advantages * self.weight).mean()
+
+        return [
+            (surrogate_loss, LOSS_OUT_TYPE_LOSS),
+            (entropy_loss + kl_div_loss, LOSS_OUT_TYPE_REGULARIZATION),
+            (kl_div_loss, LOSS_OUT_TYPE_KL),
+            (entropy_loss, LOSS_OUT_TYPE_ENTROPY),
+            (likelihood_ratio, LOSS_OUT_TYPE_LIKELIHOOD_RATIO),
+            (clipped_likelihood_ratio, LOSS_OUT_TYPE_CLIPPED_LIKELIHOOD_RATIO)
+        ]
+</source>
+</class>
+
+<class classid="28" nclones="3" nlines="14" similarity="100">
+<source file="systems/coach-0.11.0/rl_coach/architectures/tensorflow_components/middlewares/fc_middleware.py" startline="50" endline="73" pcid="1447">
+    def schemes(self):
+        return {
+            MiddlewareScheme.Empty:
+                [],
+
+            # ppo
+            MiddlewareScheme.Shallow:
+                [
+                    self.dense_layer(64)
+                ],
+
+            # dqn
+            MiddlewareScheme.Medium:
+                [
+                    self.dense_layer(512)
+                ],
+
+            MiddlewareScheme.Deep: \
+                [
+                    self.dense_layer(128),
+                    self.dense_layer(128),
+                    self.dense_layer(128)
+                ]
+        }
+</source>
+<source file="systems/coach-0.11.0/rl_coach/architectures/tensorflow_components/embedders/vector_embedder.py" startline="46" endline="68" pcid="1552">
+    def schemes(self):
+        return {
+            EmbedderScheme.Empty:
+                [],
+
+            EmbedderScheme.Shallow:
+                [
+                    self.dense_layer(128)
+                ],
+
+            # dqn
+            EmbedderScheme.Medium:
+                [
+                    self.dense_layer(256)
+                ],
+
+            # carla
+            EmbedderScheme.Deep: \
+                [
+                    self.dense_layer(128),
+                    self.dense_layer(128),
+                    self.dense_layer(128)
+                ]
+</source>
+<source file="systems/coach-0.11.0/rl_coach/architectures/tensorflow_components/middlewares/lstm_middleware.py" startline="77" endline="100" pcid="1450">
+    def schemes(self):
+        return {
+            MiddlewareScheme.Empty:
+                [],
+
+            # ppo
+            MiddlewareScheme.Shallow:
+                [
+                    self.dense_layer(64)
+                ],
+
+            # dqn
+            MiddlewareScheme.Medium:
+                [
+                    self.dense_layer(512)
+                ],
+
+            MiddlewareScheme.Deep: \
+                [
+                    self.dense_layer(128),
+                    self.dense_layer(128),
+                    self.dense_layer(128)
+                ]
+        }
+</source>
+</class>
+
+<class classid="29" nclones="2" nlines="29" similarity="71">
+<source file="systems/coach-0.11.0/rl_coach/architectures/tensorflow_components/middlewares/middleware.py" startline="32" endline="66" pcid="1451">
+    def __init__(self, activation_function=tf.nn.relu,
+                 scheme: MiddlewareScheme = MiddlewareScheme.Medium,
+                 batchnorm: bool = False, dropout_rate: float = 0.0, name="middleware_embedder", dense_layer=Dense,
+                 is_training=False):
+        self.name = name
+        self.input = None
+        self.output = None
+        self.activation_function = activation_function
+        self.batchnorm = batchnorm
+        self.dropout_rate = dropout_rate
+        self.scheme = scheme
+        self.return_type = MiddlewareEmbedding
+        self.dense_layer = dense_layer
+        if self.dense_layer is None:
+            self.dense_layer = Dense
+        self.is_training = is_training
+
+        # layers order is conv -> batchnorm -> activation -> dropout
+        if isinstance(self.scheme, MiddlewareScheme):
+            self.layers_params = copy.copy(self.schemes[self.scheme])
+        else:
+            # if scheme is specified directly, convert to TF layer if it's not a callable object
+            # NOTE: if layer object is callable, it must return a TF tensor when invoked
+            self.layers_params = [convert_layer(l) for l in copy.copy(self.scheme)]
+
+        # we allow adding batchnorm, dropout or activation functions after each layer.
+        # The motivation is to simplify the transition between a network with batchnorm and a network without
+        # batchnorm to a single flag (the same applies to activation function and dropout)
+        if self.batchnorm or self.activation_function or self.dropout_rate > 0:
+            for layer_idx in reversed(range(len(self.layers_params))):
+                self.layers_params.insert(layer_idx+1,
+                                          BatchnormActivationDropout(batchnorm=self.batchnorm,
+                                                                     activation_function=self.activation_function,
+                                                                     dropout_rate=self.dropout_rate))
+
+</source>
+<source file="systems/coach-0.11.0/rl_coach/architectures/tensorflow_components/embedders/embedder.py" startline="36" endline="76" pcid="1553">
+    def __init__(self, input_size: List[int], activation_function=tf.nn.relu,
+                 scheme: EmbedderScheme=None, batchnorm: bool=False, dropout_rate: float=0.0,
+                 name: str= "embedder", input_rescaling=1.0, input_offset=0.0, input_clipping=None, dense_layer=Dense,
+                 is_training=False):
+        self.name = name
+        self.input_size = input_size
+        self.activation_function = activation_function
+        self.batchnorm = batchnorm
+        self.dropout_rate = dropout_rate
+        self.input = None
+        self.output = None
+        self.scheme = scheme
+        self.return_type = InputEmbedding
+        self.layers_params = []
+        self.layers = []
+        self.input_rescaling = input_rescaling
+        self.input_offset = input_offset
+        self.input_clipping = input_clipping
+        self.dense_layer = dense_layer
+        if self.dense_layer is None:
+            self.dense_layer = Dense
+        self.is_training = is_training
+
+        # layers order is conv -> batchnorm -> activation -> dropout
+        if isinstance(self.scheme, EmbedderScheme):
+            self.layers_params = copy.copy(self.schemes[self.scheme])
+        else:
+            # if scheme is specified directly, convert to TF layer if it's not a callable object
+            # NOTE: if layer object is callable, it must return a TF tensor when invoked
+            self.layers_params = [convert_layer(l) for l in copy.copy(self.scheme)]
+
+        # we allow adding batchnorm, dropout or activation functions after each layer.
+        # The motivation is to simplify the transition between a network with batchnorm and a network without
+        # batchnorm to a single flag (the same applies to activation function and dropout)
+        if self.batchnorm or self.activation_function or self.dropout_rate > 0:
+            for layer_idx in reversed(range(len(self.layers_params))):
+                self.layers_params.insert(layer_idx+1,
+                                          BatchnormActivationDropout(batchnorm=self.batchnorm,
+                                                                     activation_function=self.activation_function,
+                                                                     dropout_rate=self.dropout_rate))
+
+</source>
+</class>
+
+<class classid="30" nclones="3" nlines="11" similarity="72">
+<source file="systems/coach-0.11.0/rl_coach/architectures/tensorflow_components/heads/quantile_regression_q_head.py" startline="27" endline="37" pcid="1476">
+    def __init__(self, agent_parameters: AgentParameters, spaces: SpacesDefinition, network_name: str,
+                 head_idx: int = 0, loss_weight: float = 1., is_local: bool = True, activation_function: str='relu',
+                 dense_layer=Dense):
+        super().__init__(agent_parameters, spaces, network_name, head_idx, loss_weight, is_local, activation_function,
+                         dense_layer=dense_layer)
+        self.name = 'quantile_regression_dqn_head'
+        self.num_actions = len(self.spaces.action.actions)
+        self.num_atoms = agent_parameters.algorithm.atoms  # we use atom / quantile interchangeably
+        self.huber_loss_interval = agent_parameters.algorithm.huber_loss_interval  # k
+        self.return_type = QActionStateValue
+
+</source>
+<source file="systems/coach-0.11.0/rl_coach/architectures/tensorflow_components/heads/v_head.py" startline="27" endline="39" pcid="1508">
+    def __init__(self, agent_parameters: AgentParameters, spaces: SpacesDefinition, network_name: str,
+                 head_idx: int = 0, loss_weight: float = 1., is_local: bool = True, activation_function: str='relu',
+                 dense_layer=Dense):
+        super().__init__(agent_parameters, spaces, network_name, head_idx, loss_weight, is_local, activation_function,
+                         dense_layer=dense_layer)
+        self.name = 'v_values_head'
+        self.return_type = VStateValue
+
+        if agent_parameters.network_wrappers[self.network_name.split('/')[0]].replace_mse_with_huber_loss:
+            self.loss_type = tf.losses.huber_loss
+        else:
+            self.loss_type = tf.losses.mean_squared_error
+
+</source>
+<source file="systems/coach-0.11.0/rl_coach/architectures/tensorflow_components/heads/measurements_prediction_head.py" startline="27" endline="38" pcid="1502">
+    def __init__(self, agent_parameters: AgentParameters, spaces: SpacesDefinition, network_name: str,
+                 head_idx: int = 0, loss_weight: float = 1., is_local: bool = True, activation_function: str='relu',
+                 dense_layer=Dense):
+        super().__init__(agent_parameters, spaces, network_name, head_idx, loss_weight, is_local, activation_function,
+                         dense_layer=dense_layer)
+        self.name = 'future_measurements_head'
+        self.num_actions = len(self.spaces.action.actions)
+        self.num_measurements = self.spaces.state['measurements'].shape[0]
+        self.num_prediction_steps = agent_parameters.algorithm.num_predicted_steps_ahead
+        self.multi_step_measurements_size = self.num_measurements * self.num_prediction_steps
+        self.return_type = Measurements
+
+</source>
+</class>
+
+<class classid="31" nclones="3" nlines="12" similarity="75">
+<source file="systems/coach-0.11.0/rl_coach/architectures/tensorflow_components/heads/rainbow_q_head.py" startline="66" endline="79" pcid="1481">
+    def __str__(self):
+        result = [
+            "State Value Stream - V",
+            "\tDense (num outputs = 512)",
+            "\tDense (num outputs = {})".format(self.num_atoms),
+            "Action Advantage Stream - A",
+            "\tDense (num outputs = 512)",
+            "\tDense (num outputs = {})".format(self.num_actions * self.num_atoms),
+            "\tReshape (new size = {} x {})".format(self.num_actions, self.num_atoms),
+            "\tSubtract(A, Mean(A))".format(self.num_actions),
+            "Add (V, A)",
+            "Softmax"
+        ]
+        return '\n'.join(result)
+</source>
+<source file="systems/coach-0.11.0/rl_coach/architectures/tensorflow_components/heads/measurements_prediction_head.py" startline="64" endline="76" pcid="1504">
+    def __str__(self):
+        result = [
+            "State Value Stream - V",
+            "\tDense (num outputs = 256)",
+            "\tDense (num outputs = {})".format(self.multi_step_measurements_size),
+            "Action Advantage Stream - A",
+            "\tDense (num outputs = 256)",
+            "\tDense (num outputs = {})".format(self.num_actions * self.multi_step_measurements_size),
+            "\tReshape (new size = {} x {})".format(self.num_actions, self.multi_step_measurements_size),
+            "\tSubtract(A, Mean(A))".format(self.num_actions),
+            "Add (V, A)"
+        ]
+        return '\n'.join(result)
+</source>
+<source file="systems/coach-0.11.0/rl_coach/architectures/tensorflow_components/heads/dueling_q_head.py" startline="49" endline="60" pcid="1516">
+    def __str__(self):
+        result = [
+            "State Value Stream - V",
+            "\tDense (num outputs = 512)",
+            "\tDense (num outputs = 1)",
+            "Action Advantage Stream - A",
+            "\tDense (num outputs = 512)",
+            "\tDense (num outputs = {})".format(self.num_actions),
+            "\tSubtract(A, Mean(A))".format(self.num_actions),
+            "Add (V, A)"
+        ]
+        return '\n'.join(result)
+</source>
+</class>
+
+<class classid="32" nclones="3" nlines="15" similarity="73">
+<source file="systems/coach-0.11.0/rl_coach/architectures/tensorflow_components/heads/naf_head.py" startline="28" endline="44" pcid="1491">
+    def __init__(self, agent_parameters: AgentParameters, spaces: SpacesDefinition, network_name: str,
+                 head_idx: int = 0, loss_weight: float = 1., is_local: bool = True,activation_function: str='relu',
+                 dense_layer=Dense):
+        super().__init__(agent_parameters, spaces, network_name, head_idx, loss_weight, is_local, activation_function,
+                         dense_layer=dense_layer)
+        if not isinstance(self.spaces.action, BoxActionSpace):
+            raise ValueError("NAF works only for continuous action spaces (BoxActionSpace)")
+
+        self.name = 'naf_q_values_head'
+        self.num_actions = self.spaces.action.shape[0]
+        self.output_scale = self.spaces.action.max_abs_range
+        self.return_type = QActionStateValue
+        if agent_parameters.network_wrappers[self.network_name].replace_mse_with_huber_loss:
+            self.loss_type = tf.losses.huber_loss
+        else:
+            self.loss_type = tf.losses.mean_squared_error
+
+</source>
+<source file="systems/coach-0.11.0/rl_coach/architectures/tensorflow_components/heads/q_head.py" startline="27" endline="42" pcid="1511">
+    def __init__(self, agent_parameters: AgentParameters, spaces: SpacesDefinition, network_name: str,
+                 head_idx: int = 0, loss_weight: float = 1., is_local: bool = True, activation_function: str='relu',
+                 dense_layer=Dense):
+        super().__init__(agent_parameters, spaces, network_name, head_idx, loss_weight, is_local, activation_function,
+                         dense_layer=dense_layer)
+        self.name = 'q_values_head'
+        if isinstance(self.spaces.action, BoxActionSpace):
+            self.num_actions = 1
+        elif isinstance(self.spaces.action, DiscreteActionSpace):
+            self.num_actions = len(self.spaces.action.actions)
+        self.return_type = QActionStateValue
+        if agent_parameters.network_wrappers[self.network_name].replace_mse_with_huber_loss:
+            self.loss_type = tf.losses.huber_loss
+        else:
+            self.loss_type = tf.losses.mean_squared_error
+
+</source>
+<source file="systems/coach-0.11.0/rl_coach/architectures/tensorflow_components/heads/cil_head.py" startline="28" endline="45" pcid="1505">
+    def __init__(self, agent_parameters: AgentParameters, spaces: SpacesDefinition, network_name: str,
+                 head_idx: int = 0, loss_weight: float = 1., is_local: bool = True, activation_function: str='relu',
+                 dense_layer=Dense, scheme=[Dense(256), Dense(256)]):
+        super().__init__(agent_parameters, spaces, network_name, head_idx, loss_weight, is_local, activation_function,
+                         dense_layer=dense_layer)
+        self.name = 'regression_head'
+        self.scheme = scheme
+        self.layers = []
+        if isinstance(self.spaces.action, BoxActionSpace):
+            self.num_actions = self.spaces.action.shape[0]
+        elif isinstance(self.spaces.action, DiscreteActionSpace):
+            self.num_actions = len(self.spaces.action.actions)
+        self.return_type = QActionStateValue
+        if agent_parameters.network_wrappers[self.network_name].replace_mse_with_huber_loss:
+            self.loss_type = tf.losses.huber_loss
+        else:
+            self.loss_type = tf.losses.mean_squared_error
+
+</source>
+</class>
+
+</clones>

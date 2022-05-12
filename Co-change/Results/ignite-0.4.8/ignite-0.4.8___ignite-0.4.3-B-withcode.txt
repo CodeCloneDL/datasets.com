@@ -1,0 +1,3087 @@
+<clonepair1>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/handlers/test_visdom_logger.py" startline="555" endline="629" pcid="394"></source>
+def test_weights_scalar_handler():
+    class DummyModel(torch.nn.Module):
+        def __init__(self):
+            super(DummyModel, self).__init__()
+            self.fc1 = torch.nn.Linear(10, 10)
+            self.fc2 = torch.nn.Linear(12, 12)
+            self.fc1.weight.data.zero_()
+            self.fc1.bias.data.zero_()
+            self.fc2.weight.data.fill_(1.0)
+            self.fc2.bias.data.fill_(1.0)
+
+    model = DummyModel()
+
+    # define test wrapper to test with and without optional tag
+    def _test(tag=None):
+        wrapper = WeightsScalarHandler(model, tag=tag)
+        mock_logger = MagicMock(spec=VisdomLogger)
+        mock_logger.vis = MagicMock()
+        mock_logger.executor = _DummyExecutor()
+
+        mock_engine = MagicMock()
+        mock_engine.state = State()
+        mock_engine.state.epoch = 5
+
+        wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+        tag_prefix = f"{tag}/" if tag else ""
+
+        assert mock_logger.vis.line.call_count == 4
+        mock_logger.vis.line.assert_has_calls(
+            [
+                call(
+                    X=[5,],
+                    Y=[0.0,],
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "weights_norm/fc1/weight"]["opts"],
+                    name=tag_prefix + "weights_norm/fc1/weight",
+                ),
+                call(
+                    X=[5,],
+                    Y=[0.0,],
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "weights_norm/fc1/bias"]["opts"],
+                    name=tag_prefix + "weights_norm/fc1/bias",
+                ),
+                call(
+                    X=[5,],
+                    Y=[12.0,],
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "weights_norm/fc2/weight"]["opts"],
+                    name=tag_prefix + "weights_norm/fc2/weight",
+                ),
+                call(
+                    X=[5,],
+                    Y=ANY,
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "weights_norm/fc2/bias"]["opts"],
+                    name=tag_prefix + "weights_norm/fc2/bias",
+                ),
+            ],
+            any_order=True,
+        )
+
+    _test()
+    _test(tag="tag")
+
+
+</clonepair1>
+
+<clonepair1>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/handlers/test_visdom_logger.py" startline="717" endline="794" pcid="401"></source>
+def test_grads_scalar_handler():
+    class DummyModel(torch.nn.Module):
+        def __init__(self):
+            super(DummyModel, self).__init__()
+            self.fc1 = torch.nn.Linear(10, 10)
+            self.fc2 = torch.nn.Linear(12, 12)
+            self.fc1.weight.data.zero_()
+            self.fc1.bias.data.zero_()
+            self.fc2.weight.data.fill_(1.0)
+            self.fc2.bias.data.fill_(1.0)
+
+    model = DummyModel()
+
+    def norm(x):
+        return 0.0
+
+    # define test wrapper to test with and without optional tag
+    def _test(tag=None):
+        wrapper = GradsScalarHandler(model, reduction=norm, tag=tag)
+        mock_logger = MagicMock(spec=VisdomLogger)
+        mock_logger.vis = MagicMock()
+        mock_logger.executor = _DummyExecutor()
+
+        mock_engine = MagicMock()
+        mock_engine.state = State()
+        mock_engine.state.epoch = 5
+
+        wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+        tag_prefix = f"{tag}/" if tag else ""
+
+        assert mock_logger.vis.line.call_count == 4
+        mock_logger.vis.line.assert_has_calls(
+            [
+                call(
+                    X=[5,],
+                    Y=ANY,
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "grads_norm/fc1/weight"]["opts"],
+                    name=tag_prefix + "grads_norm/fc1/weight",
+                ),
+                call(
+                    X=[5,],
+                    Y=ANY,
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "grads_norm/fc1/bias"]["opts"],
+                    name=tag_prefix + "grads_norm/fc1/bias",
+                ),
+                call(
+                    X=[5,],
+                    Y=ANY,
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "grads_norm/fc2/weight"]["opts"],
+                    name=tag_prefix + "grads_norm/fc2/weight",
+                ),
+                call(
+                    X=[5,],
+                    Y=ANY,
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "grads_norm/fc2/bias"]["opts"],
+                    name=tag_prefix + "grads_norm/fc2/bias",
+                ),
+            ],
+            any_order=True,
+        )
+
+    _test()
+    _test(tag="tag")
+
+
+</clonepair1>
+<clonepair2>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/handlers/test_visdom_logger.py" startline="630" endline="700" pcid="397"></source>
+def test_weights_scalar_handler_custom_reduction():
+    class DummyModel(torch.nn.Module):
+        def __init__(self):
+            super(DummyModel, self).__init__()
+            self.fc1 = torch.nn.Linear(10, 10)
+            self.fc2 = torch.nn.Linear(12, 12)
+            self.fc1.weight.data.zero_()
+            self.fc1.bias.data.zero_()
+            self.fc2.weight.data.fill_(1.0)
+            self.fc2.bias.data.fill_(1.0)
+
+    model = DummyModel()
+
+    def norm(x):
+        return 12.34
+
+    wrapper = WeightsScalarHandler(model, reduction=norm, show_legend=True)
+    mock_logger = MagicMock(spec=VisdomLogger)
+    mock_logger.vis = MagicMock()
+    mock_logger.executor = _DummyExecutor()
+
+    mock_engine = MagicMock()
+    mock_engine.state = State()
+    mock_engine.state.epoch = 5
+
+    wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+    assert mock_logger.vis.line.call_count == 4
+    mock_logger.vis.line.assert_has_calls(
+        [
+            call(
+                X=[5,],
+                Y=[12.34,],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["weights_norm/fc1/weight"]["opts"],
+                name="weights_norm/fc1/weight",
+            ),
+            call(
+                X=[5,],
+                Y=[12.34,],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["weights_norm/fc1/bias"]["opts"],
+                name="weights_norm/fc1/bias",
+            ),
+            call(
+                X=[5,],
+                Y=[12.34,],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["weights_norm/fc2/weight"]["opts"],
+                name="weights_norm/fc2/weight",
+            ),
+            call(
+                X=[5,],
+                Y=[12.34,],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["weights_norm/fc2/bias"]["opts"],
+                name="weights_norm/fc2/bias",
+            ),
+        ],
+        any_order=True,
+    )
+
+
+</clonepair2>
+
+<clonepair2>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/handlers/test_visdom_logger.py" startline="717" endline="794" pcid="401"></source>
+def test_grads_scalar_handler():
+    class DummyModel(torch.nn.Module):
+        def __init__(self):
+            super(DummyModel, self).__init__()
+            self.fc1 = torch.nn.Linear(10, 10)
+            self.fc2 = torch.nn.Linear(12, 12)
+            self.fc1.weight.data.zero_()
+            self.fc1.bias.data.zero_()
+            self.fc2.weight.data.fill_(1.0)
+            self.fc2.bias.data.fill_(1.0)
+
+    model = DummyModel()
+
+    def norm(x):
+        return 0.0
+
+    # define test wrapper to test with and without optional tag
+    def _test(tag=None):
+        wrapper = GradsScalarHandler(model, reduction=norm, tag=tag)
+        mock_logger = MagicMock(spec=VisdomLogger)
+        mock_logger.vis = MagicMock()
+        mock_logger.executor = _DummyExecutor()
+
+        mock_engine = MagicMock()
+        mock_engine.state = State()
+        mock_engine.state.epoch = 5
+
+        wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+        tag_prefix = f"{tag}/" if tag else ""
+
+        assert mock_logger.vis.line.call_count == 4
+        mock_logger.vis.line.assert_has_calls(
+            [
+                call(
+                    X=[5,],
+                    Y=ANY,
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "grads_norm/fc1/weight"]["opts"],
+                    name=tag_prefix + "grads_norm/fc1/weight",
+                ),
+                call(
+                    X=[5,],
+                    Y=ANY,
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "grads_norm/fc1/bias"]["opts"],
+                    name=tag_prefix + "grads_norm/fc1/bias",
+                ),
+                call(
+                    X=[5,],
+                    Y=ANY,
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "grads_norm/fc2/weight"]["opts"],
+                    name=tag_prefix + "grads_norm/fc2/weight",
+                ),
+                call(
+                    X=[5,],
+                    Y=ANY,
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "grads_norm/fc2/bias"]["opts"],
+                    name=tag_prefix + "grads_norm/fc2/bias",
+                ),
+            ],
+            any_order=True,
+        )
+
+    _test()
+    _test(tag="tag")
+
+
+</clonepair2>
+<clonepair3>
+<source file="systems/ignite-0.4.3/tests/ignite/engine/test_deterministic.py" startline="240" endline="327" pcid="1061"></source>
+def _test_resume_random_dataloader_from_epoch(device, _setup_sampler, sampler_type=None):
+    def _test(epoch_length=None):
+
+        max_epochs = 5
+        total_batch_size = 4
+        num_iters = 21
+        torch.manual_seed(0)
+        data = torch.randint(0, 1000, size=(num_iters * total_batch_size,))
+
+        if epoch_length is None:
+            epoch_length = num_iters
+
+        for resume_epoch in range(1, max_epochs, 2):
+
+            for num_workers in [0, 2]:
+                sampler, batch_size = _setup_sampler(sampler_type, num_iters, total_batch_size)
+
+                orig_dataloader = DataLoader(
+                    data,
+                    batch_size=batch_size,
+                    num_workers=num_workers,
+                    pin_memory="cuda" in device,
+                    sampler=sampler,
+                    drop_last=True,
+                    shuffle=sampler is None,
+                )
+
+                seen_batchs = []
+
+                def update_fn(_, batch):
+                    batch_to_device = batch.to(device)
+                    seen_batchs.append(batch)
+
+                engine = DeterministicEngine(update_fn)
+
+                if sampler_type == "distributed":
+
+                    @engine.on(Events.EPOCH_STARTED)
+                    def _(engine):
+                        sampler.set_epoch(engine.state.epoch - 1)
+
+                torch.manual_seed(87)
+                engine.run(
+                    orig_dataloader, max_epochs=max_epochs, epoch_length=epoch_length,
+                )
+
+                batch_checker = BatchChecker(seen_batchs, init_counter=resume_epoch * epoch_length)
+
+                sampler, batch_size = _setup_sampler(sampler_type, num_iters, total_batch_size)
+                resume_dataloader = DataLoader(
+                    data,
+                    batch_size=batch_size,
+                    num_workers=num_workers,
+                    pin_memory="cuda" in device,
+                    sampler=sampler,
+                    drop_last=True,
+                    shuffle=sampler is None,
+                )
+
+                def update_fn(_, batch):
+                    batch_to_device = batch.to(device)
+                    assert batch_checker.check(
+                        batch
+                    ), f"{num_workers} {resume_epoch} | {batch_checker.counter}: {batch_checker.true_batch} vs {batch}"
+
+                engine = DeterministicEngine(update_fn)
+
+                if sampler_type == "distributed":
+
+                    @engine.on(Events.EPOCH_STARTED)
+                    def _(engine):
+                        sampler.set_epoch(engine.state.epoch - 1)
+
+                resume_state_dict = dict(
+                    epoch=resume_epoch, max_epochs=max_epochs, epoch_length=epoch_length, rng_states=None
+                )
+                engine.load_state_dict(resume_state_dict)
+                torch.manual_seed(87)
+                engine.run(resume_dataloader)
+                assert engine.state.epoch == max_epochs
+                assert engine.state.iteration == epoch_length * max_epochs
+
+    _test()
+    if sampler_type != "distributed":
+        _test(60)
+        _test(15)
+
+
+</clonepair3>
+
+<clonepair3>
+<source file="systems/ignite-0.4.3/tests/ignite/engine/test_deterministic.py" startline="349" endline="437" pcid="1071"></source>
+def _test_resume_random_dataloader_from_iter(device, _setup_sampler, sampler_type=None):
+    def _test(epoch_length=None):
+        max_epochs = 3
+        total_batch_size = 4
+        num_iters = 17
+        torch.manual_seed(0)
+        data = torch.randint(0, 1000, size=(num_iters * total_batch_size,))
+
+        if epoch_length is None:
+            epoch_length = num_iters
+
+        for resume_iteration in range(2, min(num_iters * max_epochs, epoch_length * max_epochs), 13):
+
+            for num_workers in [0, 2]:
+
+                sampler, batch_size = _setup_sampler(sampler_type, num_iters, total_batch_size)
+                orig_dataloader = DataLoader(
+                    data,
+                    batch_size=batch_size,
+                    num_workers=num_workers,
+                    pin_memory="cuda" in device,
+                    sampler=sampler,
+                    drop_last=True,
+                    shuffle=sampler is None,
+                )
+                seen_batchs = []
+
+                def update_fn(_, batch):
+                    batch_to_device = batch.to(device)
+                    seen_batchs.append(batch)
+
+                engine = DeterministicEngine(update_fn)
+
+                if sampler_type == "distributed":
+
+                    @engine.on(Events.EPOCH_STARTED)
+                    def _(engine):
+                        sampler.set_epoch(engine.state.epoch)
+
+                torch.manual_seed(12)
+                engine.run(
+                    orig_dataloader, max_epochs=max_epochs, epoch_length=epoch_length,
+                )
+
+                batch_checker = BatchChecker(seen_batchs, init_counter=resume_iteration)
+
+                sampler, batch_size = _setup_sampler(sampler_type, num_iters, total_batch_size)
+                resume_dataloader = DataLoader(
+                    data,
+                    batch_size=batch_size,
+                    num_workers=num_workers,
+                    pin_memory="cuda" in device,
+                    sampler=sampler,
+                    drop_last=True,
+                    shuffle=sampler is None,
+                )
+
+                def update_fn(_, batch):
+                    batch_to_device = batch.to(device)
+                    cfg_msg = f"{num_workers} {resume_iteration}"
+                    assert batch_checker.check(
+                        batch
+                    ), f"{cfg_msg} | {batch_checker.counter}: {batch_checker.true_batch} vs {batch}"
+
+                engine = DeterministicEngine(update_fn)
+
+                if sampler_type == "distributed":
+
+                    @engine.on(Events.EPOCH_STARTED)
+                    def _(engine):
+                        sampler.set_epoch(engine.state.epoch)
+
+                resume_state_dict = dict(
+                    iteration=resume_iteration, max_epochs=max_epochs, epoch_length=epoch_length, rng_states=None
+                )
+                engine.load_state_dict(resume_state_dict)
+                torch.manual_seed(12)
+                engine.run(resume_dataloader)
+                assert engine.state.epoch == max_epochs
+                assert (
+                    engine.state.iteration == epoch_length * max_epochs
+                ), f"{num_workers}, {resume_iteration} | {engine.state.iteration} vs {epoch_length * max_epochs}"
+
+    _test()
+    if sampler_type != "distributed":
+        _test(40)
+        _test(11)
+
+
+</clonepair3>
+<clonepair4>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/handlers/test_visdom_logger.py" startline="555" endline="629" pcid="394"></source>
+def test_weights_scalar_handler():
+    class DummyModel(torch.nn.Module):
+        def __init__(self):
+            super(DummyModel, self).__init__()
+            self.fc1 = torch.nn.Linear(10, 10)
+            self.fc2 = torch.nn.Linear(12, 12)
+            self.fc1.weight.data.zero_()
+            self.fc1.bias.data.zero_()
+            self.fc2.weight.data.fill_(1.0)
+            self.fc2.bias.data.fill_(1.0)
+
+    model = DummyModel()
+
+    # define test wrapper to test with and without optional tag
+    def _test(tag=None):
+        wrapper = WeightsScalarHandler(model, tag=tag)
+        mock_logger = MagicMock(spec=VisdomLogger)
+        mock_logger.vis = MagicMock()
+        mock_logger.executor = _DummyExecutor()
+
+        mock_engine = MagicMock()
+        mock_engine.state = State()
+        mock_engine.state.epoch = 5
+
+        wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+        tag_prefix = f"{tag}/" if tag else ""
+
+        assert mock_logger.vis.line.call_count == 4
+        mock_logger.vis.line.assert_has_calls(
+            [
+                call(
+                    X=[5,],
+                    Y=[0.0,],
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "weights_norm/fc1/weight"]["opts"],
+                    name=tag_prefix + "weights_norm/fc1/weight",
+                ),
+                call(
+                    X=[5,],
+                    Y=[0.0,],
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "weights_norm/fc1/bias"]["opts"],
+                    name=tag_prefix + "weights_norm/fc1/bias",
+                ),
+                call(
+                    X=[5,],
+                    Y=[12.0,],
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "weights_norm/fc2/weight"]["opts"],
+                    name=tag_prefix + "weights_norm/fc2/weight",
+                ),
+                call(
+                    X=[5,],
+                    Y=ANY,
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "weights_norm/fc2/bias"]["opts"],
+                    name=tag_prefix + "weights_norm/fc2/bias",
+                ),
+            ],
+            any_order=True,
+        )
+
+    _test()
+    _test(tag="tag")
+
+
+</clonepair4>
+
+<clonepair4>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/handlers/test_visdom_logger.py" startline="630" endline="700" pcid="397"></source>
+def test_weights_scalar_handler_custom_reduction():
+    class DummyModel(torch.nn.Module):
+        def __init__(self):
+            super(DummyModel, self).__init__()
+            self.fc1 = torch.nn.Linear(10, 10)
+            self.fc2 = torch.nn.Linear(12, 12)
+            self.fc1.weight.data.zero_()
+            self.fc1.bias.data.zero_()
+            self.fc2.weight.data.fill_(1.0)
+            self.fc2.bias.data.fill_(1.0)
+
+    model = DummyModel()
+
+    def norm(x):
+        return 12.34
+
+    wrapper = WeightsScalarHandler(model, reduction=norm, show_legend=True)
+    mock_logger = MagicMock(spec=VisdomLogger)
+    mock_logger.vis = MagicMock()
+    mock_logger.executor = _DummyExecutor()
+
+    mock_engine = MagicMock()
+    mock_engine.state = State()
+    mock_engine.state.epoch = 5
+
+    wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+    assert mock_logger.vis.line.call_count == 4
+    mock_logger.vis.line.assert_has_calls(
+        [
+            call(
+                X=[5,],
+                Y=[12.34,],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["weights_norm/fc1/weight"]["opts"],
+                name="weights_norm/fc1/weight",
+            ),
+            call(
+                X=[5,],
+                Y=[12.34,],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["weights_norm/fc1/bias"]["opts"],
+                name="weights_norm/fc1/bias",
+            ),
+            call(
+                X=[5,],
+                Y=[12.34,],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["weights_norm/fc2/weight"]["opts"],
+                name="weights_norm/fc2/weight",
+            ),
+            call(
+                X=[5,],
+                Y=[12.34,],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["weights_norm/fc2/bias"]["opts"],
+                name="weights_norm/fc2/bias",
+            ),
+        ],
+        any_order=True,
+    )
+
+
+</clonepair4>
+<clonepair5>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_recall.py" startline="771" endline="843" pcid="1404"></source>
+def _test_distrib_integration_multilabel(device):
+
+    from ignite.engine import Engine
+
+    rank = idist.get_rank()
+    torch.manual_seed(12)
+
+    def _test(average, n_epochs, metric_device):
+        n_iters = 60
+        s = 16
+        n_classes = 7
+
+        offset = n_iters * s
+        y_true = torch.randint(0, 2, size=(offset * idist.get_world_size(), n_classes, 6, 8)).to(device)
+        y_preds = torch.randint(0, 2, size=(offset * idist.get_world_size(), n_classes, 6, 8)).to(device)
+
+        def update(engine, i):
+            return (
+                y_preds[i * s + rank * offset : (i + 1) * s + rank * offset, ...],
+                y_true[i * s + rank * offset : (i + 1) * s + rank * offset, ...],
+            )
+
+        engine = Engine(update)
+
+        re = Recall(average=average, is_multilabel=True, device=metric_device)
+        re.attach(engine, "re")
+
+        data = list(range(n_iters))
+        engine.run(data=data, max_epochs=n_epochs)
+
+        assert "re" in engine.state.metrics
+        res = engine.state.metrics["re"]
+        res2 = re.compute()
+        if isinstance(res, torch.Tensor):
+            res = res.cpu().numpy()
+            res2 = res2.cpu().numpy()
+            assert (res == res2).all()
+        else:
+            assert res == res2
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UndefinedMetricWarning)
+            true_res = recall_score(
+                to_numpy_multilabel(y_true), to_numpy_multilabel(y_preds), average="samples" if average else None
+            )
+
+        assert pytest.approx(res) == true_res
+
+    metric_devices = ["cpu"]
+    if device.type != "xla":
+        metric_devices.append(idist.device())
+    for _ in range(2):
+        for metric_device in metric_devices:
+            _test(average=True, n_epochs=1, metric_device=metric_device)
+            _test(average=True, n_epochs=2, metric_device=metric_device)
+
+    if idist.get_world_size() > 1:
+        with pytest.warns(
+            RuntimeWarning,
+            match="Precision/Recall metrics do not work in distributed setting when "
+            "average=False and is_multilabel=True",
+        ):
+            re = Recall(average=False, is_multilabel=True)
+
+        y_pred = torch.randint(0, 2, size=(4, 3, 6, 8))
+        y = torch.randint(0, 2, size=(4, 3, 6, 8)).long()
+        re.update((y_pred, y))
+        re_compute1 = re.compute()
+        re_compute2 = re.compute()
+        assert len(re_compute1) == 4 * 6 * 8
+        assert (re_compute1 == re_compute2).all()
+
+
+</clonepair5>
+
+<clonepair5>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_precision.py" startline="771" endline="843" pcid="1600"></source>
+def _test_distrib_integration_multilabel(device):
+
+    from ignite.engine import Engine
+
+    rank = idist.get_rank()
+    torch.manual_seed(12)
+
+    def _test(average, n_epochs, metric_device):
+        n_iters = 60
+        s = 16
+        n_classes = 7
+
+        offset = n_iters * s
+        y_true = torch.randint(0, 2, size=(offset * idist.get_world_size(), n_classes, 6, 8)).to(device)
+        y_preds = torch.randint(0, 2, size=(offset * idist.get_world_size(), n_classes, 6, 8)).to(device)
+
+        def update(engine, i):
+            return (
+                y_preds[i * s + rank * offset : (i + 1) * s + rank * offset, ...],
+                y_true[i * s + rank * offset : (i + 1) * s + rank * offset, ...],
+            )
+
+        engine = Engine(update)
+
+        pr = Precision(average=average, is_multilabel=True)
+        pr.attach(engine, "pr")
+
+        data = list(range(n_iters))
+        engine.run(data=data, max_epochs=n_epochs)
+
+        assert "pr" in engine.state.metrics
+        res = engine.state.metrics["pr"]
+        res2 = pr.compute()
+        if isinstance(res, torch.Tensor):
+            res = res.cpu().numpy()
+            res2 = res2.cpu().numpy()
+            assert (res == res2).all()
+        else:
+            assert res == res2
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UndefinedMetricWarning)
+            true_res = precision_score(
+                to_numpy_multilabel(y_true), to_numpy_multilabel(y_preds), average="samples" if average else None
+            )
+
+        assert pytest.approx(res) == true_res
+
+    metric_devices = ["cpu"]
+    if device.type != "xla":
+        metric_devices.append(idist.device())
+    for _ in range(2):
+        for metric_device in metric_devices:
+            _test(average=True, n_epochs=1, metric_device=metric_device)
+            _test(average=True, n_epochs=2, metric_device=metric_device)
+
+    if idist.get_world_size() > 1:
+        with pytest.warns(
+            RuntimeWarning,
+            match="Precision/Recall metrics do not work in distributed setting when "
+            "average=False and is_multilabel=True",
+        ):
+            pr = Precision(average=False, is_multilabel=True)
+
+        y_pred = torch.randint(0, 2, size=(4, 3, 6, 8))
+        y = torch.randint(0, 2, size=(4, 3, 6, 8)).long()
+        pr.update((y_pred, y))
+        pr_compute1 = pr.compute()
+        pr_compute2 = pr.compute()
+        assert len(pr_compute1) == 4 * 6 * 8
+        assert (pr_compute1 == pr_compute2).all()
+
+
+</clonepair5>
+<clonepair6>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_recall.py" startline="718" endline="770" pcid="1401"></source>
+def _test_distrib_integration_multiclass(device):
+
+    from ignite.engine import Engine
+
+    rank = idist.get_rank()
+    torch.manual_seed(12)
+
+    def _test(average, n_epochs, metric_device):
+        n_iters = 60
+        s = 16
+        n_classes = 7
+
+        offset = n_iters * s
+        y_true = torch.randint(0, n_classes, size=(offset * idist.get_world_size(),)).to(device)
+        y_preds = torch.rand(offset * idist.get_world_size(), n_classes).to(device)
+
+        def update(engine, i):
+            return (
+                y_preds[i * s + rank * offset : (i + 1) * s + rank * offset, :],
+                y_true[i * s + rank * offset : (i + 1) * s + rank * offset],
+            )
+
+        engine = Engine(update)
+
+        re = Recall(average=average, device=metric_device)
+        re.attach(engine, "re")
+
+        data = list(range(n_iters))
+        engine.run(data=data, max_epochs=n_epochs)
+
+        assert "re" in engine.state.metrics
+        res = engine.state.metrics["re"]
+        if isinstance(res, torch.Tensor):
+            assert res.device == metric_device
+            res = res.cpu().numpy()
+
+        true_res = recall_score(
+            y_true.cpu().numpy(), torch.argmax(y_preds, dim=1).cpu().numpy(), average="macro" if average else None
+        )
+
+        assert pytest.approx(res) == true_res
+
+    metric_devices = [torch.device("cpu")]
+    if device.type != "xla":
+        metric_devices.append(idist.device())
+    for _ in range(2):
+        for metric_device in metric_devices:
+            _test(average=True, n_epochs=1, metric_device=metric_device)
+            _test(average=True, n_epochs=2, metric_device=metric_device)
+            _test(average=False, n_epochs=1, metric_device=metric_device)
+            _test(average=False, n_epochs=2, metric_device=metric_device)
+
+
+</clonepair6>
+
+<clonepair6>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_precision.py" startline="719" endline="770" pcid="1597"></source>
+def _test_distrib_integration_multiclass(device):
+    from ignite.engine import Engine
+
+    rank = idist.get_rank()
+    torch.manual_seed(12)
+
+    def _test(average, n_epochs, metric_device):
+        n_iters = 60
+        s = 16
+        n_classes = 7
+
+        offset = n_iters * s
+        y_true = torch.randint(0, n_classes, size=(offset * idist.get_world_size(),)).to(device)
+        y_preds = torch.rand(offset * idist.get_world_size(), n_classes).to(device)
+
+        def update(engine, i):
+            return (
+                y_preds[i * s + rank * offset : (i + 1) * s + rank * offset, :],
+                y_true[i * s + rank * offset : (i + 1) * s + rank * offset],
+            )
+
+        engine = Engine(update)
+
+        pr = Precision(average=average, device=metric_device)
+        pr.attach(engine, "pr")
+
+        data = list(range(n_iters))
+        engine.run(data=data, max_epochs=n_epochs)
+
+        assert "pr" in engine.state.metrics
+        res = engine.state.metrics["pr"]
+        if isinstance(res, torch.Tensor):
+            assert res.device == metric_device
+            res = res.cpu().numpy()
+
+        true_res = precision_score(
+            y_true.cpu().numpy(), torch.argmax(y_preds, dim=1).cpu().numpy(), average="macro" if average else None
+        )
+
+        assert pytest.approx(res) == true_res
+
+    metric_devices = [torch.device("cpu")]
+    if device.type != "xla":
+        metric_devices.append(idist.device())
+    for _ in range(2):
+        for metric_device in metric_devices:
+            _test(average=True, n_epochs=1, metric_device=metric_device)
+            _test(average=True, n_epochs=2, metric_device=metric_device)
+            _test(average=False, n_epochs=1, metric_device=metric_device)
+            _test(average=False, n_epochs=2, metric_device=metric_device)
+
+
+</clonepair6>
+<clonepair7>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/handlers/test_visdom_logger.py" startline="33" endline="80" pcid="383"></source>
+def test_optimizer_params():
+
+    optimizer = torch.optim.SGD([torch.Tensor(0)], lr=0.01)
+    wrapper = OptimizerParamsHandler(optimizer=optimizer, param_name="lr")
+    mock_logger = MagicMock(spec=VisdomLogger)
+    mock_logger.vis = MagicMock()
+    mock_logger.executor = _DummyExecutor()
+    mock_engine = MagicMock()
+    mock_engine.state = State()
+    mock_engine.state.iteration = 123
+
+    wrapper(mock_engine, mock_logger, Events.ITERATION_STARTED)
+
+    # mock_logger.vis.line.assert_called_once_with("lr/group_0", 0.01, 123)
+    assert len(wrapper.windows) == 1 and "lr/group_0" in wrapper.windows
+    assert wrapper.windows["lr/group_0"]["win"] is not None
+
+    mock_logger.vis.line.assert_called_once_with(
+        X=[123,],
+        Y=[0.01,],
+        env=mock_logger.vis.env,
+        win=None,
+        update=None,
+        opts=wrapper.windows["lr/group_0"]["opts"],
+        name="lr/group_0",
+    )
+
+    wrapper = OptimizerParamsHandler(optimizer=optimizer, param_name="lr", tag="generator")
+    mock_logger = MagicMock(spec=VisdomLogger)
+    mock_logger.vis = MagicMock()
+    mock_logger.executor = _DummyExecutor()
+
+    wrapper(mock_engine, mock_logger, Events.ITERATION_STARTED)
+
+    assert len(wrapper.windows) == 1 and "generator/lr/group_0" in wrapper.windows
+    assert wrapper.windows["generator/lr/group_0"]["win"] is not None
+
+    mock_logger.vis.line.assert_called_once_with(
+        X=[123,],
+        Y=[0.01,],
+        env=mock_logger.vis.env,
+        win=None,
+        update=None,
+        opts=wrapper.windows["generator/lr/group_0"]["opts"],
+        name="generator/lr/group_0",
+    )
+
+
+</clonepair7>
+
+<clonepair7>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/handlers/test_visdom_logger.py" startline="91" endline="138" pcid="385"></source>
+def test_output_handler_output_transform(dirname):
+
+    wrapper = OutputHandler("tag", output_transform=lambda x: x)
+    mock_logger = MagicMock(spec=VisdomLogger)
+    mock_logger.vis = MagicMock()
+    mock_logger.executor = _DummyExecutor()
+
+    mock_engine = MagicMock()
+    mock_engine.state = State()
+    mock_engine.state.output = 12345
+    mock_engine.state.iteration = 123
+
+    wrapper(mock_engine, mock_logger, Events.ITERATION_STARTED)
+
+    assert len(wrapper.windows) == 1 and "tag/output" in wrapper.windows
+    assert wrapper.windows["tag/output"]["win"] is not None
+
+    mock_logger.vis.line.assert_called_once_with(
+        X=[123,],
+        Y=[12345,],
+        env=mock_logger.vis.env,
+        win=None,
+        update=None,
+        opts=wrapper.windows["tag/output"]["opts"],
+        name="tag/output",
+    )
+
+    wrapper = OutputHandler("another_tag", output_transform=lambda x: {"loss": x})
+    mock_logger = MagicMock(spec=VisdomLogger)
+    mock_logger.vis = MagicMock()
+    mock_logger.executor = _DummyExecutor()
+
+    wrapper(mock_engine, mock_logger, Events.ITERATION_STARTED)
+
+    assert len(wrapper.windows) == 1 and "another_tag/loss" in wrapper.windows
+    assert wrapper.windows["another_tag/loss"]["win"] is not None
+
+    mock_logger.vis.line.assert_called_once_with(
+        X=[123,],
+        Y=[12345,],
+        env=mock_logger.vis.env,
+        win=None,
+        update=None,
+        opts=wrapper.windows["another_tag/loss"]["opts"],
+        name="another_tag/loss",
+    )
+
+
+</clonepair7>
+<clonepair8>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_accuracy.py" startline="708" endline="760" pcid="1310"></source>
+def _test_distrib_integration_multiclass(device):
+
+    from ignite.engine import Engine
+
+    rank = idist.get_rank()
+    torch.manual_seed(12)
+
+    def _test(n_epochs, metric_device):
+        metric_device = torch.device(metric_device)
+        n_iters = 80
+        s = 16
+        n_classes = 10
+
+        offset = n_iters * s
+        y_true = torch.randint(0, n_classes, size=(offset * idist.get_world_size(),)).to(device)
+        y_preds = torch.rand(offset * idist.get_world_size(), n_classes).to(device)
+
+        def update(engine, i):
+            return (
+                y_preds[i * s + rank * offset : (i + 1) * s + rank * offset, :],
+                y_true[i * s + rank * offset : (i + 1) * s + rank * offset],
+            )
+
+        engine = Engine(update)
+
+        acc = Accuracy(device=metric_device)
+        acc.attach(engine, "acc")
+
+        data = list(range(n_iters))
+        engine.run(data=data, max_epochs=n_epochs)
+
+        assert (
+            acc._num_correct.device == metric_device
+        ), f"{type(acc._num_correct.device)}:{acc._num_correct.device} vs {type(metric_device)}:{metric_device}"
+
+        assert "acc" in engine.state.metrics
+        res = engine.state.metrics["acc"]
+        if isinstance(res, torch.Tensor):
+            res = res.cpu().numpy()
+
+        true_res = accuracy_score(y_true.cpu().numpy(), torch.argmax(y_preds, dim=1).cpu().numpy())
+
+        assert pytest.approx(res) == true_res
+
+    metric_devices = ["cpu"]
+    if device.type != "xla":
+        metric_devices.append(idist.device())
+    for metric_device in metric_devices:
+        for _ in range(2):
+            _test(n_epochs=1, metric_device=metric_device)
+            _test(n_epochs=2, metric_device=metric_device)
+
+
+</clonepair8>
+
+<clonepair8>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_accuracy.py" startline="761" endline="813" pcid="1313"></source>
+def _test_distrib_integration_multilabel(device):
+
+    from ignite.engine import Engine
+
+    rank = idist.get_rank()
+    torch.manual_seed(12)
+
+    def _test(n_epochs, metric_device):
+        metric_device = torch.device(metric_device)
+        n_iters = 80
+        s = 16
+        n_classes = 10
+
+        offset = n_iters * s
+        y_true = torch.randint(0, 2, size=(offset * idist.get_world_size(), n_classes, 8, 10)).to(device)
+        y_preds = torch.randint(0, 2, size=(offset * idist.get_world_size(), n_classes, 8, 10)).to(device)
+
+        def update(engine, i):
+            return (
+                y_preds[i * s + rank * offset : (i + 1) * s + rank * offset, ...],
+                y_true[i * s + rank * offset : (i + 1) * s + rank * offset, ...],
+            )
+
+        engine = Engine(update)
+
+        acc = Accuracy(is_multilabel=True, device=metric_device)
+        acc.attach(engine, "acc")
+
+        data = list(range(n_iters))
+        engine.run(data=data, max_epochs=n_epochs)
+
+        assert (
+            acc._num_correct.device == metric_device
+        ), f"{type(acc._num_correct.device)}:{acc._num_correct.device} vs {type(metric_device)}:{metric_device}"
+
+        assert "acc" in engine.state.metrics
+        res = engine.state.metrics["acc"]
+        if isinstance(res, torch.Tensor):
+            res = res.cpu().numpy()
+
+        true_res = accuracy_score(to_numpy_multilabel(y_true), to_numpy_multilabel(y_preds))
+
+        assert pytest.approx(res) == true_res
+
+    metric_devices = ["cpu"]
+    if device.type != "xla":
+        metric_devices.append(idist.device())
+    for metric_device in metric_devices:
+        for _ in range(2):
+            _test(n_epochs=1, metric_device=metric_device)
+            _test(n_epochs=2, metric_device=metric_device)
+
+
+</clonepair8>
+<clonepair9>
+<source file="systems/ignite-0.4.3/tests/ignite/engine/test_deterministic.py" startline="445" endline="496" pcid="1078"></source>
+def _test_resume_random_data_iterator_from_epoch(device):
+    def _test(epoch_length=None):
+        max_epochs = 5
+        batch_size = 4
+        num_iters = 21
+
+        def infinite_data_iterator():
+            while True:
+                for _ in range(num_iters):
+                    data = torch.randint(0, 1000, size=(batch_size,), device=device)
+                    yield data
+
+        if epoch_length is None:
+            epoch_length = num_iters
+
+        for resume_epoch in range(1, max_epochs):
+            seen_batchs = []
+
+            def update_fn(_, batch):
+                # if there is a random op when using data batch etc, we can not resume correctly
+                # torch.rand(1)
+                seen_batchs.append(batch)
+
+            engine = DeterministicEngine(update_fn)
+            torch.manual_seed(121)
+            engine.run(
+                infinite_data_iterator(), max_epochs=max_epochs, epoch_length=epoch_length,
+            )
+
+            batch_checker = BatchChecker(seen_batchs, init_counter=resume_epoch * epoch_length)
+
+            def update_fn(_, batch):
+                assert batch_checker.check(
+                    batch
+                ), f"{resume_epoch} | {batch_checker.counter}: {batch_checker.true_batch} vs {batch}"
+
+            engine = DeterministicEngine(update_fn)
+
+            resume_state_dict = dict(
+                epoch=resume_epoch, max_epochs=max_epochs, epoch_length=epoch_length, rng_states=None
+            )
+            engine.load_state_dict(resume_state_dict)
+            torch.manual_seed(121)
+            engine.run(infinite_data_iterator())
+            assert engine.state.epoch == max_epochs
+            assert engine.state.iteration == epoch_length * max_epochs
+
+    _test()
+    _test(60)
+    _test(15)
+
+
+</clonepair9>
+
+<clonepair9>
+<source file="systems/ignite-0.4.3/tests/ignite/engine/test_deterministic.py" startline="501" endline="554" pcid="1084"></source>
+def _test_resume_random_data_iterator_from_iter(device):
+    def _test(epoch_length=None):
+        max_epochs = 3
+        batch_size = 4
+        num_iters = 17
+
+        def infinite_data_iterator():
+            while True:
+                for _ in range(num_iters):
+                    data = torch.randint(0, 1000, size=(batch_size,), device=device)
+                    yield data
+
+        if epoch_length is None:
+            epoch_length = num_iters
+
+        for resume_iteration in range(1, min(num_iters * max_epochs, epoch_length * max_epochs), 7):
+
+            seen_batchs = []
+
+            def update_fn(_, batch):
+                seen_batchs.append(batch)
+
+            engine = DeterministicEngine(update_fn)
+
+            torch.manual_seed(24)
+            engine.run(
+                infinite_data_iterator(), max_epochs=max_epochs, epoch_length=epoch_length,
+            )
+
+            batch_checker = BatchChecker(seen_batchs, init_counter=resume_iteration)
+
+            def update_fn(_, batch):
+                assert batch_checker.check(
+                    batch
+                ), f"{resume_iteration} | {batch_checker.counter}: {batch_checker.true_batch} vs {batch}"
+
+            engine = DeterministicEngine(update_fn)
+
+            resume_state_dict = dict(
+                iteration=resume_iteration, max_epochs=max_epochs, epoch_length=epoch_length, rng_states=None
+            )
+            engine.load_state_dict(resume_state_dict)
+            torch.manual_seed(24)
+            engine.run(infinite_data_iterator())
+            assert engine.state.epoch == max_epochs
+            assert (
+                engine.state.iteration == epoch_length * max_epochs
+            ), f"{resume_iteration} | {engine.state.iteration} vs {epoch_length * max_epochs}"
+
+    _test()
+    _test(50)
+    _test(11)
+
+
+</clonepair9>
+<clonepair10>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_recall.py" startline="214" endline="253" pcid="1382"></source>
+def test_multiclass_wrong_inputs():
+    re = Recall()
+
+    with pytest.raises(ValueError):
+        # incompatible shapes
+        re.update((torch.rand(10, 5, 4), torch.randint(0, 2, size=(10,)).long()))
+
+    with pytest.raises(ValueError):
+        # incompatible shapes
+        re.update((torch.rand(10, 5, 6), torch.randint(0, 5, size=(10, 5)).long()))
+
+    with pytest.raises(ValueError):
+        # incompatible shapes
+        re.update((torch.rand(10), torch.randint(0, 5, size=(10, 5, 6)).long()))
+
+    re = Recall(average=True)
+
+    with pytest.raises(ValueError):
+        # incompatible shapes between two updates
+        re.update((torch.rand(10, 5), torch.randint(0, 5, size=(10,)).long()))
+        re.update((torch.rand(10, 6), torch.randint(0, 5, size=(10,)).long()))
+
+    with pytest.raises(ValueError):
+        # incompatible shapes between two updates
+        re.update((torch.rand(10, 5, 12, 14), torch.randint(0, 5, size=(10, 12, 14)).long()))
+        re.update((torch.rand(10, 6, 12, 14), torch.randint(0, 5, size=(10, 12, 14)).long()))
+
+    re = Recall(average=False)
+
+    with pytest.raises(ValueError):
+        # incompatible shapes between two updates
+        re.update((torch.rand(10, 5), torch.randint(0, 5, size=(10,)).long()))
+        re.update((torch.rand(10, 6), torch.randint(0, 5, size=(10,)).long()))
+
+    with pytest.raises(ValueError):
+        # incompatible shapes between two updates
+        re.update((torch.rand(10, 5, 12, 14), torch.randint(0, 5, size=(10, 12, 14)).long()))
+        re.update((torch.rand(10, 6, 12, 14), torch.randint(0, 5, size=(10, 12, 14)).long()))
+
+
+</clonepair10>
+
+<clonepair10>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_precision.py" startline="214" endline="253" pcid="1578"></source>
+def test_multiclass_wrong_inputs():
+    pr = Precision()
+
+    with pytest.raises(ValueError):
+        # incompatible shapes
+        pr.update((torch.rand(10, 5, 4), torch.randint(0, 2, size=(10,)).long()))
+
+    with pytest.raises(ValueError):
+        # incompatible shapes
+        pr.update((torch.rand(10, 5, 6), torch.randint(0, 5, size=(10, 5)).long()))
+
+    with pytest.raises(ValueError):
+        # incompatible shapes
+        pr.update((torch.rand(10), torch.randint(0, 5, size=(10, 5, 6)).long()))
+
+    pr = Precision(average=True)
+
+    with pytest.raises(ValueError):
+        # incompatible shapes between two updates
+        pr.update((torch.rand(10, 5), torch.randint(0, 5, size=(10,)).long()))
+        pr.update((torch.rand(10, 6), torch.randint(0, 5, size=(10,)).long()))
+
+    with pytest.raises(ValueError):
+        # incompatible shapes between two updates
+        pr.update((torch.rand(10, 5, 12, 14), torch.randint(0, 5, size=(10, 12, 14)).long()))
+        pr.update((torch.rand(10, 6, 12, 14), torch.randint(0, 5, size=(10, 12, 14)).long()))
+
+    pr = Precision(average=False)
+
+    with pytest.raises(ValueError):
+        # incompatible shapes between two updates
+        pr.update((torch.rand(10, 5), torch.randint(0, 5, size=(10,)).long()))
+        pr.update((torch.rand(10, 6), torch.randint(0, 5, size=(10,)).long()))
+
+    with pytest.raises(ValueError):
+        # incompatible shapes between two updates
+        pr.update((torch.rand(10, 5, 12, 14), torch.randint(0, 5, size=(10, 12, 14)).long()))
+        pr.update((torch.rand(10, 6, 12, 14), torch.randint(0, 5, size=(10, 12, 14)).long()))
+
+
+</clonepair10>
+<clonepair11>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_mean_absolute_error.py" startline="17" endline="33" pcid="1616"></source>
+def test_compute():
+    mae = MeanAbsoluteError()
+
+    y_pred = torch.Tensor([[2.0], [-2.0]])
+    y = torch.zeros(2)
+    mae.update((y_pred, y))
+    assert isinstance(mae.compute(), float)
+    assert mae.compute() == 2.0
+
+    mae.reset()
+    y_pred = torch.Tensor([[3.0], [-3.0]])
+    y = torch.zeros(2)
+    mae.update((y_pred, y))
+    assert isinstance(mae.compute(), float)
+    assert mae.compute() == 3.0
+
+
+</clonepair11>
+
+<clonepair11>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_mean_squared_error.py" startline="17" endline="33" pcid="1669"></source>
+def test_compute():
+    mse = MeanSquaredError()
+
+    y_pred = torch.Tensor([[2.0], [-2.0]])
+    y = torch.zeros(2)
+    mse.update((y_pred, y))
+    assert isinstance(mse.compute(), float)
+    assert mse.compute() == 4.0
+
+    mse.reset()
+    y_pred = torch.Tensor([[3.0], [-3.0]])
+    y = torch.zeros(2)
+    mse.update((y_pred, y))
+    assert isinstance(mse.compute(), float)
+    assert mse.compute() == 9.0
+
+
+</clonepair11>
+<clonepair12>
+<source file="systems/ignite-0.4.3/tests/ignite/distributed/utils/test_horovod.py" startline="178" endline="213" pcid="982"></source>
+def _test_idist_methods_overhead(ok_factor, sync_model):
+    import time
+
+    import horovod.torch as hvd
+
+    if sync_model:
+        idist.sync()
+        from ignite.distributed.comp_models.horovod import _HorovodDistModel
+        from ignite.distributed.utils import _model
+
+        assert isinstance(_model, _HorovodDistModel)
+
+    n = 100000
+    m = 5
+
+    t2 = 0.0
+    t1 = 0.0
+    for j in range(m):
+        start = time.time()
+        for _ in range(n):
+            _ = hvd.size()
+            _ = hvd.rank()
+        elapsed = time.time() - start
+        t2 += elapsed / n / m
+
+        start = time.time()
+        for _ in range(n):
+            _ = idist.get_world_size()
+            _ = idist.get_rank()
+        elapsed = time.time() - start
+        t1 += elapsed / n / m
+
+    overhead_factor = t1 / t2
+    assert overhead_factor < ok_factor, f"{overhead_factor} vs {ok_factor} | {t2} vs {t1}"
+
+
+</clonepair12>
+
+<clonepair12>
+<source file="systems/ignite-0.4.3/tests/ignite/distributed/utils/test_native.py" startline="223" endline="249" pcid="958"></source>
+def _test_idist_methods_overhead(ok_factor):
+    import time
+
+    n = 100000
+    m = 5
+
+    t2 = 0.0
+    t1 = 0.0
+    for j in range(m):
+        start = time.time()
+        for _ in range(n):
+            _ = dist.get_world_size()
+            _ = dist.get_rank()
+        elapsed = time.time() - start
+        t2 += elapsed / n / m
+
+        start = time.time()
+        for _ in range(n):
+            _ = idist.get_world_size()
+            _ = idist.get_rank()
+        elapsed = time.time() - start
+        t1 += elapsed / n / m
+
+    overhead_factor = t1 / t2
+    assert overhead_factor < ok_factor, f"{overhead_factor} vs {ok_factor} | {t2} vs {t1}"
+
+
+</clonepair12>
+<clonepair13>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_root_mean_squared_error.py" startline="34" endline="75" pcid="1467"></source>
+def _test_distrib_integration(device, tol=1e-6):
+    import numpy as np
+
+    from ignite.engine import Engine
+
+    rank = idist.get_rank()
+    n_iters = 100
+    s = 10
+    offset = n_iters * s
+
+    y_true = torch.arange(0, offset * idist.get_world_size(), dtype=torch.float).to(device)
+    y_preds = (rank + 1) * torch.ones(offset, dtype=torch.float).to(device)
+
+    def update(engine, i):
+        return y_preds[i * s : (i + 1) * s], y_true[i * s + offset * rank : (i + 1) * s + offset * rank]
+
+    def _test(metric_device):
+        engine = Engine(update)
+
+        m = RootMeanSquaredError(device=metric_device)
+        m.attach(engine, "rmse")
+
+        data = list(range(n_iters))
+        engine.run(data=data, max_epochs=1)
+
+        assert "rmse" in engine.state.metrics
+        res = engine.state.metrics["rmse"]
+
+        y_preds_full = []
+        for i in range(idist.get_world_size()):
+            y_preds_full.append((i + 1) * torch.ones(offset))
+        y_preds_full = torch.stack(y_preds_full).to(device).flatten()
+
+        true_res = np.sqrt(np.mean(np.square((y_true - y_preds_full).cpu().numpy())))
+
+        assert pytest.approx(res, rel=tol) == true_res
+
+    _test("cpu")
+    if device.type != "xla":
+        _test(idist.device())
+
+
+</clonepair13>
+
+<clonepair13>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_mean_squared_error.py" startline="34" endline="73" pcid="1670"></source>
+def _test_distrib_integration(device, tol=1e-6):
+    import numpy as np
+
+    from ignite.engine import Engine
+
+    rank = idist.get_rank()
+    n_iters = 100
+    s = 10
+    offset = n_iters * s
+
+    y_true = torch.arange(0, offset * idist.get_world_size(), dtype=torch.float).to(device)
+    y_preds = torch.ones(offset * idist.get_world_size(), dtype=torch.float).to(device)
+
+    def update(engine, i):
+        return (
+            y_preds[i * s + offset * rank : (i + 1) * s + offset * rank],
+            y_true[i * s + offset * rank : (i + 1) * s + offset * rank],
+        )
+
+    def _test(metric_device):
+        engine = Engine(update)
+
+        m = MeanSquaredError(device=metric_device)
+        m.attach(engine, "mse")
+
+        data = list(range(n_iters))
+        engine.run(data=data, max_epochs=1)
+
+        assert "mse" in engine.state.metrics
+        res = engine.state.metrics["mse"]
+
+        true_res = np.mean(np.power((y_true - y_preds).cpu().numpy(), 2.0))
+
+        assert pytest.approx(res, rel=tol) == true_res
+
+    _test("cpu")
+    if device.type != "xla":
+        _test(idist.device())
+
+
+</clonepair13>
+<clonepair14>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_recall.py" startline="676" endline="703" pcid="1397"></source>
+def test_incorrect_type():
+    # Tests changing of type during training
+
+    def _test(average):
+        re = Recall(average=average)
+
+        y_pred = torch.softmax(torch.rand(4, 4), dim=1)
+        y = torch.ones(4).long()
+        re.update((y_pred, y))
+
+        y_pred = torch.zeros(4,)
+        y = torch.ones(4).long()
+
+        with pytest.raises(RuntimeError):
+            re.update((y_pred, y))
+
+    _test(average=True)
+    _test(average=False)
+
+    re1 = Recall(is_multilabel=True, average=True)
+    re2 = Recall(is_multilabel=True, average=False)
+    y_pred = torch.randint(0, 2, size=(10, 4, 20, 23))
+    y = torch.randint(0, 2, size=(10, 4, 20, 23)).long()
+    re1.update((y_pred, y))
+    re2.update((y_pred, y))
+    assert re1.compute() == pytest.approx(re2.compute().mean().item())
+
+
+</clonepair14>
+
+<clonepair14>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_precision.py" startline="677" endline="704" pcid="1593"></source>
+def test_incorrect_type():
+    # Tests changing of type during training
+
+    def _test(average):
+        pr = Precision(average=average)
+
+        y_pred = torch.softmax(torch.rand(4, 4), dim=1)
+        y = torch.ones(4).long()
+        pr.update((y_pred, y))
+
+        y_pred = torch.randint(0, 2, size=(4,))
+        y = torch.ones(4).long()
+
+        with pytest.raises(RuntimeError):
+            pr.update((y_pred, y))
+
+    _test(average=True)
+    _test(average=False)
+
+    pr1 = Precision(is_multilabel=True, average=True)
+    pr2 = Precision(is_multilabel=True, average=False)
+    y_pred = torch.randint(0, 2, size=(10, 4, 20, 23))
+    y = torch.randint(0, 2, size=(10, 4, 20, 23)).long()
+    pr1.update((y_pred, y))
+    pr2.update((y_pred, y))
+    assert pr1.compute() == pytest.approx(pr2.compute().mean().item())
+
+
+</clonepair14>
+<clonepair15>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/handlers/test_tqdm_logger.py" startline="133" endline="165" pcid="257"></source>
+def test_pbar_with_metric(capsys):
+
+    n_iters = 2
+    data = list(range(n_iters))
+    loss_values = iter(range(n_iters))
+
+    def step(engine, batch):
+        loss_value = next(loss_values)
+        return loss_value
+
+    trainer = Engine(step)
+
+    RunningAverage(alpha=0.5, output_transform=lambda x: x).attach(trainer, "batchloss")
+
+    pbar = ProgressBar()
+    pbar.attach(
+        trainer, metric_names=["batchloss",],
+    )
+
+    trainer.run(data=data, max_epochs=1)
+
+    captured = capsys.readouterr()
+    err = captured.err.split("\r")
+    err = list(map(lambda x: x.strip(), err))
+    err = list(filter(None, err))
+    actual = err[-1]
+    if get_tqdm_version() < LooseVersion("4.49.0"):
+        expected = "Iteration: [1/2]  50%|█████     , batchloss=0.5 [00:00<00:00]"
+    else:
+        expected = "Iteration: [1/2]  50%|█████     , batchloss=0.5 [00:00<?]"
+    assert actual == expected
+
+
+</clonepair15>
+
+<clonepair15>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/handlers/test_tqdm_logger.py" startline="166" endline="199" pcid="259"></source>
+def test_pbar_with_all_metric(capsys):
+
+    n_iters = 2
+    data = list(range(n_iters))
+    loss_values = iter(range(n_iters))
+    another_loss_values = iter(range(1, n_iters + 1))
+
+    def step(engine, batch):
+        loss_value = next(loss_values)
+        another_loss_value = next(another_loss_values)
+        return loss_value, another_loss_value
+
+    trainer = Engine(step)
+
+    RunningAverage(alpha=0.5, output_transform=lambda x: x[0]).attach(trainer, "batchloss")
+    RunningAverage(alpha=0.5, output_transform=lambda x: x[1]).attach(trainer, "another batchloss")
+
+    pbar = ProgressBar()
+    pbar.attach(trainer, metric_names="all")
+
+    trainer.run(data=data, max_epochs=1)
+
+    captured = capsys.readouterr()
+    err = captured.err.split("\r")
+    err = list(map(lambda x: x.strip(), err))
+    err = list(filter(None, err))
+    actual = err[-1]
+    if get_tqdm_version() < LooseVersion("4.49.0"):
+        expected = "Iteration: [1/2]  50%|█████     , another batchloss=1.5, batchloss=0.5 [00:00<00:00]"
+    else:
+        expected = "Iteration: [1/2]  50%|█████     , another batchloss=1.5, batchloss=0.5 [00:00<?]"
+    assert actual == expected
+
+
+</clonepair15>
+<clonepair16>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_recall.py" startline="872" endline="904" pcid="1409"></source>
+def _test_distrib_multilabel_accumulator_device(device):
+    # Multiclass input data of shape (N, ) and (N, C)
+
+    def _test(average, metric_device):
+        re = Recall(is_multilabel=True, average=average, device=metric_device)
+
+        assert re._device == metric_device
+        assert (
+            re._true_positives.device == metric_device
+        ), f"{type(re._true_positives.device)}:{re._true_positives.device} vs {type(metric_device)}:{metric_device}"
+        assert (
+            re._positives.device == metric_device
+        ), f"{type(re._positives.device)}:{re._positives.device} vs {type(metric_device)}:{metric_device}"
+
+        y_reed = torch.randint(0, 2, size=(10, 4, 20, 23))
+        y = torch.randint(0, 2, size=(10, 4, 20, 23)).long()
+        re.update((y_reed, y))
+
+        assert (
+            re._true_positives.device == metric_device
+        ), f"{type(re._true_positives.device)}:{re._true_positives.device} vs {type(metric_device)}:{metric_device}"
+        assert (
+            re._positives.device == metric_device
+        ), f"{type(re._positives.device)}:{re._positives.device} vs {type(metric_device)}:{metric_device}"
+
+    metric_devices = [torch.device("cpu")]
+    if device.type != "xla":
+        metric_devices.append(idist.device())
+    for metric_device in metric_devices:
+        _test(True, metric_device=metric_device)
+        _test(False, metric_device=metric_device)
+
+
+</clonepair16>
+
+<clonepair16>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_precision.py" startline="872" endline="904" pcid="1605"></source>
+def _test_distrib_multilabel_accumulator_device(device):
+    # Multiclass input data of shape (N, ) and (N, C)
+
+    def _test(average, metric_device):
+        pr = Precision(is_multilabel=True, average=average, device=metric_device)
+
+        assert pr._device == metric_device
+        assert (
+            pr._true_positives.device == metric_device
+        ), f"{type(pr._true_positives.device)}:{pr._true_positives.device} vs {type(metric_device)}:{metric_device}"
+        assert (
+            pr._positives.device == metric_device
+        ), f"{type(pr._positives.device)}:{pr._positives.device} vs {type(metric_device)}:{metric_device}"
+
+        y_pred = torch.randint(0, 2, size=(10, 4, 20, 23))
+        y = torch.randint(0, 2, size=(10, 4, 20, 23)).long()
+        pr.update((y_pred, y))
+
+        assert (
+            pr._true_positives.device == metric_device
+        ), f"{type(pr._true_positives.device)}:{pr._true_positives.device} vs {type(metric_device)}:{metric_device}"
+        assert (
+            pr._positives.device == metric_device
+        ), f"{type(pr._positives.device)}:{pr._positives.device} vs {type(metric_device)}:{metric_device}"
+
+    metric_devices = [torch.device("cpu")]
+    if device.type != "xla":
+        metric_devices.append(idist.device())
+    for metric_device in metric_devices:
+        _test(True, metric_device=metric_device)
+        _test(False, metric_device=metric_device)
+
+
+</clonepair16>
+<clonepair17>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/test_roc_curve.py" startline="63" endline="95" pcid="769"></source>
+def test_integration_roc_curve_with_activated_output_transform():
+    np.random.seed(1)
+    size = 100
+    np_y_pred = np.random.rand(size, 1)
+    np_y_pred_sigmoid = torch.sigmoid(torch.from_numpy(np_y_pred)).numpy()
+    np_y = np.zeros((size,), dtype=np.long)
+    np_y[size // 2 :] = 1
+    np.random.shuffle(np_y)
+
+    sk_fpr, sk_tpr, sk_thresholds = roc_curve(np_y, np_y_pred_sigmoid)
+
+    batch_size = 10
+
+    def update_fn(engine, batch):
+        idx = (engine.state.iteration - 1) * batch_size
+        y_true_batch = np_y[idx : idx + batch_size]
+        y_pred_batch = np_y_pred[idx : idx + batch_size]
+        return idx, torch.from_numpy(y_pred_batch), torch.from_numpy(y_true_batch)
+
+    engine = Engine(update_fn)
+
+    roc_curve_metric = RocCurve(output_transform=lambda x: (torch.sigmoid(x[1]), x[2]))
+    roc_curve_metric.attach(engine, "roc_curve")
+
+    data = list(range(size // batch_size))
+    fpr, tpr, thresholds = engine.run(data, max_epochs=1).metrics["roc_curve"]
+
+    assert np.array_equal(fpr, sk_fpr)
+    assert np.array_equal(tpr, sk_tpr)
+    # assert thresholds almost equal, due to numpy->torch->numpy conversion
+    np.testing.assert_array_almost_equal(thresholds, sk_thresholds)
+
+
+</clonepair17>
+
+<clonepair17>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/test_precision_recall_curve.py" startline="63" endline="95" pcid="744"></source>
+def test_integration_precision_recall_curve_with_activated_output_transform():
+    np.random.seed(1)
+    size = 100
+    np_y_pred = np.random.rand(size, 1)
+    np_y_pred_sigmoid = torch.sigmoid(torch.from_numpy(np_y_pred)).numpy()
+    np_y = np.zeros((size,), dtype=np.long)
+    np_y[size // 2 :] = 1
+    np.random.shuffle(np_y)
+
+    sk_precision, sk_recall, sk_thresholds = precision_recall_curve(np_y, np_y_pred_sigmoid)
+
+    batch_size = 10
+
+    def update_fn(engine, batch):
+        idx = (engine.state.iteration - 1) * batch_size
+        y_true_batch = np_y[idx : idx + batch_size]
+        y_pred_batch = np_y_pred[idx : idx + batch_size]
+        return idx, torch.from_numpy(y_pred_batch), torch.from_numpy(y_true_batch)
+
+    engine = Engine(update_fn)
+
+    precision_recall_curve_metric = PrecisionRecallCurve(output_transform=lambda x: (torch.sigmoid(x[1]), x[2]))
+    precision_recall_curve_metric.attach(engine, "precision_recall_curve")
+
+    data = list(range(size // batch_size))
+    precision, recall, thresholds = engine.run(data, max_epochs=1).metrics["precision_recall_curve"]
+
+    assert np.array_equal(precision, sk_precision)
+    assert np.array_equal(recall, sk_recall)
+    # assert thresholds almost equal, due to numpy->torch->numpy conversion
+    np.testing.assert_array_almost_equal(thresholds, sk_thresholds)
+
+
+</clonepair17>
+<clonepair18>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/test_roc_curve.py" startline="63" endline="95" pcid="769"></source>
+def test_integration_roc_curve_with_activated_output_transform():
+    np.random.seed(1)
+    size = 100
+    np_y_pred = np.random.rand(size, 1)
+    np_y_pred_sigmoid = torch.sigmoid(torch.from_numpy(np_y_pred)).numpy()
+    np_y = np.zeros((size,), dtype=np.long)
+    np_y[size // 2 :] = 1
+    np.random.shuffle(np_y)
+
+    sk_fpr, sk_tpr, sk_thresholds = roc_curve(np_y, np_y_pred_sigmoid)
+
+    batch_size = 10
+
+    def update_fn(engine, batch):
+        idx = (engine.state.iteration - 1) * batch_size
+        y_true_batch = np_y[idx : idx + batch_size]
+        y_pred_batch = np_y_pred[idx : idx + batch_size]
+        return idx, torch.from_numpy(y_pred_batch), torch.from_numpy(y_true_batch)
+
+    engine = Engine(update_fn)
+
+    roc_curve_metric = RocCurve(output_transform=lambda x: (torch.sigmoid(x[1]), x[2]))
+    roc_curve_metric.attach(engine, "roc_curve")
+
+    data = list(range(size // batch_size))
+    fpr, tpr, thresholds = engine.run(data, max_epochs=1).metrics["roc_curve"]
+
+    assert np.array_equal(fpr, sk_fpr)
+    assert np.array_equal(tpr, sk_tpr)
+    # assert thresholds almost equal, due to numpy->torch->numpy conversion
+    np.testing.assert_array_almost_equal(thresholds, sk_thresholds)
+
+
+</clonepair18>
+
+<clonepair18>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/test_precision_recall_curve.py" startline="31" endline="62" pcid="742"></source>
+def test_integration_precision_recall_curve_with_output_transform():
+    np.random.seed(1)
+    size = 100
+    np_y_pred = np.random.rand(size, 1)
+    np_y = np.zeros((size,), dtype=np.long)
+    np_y[size // 2 :] = 1
+    np.random.shuffle(np_y)
+
+    sk_precision, sk_recall, sk_thresholds = precision_recall_curve(np_y, np_y_pred)
+
+    batch_size = 10
+
+    def update_fn(engine, batch):
+        idx = (engine.state.iteration - 1) * batch_size
+        y_true_batch = np_y[idx : idx + batch_size]
+        y_pred_batch = np_y_pred[idx : idx + batch_size]
+        return idx, torch.from_numpy(y_pred_batch), torch.from_numpy(y_true_batch)
+
+    engine = Engine(update_fn)
+
+    precision_recall_curve_metric = PrecisionRecallCurve(output_transform=lambda x: (x[1], x[2]))
+    precision_recall_curve_metric.attach(engine, "precision_recall_curve")
+
+    data = list(range(size // batch_size))
+    precision, recall, thresholds = engine.run(data, max_epochs=1).metrics["precision_recall_curve"]
+
+    assert np.array_equal(precision, sk_precision)
+    assert np.array_equal(recall, sk_recall)
+    # assert thresholds almost equal, due to numpy->torch->numpy conversion
+    np.testing.assert_array_almost_equal(thresholds, sk_thresholds)
+
+
+</clonepair18>
+<clonepair19>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/test_roc_curve.py" startline="31" endline="62" pcid="767"></source>
+def test_integration_roc_curve_with_output_transform():
+    np.random.seed(1)
+    size = 100
+    np_y_pred = np.random.rand(size, 1)
+    np_y = np.zeros((size,), dtype=np.long)
+    np_y[size // 2 :] = 1
+    np.random.shuffle(np_y)
+
+    sk_fpr, sk_tpr, sk_thresholds = roc_curve(np_y, np_y_pred)
+
+    batch_size = 10
+
+    def update_fn(engine, batch):
+        idx = (engine.state.iteration - 1) * batch_size
+        y_true_batch = np_y[idx : idx + batch_size]
+        y_pred_batch = np_y_pred[idx : idx + batch_size]
+        return idx, torch.from_numpy(y_pred_batch), torch.from_numpy(y_true_batch)
+
+    engine = Engine(update_fn)
+
+    roc_curve_metric = RocCurve(output_transform=lambda x: (x[1], x[2]))
+    roc_curve_metric.attach(engine, "roc_curve")
+
+    data = list(range(size // batch_size))
+    fpr, tpr, thresholds = engine.run(data, max_epochs=1).metrics["roc_curve"]
+
+    assert np.array_equal(fpr, sk_fpr)
+    assert np.array_equal(tpr, sk_tpr)
+    # assert thresholds almost equal, due to numpy->torch->numpy conversion
+    np.testing.assert_array_almost_equal(thresholds, sk_thresholds)
+
+
+</clonepair19>
+
+<clonepair19>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/test_roc_curve.py" startline="63" endline="95" pcid="769"></source>
+def test_integration_roc_curve_with_activated_output_transform():
+    np.random.seed(1)
+    size = 100
+    np_y_pred = np.random.rand(size, 1)
+    np_y_pred_sigmoid = torch.sigmoid(torch.from_numpy(np_y_pred)).numpy()
+    np_y = np.zeros((size,), dtype=np.long)
+    np_y[size // 2 :] = 1
+    np.random.shuffle(np_y)
+
+    sk_fpr, sk_tpr, sk_thresholds = roc_curve(np_y, np_y_pred_sigmoid)
+
+    batch_size = 10
+
+    def update_fn(engine, batch):
+        idx = (engine.state.iteration - 1) * batch_size
+        y_true_batch = np_y[idx : idx + batch_size]
+        y_pred_batch = np_y_pred[idx : idx + batch_size]
+        return idx, torch.from_numpy(y_pred_batch), torch.from_numpy(y_true_batch)
+
+    engine = Engine(update_fn)
+
+    roc_curve_metric = RocCurve(output_transform=lambda x: (torch.sigmoid(x[1]), x[2]))
+    roc_curve_metric.attach(engine, "roc_curve")
+
+    data = list(range(size // batch_size))
+    fpr, tpr, thresholds = engine.run(data, max_epochs=1).metrics["roc_curve"]
+
+    assert np.array_equal(fpr, sk_fpr)
+    assert np.array_equal(tpr, sk_tpr)
+    # assert thresholds almost equal, due to numpy->torch->numpy conversion
+    np.testing.assert_array_almost_equal(thresholds, sk_thresholds)
+
+
+</clonepair19>
+<clonepair20>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/test_precision_recall_curve.py" startline="31" endline="62" pcid="742"></source>
+def test_integration_precision_recall_curve_with_output_transform():
+    np.random.seed(1)
+    size = 100
+    np_y_pred = np.random.rand(size, 1)
+    np_y = np.zeros((size,), dtype=np.long)
+    np_y[size // 2 :] = 1
+    np.random.shuffle(np_y)
+
+    sk_precision, sk_recall, sk_thresholds = precision_recall_curve(np_y, np_y_pred)
+
+    batch_size = 10
+
+    def update_fn(engine, batch):
+        idx = (engine.state.iteration - 1) * batch_size
+        y_true_batch = np_y[idx : idx + batch_size]
+        y_pred_batch = np_y_pred[idx : idx + batch_size]
+        return idx, torch.from_numpy(y_pred_batch), torch.from_numpy(y_true_batch)
+
+    engine = Engine(update_fn)
+
+    precision_recall_curve_metric = PrecisionRecallCurve(output_transform=lambda x: (x[1], x[2]))
+    precision_recall_curve_metric.attach(engine, "precision_recall_curve")
+
+    data = list(range(size // batch_size))
+    precision, recall, thresholds = engine.run(data, max_epochs=1).metrics["precision_recall_curve"]
+
+    assert np.array_equal(precision, sk_precision)
+    assert np.array_equal(recall, sk_recall)
+    # assert thresholds almost equal, due to numpy->torch->numpy conversion
+    np.testing.assert_array_almost_equal(thresholds, sk_thresholds)
+
+
+</clonepair20>
+
+<clonepair20>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/test_precision_recall_curve.py" startline="63" endline="95" pcid="744"></source>
+def test_integration_precision_recall_curve_with_activated_output_transform():
+    np.random.seed(1)
+    size = 100
+    np_y_pred = np.random.rand(size, 1)
+    np_y_pred_sigmoid = torch.sigmoid(torch.from_numpy(np_y_pred)).numpy()
+    np_y = np.zeros((size,), dtype=np.long)
+    np_y[size // 2 :] = 1
+    np.random.shuffle(np_y)
+
+    sk_precision, sk_recall, sk_thresholds = precision_recall_curve(np_y, np_y_pred_sigmoid)
+
+    batch_size = 10
+
+    def update_fn(engine, batch):
+        idx = (engine.state.iteration - 1) * batch_size
+        y_true_batch = np_y[idx : idx + batch_size]
+        y_pred_batch = np_y_pred[idx : idx + batch_size]
+        return idx, torch.from_numpy(y_pred_batch), torch.from_numpy(y_true_batch)
+
+    engine = Engine(update_fn)
+
+    precision_recall_curve_metric = PrecisionRecallCurve(output_transform=lambda x: (torch.sigmoid(x[1]), x[2]))
+    precision_recall_curve_metric.attach(engine, "precision_recall_curve")
+
+    data = list(range(size // batch_size))
+    precision, recall, thresholds = engine.run(data, max_epochs=1).metrics["precision_recall_curve"]
+
+    assert np.array_equal(precision, sk_precision)
+    assert np.array_equal(recall, sk_recall)
+    # assert thresholds almost equal, due to numpy->torch->numpy conversion
+    np.testing.assert_array_almost_equal(thresholds, sk_thresholds)
+
+
+</clonepair20>
+<clonepair21>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/test_roc_curve.py" startline="31" endline="62" pcid="767"></source>
+def test_integration_roc_curve_with_output_transform():
+    np.random.seed(1)
+    size = 100
+    np_y_pred = np.random.rand(size, 1)
+    np_y = np.zeros((size,), dtype=np.long)
+    np_y[size // 2 :] = 1
+    np.random.shuffle(np_y)
+
+    sk_fpr, sk_tpr, sk_thresholds = roc_curve(np_y, np_y_pred)
+
+    batch_size = 10
+
+    def update_fn(engine, batch):
+        idx = (engine.state.iteration - 1) * batch_size
+        y_true_batch = np_y[idx : idx + batch_size]
+        y_pred_batch = np_y_pred[idx : idx + batch_size]
+        return idx, torch.from_numpy(y_pred_batch), torch.from_numpy(y_true_batch)
+
+    engine = Engine(update_fn)
+
+    roc_curve_metric = RocCurve(output_transform=lambda x: (x[1], x[2]))
+    roc_curve_metric.attach(engine, "roc_curve")
+
+    data = list(range(size // batch_size))
+    fpr, tpr, thresholds = engine.run(data, max_epochs=1).metrics["roc_curve"]
+
+    assert np.array_equal(fpr, sk_fpr)
+    assert np.array_equal(tpr, sk_tpr)
+    # assert thresholds almost equal, due to numpy->torch->numpy conversion
+    np.testing.assert_array_almost_equal(thresholds, sk_thresholds)
+
+
+</clonepair21>
+
+<clonepair21>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/test_precision_recall_curve.py" startline="63" endline="95" pcid="744"></source>
+def test_integration_precision_recall_curve_with_activated_output_transform():
+    np.random.seed(1)
+    size = 100
+    np_y_pred = np.random.rand(size, 1)
+    np_y_pred_sigmoid = torch.sigmoid(torch.from_numpy(np_y_pred)).numpy()
+    np_y = np.zeros((size,), dtype=np.long)
+    np_y[size // 2 :] = 1
+    np.random.shuffle(np_y)
+
+    sk_precision, sk_recall, sk_thresholds = precision_recall_curve(np_y, np_y_pred_sigmoid)
+
+    batch_size = 10
+
+    def update_fn(engine, batch):
+        idx = (engine.state.iteration - 1) * batch_size
+        y_true_batch = np_y[idx : idx + batch_size]
+        y_pred_batch = np_y_pred[idx : idx + batch_size]
+        return idx, torch.from_numpy(y_pred_batch), torch.from_numpy(y_true_batch)
+
+    engine = Engine(update_fn)
+
+    precision_recall_curve_metric = PrecisionRecallCurve(output_transform=lambda x: (torch.sigmoid(x[1]), x[2]))
+    precision_recall_curve_metric.attach(engine, "precision_recall_curve")
+
+    data = list(range(size // batch_size))
+    precision, recall, thresholds = engine.run(data, max_epochs=1).metrics["precision_recall_curve"]
+
+    assert np.array_equal(precision, sk_precision)
+    assert np.array_equal(recall, sk_recall)
+    # assert thresholds almost equal, due to numpy->torch->numpy conversion
+    np.testing.assert_array_almost_equal(thresholds, sk_thresholds)
+
+
+</clonepair21>
+<clonepair22>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/test_roc_curve.py" startline="31" endline="62" pcid="767"></source>
+def test_integration_roc_curve_with_output_transform():
+    np.random.seed(1)
+    size = 100
+    np_y_pred = np.random.rand(size, 1)
+    np_y = np.zeros((size,), dtype=np.long)
+    np_y[size // 2 :] = 1
+    np.random.shuffle(np_y)
+
+    sk_fpr, sk_tpr, sk_thresholds = roc_curve(np_y, np_y_pred)
+
+    batch_size = 10
+
+    def update_fn(engine, batch):
+        idx = (engine.state.iteration - 1) * batch_size
+        y_true_batch = np_y[idx : idx + batch_size]
+        y_pred_batch = np_y_pred[idx : idx + batch_size]
+        return idx, torch.from_numpy(y_pred_batch), torch.from_numpy(y_true_batch)
+
+    engine = Engine(update_fn)
+
+    roc_curve_metric = RocCurve(output_transform=lambda x: (x[1], x[2]))
+    roc_curve_metric.attach(engine, "roc_curve")
+
+    data = list(range(size // batch_size))
+    fpr, tpr, thresholds = engine.run(data, max_epochs=1).metrics["roc_curve"]
+
+    assert np.array_equal(fpr, sk_fpr)
+    assert np.array_equal(tpr, sk_tpr)
+    # assert thresholds almost equal, due to numpy->torch->numpy conversion
+    np.testing.assert_array_almost_equal(thresholds, sk_thresholds)
+
+
+</clonepair22>
+
+<clonepair22>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/test_precision_recall_curve.py" startline="31" endline="62" pcid="742"></source>
+def test_integration_precision_recall_curve_with_output_transform():
+    np.random.seed(1)
+    size = 100
+    np_y_pred = np.random.rand(size, 1)
+    np_y = np.zeros((size,), dtype=np.long)
+    np_y[size // 2 :] = 1
+    np.random.shuffle(np_y)
+
+    sk_precision, sk_recall, sk_thresholds = precision_recall_curve(np_y, np_y_pred)
+
+    batch_size = 10
+
+    def update_fn(engine, batch):
+        idx = (engine.state.iteration - 1) * batch_size
+        y_true_batch = np_y[idx : idx + batch_size]
+        y_pred_batch = np_y_pred[idx : idx + batch_size]
+        return idx, torch.from_numpy(y_pred_batch), torch.from_numpy(y_true_batch)
+
+    engine = Engine(update_fn)
+
+    precision_recall_curve_metric = PrecisionRecallCurve(output_transform=lambda x: (x[1], x[2]))
+    precision_recall_curve_metric.attach(engine, "precision_recall_curve")
+
+    data = list(range(size // batch_size))
+    precision, recall, thresholds = engine.run(data, max_epochs=1).metrics["precision_recall_curve"]
+
+    assert np.array_equal(precision, sk_precision)
+    assert np.array_equal(recall, sk_recall)
+    # assert thresholds almost equal, due to numpy->torch->numpy conversion
+    np.testing.assert_array_almost_equal(thresholds, sk_thresholds)
+
+
+</clonepair22>
+<clonepair23>
+<source file="systems/ignite-0.4.3/ignite/metrics/confusion_matrix.py" startline="158" endline="210" pcid="187"></source>
+def IoU(cm: ConfusionMatrix, ignore_index: Optional[int] = None) -> MetricsLambda:
+    r"""Calculates Intersection over Union using :class:`~ignite.metrics.ConfusionMatrix` metric.
+
+    .. math:: \text{J}(A, B) = \frac{ \lvert A \cap B \rvert }{ \lvert A \cup B \rvert }
+
+    Args:
+        cm (ConfusionMatrix): instance of confusion matrix metric
+        ignore_index (int, optional): index to ignore, e.g. background index
+
+    Returns:
+        MetricsLambda
+
+    Examples:
+
+    .. code-block:: python
+
+        train_evaluator = ...
+
+        cm = ConfusionMatrix(num_classes=num_classes)
+        IoU(cm, ignore_index=0).attach(train_evaluator, 'IoU')
+
+        state = train_evaluator.run(train_dataset)
+        # state.metrics['IoU'] -> tensor of shape (num_classes - 1, )
+
+    """
+    if not isinstance(cm, ConfusionMatrix):
+        raise TypeError(f"Argument cm should be instance of ConfusionMatrix, but given {type(cm)}")
+
+    if not (cm.average in (None, "samples")):
+        raise ValueError("ConfusionMatrix should have average attribute either None or 'samples'")
+
+    if ignore_index is not None:
+        if not (isinstance(ignore_index, numbers.Integral) and 0 <= ignore_index < cm.num_classes):
+            raise ValueError(f"ignore_index should be non-negative integer, but given {ignore_index}")
+
+    # Increase floating point precision and pass to CPU
+    cm = cm.type(torch.DoubleTensor)
+    iou = cm.diag() / (cm.sum(dim=1) + cm.sum(dim=0) - cm.diag() + 1e-15)  # type: MetricsLambda
+    if ignore_index is not None:
+        ignore_idx = ignore_index  # type: int  # used due to typing issues with mympy
+
+        def ignore_index_fn(iou_vector: torch.Tensor) -> torch.Tensor:
+            if ignore_idx >= len(iou_vector):
+                raise ValueError(f"ignore_index {ignore_idx} is larger than the length of IoU vector {len(iou_vector)}")
+            indices = list(range(len(iou_vector)))
+            indices.remove(ignore_idx)
+            return iou_vector[indices]
+
+        return MetricsLambda(ignore_index_fn, iou)
+    else:
+        return iou
+
+
+</clonepair23>
+
+<clonepair23>
+<source file="systems/ignite-0.4.3/ignite/metrics/confusion_matrix.py" startline="292" endline="325" pcid="193"></source>
+def DiceCoefficient(cm: ConfusionMatrix, ignore_index: Optional[int] = None) -> MetricsLambda:
+    """Calculates Dice Coefficient for a given :class:`~ignite.metrics.ConfusionMatrix` metric.
+
+    Args:
+        cm (ConfusionMatrix): instance of confusion matrix metric
+        ignore_index (int, optional): index to ignore, e.g. background index
+    """
+
+    if not isinstance(cm, ConfusionMatrix):
+        raise TypeError(f"Argument cm should be instance of ConfusionMatrix, but given {type(cm)}")
+
+    if ignore_index is not None:
+        if not (isinstance(ignore_index, numbers.Integral) and 0 <= ignore_index < cm.num_classes):
+            raise ValueError(f"ignore_index should be non-negative integer, but given {ignore_index}")
+
+    # Increase floating point precision and pass to CPU
+    cm = cm.type(torch.DoubleTensor)
+    dice = 2.0 * cm.diag() / (cm.sum(dim=1) + cm.sum(dim=0) + 1e-15)  # type: MetricsLambda
+
+    if ignore_index is not None:
+        ignore_idx = ignore_index  # type: int  # used due to typing issues with mympy
+
+        def ignore_index_fn(dice_vector: torch.Tensor) -> torch.Tensor:
+            if ignore_idx >= len(dice_vector):
+                raise ValueError(
+                    f"ignore_index {ignore_idx} is larger than the length of Dice vector {len(dice_vector)}"
+                )
+            indices = list(range(len(dice_vector)))
+            indices.remove(ignore_idx)
+            return dice_vector[indices]
+
+        return MetricsLambda(ignore_index_fn, dice)
+    else:
+        return dice
+</clonepair23>
+<clonepair24>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_metric.py" startline="409" endline="438" pcid="1720"></source>
+    def _test(composed_metric, metric_name, compute_true_value_fn):
+
+        metrics = {
+            metric_name: composed_metric,
+        }
+
+        y_pred = torch.rand(15, 10, 5).float()
+        y = torch.randint(0, 5, size=(15, 10)).long()
+
+        def update_fn(engine, batch):
+            y_pred, y = batch
+            return y_pred, y
+
+        validator = Engine(update_fn)
+
+        for name, metric in metrics.items():
+            metric.attach(validator, name)
+
+        def data(y_pred, y):
+            for i in range(y_pred.shape[0]):
+                yield (y_pred[i], y[i])
+
+        d = data(y_pred, y)
+        state = validator.run(d, max_epochs=1, epoch_length=y_pred.shape[0])
+
+        assert set(state.metrics.keys()) == set([metric_name,])
+        np_y_pred = np.argmax(y_pred.numpy(), axis=-1).ravel()
+        np_y = y.numpy().ravel()
+        assert state.metrics[metric_name] == approx(compute_true_value_fn(np_y_pred, np_y))
+
+</clonepair24>
+
+<clonepair24>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_metrics_lambda.py" startline="255" endline="284" pcid="1519"></source>
+    def _test(composed_metric, metric_name, compute_true_value_fn):
+
+        metrics = {
+            metric_name: composed_metric,
+        }
+
+        y_pred = torch.randint(0, 2, size=(15, 10, 4)).float()
+        y = torch.randint(0, 2, size=(15, 10, 4)).long()
+
+        def update_fn(engine, batch):
+            y_pred, y = batch
+            return y_pred, y
+
+        validator = Engine(update_fn)
+
+        for name, metric in metrics.items():
+            metric.attach(validator, name)
+
+        def data(y_pred, y):
+            for i in range(y_pred.shape[0]):
+                yield (y_pred[i], y[i])
+
+        d = data(y_pred, y)
+        state = validator.run(d, max_epochs=1, epoch_length=y_pred.shape[0])
+
+        assert set(state.metrics.keys()) == set([metric_name,])
+        np_y_pred = y_pred.numpy().ravel()
+        np_y = y.numpy().ravel()
+        assert state.metrics[metric_name] == approx(compute_true_value_fn(np_y_pred, np_y))
+
+</clonepair24>
+<clonepair25>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_recall.py" startline="844" endline="871" pcid="1407"></source>
+def _test_distrib_accumulator_device(device):
+    # Binary accuracy on input of shape (N, 1) or (N, )
+
+    def _test(average, metric_device):
+        re = Recall(average=average, device=metric_device)
+        assert re._device == metric_device
+        # Since the shape of the accumulated amount isn't known before the first update
+        # call, the internal variables aren't tensors on the right device yet.
+
+        y_reed = torch.randint(0, 2, size=(10,))
+        y = torch.randint(0, 2, size=(10,)).long()
+        re.update((y_reed, y))
+
+        assert (
+            re._true_positives.device == metric_device
+        ), f"{type(re._true_positives.device)}:{re._true_positives.device} vs {type(metric_device)}:{metric_device}"
+        assert (
+            re._positives.device == metric_device
+        ), f"{type(re._positives.device)}:{re._positives.device} vs {type(metric_device)}:{metric_device}"
+
+    metric_devices = [torch.device("cpu")]
+    if device.type != "xla":
+        metric_devices.append(idist.device())
+    for metric_device in metric_devices:
+        _test(True, metric_device=metric_device)
+        _test(False, metric_device=metric_device)
+
+
+</clonepair25>
+
+<clonepair25>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_precision.py" startline="844" endline="871" pcid="1603"></source>
+def _test_distrib_accumulator_device(device):
+    # Binary accuracy on input of shape (N, 1) or (N, )
+
+    def _test(average, metric_device):
+        pr = Precision(average=average, device=metric_device)
+        assert pr._device == metric_device
+        # Since the shape of the accumulated amount isn't known before the first update
+        # call, the internal variables aren't tensors on the right device yet.
+
+        y_pred = torch.randint(0, 2, size=(10,))
+        y = torch.randint(0, 2, size=(10,)).long()
+        pr.update((y_pred, y))
+
+        assert (
+            pr._true_positives.device == metric_device
+        ), f"{type(pr._true_positives.device)}:{pr._true_positives.device} vs {type(metric_device)}:{metric_device}"
+        assert (
+            pr._positives.device == metric_device
+        ), f"{type(pr._positives.device)}:{pr._positives.device} vs {type(metric_device)}:{metric_device}"
+
+    metric_devices = [torch.device("cpu")]
+    if device.type != "xla":
+        metric_devices.append(idist.device())
+    for metric_device in metric_devices:
+        _test(True, metric_device=metric_device)
+        _test(False, metric_device=metric_device)
+
+
+</clonepair25>
+<clonepair26>
+<source file="systems/ignite-0.4.3/examples/mnist/mnist_save_resume_engine.py" startline="73" endline="93" pcid="1989"></source>
+def log_model_weights(engine, model=None, fp=None, **kwargs):
+    """Helper method to log norms of model weights: print and dump into a file
+    """
+    assert model and fp
+    output = {"total": 0.0}
+    max_counter = 5
+    for name, p in model.named_parameters():
+        name = name.replace(".", "/")
+        n = torch.norm(p)
+        if max_counter > 0:
+            output[name] = n
+        output["total"] += n
+        max_counter -= 1
+    output_items = " - ".join([f"{m}:{v:.4f}" for m, v in output.items()])
+    msg = f"{engine.state.epoch} | {engine.state.iteration}: {output_items}"
+
+    with open(fp, "a") as h:
+        h.write(msg)
+        h.write("\n")
+
+
+</clonepair26>
+
+<clonepair26>
+<source file="systems/ignite-0.4.3/examples/mnist/mnist_save_resume_engine.py" startline="94" endline="117" pcid="1990"></source>
+def log_model_grads(engine, model=None, fp=None, **kwargs):
+    """Helper method to log norms of model gradients: print and dump into a file
+    """
+    assert model and fp
+    output = {"grads/total": 0.0}
+    max_counter = 5
+    for name, p in model.named_parameters():
+        if p.grad is None:
+            continue
+        name = name.replace(".", "/")
+        n = torch.norm(p.grad)
+        if max_counter > 0:
+            output[f"grads/{name}"] = n
+        output["grads/total"] += n
+        max_counter -= 1
+
+    output_items = " - ".join(["{m}:{v:.4f}" for m, v in output.items()])
+    msg = f"{engine.state.epoch} | {engine.state.iteration}: {output_items}"
+
+    with open(fp, "a") as h:
+        h.write(msg)
+        h.write("\n")
+
+
+</clonepair26>
+<clonepair27>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/handlers/test_neptune_logger.py" startline="358" endline="382" pcid="233"></source>
+def test_grads_scalar_handler_frozen_layers(dummy_model_factory, norm_mock):
+    model = dummy_model_factory(with_grads=True, with_frozen_layer=True)
+
+    wrapper = GradsScalarHandler(model, reduction=norm_mock)
+    mock_logger = MagicMock(spec=NeptuneLogger)
+    mock_logger.log_metric = MagicMock()
+    mock_engine = MagicMock()
+    mock_engine.state = State()
+    mock_engine.state.epoch = 5
+    norm_mock.reset_mock()
+
+    wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+    mock_logger.log_metric.assert_has_calls(
+        [call("grads_norm/fc2/weight", y=ANY, x=5), call("grads_norm/fc2/bias", y=ANY, x=5),], any_order=True
+    )
+
+    with pytest.raises(AssertionError):
+        mock_logger.log_metric.assert_has_calls(
+            [call("grads_norm/fc1/weight", y=ANY, x=5), call("grads_norm/fc1/bias", y=ANY, x=5),], any_order=True
+        )
+    assert mock_logger.log_metric.call_count == 2
+    assert norm_mock.call_count == 2
+
+
+</clonepair27>
+
+<clonepair27>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/handlers/test_tensorboard_logger.py" startline="450" endline="475" pcid="354"></source>
+def test_grads_scalar_handler_frozen_layers(dummy_model_factory, norm_mock):
+    model = dummy_model_factory(with_grads=True, with_frozen_layer=True)
+
+    wrapper = GradsScalarHandler(model, reduction=norm_mock)
+    mock_logger = MagicMock(spec=TensorboardLogger)
+    mock_logger.writer = MagicMock()
+
+    mock_engine = MagicMock()
+    mock_engine.state = State()
+    mock_engine.state.epoch = 5
+    norm_mock.reset_mock()
+
+    wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+    mock_logger.writer.add_scalar.assert_has_calls(
+        [call("grads_norm/fc2/weight", ANY, 5), call("grads_norm/fc2/bias", ANY, 5),], any_order=True
+    )
+
+    with pytest.raises(AssertionError):
+        mock_logger.writer.add_scalar.assert_has_calls(
+            [call("grads_norm/fc1/weight", ANY, 5), call("grads_norm/fc1/bias", ANY, 5),], any_order=True
+        )
+    assert mock_logger.writer.add_scalar.call_count == 2
+    assert norm_mock.call_count == 2
+
+
+</clonepair27>
+<clonepair28>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_recall.py" startline="467" endline="487" pcid="1389"></source>
+def test_multilabel_wrong_inputs():
+    re = Recall(average=True, is_multilabel=True)
+
+    with pytest.raises(ValueError):
+        # incompatible shapes
+        re.update((torch.randint(0, 2, size=(10,)), torch.randint(0, 2, size=(10,)).long()))
+
+    with pytest.raises(ValueError):
+        # incompatible y_pred
+        re.update((torch.rand(10, 5), torch.randint(0, 2, size=(10, 5)).long()))
+
+    with pytest.raises(ValueError):
+        # incompatible y
+        re.update((torch.randint(0, 5, size=(10, 5, 6)), torch.rand(10)))
+
+    with pytest.raises(ValueError):
+        # incompatible shapes between two updates
+        re.update((torch.randint(0, 2, size=(20, 5)), torch.randint(0, 2, size=(20, 5)).long()))
+        re.update((torch.randint(0, 2, size=(20, 6)), torch.randint(0, 2, size=(20, 6)).long()))
+
+
+</clonepair28>
+
+<clonepair28>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_precision.py" startline="468" endline="488" pcid="1585"></source>
+def test_multilabel_wrong_inputs():
+    pr = Precision(average=True, is_multilabel=True)
+
+    with pytest.raises(ValueError):
+        # incompatible shapes
+        pr.update((torch.randint(0, 2, size=(10,)), torch.randint(0, 2, size=(10,)).long()))
+
+    with pytest.raises(ValueError):
+        # incompatible y_pred
+        pr.update((torch.rand(10, 5), torch.randint(0, 2, size=(10, 5)).long()))
+
+    with pytest.raises(ValueError):
+        # incompatible y
+        pr.update((torch.randint(0, 5, size=(10, 5, 6)), torch.rand(10)))
+
+    with pytest.raises(ValueError):
+        # incompatible shapes between two updates
+        pr.update((torch.randint(0, 2, size=(20, 5)), torch.randint(0, 2, size=(20, 5)).long()))
+        pr.update((torch.randint(0, 2, size=(20, 6)), torch.randint(0, 2, size=(20, 6)).long()))
+
+
+</clonepair28>
+<clonepair29>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/test_roc_curve.py" startline="11" endline="30" pcid="766"></source>
+def test_roc_curve():
+    size = 100
+    np_y_pred = np.random.rand(size, 1)
+    np_y = np.zeros((size,), dtype=np.long)
+    np_y[size // 2 :] = 1
+    sk_fpr, sk_tpr, sk_thresholds = roc_curve(np_y, np_y_pred)
+
+    roc_curve_metric = RocCurve()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    roc_curve_metric.update((y_pred, y))
+    fpr, tpr, thresholds = roc_curve_metric.compute()
+
+    assert np.array_equal(fpr, sk_fpr)
+    assert np.array_equal(tpr, sk_tpr)
+    # assert thresholds almost equal, due to numpy->torch->numpy conversion
+    np.testing.assert_array_almost_equal(thresholds, sk_thresholds)
+
+
+</clonepair29>
+
+<clonepair29>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/test_precision_recall_curve.py" startline="11" endline="30" pcid="741"></source>
+def test_precision_recall_curve():
+    size = 100
+    np_y_pred = np.random.rand(size, 1)
+    np_y = np.zeros((size,), dtype=np.long)
+    np_y[size // 2 :] = 1
+    sk_precision, sk_recall, sk_thresholds = precision_recall_curve(np_y, np_y_pred)
+
+    precision_recall_curve_metric = PrecisionRecallCurve()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    precision_recall_curve_metric.update((y_pred, y))
+    precision, recall, thresholds = precision_recall_curve_metric.compute()
+
+    assert np.array_equal(precision, sk_precision)
+    assert np.array_equal(recall, sk_recall)
+    # assert thresholds almost equal, due to numpy->torch->numpy conversion
+    np.testing.assert_array_almost_equal(thresholds, sk_thresholds)
+
+
+</clonepair29>
+<clonepair30>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/regression/test_median_relative_absolute_error.py" startline="25" endline="46" pcid="731"></source>
+def test_median_relative_absolute_error():
+
+    # See https://github.com/torch/torch7/pull/182
+    # For even number of elements, PyTorch returns middle element
+    # NumPy returns average of middle elements
+    # Size of dataset will be odd for these tests
+
+    size = 51
+    np_y_pred = np.random.rand(size,)
+    np_y = np.random.rand(size,)
+    np_median_absolute_relative_error = np.median(np.abs(np_y - np_y_pred) / np.abs(np_y - np_y.mean()))
+
+    m = MedianRelativeAbsoluteError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_median_absolute_relative_error == pytest.approx(m.compute())
+
+
+</clonepair30>
+
+<clonepair30>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/regression/test_median_absolute_error.py" startline="25" endline="46" pcid="726"></source>
+def test_median_absolute_error():
+
+    # See https://github.com/torch/torch7/pull/182
+    # For even number of elements, PyTorch returns middle element
+    # NumPy returns average of middle elements
+    # Size of dataset will be odd for these tests
+
+    size = 51
+    np_y_pred = np.random.rand(size,)
+    np_y = np.random.rand(size,)
+    np_median_absolute_error = np.median(np.abs(np_y - np_y_pred))
+
+    m = MedianAbsoluteError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_median_absolute_error == pytest.approx(m.compute())
+
+
+</clonepair30>
+<clonepair31>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/regression/test_median_absolute_error.py" startline="25" endline="46" pcid="726"></source>
+def test_median_absolute_error():
+
+    # See https://github.com/torch/torch7/pull/182
+    # For even number of elements, PyTorch returns middle element
+    # NumPy returns average of middle elements
+    # Size of dataset will be odd for these tests
+
+    size = 51
+    np_y_pred = np.random.rand(size,)
+    np_y = np.random.rand(size,)
+    np_median_absolute_error = np.median(np.abs(np_y - np_y_pred))
+
+    m = MedianAbsoluteError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_median_absolute_error == pytest.approx(m.compute())
+
+
+</clonepair31>
+
+<clonepair31>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/regression/test_median_absolute_percentage_error.py" startline="25" endline="46" pcid="653"></source>
+def test_median_absolute_percentage_error():
+
+    # See https://github.com/torch/torch7/pull/182
+    # For even number of elements, PyTorch returns middle element
+    # NumPy returns average of middle elements
+    # Size of dataset will be odd for these tests
+
+    size = 51
+    np_y_pred = np.random.rand(size,)
+    np_y = np.random.rand(size,)
+    np_median_absolute_percentage_error = 100.0 * np.median(np.abs(np_y - np_y_pred) / np.abs(np_y))
+
+    m = MedianAbsolutePercentageError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_median_absolute_percentage_error == pytest.approx(m.compute())
+
+
+</clonepair31>
+<clonepair32>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/regression/test_r2_score.py" startline="29" endline="44" pcid="695"></source>
+def test_r2_score():
+
+    size = 51
+    np_y_pred = np.random.rand(size,)
+    np_y = np.random.rand(size,)
+
+    m = R2Score()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert r2_score(np_y, np_y_pred) == pytest.approx(m.compute())
+
+
+</clonepair32>
+
+<clonepair32>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/regression/test_median_absolute_error.py" startline="25" endline="46" pcid="726"></source>
+def test_median_absolute_error():
+
+    # See https://github.com/torch/torch7/pull/182
+    # For even number of elements, PyTorch returns middle element
+    # NumPy returns average of middle elements
+    # Size of dataset will be odd for these tests
+
+    size = 51
+    np_y_pred = np.random.rand(size,)
+    np_y = np.random.rand(size,)
+    np_median_absolute_error = np.median(np.abs(np_y - np_y_pred))
+
+    m = MedianAbsoluteError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_median_absolute_error == pytest.approx(m.compute())
+
+
+</clonepair32>
+<clonepair33>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/regression/test_median_relative_absolute_error.py" startline="25" endline="46" pcid="731"></source>
+def test_median_relative_absolute_error():
+
+    # See https://github.com/torch/torch7/pull/182
+    # For even number of elements, PyTorch returns middle element
+    # NumPy returns average of middle elements
+    # Size of dataset will be odd for these tests
+
+    size = 51
+    np_y_pred = np.random.rand(size,)
+    np_y = np.random.rand(size,)
+    np_median_absolute_relative_error = np.median(np.abs(np_y - np_y_pred) / np.abs(np_y - np_y.mean()))
+
+    m = MedianRelativeAbsoluteError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_median_absolute_relative_error == pytest.approx(m.compute())
+
+
+</clonepair33>
+
+<clonepair33>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/regression/test_median_absolute_percentage_error.py" startline="25" endline="46" pcid="653"></source>
+def test_median_absolute_percentage_error():
+
+    # See https://github.com/torch/torch7/pull/182
+    # For even number of elements, PyTorch returns middle element
+    # NumPy returns average of middle elements
+    # Size of dataset will be odd for these tests
+
+    size = 51
+    np_y_pred = np.random.rand(size,)
+    np_y = np.random.rand(size,)
+    np_median_absolute_percentage_error = 100.0 * np.median(np.abs(np_y - np_y_pred) / np.abs(np_y))
+
+    m = MedianAbsolutePercentageError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_median_absolute_percentage_error == pytest.approx(m.compute())
+
+
+</clonepair33>
+<clonepair34>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/regression/test_median_relative_absolute_error.py" startline="25" endline="46" pcid="731"></source>
+def test_median_relative_absolute_error():
+
+    # See https://github.com/torch/torch7/pull/182
+    # For even number of elements, PyTorch returns middle element
+    # NumPy returns average of middle elements
+    # Size of dataset will be odd for these tests
+
+    size = 51
+    np_y_pred = np.random.rand(size,)
+    np_y = np.random.rand(size,)
+    np_median_absolute_relative_error = np.median(np.abs(np_y - np_y_pred) / np.abs(np_y - np_y.mean()))
+
+    m = MedianRelativeAbsoluteError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_median_absolute_relative_error == pytest.approx(m.compute())
+
+
+</clonepair34>
+
+<clonepair34>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/regression/test_r2_score.py" startline="29" endline="44" pcid="695"></source>
+def test_r2_score():
+
+    size = 51
+    np_y_pred = np.random.rand(size,)
+    np_y = np.random.rand(size,)
+
+    m = R2Score()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert r2_score(np_y, np_y_pred) == pytest.approx(m.compute())
+
+
+</clonepair34>
+<clonepair35>
+<source file="systems/ignite-0.4.3/tests/ignite/conftest.py" startline="214" endline="230" pcid="1266"></source>
+def distributed_context_multi_node_gloo(multi_node_conf):
+
+    import os
+
+    assert "MASTER_ADDR" in os.environ
+    assert "MASTER_PORT" in os.environ
+
+    dist_info = {
+        "backend": "gloo",
+        "init_method": "env://",
+        "world_size": multi_node_conf["world_size"],
+        "rank": multi_node_conf["rank"],
+    }
+    yield _create_mnodes_dist_context(dist_info, multi_node_conf)
+    _destroy_mnodes_dist_context()
+
+
+</clonepair35>
+
+<clonepair35>
+<source file="systems/ignite-0.4.3/tests/ignite/conftest.py" startline="232" endline="248" pcid="1267"></source>
+def distributed_context_multi_node_nccl(multi_node_conf):
+
+    import os
+
+    assert "MASTER_ADDR" in os.environ
+    assert "MASTER_PORT" in os.environ
+
+    dist_info = {
+        "backend": "nccl",
+        "init_method": "env://",
+        "world_size": multi_node_conf["world_size"],
+        "rank": multi_node_conf["rank"],
+    }
+    yield _create_mnodes_dist_context(dist_info, multi_node_conf)
+    _destroy_mnodes_dist_context()
+
+
+</clonepair35>
+<clonepair36>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/regression/test_r2_score.py" startline="29" endline="44" pcid="695"></source>
+def test_r2_score():
+
+    size = 51
+    np_y_pred = np.random.rand(size,)
+    np_y = np.random.rand(size,)
+
+    m = R2Score()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert r2_score(np_y, np_y_pred) == pytest.approx(m.compute())
+
+
+</clonepair36>
+
+<clonepair36>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/regression/test_median_absolute_percentage_error.py" startline="25" endline="46" pcid="653"></source>
+def test_median_absolute_percentage_error():
+
+    # See https://github.com/torch/torch7/pull/182
+    # For even number of elements, PyTorch returns middle element
+    # NumPy returns average of middle elements
+    # Size of dataset will be odd for these tests
+
+    size = 51
+    np_y_pred = np.random.rand(size,)
+    np_y = np.random.rand(size,)
+    np_median_absolute_percentage_error = 100.0 * np.median(np.abs(np_y - np_y_pred) / np.abs(np_y))
+
+    m = MedianAbsolutePercentageError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_median_absolute_percentage_error == pytest.approx(m.compute())
+
+
+</clonepair36>
+<clonepair37>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/regression/test_median_relative_absolute_error.py" startline="9" endline="24" pcid="730"></source>
+def test_wrong_input_shapes():
+    m = MedianRelativeAbsoluteError()
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4, 1, 2), torch.rand(4, 1)))
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4, 1), torch.rand(4, 1, 2)))
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4, 1, 2), torch.rand(4,)))
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4,), torch.rand(4, 1, 2)))
+
+
+</clonepair37>
+
+<clonepair37>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/regression/test_median_absolute_error.py" startline="9" endline="24" pcid="725"></source>
+def test_wrong_input_shapes():
+    m = MedianAbsoluteError()
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4, 1, 2), torch.rand(4, 1)))
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4, 1), torch.rand(4, 1, 2)))
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4, 1, 2), torch.rand(4,)))
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4,), torch.rand(4, 1, 2)))
+
+
+</clonepair37>
+<clonepair38>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/regression/test_median_absolute_error.py" startline="9" endline="24" pcid="725"></source>
+def test_wrong_input_shapes():
+    m = MedianAbsoluteError()
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4, 1, 2), torch.rand(4, 1)))
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4, 1), torch.rand(4, 1, 2)))
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4, 1, 2), torch.rand(4,)))
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4,), torch.rand(4, 1, 2)))
+
+
+</clonepair38>
+
+<clonepair38>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/regression/test_median_absolute_percentage_error.py" startline="9" endline="24" pcid="652"></source>
+def test_wrong_input_shapes():
+    m = MedianAbsolutePercentageError()
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4, 1, 2), torch.rand(4, 1)))
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4, 1), torch.rand(4, 1, 2)))
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4, 1, 2), torch.rand(4,)))
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4,), torch.rand(4, 1, 2)))
+
+
+</clonepair38>
+<clonepair39>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/regression/test_median_relative_absolute_error.py" startline="9" endline="24" pcid="730"></source>
+def test_wrong_input_shapes():
+    m = MedianRelativeAbsoluteError()
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4, 1, 2), torch.rand(4, 1)))
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4, 1), torch.rand(4, 1, 2)))
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4, 1, 2), torch.rand(4,)))
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4,), torch.rand(4, 1, 2)))
+
+
+</clonepair39>
+
+<clonepair39>
+<source file="systems/ignite-0.4.3/tests/ignite/contrib/metrics/regression/test_median_absolute_percentage_error.py" startline="9" endline="24" pcid="652"></source>
+def test_wrong_input_shapes():
+    m = MedianAbsolutePercentageError()
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4, 1, 2), torch.rand(4, 1)))
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4, 1), torch.rand(4, 1, 2)))
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4, 1, 2), torch.rand(4,)))
+
+    with pytest.raises(ValueError):
+        m.update((torch.rand(4,), torch.rand(4, 1, 2)))
+
+
+</clonepair39>
+<clonepair40>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_loss.py" startline="20" endline="33" pcid="1326"></source>
+def test_compute():
+    loss = Loss(nll_loss)
+
+    y_pred = torch.tensor([[0.1, 0.4, 0.5], [0.1, 0.7, 0.2]]).log()
+    y = torch.tensor([2, 2]).long()
+    loss.update((y_pred, y))
+    assert_almost_equal(loss.compute(), 1.1512925625)
+
+    y_pred = torch.tensor([[0.1, 0.3, 0.6], [0.6, 0.2, 0.2], [0.2, 0.7, 0.1]]).log()
+    y = torch.tensor([2, 0, 2]).long()
+    loss.update((y_pred, y))
+    assert_almost_equal(loss.compute(), 1.1253643036)  # average
+
+
+</clonepair40>
+
+<clonepair40>
+<source file="systems/ignite-0.4.3/tests/ignite/metrics/test_loss.py" startline="34" endline="47" pcid="1327"></source>
+def test_compute_on_criterion():
+    loss = Loss(nn.NLLLoss())
+
+    y_pred = torch.tensor([[0.1, 0.4, 0.5], [0.1, 0.7, 0.2]]).log()
+    y = torch.tensor([2, 2]).long()
+    loss.update((y_pred, y))
+    assert_almost_equal(loss.compute(), 1.1512925625)
+
+    y_pred = torch.tensor([[0.1, 0.3, 0.6], [0.6, 0.2, 0.2], [0.2, 0.7, 0.1]]).log()
+    y = torch.tensor([2, 0, 2]).long()
+    loss.update((y_pred, y))
+    assert_almost_equal(loss.compute(), 1.1253643036)  # average
+
+
+</clonepair40>

@@ -1,0 +1,196 @@
+<clones>
+<systeminfo processor="nicad6" system="celery-5.2.3" granularity="functions-blind" threshold="0%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="2666" npairs="4"/>
+<runinfo ncompares="12860" cputime="55059"/>
+<classinfo nclasses="4"/>
+
+<class classid="1" nclones="2" nlines="10" similarity="100">
+<source file="systems/celery-5.2.3/t/unit/backends/test_mongodb.py" startline="321" endline="335" pcid="697">
+    @patch('celery.backends.mongodb.MongoBackend._get_connection')
+    def test_get_database_no_existing(self, mock_get_connection):
+        # Should really check for combinations of these two, to be complete.
+        self.backend.user = MONGODB_USER
+        self.backend.password = MONGODB_PASSWORD
+
+        mock_database = Mock()
+        mock_connection = MagicMock(spec=['__getitem__'])
+        mock_connection.__getitem__.return_value = mock_database
+        mock_get_connection.return_value = mock_connection
+
+        database = self.backend.database
+
+        assert database is mock_database
+        assert self.backend.__dict__['database'] is mock_database
+</source>
+<source file="systems/celery-5.2.3/t/unit/backends/test_mongodb.py" startline="337" endline="351" pcid="698">
+    @patch('celery.backends.mongodb.MongoBackend._get_connection')
+    def test_get_database_no_existing_no_auth(self, mock_get_connection):
+        # Should really check for combinations of these two, to be complete.
+        self.backend.user = None
+        self.backend.password = None
+
+        mock_database = Mock()
+        mock_connection = MagicMock(spec=['__getitem__'])
+        mock_connection.__getitem__.return_value = mock_database
+        mock_get_connection.return_value = mock_connection
+
+        database = self.backend.database
+
+        assert database is mock_database
+        assert self.backend.__dict__['database'] is mock_database
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="30" similarity="100">
+<source file="systems/celery-5.2.3/t/unit/backends/test_elasticsearch.py" startline="156" endline="194" pcid="849">
+    def test_index_conflict_without_state(self, datetime_mock):
+        expected_dt = datetime.datetime(2020, 6, 1, 18, 43, 24, 123456, None)
+        datetime_mock.utcnow.return_value = expected_dt
+
+        x = ElasticsearchBackend(app=self.app)
+        x._server = Mock()
+        x._server.index.side_effect = [
+            exceptions.ConflictError(409, "concurrent update", {})
+        ]
+
+        x._server.get.return_value = {
+            'found': True,
+            '_source': {"result": _RESULT_RETRY},
+            '_seq_no': 2,
+            '_primary_term': 1,
+        }
+
+        x._server.update.return_value = {
+            'result': 'updated'
+        }
+
+        x.set(sentinel.task_id, sentinel.result)
+
+        assert x._server.get.call_count == 1
+        x._server.index.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'},
+            params={'op_type': 'create'},
+        )
+        x._server.update.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'doc': {'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'}},
+            params={'if_seq_no': 2, 'if_primary_term': 1}
+        )
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/backends/test_elasticsearch.py" startline="196" endline="239" pcid="850">
+    def test_index_conflict_with_ready_state_on_backend_without_state(self, datetime_mock):
+        """Even if the backend already have a ready state saved (FAILURE in this test case)
+        as we are calling ElasticsearchBackend.set directly, it does not have state,
+        so it cannot protect overriding a ready state by any other state.
+        As a result, server.update will be called no matter what.
+        """
+        expected_dt = datetime.datetime(2020, 6, 1, 18, 43, 24, 123456, None)
+        datetime_mock.utcnow.return_value = expected_dt
+
+        x = ElasticsearchBackend(app=self.app)
+        x._server = Mock()
+        x._server.index.side_effect = [
+            exceptions.ConflictError(409, "concurrent update", {})
+        ]
+
+        x._server.get.return_value = {
+            'found': True,
+            '_source': {"result": _RESULT_FAILURE},
+            '_seq_no': 2,
+            '_primary_term': 1,
+        }
+
+        x._server.update.return_value = {
+            'result': 'updated'
+        }
+
+        x.set(sentinel.task_id, sentinel.result)
+
+        assert x._server.get.call_count == 1
+        x._server.index.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'},
+            params={'op_type': 'create'},
+        )
+        x._server.update.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'doc': {'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'}},
+            params={'if_seq_no': 2, 'if_primary_term': 1}
+        )
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="11" similarity="100">
+<source file="systems/celery-5.2.3/t/unit/security/test_key.py" startline="18" endline="29" pcid="876">
+    def test_invalid_private_key(self):
+        with pytest.raises((SecurityError, TypeError)):
+            PrivateKey(None)
+        with pytest.raises(SecurityError):
+            PrivateKey('')
+        with pytest.raises(SecurityError):
+            PrivateKey('foo')
+        with pytest.raises(SecurityError):
+            PrivateKey(KEY1[:20] + KEY1[21:])
+        with pytest.raises(SecurityError):
+            PrivateKey(CERT1)
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/security/test_certificate.py" startline="21" endline="32" pcid="889">
+    def test_invalid_certificate(self):
+        with pytest.raises((SecurityError, TypeError)):
+            Certificate(None)
+        with pytest.raises(SecurityError):
+            Certificate('')
+        with pytest.raises(SecurityError):
+            Certificate('foo')
+        with pytest.raises(SecurityError):
+            Certificate(CERT1[:20] + CERT1[21:])
+        with pytest.raises(SecurityError):
+            Certificate(KEY1)
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="11" similarity="100">
+<source file="systems/celery-5.2.3/t/unit/worker/test_loops.py" startline="353" endline="364" pcid="1162">
+    def test_poll_err_writable(self):
+        x = X(self.app)
+        writer = Mock(name='writer')
+        x.hub.add_writer(6, writer, 6, 48)
+        x.hub.on_tick.add(x.close_then_error(Mock(), 2))
+        poller = x.hub.poller
+        poller.poll.return_value = [(6, ERR)]
+        with pytest.raises(socket.error):
+            asynloop(*x.args)
+        writer.assert_called_with(6, 48)
+        poller.poll.assert_called()
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/worker/test_loops.py" startline="413" endline="424" pcid="1169">
+    def test_poll_err_readable(self):
+        x = X(self.app)
+        reader = Mock(name='reader')
+        x.hub.add_reader(6, reader, 6, 24)
+        x.hub.on_tick.add(x.close_then_error(Mock(), 2))
+        poller = x.hub.poller
+        poller.poll.return_value = [(6, ERR)]
+        with pytest.raises(socket.error):
+            asynloop(*x.args)
+        reader.assert_called_with(6, 24)
+        poller.poll.assert_called()
+
+</source>
+</class>
+
+</clones>

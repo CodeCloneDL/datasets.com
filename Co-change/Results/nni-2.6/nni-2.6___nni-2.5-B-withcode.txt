@@ -1,0 +1,394 @@
+<clonepair1>
+<source file="systems/nni-2.5/examples/nas/oneshot/proxylessnas/ops.py" startline="69" endline="111" pcid="4238"></source>
+    def __init__(self, in_channels, out_channels,
+                 use_bn=True, act_func='relu', dropout_rate=0, ops_order='weight_bn_act'):
+        super(Base2DLayer, self).__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
+        self.use_bn = use_bn
+        self.act_func = act_func
+        self.dropout_rate = dropout_rate
+        self.ops_order = ops_order
+
+        """ modules """
+        modules = {}
+        # batch norm
+        if self.use_bn:
+            if self.bn_before_weight:
+                modules['bn'] = nn.BatchNorm2d(in_channels)
+            else:
+                modules['bn'] = nn.BatchNorm2d(out_channels)
+        else:
+            modules['bn'] = None
+        # activation
+        modules['act'] = build_activation(self.act_func, self.ops_list[0] != 'act')
+        # dropout
+        if self.dropout_rate > 0:
+            modules['dropout'] = nn.Dropout2d(self.dropout_rate, inplace=True)
+        else:
+            modules['dropout'] = None
+        # weight
+        modules['weight'] = self.weight_op()
+
+        # add modules
+        for op in self.ops_list:
+            if modules[op] is None:
+                continue
+            elif op == 'weight':
+                if modules['dropout'] is not None:
+                    self.add_module('dropout', modules['dropout'])
+                for key in modules['weight']:
+                    self.add_module(key, modules['weight'][key])
+            else:
+                self.add_module(op, modules[op])
+
+</clonepair1>
+
+<clonepair1>
+<source file="systems/nni-2.5/examples/nas/oneshot/proxylessnas/ops.py" startline="183" endline="227" pcid="4248"></source>
+    def __init__(self, in_features, out_features, bias=True,
+                 use_bn=False, act_func=None, dropout_rate=0, ops_order='weight_bn_act'):
+        super(LinearLayer, self).__init__()
+
+        self.in_features = in_features
+        self.out_features = out_features
+        self.bias = bias
+
+        self.use_bn = use_bn
+        self.act_func = act_func
+        self.dropout_rate = dropout_rate
+        self.ops_order = ops_order
+
+        """ modules """
+        modules = {}
+        # batch norm
+        if self.use_bn:
+            if self.bn_before_weight:
+                modules['bn'] = nn.BatchNorm1d(in_features)
+            else:
+                modules['bn'] = nn.BatchNorm1d(out_features)
+        else:
+            modules['bn'] = None
+        # activation
+        modules['act'] = build_activation(self.act_func, self.ops_list[0] != 'act')
+        # dropout
+        if self.dropout_rate > 0:
+            modules['dropout'] = nn.Dropout(self.dropout_rate, inplace=True)
+        else:
+            modules['dropout'] = None
+        # linear
+        modules['weight'] = {'linear': nn.Linear(self.in_features, self.out_features, self.bias)}
+
+        # add modules
+        for op in self.ops_list:
+            if modules[op] is None:
+                continue
+            elif op == 'weight':
+                if modules['dropout'] is not None:
+                    self.add_module('dropout', modules['dropout'])
+                for key in modules['weight']:
+                    self.add_module(key, modules['weight'][key])
+            else:
+                self.add_module(op, modules[op])
+
+</clonepair1>
+<clonepair2>
+<source file="systems/nni-2.5/nni/algorithms/compression/v2/pytorch/pruning/basic_scheduler.py" startline="54" endline="99" pcid="2951"></source>
+    def pruning_one_step_normal(self, task: Task) -> TaskResult:
+        """
+        generate masks -> speed up -> finetune -> evaluate
+        """
+        model, masks, config_list = task.load_data()
+        self.pruner.reset(model, config_list)
+        self.pruner.load_masks(masks)
+
+        # pruning model
+        compact_model, pruner_generated_masks = self.pruner.compress()
+        compact_model_masks = deepcopy(pruner_generated_masks)
+
+        # show the pruning effect
+        self.pruner.show_pruned_weights()
+        self.pruner._unwrap_model()
+
+        # speed up
+        if self.speed_up:
+            ModelSpeedup(compact_model, self.dummy_input, pruner_generated_masks).speedup_model()
+            compact_model_masks = {}
+
+        # finetune
+        if self.finetuner is not None:
+            if self.speed_up:
+                self.finetuner(compact_model)
+            else:
+                self.pruner._wrap_model()
+                self.finetuner(compact_model)
+                self.pruner._unwrap_model()
+
+        # evaluate
+        if self.evaluator is not None:
+            if self.speed_up:
+                score = self.evaluator(compact_model)
+            else:
+                self.pruner._wrap_model()
+                score = self.evaluator(compact_model)
+                self.pruner._unwrap_model()
+        else:
+            score = None
+
+        # clear model references
+        self.pruner.clear_model_references()
+
+        return TaskResult(task.task_id, compact_model, compact_model_masks, pruner_generated_masks, score)
+
+</clonepair2>
+
+<clonepair2>
+<source file="systems/nni-2.5/nni/algorithms/compression/v2/pytorch/pruning/basic_scheduler.py" startline="100" endline="144" pcid="2952"></source>
+    def pruning_one_step_reset_weight(self, task: Task) -> TaskResult:
+        """
+        finetune -> generate masks -> reset weight -> speed up -> evaluate
+        """
+        model, masks, config_list = task.load_data()
+        checkpoint = deepcopy(model.state_dict())
+        self.pruner.reset(model, config_list)
+        self.pruner.load_masks(masks)
+
+        # finetune
+        if self.finetuner is not None:
+            self.finetuner(model)
+
+        # pruning model
+        compact_model, pruner_generated_masks = self.pruner.compress()
+        compact_model_masks = deepcopy(pruner_generated_masks)
+
+        # show the pruning effect
+        self.pruner.show_pruned_weights()
+        self.pruner._unwrap_model()
+
+        # reset model weight
+        compact_model.load_state_dict(checkpoint)
+
+        # speed up
+        if self.speed_up:
+            ModelSpeedup(compact_model, self.dummy_input, pruner_generated_masks).speedup_model()
+            compact_model_masks = {}
+
+        # evaluate
+        if self.evaluator is not None:
+            if self.speed_up:
+                score = self.evaluator(compact_model)
+            else:
+                self.pruner._wrap_model()
+                score = self.evaluator(compact_model)
+                self.pruner._unwrap_model()
+        else:
+            score = None
+
+        # clear model references
+        self.pruner.clear_model_references()
+
+        return TaskResult(task.task_id, compact_model, compact_model_masks, pruner_generated_masks, score)
+
+</clonepair2>
+<clonepair3>
+<source file="systems/nni-2.5/examples/trials/kaggle-tgs-salt/models.py" startline="183" endline="209" pcid="3778"></source>
+    def forward(self, x):
+        x = self.encoder1(x) #; print('x:', x.size())
+        e2 = self.encoder2(x) #; print('e2:', e2.size())
+        e3 = self.encoder3(e2) #; print('e3:', e3.size())
+        e4 = self.encoder4(e3) #; print('e4:', e4.size())
+        e5 = self.encoder5(e4) #; print('e5:', e5.size())
+
+        center = self.center(e5) #; print('center:', center.size())
+
+        d5 = self.decoder5(center, e5) #; print('d5:', d5.size())
+        d4 = self.decoder4(d5, e4) #; print('d4:', d4.size())
+        d3 = self.decoder3(d4, e3) #; print('d3:', d3.size())
+        d2 = self.decoder2(d3, e2) #; print('d2:', d2.size())
+        d1 = self.decoder1(d2) #; print('d1:', d1.size())
+
+        f = torch.cat([
+            d1,
+            F.upsample(d2, scale_factor=2, mode='bilinear', align_corners=False),
+            F.upsample(d3, scale_factor=4, mode='bilinear', align_corners=False),
+            F.upsample(d4, scale_factor=8, mode='bilinear', align_corners=False),
+            F.upsample(d5, scale_factor=16, mode='bilinear', align_corners=False),
+        ], 1)
+
+        f = F.dropout2d(f, p=self.dropout_2d)
+
+        return self.logit(f), None
+
+</clonepair3>
+
+<clonepair3>
+<source file="systems/nni-2.5/examples/trials/kaggle-tgs-salt/models.py" startline="303" endline="329" pcid="3784"></source>
+    def forward(self, x):
+        x = self.encoder1(x) #; print('x:', x.size())
+        e2 = self.encoder2(x) #; print('e2:', e2.size())
+        e3 = self.encoder3(e2) #; print('e3:', e3.size())
+        e4 = self.encoder4(e3) #; print('e4:', e4.size())
+        e5 = self.encoder5(e4) #; print('e5:', e5.size())
+
+        center = self.center(e5) #; print('center:', center.size())
+
+        d5 = self.decoder5(center, e5) #; print('d5:', d5.size())
+        d4 = self.decoder4(d5, e4) #; print('d4:', d4.size())
+        d3 = self.decoder3(d4, e3) #; print('d3:', d3.size())
+        d2 = self.decoder2(d3, e2) #; print('d2:', d2.size())
+        d1 = self.decoder1(d2) #; print('d1:', d1.size())
+
+        f = torch.cat([
+            d1,
+            F.interpolate(d2, scale_factor=2, mode='bilinear', align_corners=False),
+            F.interpolate(d3, scale_factor=4, mode='bilinear', align_corners=False),
+            F.interpolate(d4, scale_factor=8, mode='bilinear', align_corners=False),
+            F.interpolate(d5, scale_factor=16, mode='bilinear', align_corners=False),
+        ], 1)
+
+        f = F.dropout2d(f, p=self.dropout_2d)
+
+        return self.logit(f), None
+
+</clonepair3>
+<clonepair4>
+<source file="systems/nni-2.5/nni/algorithms/compression/v2/pytorch/pruning/iterative_pruner.py" startline="101" endline="114" pcid="2922"></source>
+    def __init__(self, model: Module, config_list: List[Dict], pruning_algorithm: str,
+                 total_iteration: int, log_dir: str = '.', keep_intermediate_result: bool = False,
+                 finetuner: Optional[Callable[[Module], None]] = None, speed_up: bool = False, dummy_input: Optional[Tensor] = None,
+                 evaluator: Optional[Callable[[Module], float]] = None, pruning_params: dict = {}):
+        task_generator = LinearTaskGenerator(total_iteration=total_iteration,
+                                             origin_model=model,
+                                             origin_config_list=config_list,
+                                             log_dir=log_dir,
+                                             keep_intermediate_result=keep_intermediate_result)
+        pruner = PRUNER_DICT[pruning_algorithm](None, None, **pruning_params)
+        super().__init__(pruner, task_generator, finetuner=finetuner, speed_up=speed_up, dummy_input=dummy_input,
+                         evaluator=evaluator, reset_weight=False)
+
+
+</clonepair4>
+
+<clonepair4>
+<source file="systems/nni-2.5/nni/algorithms/compression/v2/pytorch/pruning/iterative_pruner.py" startline="193" endline="207" pcid="2924"></source>
+    def __init__(self, model: Module, config_list: List[Dict], pruning_algorithm: str,
+                 total_iteration: int, log_dir: str = '.', keep_intermediate_result: bool = False,
+                 finetuner: Optional[Callable[[Module], None]] = None, speed_up: bool = False, dummy_input: Optional[Tensor] = None,
+                 evaluator: Optional[Callable[[Module], float]] = None, reset_weight: bool = True,
+                 pruning_params: dict = {}):
+        task_generator = LotteryTicketTaskGenerator(total_iteration=total_iteration,
+                                                    origin_model=model,
+                                                    origin_config_list=config_list,
+                                                    log_dir=log_dir,
+                                                    keep_intermediate_result=keep_intermediate_result)
+        pruner = PRUNER_DICT[pruning_algorithm](None, None, **pruning_params)
+        super().__init__(pruner, task_generator, finetuner=finetuner, speed_up=speed_up, dummy_input=dummy_input,
+                         evaluator=evaluator, reset_weight=reset_weight)
+
+
+</clonepair4>
+<clonepair5>
+<source file="systems/nni-2.5/nni/algorithms/compression/v2/pytorch/pruning/iterative_pruner.py" startline="146" endline="159" pcid="2923"></source>
+    def __init__(self, model: Module, config_list: List[Dict], pruning_algorithm: str,
+                 total_iteration: int, log_dir: str = '.', keep_intermediate_result: bool = False,
+                 finetuner: Optional[Callable[[Module], None]] = None, speed_up: bool = False, dummy_input: Optional[Tensor] = None,
+                 evaluator: Optional[Callable[[Module], float]] = None, pruning_params: dict = {}):
+        task_generator = AGPTaskGenerator(total_iteration=total_iteration,
+                                          origin_model=model,
+                                          origin_config_list=config_list,
+                                          log_dir=log_dir,
+                                          keep_intermediate_result=keep_intermediate_result)
+        pruner = PRUNER_DICT[pruning_algorithm](None, None, **pruning_params)
+        super().__init__(pruner, task_generator, finetuner=finetuner, speed_up=speed_up, dummy_input=dummy_input,
+                         evaluator=evaluator, reset_weight=False)
+
+
+</clonepair5>
+
+<clonepair5>
+<source file="systems/nni-2.5/nni/algorithms/compression/v2/pytorch/pruning/iterative_pruner.py" startline="193" endline="207" pcid="2924"></source>
+    def __init__(self, model: Module, config_list: List[Dict], pruning_algorithm: str,
+                 total_iteration: int, log_dir: str = '.', keep_intermediate_result: bool = False,
+                 finetuner: Optional[Callable[[Module], None]] = None, speed_up: bool = False, dummy_input: Optional[Tensor] = None,
+                 evaluator: Optional[Callable[[Module], float]] = None, reset_weight: bool = True,
+                 pruning_params: dict = {}):
+        task_generator = LotteryTicketTaskGenerator(total_iteration=total_iteration,
+                                                    origin_model=model,
+                                                    origin_config_list=config_list,
+                                                    log_dir=log_dir,
+                                                    keep_intermediate_result=keep_intermediate_result)
+        pruner = PRUNER_DICT[pruning_algorithm](None, None, **pruning_params)
+        super().__init__(pruner, task_generator, finetuner=finetuner, speed_up=speed_up, dummy_input=dummy_input,
+                         evaluator=evaluator, reset_weight=reset_weight)
+
+
+</clonepair5>
+<clonepair6>
+<source file="systems/nni-2.5/nni/algorithms/compression/v2/pytorch/pruning/iterative_pruner.py" startline="101" endline="114" pcid="2922"></source>
+    def __init__(self, model: Module, config_list: List[Dict], pruning_algorithm: str,
+                 total_iteration: int, log_dir: str = '.', keep_intermediate_result: bool = False,
+                 finetuner: Optional[Callable[[Module], None]] = None, speed_up: bool = False, dummy_input: Optional[Tensor] = None,
+                 evaluator: Optional[Callable[[Module], float]] = None, pruning_params: dict = {}):
+        task_generator = LinearTaskGenerator(total_iteration=total_iteration,
+                                             origin_model=model,
+                                             origin_config_list=config_list,
+                                             log_dir=log_dir,
+                                             keep_intermediate_result=keep_intermediate_result)
+        pruner = PRUNER_DICT[pruning_algorithm](None, None, **pruning_params)
+        super().__init__(pruner, task_generator, finetuner=finetuner, speed_up=speed_up, dummy_input=dummy_input,
+                         evaluator=evaluator, reset_weight=False)
+
+
+</clonepair6>
+
+<clonepair6>
+<source file="systems/nni-2.5/nni/algorithms/compression/v2/pytorch/pruning/iterative_pruner.py" startline="146" endline="159" pcid="2923"></source>
+    def __init__(self, model: Module, config_list: List[Dict], pruning_algorithm: str,
+                 total_iteration: int, log_dir: str = '.', keep_intermediate_result: bool = False,
+                 finetuner: Optional[Callable[[Module], None]] = None, speed_up: bool = False, dummy_input: Optional[Tensor] = None,
+                 evaluator: Optional[Callable[[Module], float]] = None, pruning_params: dict = {}):
+        task_generator = AGPTaskGenerator(total_iteration=total_iteration,
+                                          origin_model=model,
+                                          origin_config_list=config_list,
+                                          log_dir=log_dir,
+                                          keep_intermediate_result=keep_intermediate_result)
+        pruner = PRUNER_DICT[pruning_algorithm](None, None, **pruning_params)
+        super().__init__(pruner, task_generator, finetuner=finetuner, speed_up=speed_up, dummy_input=dummy_input,
+                         evaluator=evaluator, reset_weight=False)
+
+
+</clonepair6>
+<clonepair7>
+<source file="systems/nni-2.5/test/retiarii_test/cgo_mnasnet/base_mnasnet.py" startline="221" endline="233" pcid="1221"></source>
+    def __init__(self, kernel_size, in_ch, out_ch, skip, exp_ratio, stride):
+        super().__init__()
+        self.kernel_size = kernel_size
+        self.in_ch = in_ch
+        self.out_ch = out_ch
+        self.skip = skip
+        self.exp_ratio = exp_ratio
+        self.stride = stride
+
+        self.conv = nn.Conv2d(in_ch, out_ch, kernel_size, padding=kernel_size // 2, stride=stride, bias=False)
+        self.relu = nn.ReLU(inplace=True)
+        self.bn = nn.BatchNorm2d(out_ch, momentum=BN_MOMENTUM)
+
+</clonepair7>
+
+<clonepair7>
+<source file="systems/nni-2.5/examples/nas/multi-trial/mnasnet/base_mnasnet.py" startline="221" endline="233" pcid="4159"></source>
+    def __init__(self, kernel_size, in_ch, out_ch, skip, exp_ratio, stride):
+        super().__init__()
+        self.kernel_size = kernel_size
+        self.in_ch = in_ch
+        self.out_ch = out_ch
+        self.skip = skip
+        self.exp_ratio = exp_ratio
+        self.stride = stride
+
+        self.conv = nn.Conv2d(in_ch, out_ch, kernel_size, padding=kernel_size // 2, stride=stride, bias=False)
+        self.relu = nn.ReLU(inplace=True)
+        self.bn = nn.BatchNorm2d(out_ch, momentum=BN_MOMENTUM)
+
+</clonepair7>

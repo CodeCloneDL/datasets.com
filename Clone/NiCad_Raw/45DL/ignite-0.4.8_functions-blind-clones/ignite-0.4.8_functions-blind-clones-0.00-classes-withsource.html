@@ -1,0 +1,4694 @@
+<html>
+<head>
+    <title>NiCad6 Clone Report</title>
+    <style type="text/css">
+        body {font-family:sans-serif;}
+        table {background-color:white; border:0px; padding:0px; border-spacing:4px; width:auto; margin-left:30px; margin-right:auto;}
+        td {background-color:rgba(192,212,238,0.8); border:0px; padding:8px; width:auto; vertical-align:top; border-radius:8px}
+        pre {background-color:white; padding:4px;}
+        a {color:darkblue;}
+    </style>
+</head>
+<body>
+<h2>NiCad6 Clone Report</h2>
+<table>
+<tr style="font-size:14pt">
+<td><b>System:</b> &nbsp; ignite-0.4.8</td>
+<td><b>Clone pairs:</b> &nbsp; 82</td>
+<td><b>Clone classes:</b> &nbsp; 47</td>
+</tr>
+<tr style="font-size:12pt">
+<td style="background-color:white">Clone type: &nbsp; 2</td>
+<td style="background-color:white">Granularity: &nbsp; functions-blind</td>
+<td style="background-color:white">Max diff threshold: &nbsp; 0%</td>
+<td style="background-color:white">Clone size: &nbsp; 10 - 2500 lines</td>
+<td style="background-color:white">Total functions-blind: &nbsp; 2632</td>
+</tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 1:</b> &nbsp; 2 fragments, nominal size 38 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag140')" href="javascript:;">
+ignite-0.4.8/ignite/metrics/recall.py: 174-220
+</a>
+<div class="mid" id="frag140" style="display:none"><pre>
+    def update(self, output: Sequence[torch.Tensor]) -&gt; None:
+        self._check_shape(output)
+        self._check_type(output)
+        y_pred, y = output[0].detach(), output[1].detach()
+
+        if self._type == "binary":
+            y_pred = y_pred.view(-1)
+            y = y.view(-1)
+        elif self._type == "multiclass":
+            num_classes = y_pred.size(1)
+            if y.max() + 1 &gt; num_classes:
+                raise ValueError(
+                    f"y_pred contains less classes than y. Number of predicted classes is {num_classes}"
+                    f" and element in y has invalid class = {y.max().item() + 1}."
+                )
+            y = to_onehot(y.view(-1), num_classes=num_classes)
+            indices = torch.argmax(y_pred, dim=1).view(-1)
+            y_pred = to_onehot(indices, num_classes=num_classes)
+        elif self._type == "multilabel":
+            # if y, y_pred shape is (N, C, ...) -&gt; (C, N x ...)
+            num_classes = y_pred.size(1)
+            y_pred = torch.transpose(y_pred, 1, 0).reshape(num_classes, -1)
+            y = torch.transpose(y, 1, 0).reshape(num_classes, -1)
+
+        # Convert from int cuda/cpu to double on self._device
+        y_pred = y_pred.to(dtype=torch.float64, device=self._device)
+        y = y.to(dtype=torch.float64, device=self._device)
+        correct = y * y_pred
+        actual_positives = y.sum(dim=0)
+
+        if correct.sum() == 0:
+            true_positives = torch.zeros_like(actual_positives)
+        else:
+            true_positives = correct.sum(dim=0)
+
+        if self._type == "multilabel":
+            if not self._average:
+                self._true_positives = torch.cat([self._true_positives, true_positives], dim=0)  # type: torch.Tensor
+                self._positives = torch.cat([self._positives, actual_positives], dim=0)  # type: torch.Tensor
+            else:
+                self._true_positives += torch.sum(true_positives / (actual_positives + self.eps))
+                self._positives += len(actual_positives)
+        else:
+            self._true_positives += true_positives
+            self._positives += actual_positives
+
+        self._updated = True
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag228')" href="javascript:;">
+ignite-0.4.8/ignite/metrics/precision.py: 229-275
+</a>
+<div class="mid" id="frag228" style="display:none"><pre>
+    def update(self, output: Sequence[torch.Tensor]) -&gt; None:
+        self._check_shape(output)
+        self._check_type(output)
+        y_pred, y = output[0].detach(), output[1].detach()
+
+        if self._type == "binary":
+            y_pred = y_pred.view(-1)
+            y = y.view(-1)
+        elif self._type == "multiclass":
+            num_classes = y_pred.size(1)
+            if y.max() + 1 &gt; num_classes:
+                raise ValueError(
+                    f"y_pred contains less classes than y. Number of predicted classes is {num_classes}"
+                    f" and element in y has invalid class = {y.max().item() + 1}."
+                )
+            y = to_onehot(y.view(-1), num_classes=num_classes)
+            indices = torch.argmax(y_pred, dim=1).view(-1)
+            y_pred = to_onehot(indices, num_classes=num_classes)
+        elif self._type == "multilabel":
+            # if y, y_pred shape is (N, C, ...) -&gt; (C, N x ...)
+            num_classes = y_pred.size(1)
+            y_pred = torch.transpose(y_pred, 1, 0).reshape(num_classes, -1)
+            y = torch.transpose(y, 1, 0).reshape(num_classes, -1)
+
+        # Convert from int cuda/cpu to double on self._device
+        y_pred = y_pred.to(dtype=torch.float64, device=self._device)
+        y = y.to(dtype=torch.float64, device=self._device)
+        correct = y * y_pred
+        all_positives = y_pred.sum(dim=0)
+
+        if correct.sum() == 0:
+            true_positives = torch.zeros_like(all_positives)
+        else:
+            true_positives = correct.sum(dim=0)
+
+        if self._type == "multilabel":
+            if not self._average:
+                self._true_positives = torch.cat([self._true_positives, true_positives], dim=0)  # type: torch.Tensor
+                self._positives = torch.cat([self._positives, all_positives], dim=0)  # type: torch.Tensor
+            else:
+                self._true_positives += torch.sum(true_positives / (all_positives + self.eps))
+                self._positives += len(all_positives)
+        else:
+            self._true_positives += true_positives
+            self._positives += all_positives
+
+        self._updated = True
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 2:</b> &nbsp; 4 fragments, nominal size 13 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag256')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/handlers/test_neptune_logger.py: 277-294
+</a>
+<div class="mid" id="frag256" style="display:none"><pre>
+def test_weights_scalar_handler_wrong_setup():
+    with pytest.raises(TypeError, match="Argument model should be of type torch.nn.Module"):
+        WeightsScalarHandler(None)
+
+    model = MagicMock(spec=torch.nn.Module)
+    with pytest.raises(TypeError, match="Argument reduction should be callable"):
+        WeightsScalarHandler(model, reduction=123)
+
+    with pytest.raises(TypeError, match="Output of the reduction function should be a scalar"):
+        WeightsScalarHandler(model, reduction=lambda x: x)
+
+    wrapper = WeightsScalarHandler(model)
+    mock_logger = MagicMock()
+    mock_engine = MagicMock()
+    with pytest.raises(TypeError, match="Handler WeightsScalarHandler works only with NeptuneLogger"):
+        wrapper(mock_engine, mock_logger, Events.ITERATION_STARTED)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag377')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/handlers/test_tensorboard_logger.py: 258-276
+</a>
+<div class="mid" id="frag377" style="display:none"><pre>
+def test_weights_scalar_handler_wrong_setup():
+
+    with pytest.raises(TypeError, match="Argument model should be of type torch.nn.Module"):
+        WeightsScalarHandler(None)
+
+    model = MagicMock(spec=torch.nn.Module)
+    with pytest.raises(TypeError, match="Argument reduction should be callable"):
+        WeightsScalarHandler(model, reduction=123)
+
+    with pytest.raises(TypeError, match="Output of the reduction function should be a scalar"):
+        WeightsScalarHandler(model, reduction=lambda x: x)
+
+    wrapper = WeightsScalarHandler(model)
+    mock_logger = MagicMock()
+    mock_engine = MagicMock()
+    with pytest.raises(RuntimeError, match="Handler 'WeightsScalarHandler' works only with TensorboardLogger"):
+        wrapper(mock_engine, mock_logger, Events.ITERATION_STARTED)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag414')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/handlers/test_visdom_logger.py: 607-625
+</a>
+<div class="mid" id="frag414" style="display:none"><pre>
+def test_weights_scalar_handler_wrong_setup():
+
+    with pytest.raises(TypeError, match="Argument model should be of type torch.nn.Module"):
+        WeightsScalarHandler(None)
+
+    model = MagicMock(spec=torch.nn.Module)
+    with pytest.raises(TypeError, match="Argument reduction should be callable"):
+        WeightsScalarHandler(model, reduction=123)
+
+    with pytest.raises(TypeError, match="Output of the reduction function should be a scalar"):
+        WeightsScalarHandler(model, reduction=lambda x: x)
+
+    wrapper = WeightsScalarHandler(model)
+    mock_logger = MagicMock()
+    mock_engine = MagicMock()
+    with pytest.raises(RuntimeError, match="Handler 'WeightsScalarHandler' works only with VisdomLogger"):
+        wrapper(mock_engine, mock_logger, Events.ITERATION_STARTED)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag332')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/handlers/test_clearml_logger.py: 332-350
+</a>
+<div class="mid" id="frag332" style="display:none"><pre>
+def test_weights_scalar_handler_wrong_setup():
+
+    with pytest.raises(TypeError, match="Argument model should be of type torch.nn.Module"):
+        WeightsScalarHandler(None)
+
+    model = MagicMock(spec=torch.nn.Module)
+    with pytest.raises(TypeError, match="Argument reduction should be callable"):
+        WeightsScalarHandler(model, reduction=123)
+
+    with pytest.raises(TypeError, match="Output of the reduction function should be a scalar"):
+        WeightsScalarHandler(model, reduction=lambda x: x)
+
+    wrapper = WeightsScalarHandler(model)
+    mock_logger = MagicMock()
+    mock_engine = MagicMock()
+    with pytest.raises(RuntimeError, match="Handler WeightsScalarHandler works only with ClearMLLogger"):
+        wrapper(mock_engine, mock_logger, Events.ITERATION_STARTED)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 3:</b> &nbsp; 4 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag260')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/handlers/test_neptune_logger.py: 352-366
+</a>
+<div class="mid" id="frag260" style="display:none"><pre>
+def test_grads_scalar_handler_wrong_setup():
+    with pytest.raises(TypeError, match="Argument model should be of type torch.nn.Module"):
+        GradsScalarHandler(None)
+
+    model = MagicMock(spec=torch.nn.Module)
+    with pytest.raises(TypeError, match="Argument reduction should be callable"):
+        GradsScalarHandler(model, reduction=123)
+
+    wrapper = GradsScalarHandler(model)
+    mock_logger = MagicMock()
+    mock_engine = MagicMock()
+    with pytest.raises(TypeError, match="Handler GradsScalarHandler works only with NeptuneLogger"):
+        wrapper(mock_engine, mock_logger, Events.ITERATION_STARTED)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag385')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/handlers/test_tensorboard_logger.py: 416-431
+</a>
+<div class="mid" id="frag385" style="display:none"><pre>
+def test_grads_scalar_handler_wrong_setup():
+
+    with pytest.raises(TypeError, match="Argument model should be of type torch.nn.Module"):
+        GradsScalarHandler(None)
+
+    model = MagicMock(spec=torch.nn.Module)
+    with pytest.raises(TypeError, match="Argument reduction should be callable"):
+        GradsScalarHandler(model, reduction=123)
+
+    wrapper = GradsScalarHandler(model)
+    mock_logger = MagicMock()
+    mock_engine = MagicMock()
+    with pytest.raises(RuntimeError, match="Handler 'GradsScalarHandler' works only with TensorboardLogger"):
+        wrapper(mock_engine, mock_logger, Events.ITERATION_STARTED)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag340')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/handlers/test_clearml_logger.py: 497-512
+</a>
+<div class="mid" id="frag340" style="display:none"><pre>
+def test_grads_scalar_handler_wrong_setup():
+
+    with pytest.raises(TypeError, match="Argument model should be of type torch.nn.Module"):
+        GradsScalarHandler(None)
+
+    model = MagicMock(spec=torch.nn.Module)
+    with pytest.raises(TypeError, match="Argument reduction should be callable"):
+        GradsScalarHandler(model, reduction=123)
+
+    wrapper = GradsScalarHandler(model)
+    mock_logger = MagicMock()
+    mock_engine = MagicMock()
+    with pytest.raises(RuntimeError, match="Handler GradsScalarHandler works only with ClearMLLogger"):
+        wrapper(mock_engine, mock_logger, Events.ITERATION_STARTED)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag421')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/handlers/test_visdom_logger.py: 772-787
+</a>
+<div class="mid" id="frag421" style="display:none"><pre>
+def test_grads_scalar_handler_wrong_setup():
+
+    with pytest.raises(TypeError, match="Argument model should be of type torch.nn.Module"):
+        GradsScalarHandler(None)
+
+    model = MagicMock(spec=torch.nn.Module)
+    with pytest.raises(TypeError, match="Argument reduction should be callable"):
+        GradsScalarHandler(model, reduction=123)
+
+    wrapper = GradsScalarHandler(model)
+    mock_logger = MagicMock()
+    mock_engine = MagicMock()
+    with pytest.raises(RuntimeError, match="Handler 'GradsScalarHandler' works only with VisdomLogger"):
+        wrapper(mock_engine, mock_logger, Events.ITERATION_STARTED)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 4:</b> &nbsp; 2 fragments, nominal size 13 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag274')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/handlers/test_neptune_logger.py: 536-552
+</a>
+<div class="mid" id="frag274" style="display:none"><pre>
+def no_site_packages():
+
+    neptune_client_modules = {}
+    for k in sys.modules:
+        if "neptune" in k:
+            neptune_client_modules[k] = sys.modules[k]
+    for k in neptune_client_modules:
+        del sys.modules[k]
+
+    prev_path = list(sys.path)
+    sys.path = [p for p in sys.path if "site-packages" not in p]
+    yield "no_site_packages"
+    sys.path = prev_path
+    for k in neptune_client_modules:
+        sys.modules[k] = neptune_client_modules[k]
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag495')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/handlers/test_mlflow_logger.py: 355-371
+</a>
+<div class="mid" id="frag495" style="display:none"><pre>
+def no_site_packages():
+
+    mlflow_client_modules = {}
+    for k in sys.modules:
+        if "mlflow" in k:
+            mlflow_client_modules[k] = sys.modules[k]
+    for k in mlflow_client_modules:
+        del sys.modules[k]
+
+    prev_path = list(sys.path)
+    sys.path = [p for p in sys.path if "site-packages" not in p]
+    yield "no_site_packages"
+    sys.path = prev_path
+    for k in mlflow_client_modules:
+        sys.modules[k] = mlflow_client_modules[k]
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 5:</b> &nbsp; 2 fragments, nominal size 16 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag281')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/handlers/test_tqdm_logger.py: 43-64
+</a>
+<div class="mid" id="frag281" style="display:none"><pre>
+def test_pbar(capsys):
+
+    n_epochs = 2
+    loader = [1, 2]
+    engine = Engine(update_fn)
+
+    pbar = ProgressBar()
+    pbar.attach(engine, ["a"])
+
+    engine.run(loader, max_epochs=n_epochs)
+
+    captured = capsys.readouterr()
+    err = captured.err.split("\r")
+    err = list(map(lambda x: x.strip(), err))
+    err = list(filter(None, err))
+    if get_tqdm_version() &lt; LooseVersion("4.49.0"):
+        expected = "Epoch [2/2]: [1/2]  50%|█████     , a=1 [00:00&lt;00:00]"
+    else:
+        expected = "Epoch [2/2]: [1/2]  50%|█████     , a=1 [00:00&lt;?]"
+    assert err[-1] == expected
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag307')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/handlers/test_tqdm_logger.py: 433-453
+</a>
+<div class="mid" id="frag307" style="display:none"><pre>
+def test_pbar_with_max_epochs_set_to_one(capsys):
+    n_epochs = 1
+    loader = [1, 2]
+    engine = Engine(update_fn)
+
+    pbar = ProgressBar()
+    pbar.attach(engine, ["a"])
+
+    engine.run(loader, max_epochs=n_epochs)
+
+    captured = capsys.readouterr()
+    err = captured.err.split("\r")
+    err = list(map(lambda x: x.strip(), err))
+    err = list(filter(None, err))
+    if get_tqdm_version() &lt; LooseVersion("4.49.0"):
+        expected = "Iteration: [1/2]  50%|█████     , a=1 [00:00&lt;00:00]"
+    else:
+        expected = "Iteration: [1/2]  50%|█████     , a=1 [00:00&lt;?]"
+    assert err[-1] == expected
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 6:</b> &nbsp; 4 fragments, nominal size 12 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag326')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/handlers/test_clearml_logger.py: 232-248
+</a>
+<div class="mid" id="frag326" style="display:none"><pre>
+def test_output_handler_with_wrong_global_step_transform_output():
+    def global_step_transform(*args, **kwargs):
+        return "a"
+
+    wrapper = OutputHandler("tag", output_transform=lambda x: {"loss": x}, global_step_transform=global_step_transform)
+    mock_logger = MagicMock(spec=ClearMLLogger)
+    mock_logger.clearml_logger = MagicMock()
+
+    mock_engine = MagicMock()
+    mock_engine.state = State()
+    mock_engine.state.epoch = 5
+    mock_engine.state.output = 12345
+
+    with pytest.raises(TypeError, match="global_step must be int"):
+        wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag372')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/handlers/test_tensorboard_logger.py: 186-202
+</a>
+<div class="mid" id="frag372" style="display:none"><pre>
+def test_output_handler_with_wrong_global_step_transform_output():
+    def global_step_transform(*args, **kwargs):
+        return "a"
+
+    wrapper = OutputHandler("tag", output_transform=lambda x: {"loss": x}, global_step_transform=global_step_transform)
+    mock_logger = MagicMock(spec=TensorboardLogger)
+    mock_logger.writer = MagicMock()
+
+    mock_engine = MagicMock()
+    mock_engine.state = State()
+    mock_engine.state.epoch = 5
+    mock_engine.state.output = 12345
+
+    with pytest.raises(TypeError, match="global_step must be int"):
+        wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag448')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/handlers/test_polyaxon_logger.py: 129-145
+</a>
+<div class="mid" id="frag448" style="display:none"><pre>
+def test_output_handler_with_wrong_global_step_transform_output():
+    def global_step_transform(*args, **kwargs):
+        return "a"
+
+    wrapper = OutputHandler("tag", output_transform=lambda x: {"loss": x}, global_step_transform=global_step_transform)
+    mock_logger = MagicMock(spec=PolyaxonLogger)
+    mock_logger.log_metrics = MagicMock()
+
+    mock_engine = MagicMock()
+    mock_engine.state = State()
+    mock_engine.state.epoch = 5
+    mock_engine.state.output = 12345
+
+    with pytest.raises(TypeError, match="global_step must be int"):
+        wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag480')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/handlers/test_mlflow_logger.py: 114-130
+</a>
+<div class="mid" id="frag480" style="display:none"><pre>
+def test_output_handler_with_wrong_global_step_transform_output():
+    def global_step_transform(*args, **kwargs):
+        return "a"
+
+    wrapper = OutputHandler("tag", output_transform=lambda x: {"loss": x}, global_step_transform=global_step_transform)
+    mock_logger = MagicMock(spec=MLflowLogger)
+    mock_logger.log_metrics = MagicMock()
+
+    mock_engine = MagicMock()
+    mock_engine.state = State()
+    mock_engine.state.epoch = 5
+    mock_engine.state.output = 12345
+
+    with pytest.raises(TypeError, match="global_step must be int"):
+        wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 7:</b> &nbsp; 2 fragments, nominal size 23 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag337')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/handlers/test_clearml_logger.py: 431-463
+</a>
+<div class="mid" id="frag337" style="display:none"><pre>
+def test_weights_hist_handler(dummy_model_factory):
+
+    model = dummy_model_factory(with_grads=True, with_frozen_layer=False)
+
+    # define test wrapper to test with and without optional tag
+    def _test(tag=None):
+        wrapper = WeightsHistHandler(model, tag=tag)
+        mock_logger = MagicMock(spec=ClearMLLogger)
+        mock_logger.grad_helper = MagicMock()
+
+        mock_engine = MagicMock()
+        mock_engine.state = State()
+        mock_engine.state.epoch = 5
+
+        wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+        tag_prefix = f"{tag}/" if tag else ""
+
+        assert mock_logger.grad_helper.add_histogram.call_count == 4
+        mock_logger.grad_helper.add_histogram.assert_has_calls(
+            [
+                call(title=tag_prefix + "weights_fc1", hist_data=ANY, series="weight", step=5),
+                call(title=tag_prefix + "weights_fc1", hist_data=ANY, series="bias", step=5),
+                call(title=tag_prefix + "weights_fc2", hist_data=ANY, series="weight", step=5),
+                call(title=tag_prefix + "weights_fc2", hist_data=ANY, series="bias", step=5),
+            ],
+            any_order=True,
+        )
+
+    _test()
+    _test(tag="tag")
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag345')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/handlers/test_clearml_logger.py: 594-625
+</a>
+<div class="mid" id="frag345" style="display:none"><pre>
+def test_grads_hist_handler(dummy_model_factory):
+    model = dummy_model_factory(with_grads=True, with_frozen_layer=False)
+
+    # define test wrapper to test with and without optional tag
+    def _test(tag=None):
+        wrapper = GradsHistHandler(model, tag=tag)
+        mock_logger = MagicMock(spec=ClearMLLogger)
+        mock_logger.grad_helper = MagicMock()
+
+        mock_engine = MagicMock()
+        mock_engine.state = State()
+        mock_engine.state.epoch = 5
+
+        wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+        tag_prefix = f"{tag}/" if tag else ""
+
+        assert mock_logger.grad_helper.add_histogram.call_count == 4
+        mock_logger.grad_helper.add_histogram.assert_has_calls(
+            [
+                call(title=tag_prefix + "grads_fc1", hist_data=ANY, series="weight", step=5),
+                call(title=tag_prefix + "grads_fc1", hist_data=ANY, series="bias", step=5),
+                call(title=tag_prefix + "grads_fc2", hist_data=ANY, series="weight", step=5),
+                call(title=tag_prefix + "grads_fc2", hist_data=ANY, series="bias", step=5),
+            ],
+            any_order=True,
+        )
+
+    _test()
+    _test(tag="tag")
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 8:</b> &nbsp; 2 fragments, nominal size 23 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag382')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/handlers/test_tensorboard_logger.py: 350-382
+</a>
+<div class="mid" id="frag382" style="display:none"><pre>
+def test_weights_hist_handler(dummy_model_factory):
+
+    model = dummy_model_factory(with_grads=True, with_frozen_layer=False)
+
+    # define test wrapper to test with and without optional tag
+    def _test(tag=None):
+        wrapper = WeightsHistHandler(model, tag=tag)
+        mock_logger = MagicMock(spec=TensorboardLogger)
+        mock_logger.writer = MagicMock()
+
+        mock_engine = MagicMock()
+        mock_engine.state = State()
+        mock_engine.state.epoch = 5
+
+        wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+        tag_prefix = f"{tag}/" if tag else ""
+
+        assert mock_logger.writer.add_histogram.call_count == 4
+        mock_logger.writer.add_histogram.assert_has_calls(
+            [
+                call(tag=tag_prefix + "weights/fc1/weight", values=ANY, global_step=5),
+                call(tag=tag_prefix + "weights/fc1/bias", values=ANY, global_step=5),
+                call(tag=tag_prefix + "weights/fc2/weight", values=ANY, global_step=5),
+                call(tag=tag_prefix + "weights/fc2/bias", values=ANY, global_step=5),
+            ],
+            any_order=True,
+        )
+
+    _test()
+    _test(tag="tag")
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag390')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/handlers/test_tensorboard_logger.py: 505-536
+</a>
+<div class="mid" id="frag390" style="display:none"><pre>
+def test_grads_hist_handler(dummy_model_factory):
+    model = dummy_model_factory(with_grads=True, with_frozen_layer=False)
+
+    # define test wrapper to test with and without optional tag
+    def _test(tag=None):
+        wrapper = GradsHistHandler(model, tag=tag)
+        mock_logger = MagicMock(spec=TensorboardLogger)
+        mock_logger.writer = MagicMock()
+
+        mock_engine = MagicMock()
+        mock_engine.state = State()
+        mock_engine.state.epoch = 5
+
+        wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+        tag_prefix = f"{tag}/" if tag else ""
+
+        assert mock_logger.writer.add_histogram.call_count == 4
+        mock_logger.writer.add_histogram.assert_has_calls(
+            [
+                call(tag=tag_prefix + "grads/fc1/weight", values=ANY, global_step=5),
+                call(tag=tag_prefix + "grads/fc1/bias", values=ANY, global_step=5),
+                call(tag=tag_prefix + "grads/fc2/weight", values=ANY, global_step=5),
+                call(tag=tag_prefix + "grads/fc2/bias", values=ANY, global_step=5),
+            ],
+            any_order=True,
+        )
+
+    _test()
+    _test(tag="tag")
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 9:</b> &nbsp; 2 fragments, nominal size 25 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag430')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/handlers/test_visdom_logger.py: 900-934
+</a>
+<div class="mid" id="frag430" style="display:none"><pre>
+def test_integration_no_executor(visdom_server):
+    vd_logger = VisdomLogger(server=visdom_server[0], port=visdom_server[1], num_workers=0)
+
+    # close all windows in 'main' environment
+    vd_logger.vis.close()
+
+    n_epochs = 3
+    data = list(range(10))
+
+    losses = torch.rand(n_epochs * len(data))
+    losses_iter = iter(losses)
+
+    def update_fn(engine, batch):
+        return next(losses_iter)
+
+    trainer = Engine(update_fn)
+    output_handler = OutputHandler(tag="training", output_transform=lambda x: {"loss": x})
+    vd_logger.attach(trainer, log_handler=output_handler, event_name=Events.ITERATION_COMPLETED)
+
+    trainer.run(data, max_epochs=n_epochs)
+
+    assert len(output_handler.windows) == 1
+    assert "training/loss" in output_handler.windows
+    win_name = output_handler.windows["training/loss"]["win"]
+    data = vd_logger.vis.get_window_data(win=win_name)
+    data = _parse_content(data)
+    assert "content" in data and "data" in data["content"]
+    data = data["content"]["data"][0]
+    assert "x" in data and "y" in data
+    x_vals, y_vals = data["x"], data["y"]
+    assert all([int(x) == x_true for x, x_true in zip(x_vals, list(range(1, n_epochs * len(data) + 1)))])
+    assert all([y == y_true for y, y_true in zip(y_vals, losses)])
+    vd_logger.close()
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag432')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/handlers/test_visdom_logger.py: 936-971
+</a>
+<div class="mid" id="frag432" style="display:none"><pre>
+def test_integration_with_executor(visdom_server):
+    vd_logger = VisdomLogger(server=visdom_server[0], port=visdom_server[1], num_workers=1)
+
+    # close all windows in 'main' environment
+    vd_logger.vis.close()
+
+    n_epochs = 5
+    data = list(range(50))
+
+    losses = torch.rand(n_epochs * len(data))
+    losses_iter = iter(losses)
+
+    def update_fn(engine, batch):
+        return next(losses_iter)
+
+    trainer = Engine(update_fn)
+    output_handler = OutputHandler(tag="training", output_transform=lambda x: {"loss": x})
+    vd_logger.attach(trainer, log_handler=output_handler, event_name=Events.ITERATION_COMPLETED)
+
+    trainer.run(data, max_epochs=n_epochs)
+
+    assert len(output_handler.windows) == 1
+    assert "training/loss" in output_handler.windows
+    win_name = output_handler.windows["training/loss"]["win"]
+    data = vd_logger.vis.get_window_data(win=win_name)
+    data = _parse_content(data)
+    assert "content" in data and "data" in data["content"]
+    data = data["content"]["data"][0]
+    assert "x" in data and "y" in data
+    x_vals, y_vals = data["x"], data["y"]
+    assert all([int(x) == x_true for x, x_true in zip(x_vals, list(range(1, n_epochs * len(data) + 1)))])
+    assert all([y == y_true for y, y_true in zip(y_vals, losses)])
+
+    vd_logger.close()
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 10:</b> &nbsp; 2 fragments, nominal size 23 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag441')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/handlers/conftest.py: 20-46
+</a>
+<div class="mid" id="frag441" style="display:none"><pre>
+def dummy_model_factory():
+    class DummyModel(torch.nn.Module):
+        def __init__(self):
+            super(DummyModel, self).__init__()
+            self.fc1 = torch.nn.Linear(10, 10)
+            self.fc2 = torch.nn.Linear(12, 12)
+            self.fc1.weight.data.zero_()
+            self.fc1.bias.data.zero_()
+            self.fc2.weight.data.fill_(1.0)
+            self.fc2.bias.data.fill_(1.0)
+
+    def get_dummy_model(with_grads=True, with_frozen_layer=False):
+        model = DummyModel()
+        if with_grads:
+            model.fc2.weight.grad = torch.zeros_like(model.fc2.weight)
+            model.fc2.bias.grad = torch.zeros_like(model.fc2.bias)
+
+            if not with_frozen_layer:
+                model.fc1.weight.grad = torch.zeros_like(model.fc1.weight)
+                model.fc1.bias.grad = torch.zeros_like(model.fc1.bias)
+
+        if with_frozen_layer:
+            for param in model.fc1.parameters():
+                param.requires_grad = False
+        return model
+
+    return get_dummy_model
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1041')" href="javascript:;">
+ignite-0.4.8/tests/ignite/handlers/conftest.py: 6-32
+</a>
+<div class="mid" id="frag1041" style="display:none"><pre>
+def dummy_model_factory():
+    class DummyModel(torch.nn.Module):
+        def __init__(self):
+            super(DummyModel, self).__init__()
+            self.fc1 = torch.nn.Linear(10, 10)
+            self.fc2 = torch.nn.Linear(12, 12)
+            self.fc1.weight.data.zero_()
+            self.fc1.bias.data.zero_()
+            self.fc2.weight.data.fill_(1.0)
+            self.fc2.bias.data.fill_(1.0)
+
+    def get_dummy_model(with_grads=True, with_frozen_layer=False):
+        model = DummyModel()
+        if with_grads:
+            model.fc2.weight.grad = torch.zeros_like(model.fc2.weight)
+            model.fc2.bias.grad = torch.zeros_like(model.fc2.bias)
+
+            if not with_frozen_layer:
+                model.fc1.weight.grad = torch.zeros_like(model.fc1.weight)
+                model.fc1.bias.grad = torch.zeros_like(model.fc1.bias)
+
+        if with_frozen_layer:
+            for param in model.fc1.parameters():
+                param.requires_grad = False
+        return model
+
+    return get_dummy_model
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 11:</b> &nbsp; 3 fragments, nominal size 10 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag544')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_median_absolute_percentage_error.py: 21-36
+</a>
+<div class="mid" id="frag544" style="display:none"><pre>
+def test_wrong_input_shapes():
+    m = MedianAbsolutePercentageError()
+
+    with pytest.raises(ValueError, match=r"Predictions should be of shape"):
+        m.update((torch.rand(4, 1, 2), torch.rand(4, 1)))
+
+    with pytest.raises(ValueError, match=r"Targets should be of shape"):
+        m.update((torch.rand(4, 1), torch.rand(4, 1, 2)))
+
+    with pytest.raises(ValueError, match=r"Predictions should be of shape"):
+        m.update((torch.rand(4, 1, 2), torch.rand(4)))
+
+    with pytest.raises(ValueError, match=r"Targets should be of shape"):
+        m.update((torch.rand(4), torch.rand(4, 1, 2)))
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag746')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_median_relative_absolute_error.py: 21-36
+</a>
+<div class="mid" id="frag746" style="display:none"><pre>
+def test_wrong_input_shapes():
+    m = MedianRelativeAbsoluteError()
+
+    with pytest.raises(ValueError, match=r"Predictions should be of shape"):
+        m.update((torch.rand(4, 1, 2), torch.rand(4, 1)))
+
+    with pytest.raises(ValueError, match=r"Targets should be of shape"):
+        m.update((torch.rand(4, 1), torch.rand(4, 1, 2)))
+
+    with pytest.raises(ValueError, match=r"Predictions should be of shape"):
+        m.update((torch.rand(4, 1, 2), torch.rand(4)))
+
+    with pytest.raises(ValueError, match=r"Targets should be of shape"):
+        m.update((torch.rand(4), torch.rand(4, 1, 2)))
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag727')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_median_absolute_error.py: 21-36
+</a>
+<div class="mid" id="frag727" style="display:none"><pre>
+def test_wrong_input_shapes():
+    m = MedianAbsoluteError()
+
+    with pytest.raises(ValueError, match=r"Predictions should be of shape"):
+        m.update((torch.rand(4, 1, 2), torch.rand(4, 1)))
+
+    with pytest.raises(ValueError, match=r"Targets should be of shape"):
+        m.update((torch.rand(4, 1), torch.rand(4, 1, 2)))
+
+    with pytest.raises(ValueError, match=r"Predictions should be of shape"):
+        m.update((torch.rand(4, 1, 2), torch.rand(4)))
+
+    with pytest.raises(ValueError, match=r"Targets should be of shape"):
+        m.update((torch.rand(4), torch.rand(4, 1, 2)))
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 12:</b> &nbsp; 2 fragments, nominal size 26 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag605')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_manhattan_distance.py: 61-97
+</a>
+<div class="mid" id="frag605" style="display:none"><pre>
+def test_integration():
+    def _test(y_pred, y, batch_size):
+        def update_fn(engine, batch):
+            idx = (engine.state.iteration - 1) * batch_size
+            y_true_batch = np_y[idx : idx + batch_size]
+            y_pred_batch = np_y_pred[idx : idx + batch_size]
+            return torch.from_numpy(y_pred_batch), torch.from_numpy(y_true_batch)
+
+        engine = Engine(update_fn)
+
+        m = ManhattanDistance()
+        m.attach(engine, "md")
+
+        np_y = y.numpy().ravel()
+        np_y_pred = y_pred.numpy().ravel()
+
+        manhattan = DistanceMetric.get_metric("manhattan")
+
+        data = list(range(y_pred.shape[0] // batch_size))
+        md = engine.run(data, max_epochs=1).metrics["md"]
+
+        assert manhattan.pairwise([np_y_pred, np_y])[0][1] == pytest.approx(md)
+
+    def get_test_cases():
+        test_cases = [
+            (torch.rand(size=(100,)), torch.rand(size=(100,)), 10),
+            (torch.rand(size=(100, 1)), torch.rand(size=(100, 1)), 20),
+        ]
+        return test_cases
+
+    for _ in range(5):
+        # check multiple random inputs as random exact occurencies are rare
+        test_cases = get_test_cases()
+        for y_pred, y, batch_size in test_cases:
+            _test(y_pred, y, batch_size)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag708')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_canberra_metric.py: 61-97
+</a>
+<div class="mid" id="frag708" style="display:none"><pre>
+def test_integration():
+    def _test(y_pred, y, batch_size):
+        def update_fn(engine, batch):
+            idx = (engine.state.iteration - 1) * batch_size
+            y_true_batch = np_y[idx : idx + batch_size]
+            y_pred_batch = np_y_pred[idx : idx + batch_size]
+            return torch.from_numpy(y_pred_batch), torch.from_numpy(y_true_batch)
+
+        engine = Engine(update_fn)
+
+        m = CanberraMetric()
+        m.attach(engine, "cm")
+
+        np_y = y.numpy().ravel()
+        np_y_pred = y_pred.numpy().ravel()
+
+        canberra = DistanceMetric.get_metric("canberra")
+
+        data = list(range(y_pred.shape[0] // batch_size))
+        cm = engine.run(data, max_epochs=1).metrics["cm"]
+
+        assert canberra.pairwise([np_y_pred, np_y])[0][1] == pytest.approx(cm)
+
+    def get_test_cases():
+        test_cases = [
+            (torch.rand(size=(100,)), torch.rand(size=(100,)), 10),
+            (torch.rand(size=(100, 1)), torch.rand(size=(100, 1)), 20),
+        ]
+        return test_cases
+
+    for _ in range(5):
+        # check multiple random inputs as random exact occurencies are rare
+        test_cases = get_test_cases()
+        for y_pred, y, batch_size in test_cases:
+            _test(y_pred, y, batch_size)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 13:</b> &nbsp; 2 fragments, nominal size 20 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag610')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_manhattan_distance.py: 104-133
+</a>
+<div class="mid" id="frag610" style="display:none"><pre>
+def _test_distrib_compute(device):
+    rank = idist.get_rank()
+
+    manhattan = DistanceMetric.get_metric("manhattan")
+
+    def _test(metric_device):
+        metric_device = torch.device(metric_device)
+        m = ManhattanDistance(device=metric_device)
+        torch.manual_seed(10 + rank)
+
+        y_pred = torch.randint(0, 10, size=(10,), device=device).float()
+        y = torch.randint(0, 10, size=(10,), device=device).float()
+
+        m.update((y_pred, y))
+
+        # gather y_pred, y
+        y_pred = idist.all_gather(y_pred)
+        y = idist.all_gather(y)
+
+        np_y_pred = y_pred.cpu().numpy()
+        np_y = y.cpu().numpy()
+        res = m.compute()
+        assert manhattan.pairwise([np_y_pred, np_y])[0][1] == pytest.approx(res)
+
+    for _ in range(3):
+        _test("cpu")
+        if device.type != "xla":
+            _test(idist.device())
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag713')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_canberra_metric.py: 104-133
+</a>
+<div class="mid" id="frag713" style="display:none"><pre>
+def _test_distrib_compute(device):
+    rank = idist.get_rank()
+
+    canberra = DistanceMetric.get_metric("canberra")
+
+    def _test(metric_device):
+        metric_device = torch.device(metric_device)
+        m = CanberraMetric(device=metric_device)
+        torch.manual_seed(10 + rank)
+
+        y_pred = torch.randint(0, 10, size=(10,), device=device).float()
+        y = torch.randint(0, 10, size=(10,), device=device).float()
+
+        m.update((y_pred, y))
+
+        # gather y_pred, y
+        y_pred = idist.all_gather(y_pred)
+        y = idist.all_gather(y)
+
+        np_y_pred = y_pred.cpu().numpy()
+        np_y = y.cpu().numpy()
+        res = m.compute()
+        assert canberra.pairwise([np_y_pred, np_y])[0][1] == pytest.approx(res)
+
+    for _ in range(3):
+        _test("cpu")
+        if device.type != "xla":
+            _test(idist.device())
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 14:</b> &nbsp; 2 fragments, nominal size 36 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag612')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_manhattan_distance.py: 134-184
+</a>
+<div class="mid" id="frag612" style="display:none"><pre>
+def _test_distrib_integration(device):
+
+    rank = idist.get_rank()
+    torch.manual_seed(12)
+
+    manhattan = DistanceMetric.get_metric("manhattan")
+
+    def _test(n_epochs, metric_device):
+        metric_device = torch.device(metric_device)
+        n_iters = 80
+        s = 16
+        n_classes = 2
+
+        offset = n_iters * s
+        y_true = torch.rand(size=(offset * idist.get_world_size(),)).to(device)
+        y_preds = torch.rand(size=(offset * idist.get_world_size(),)).to(device)
+
+        def update(engine, i):
+            return (
+                y_preds[i * s + rank * offset : (i + 1) * s + rank * offset],
+                y_true[i * s + rank * offset : (i + 1) * s + rank * offset],
+            )
+
+        engine = Engine(update)
+
+        m = ManhattanDistance(device=metric_device)
+        m.attach(engine, "md")
+
+        data = list(range(n_iters))
+        engine.run(data=data, max_epochs=n_epochs)
+
+        assert "md" in engine.state.metrics
+
+        res = engine.state.metrics["md"]
+        if isinstance(res, torch.Tensor):
+            res = res.cpu().numpy()
+
+        np_y_true = y_true.cpu().numpy()
+        np_y_preds = y_preds.cpu().numpy()
+
+        assert pytest.approx(res) == manhattan.pairwise([np_y_preds, np_y_true])[0][1]
+
+    metric_devices = ["cpu"]
+    if device.type != "xla":
+        metric_devices.append(idist.device())
+    for metric_device in metric_devices:
+        for _ in range(2):
+            _test(n_epochs=1, metric_device=metric_device)
+            _test(n_epochs=2, metric_device=metric_device)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag715')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_canberra_metric.py: 134-183
+</a>
+<div class="mid" id="frag715" style="display:none"><pre>
+def _test_distrib_integration(device):
+
+    rank = idist.get_rank()
+    torch.manual_seed(12)
+    canberra = DistanceMetric.get_metric("canberra")
+
+    def _test(n_epochs, metric_device):
+        metric_device = torch.device(metric_device)
+        n_iters = 80
+        s = 16
+        n_classes = 2
+
+        offset = n_iters * s
+        y_true = torch.rand(size=(offset * idist.get_world_size(),)).to(device)
+        y_preds = torch.rand(size=(offset * idist.get_world_size(),)).to(device)
+
+        def update(engine, i):
+            return (
+                y_preds[i * s + rank * offset : (i + 1) * s + rank * offset],
+                y_true[i * s + rank * offset : (i + 1) * s + rank * offset],
+            )
+
+        engine = Engine(update)
+
+        m = CanberraMetric(device=metric_device)
+        m.attach(engine, "cm")
+
+        data = list(range(n_iters))
+        engine.run(data=data, max_epochs=n_epochs)
+
+        assert "cm" in engine.state.metrics
+
+        res = engine.state.metrics["cm"]
+        if isinstance(res, torch.Tensor):
+            res = res.cpu().numpy()
+
+        np_y_true = y_true.cpu().numpy()
+        np_y_preds = y_preds.cpu().numpy()
+
+        assert pytest.approx(res) == canberra.pairwise([np_y_preds, np_y_true])[0][1]
+
+    metric_devices = ["cpu"]
+    if device.type != "xla":
+        metric_devices.append(idist.device())
+    for metric_device in metric_devices:
+        for _ in range(2):
+            _test(n_epochs=1, metric_device=metric_device)
+            _test(n_epochs=2, metric_device=metric_device)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 15:</b> &nbsp; 2 fragments, nominal size 14 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag806')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_precision_recall_curve.py: 28-47
+</a>
+<div class="mid" id="frag806" style="display:none"><pre>
+def test_precision_recall_curve():
+    size = 100
+    np_y_pred = np.random.rand(size, 1)
+    np_y = np.zeros((size,))
+    np_y[size // 2 :] = 1
+    sk_precision, sk_recall, sk_thresholds = precision_recall_curve(np_y, np_y_pred)
+
+    precision_recall_curve_metric = PrecisionRecallCurve()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    precision_recall_curve_metric.update((y_pred, y))
+    precision, recall, thresholds = precision_recall_curve_metric.compute()
+
+    assert np.array_equal(precision, sk_precision)
+    assert np.array_equal(recall, sk_recall)
+    # assert thresholds almost equal, due to numpy-&gt;torch-&gt;numpy conversion
+    np.testing.assert_array_almost_equal(thresholds, sk_thresholds)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag882')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_roc_curve.py: 25-44
+</a>
+<div class="mid" id="frag882" style="display:none"><pre>
+def test_roc_curve():
+    size = 100
+    np_y_pred = np.random.rand(size, 1)
+    np_y = np.zeros((size,))
+    np_y[size // 2 :] = 1
+    sk_fpr, sk_tpr, sk_thresholds = roc_curve(np_y, np_y_pred)
+
+    roc_curve_metric = RocCurve()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    roc_curve_metric.update((y_pred, y))
+    fpr, tpr, thresholds = roc_curve_metric.compute()
+
+    assert np.array_equal(fpr, sk_fpr)
+    assert np.array_equal(tpr, sk_tpr)
+    # assert thresholds almost equal, due to numpy-&gt;torch-&gt;numpy conversion
+    np.testing.assert_array_almost_equal(thresholds, sk_thresholds)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 16:</b> &nbsp; 2 fragments, nominal size 22 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag807')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_precision_recall_curve.py: 48-79
+</a>
+<div class="mid" id="frag807" style="display:none"><pre>
+def test_integration_precision_recall_curve_with_output_transform():
+    np.random.seed(1)
+    size = 100
+    np_y_pred = np.random.rand(size, 1)
+    np_y = np.zeros((size,))
+    np_y[size // 2 :] = 1
+    np.random.shuffle(np_y)
+
+    sk_precision, sk_recall, sk_thresholds = precision_recall_curve(np_y, np_y_pred)
+
+    batch_size = 10
+
+    def update_fn(engine, batch):
+        idx = (engine.state.iteration - 1) * batch_size
+        y_true_batch = np_y[idx : idx + batch_size]
+        y_pred_batch = np_y_pred[idx : idx + batch_size]
+        return idx, torch.from_numpy(y_pred_batch), torch.from_numpy(y_true_batch)
+
+    engine = Engine(update_fn)
+
+    precision_recall_curve_metric = PrecisionRecallCurve(output_transform=lambda x: (x[1], x[2]))
+    precision_recall_curve_metric.attach(engine, "precision_recall_curve")
+
+    data = list(range(size // batch_size))
+    precision, recall, thresholds = engine.run(data, max_epochs=1).metrics["precision_recall_curve"]
+
+    assert np.array_equal(precision, sk_precision)
+    assert np.array_equal(recall, sk_recall)
+    # assert thresholds almost equal, due to numpy-&gt;torch-&gt;numpy conversion
+    np.testing.assert_array_almost_equal(thresholds, sk_thresholds)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag883')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_roc_curve.py: 45-76
+</a>
+<div class="mid" id="frag883" style="display:none"><pre>
+def test_integration_roc_curve_with_output_transform():
+    np.random.seed(1)
+    size = 100
+    np_y_pred = np.random.rand(size, 1)
+    np_y = np.zeros((size,))
+    np_y[size // 2 :] = 1
+    np.random.shuffle(np_y)
+
+    sk_fpr, sk_tpr, sk_thresholds = roc_curve(np_y, np_y_pred)
+
+    batch_size = 10
+
+    def update_fn(engine, batch):
+        idx = (engine.state.iteration - 1) * batch_size
+        y_true_batch = np_y[idx : idx + batch_size]
+        y_pred_batch = np_y_pred[idx : idx + batch_size]
+        return idx, torch.from_numpy(y_pred_batch), torch.from_numpy(y_true_batch)
+
+    engine = Engine(update_fn)
+
+    roc_curve_metric = RocCurve(output_transform=lambda x: (x[1], x[2]))
+    roc_curve_metric.attach(engine, "roc_curve")
+
+    data = list(range(size // batch_size))
+    fpr, tpr, thresholds = engine.run(data, max_epochs=1).metrics["roc_curve"]
+
+    assert np.array_equal(fpr, sk_fpr)
+    assert np.array_equal(tpr, sk_tpr)
+    # assert thresholds almost equal, due to numpy-&gt;torch-&gt;numpy conversion
+    np.testing.assert_array_almost_equal(thresholds, sk_thresholds)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 17:</b> &nbsp; 2 fragments, nominal size 23 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag809')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_precision_recall_curve.py: 80-112
+</a>
+<div class="mid" id="frag809" style="display:none"><pre>
+def test_integration_precision_recall_curve_with_activated_output_transform():
+    np.random.seed(1)
+    size = 100
+    np_y_pred = np.random.rand(size, 1)
+    np_y_pred_sigmoid = torch.sigmoid(torch.from_numpy(np_y_pred)).numpy()
+    np_y = np.zeros((size,))
+    np_y[size // 2 :] = 1
+    np.random.shuffle(np_y)
+
+    sk_precision, sk_recall, sk_thresholds = precision_recall_curve(np_y, np_y_pred_sigmoid)
+
+    batch_size = 10
+
+    def update_fn(engine, batch):
+        idx = (engine.state.iteration - 1) * batch_size
+        y_true_batch = np_y[idx : idx + batch_size]
+        y_pred_batch = np_y_pred[idx : idx + batch_size]
+        return idx, torch.from_numpy(y_pred_batch), torch.from_numpy(y_true_batch)
+
+    engine = Engine(update_fn)
+
+    precision_recall_curve_metric = PrecisionRecallCurve(output_transform=lambda x: (torch.sigmoid(x[1]), x[2]))
+    precision_recall_curve_metric.attach(engine, "precision_recall_curve")
+
+    data = list(range(size // batch_size))
+    precision, recall, thresholds = engine.run(data, max_epochs=1).metrics["precision_recall_curve"]
+
+    assert np.array_equal(precision, sk_precision)
+    assert np.array_equal(recall, sk_recall)
+    # assert thresholds almost equal, due to numpy-&gt;torch-&gt;numpy conversion
+    np.testing.assert_array_almost_equal(thresholds, sk_thresholds)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag885')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_roc_curve.py: 77-109
+</a>
+<div class="mid" id="frag885" style="display:none"><pre>
+def test_integration_roc_curve_with_activated_output_transform():
+    np.random.seed(1)
+    size = 100
+    np_y_pred = np.random.rand(size, 1)
+    np_y_pred_sigmoid = torch.sigmoid(torch.from_numpy(np_y_pred)).numpy()
+    np_y = np.zeros((size,))
+    np_y[size // 2 :] = 1
+    np.random.shuffle(np_y)
+
+    sk_fpr, sk_tpr, sk_thresholds = roc_curve(np_y, np_y_pred_sigmoid)
+
+    batch_size = 10
+
+    def update_fn(engine, batch):
+        idx = (engine.state.iteration - 1) * batch_size
+        y_true_batch = np_y[idx : idx + batch_size]
+        y_pred_batch = np_y_pred[idx : idx + batch_size]
+        return idx, torch.from_numpy(y_pred_batch), torch.from_numpy(y_true_batch)
+
+    engine = Engine(update_fn)
+
+    roc_curve_metric = RocCurve(output_transform=lambda x: (torch.sigmoid(x[1]), x[2]))
+    roc_curve_metric.attach(engine, "roc_curve")
+
+    data = list(range(size // batch_size))
+    fpr, tpr, thresholds = engine.run(data, max_epochs=1).metrics["roc_curve"]
+
+    assert np.array_equal(fpr, sk_fpr)
+    assert np.array_equal(tpr, sk_tpr)
+    # assert thresholds almost equal, due to numpy-&gt;torch-&gt;numpy conversion
+    np.testing.assert_array_almost_equal(thresholds, sk_thresholds)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 18:</b> &nbsp; 3 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag811')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_precision_recall_curve.py: 113-126
+</a>
+<div class="mid" id="frag811" style="display:none"><pre>
+def test_check_compute_fn():
+    y_pred = torch.zeros((8, 13))
+    y_pred[:, 1] = 1
+    y_true = torch.zeros_like(y_pred)
+    output = (y_pred, y_true)
+
+    em = PrecisionRecallCurve(check_compute_fn=True)
+
+    em.reset()
+    with pytest.warns(EpochMetricWarning, match=r"Probably, there can be a problem with `compute_fn`"):
+        em.update(output)
+
+    em = PrecisionRecallCurve(check_compute_fn=False)
+    em.update(output)
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag896')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_roc_auc.py: 112-127
+</a>
+<div class="mid" id="frag896" style="display:none"><pre>
+def test_check_compute_fn():
+    y_pred = torch.zeros((8, 13))
+    y_pred[:, 1] = 1
+    y_true = torch.zeros_like(y_pred)
+    output = (y_pred, y_true)
+
+    em = ROC_AUC(check_compute_fn=True)
+
+    em.reset()
+    with pytest.warns(EpochMetricWarning, match=r"Probably, there can be a problem with `compute_fn`"):
+        em.update(output)
+
+    em = ROC_AUC(check_compute_fn=False)
+    em.update(output)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag887')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_roc_curve.py: 110-123
+</a>
+<div class="mid" id="frag887" style="display:none"><pre>
+def test_check_compute_fn():
+    y_pred = torch.zeros((8, 13))
+    y_pred[:, 1] = 1
+    y_true = torch.zeros_like(y_pred)
+    output = (y_pred, y_true)
+
+    em = RocCurve(check_compute_fn=True)
+
+    em.reset()
+    with pytest.warns(EpochMetricWarning, match=r"Probably, there can be a problem with `compute_fn`"):
+        em.update(output)
+
+    em = RocCurve(check_compute_fn=False)
+    em.update(output)
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 19:</b> &nbsp; 3 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag815')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_average_precision.py: 37-52
+</a>
+<div class="mid" id="frag815" style="display:none"><pre>
+def test_input_types():
+    ap = AveragePrecision()
+    ap.reset()
+    output1 = (torch.rand(4, 3), torch.randint(0, 2, size=(4, 3), dtype=torch.long))
+    ap.update(output1)
+
+    with pytest.raises(ValueError, match=r"Incoherent types between input y_pred and stored predictions"):
+        ap.update((torch.randint(0, 5, size=(4, 3)), torch.randint(0, 2, size=(4, 3))))
+
+    with pytest.raises(ValueError, match=r"Incoherent types between input y and stored targets"):
+        ap.update((torch.rand(4, 3), torch.randint(0, 2, size=(4, 3)).to(torch.int32)))
+
+    with pytest.raises(ValueError, match=r"Incoherent types between input y_pred and stored predictions"):
+        ap.update((torch.randint(0, 2, size=(10,)).long(), torch.randint(0, 2, size=(10, 5)).long()))
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag891')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_roc_auc.py: 38-53
+</a>
+<div class="mid" id="frag891" style="display:none"><pre>
+def test_input_types():
+    roc_auc = ROC_AUC()
+    roc_auc.reset()
+    output1 = (torch.rand(4, 3), torch.randint(0, 2, size=(4, 3), dtype=torch.long))
+    roc_auc.update(output1)
+
+    with pytest.raises(ValueError, match=r"Incoherent types between input y_pred and stored predictions"):
+        roc_auc.update((torch.randint(0, 5, size=(4, 3)), torch.randint(0, 2, size=(4, 3))))
+
+    with pytest.raises(ValueError, match=r"Incoherent types between input y and stored targets"):
+        roc_auc.update((torch.rand(4, 3), torch.randint(0, 2, size=(4, 3)).to(torch.int32)))
+
+    with pytest.raises(ValueError, match=r"Incoherent types between input y_pred and stored predictions"):
+        roc_auc.update((torch.randint(0, 2, size=(10,)).long(), torch.randint(0, 2, size=(10, 5)).long()))
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag855')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_cohen_kappa.py: 37-52
+</a>
+<div class="mid" id="frag855" style="display:none"><pre>
+def test_input_types():
+    ck = CohenKappa()
+    ck.reset()
+    output1 = (torch.rand(4, 3), torch.randint(0, 2, size=(4, 3), dtype=torch.long))
+    ck.update(output1)
+
+    with pytest.raises(ValueError, match=r"Incoherent types between input y_pred and stored predictions"):
+        ck.update((torch.randint(0, 5, size=(4, 3)), torch.randint(0, 2, size=(4, 3))))
+
+    with pytest.raises(ValueError, match=r"Incoherent types between input y and stored targets"):
+        ck.update((torch.rand(4, 3), torch.randint(0, 2, size=(4, 3)).to(torch.int32)))
+
+    with pytest.raises(ValueError, match=r"Incoherent types between input y_pred and stored predictions"):
+        ck.update((torch.randint(0, 2, size=(10,)).long(), torch.randint(0, 2, size=(10, 5)).long()))
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 20:</b> &nbsp; 2 fragments, nominal size 32 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag817')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_average_precision.py: 66-111
+</a>
+<div class="mid" id="frag817" style="display:none"><pre>
+def test_binary_and_multilabel_inputs():
+    ap = AveragePrecision()
+
+    def _test(y_pred, y, batch_size):
+        ap.reset()
+        if batch_size &gt; 1:
+            n_iters = y.shape[0] // batch_size + 1
+            for i in range(n_iters):
+                idx = i * batch_size
+                ap.update((y_pred[idx : idx + batch_size], y[idx : idx + batch_size]))
+        else:
+            ap.update((y_pred, y))
+
+        np_y = y.numpy()
+        np_y_pred = y_pred.numpy()
+
+        res = ap.compute()
+        assert isinstance(res, float)
+        assert average_precision_score(np_y, np_y_pred) == pytest.approx(res)
+
+    def get_test_cases():
+
+        test_cases = [
+            # Binary input data of shape (N,) or (N, 1)
+            (torch.randint(0, 2, size=(50,)).long(), torch.randint(0, 2, size=(50,)).long(), 1),
+            (torch.randint(0, 2, size=(50, 1)).long(), torch.randint(0, 2, size=(50, 1)).long(), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50,)).long(), torch.randint(0, 2, size=(50,)).long(), 16),
+            (torch.randint(0, 2, size=(50, 1)).long(), torch.randint(0, 2, size=(50, 1)).long(), 16),
+            # Binary input data of shape (N, L)
+            (torch.randint(0, 2, size=(50, 4)).long(), torch.randint(0, 2, size=(50, 4)).long(), 1),
+            (torch.randint(0, 2, size=(50, 7)).long(), torch.randint(0, 2, size=(50, 7)).long(), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50, 4)).long(), torch.randint(0, 2, size=(50, 4)).long(), 16),
+            (torch.randint(0, 2, size=(50, 7)).long(), torch.randint(0, 2, size=(50, 7)).long(), 16),
+        ]
+
+        return test_cases
+
+    for _ in range(5):
+        # check multiple random inputs as random exact occurencies are rare
+        test_cases = get_test_cases()
+        for y_pred, y, batch_size in test_cases:
+            _test(y_pred, y, batch_size)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag893')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_roc_auc.py: 67-111
+</a>
+<div class="mid" id="frag893" style="display:none"><pre>
+def test_binary_and_multilabel_inputs():
+
+    roc_auc = ROC_AUC()
+
+    def _test(y_pred, y, batch_size):
+        roc_auc.reset()
+        if batch_size &gt; 1:
+            n_iters = y.shape[0] // batch_size + 1
+            for i in range(n_iters):
+                idx = i * batch_size
+                roc_auc.update((y_pred[idx : idx + batch_size], y[idx : idx + batch_size]))
+        else:
+            roc_auc.update((y_pred, y))
+
+        np_y = y.numpy()
+        np_y_pred = y_pred.numpy()
+
+        res = roc_auc.compute()
+        assert isinstance(res, float)
+        assert roc_auc_score(np_y, np_y_pred) == pytest.approx(res)
+
+    def get_test_cases():
+        test_cases = [
+            # Binary input data of shape (N,) or (N, 1)
+            (torch.randint(0, 2, size=(50,)).long(), torch.randint(0, 2, size=(50,)).long(), 1),
+            (torch.randint(0, 2, size=(50, 1)).long(), torch.randint(0, 2, size=(50, 1)).long(), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50,)).long(), torch.randint(0, 2, size=(50,)).long(), 16),
+            (torch.randint(0, 2, size=(50, 1)).long(), torch.randint(0, 2, size=(50, 1)).long(), 16),
+            # Binary input data of shape (N, L)
+            (torch.randint(0, 2, size=(50, 4)).long(), torch.randint(0, 2, size=(50, 4)).long(), 1),
+            (torch.randint(0, 2, size=(50, 7)).long(), torch.randint(0, 2, size=(50, 7)).long(), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50, 4)).long(), torch.randint(0, 2, size=(50, 4)).long(), 16),
+            (torch.randint(0, 2, size=(50, 7)).long(), torch.randint(0, 2, size=(50, 7)).long(), 16),
+        ]
+        return test_cases
+
+    for _ in range(5):
+        test_cases = get_test_cases()
+        # check multiple random inputs as random exact occurencies are rare
+        for y_pred, y, batch_size in test_cases:
+            _test(y_pred, y, batch_size)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 21:</b> &nbsp; 4 fragments, nominal size 12 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag819')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_average_precision.py: 86-104
+</a>
+<div class="mid" id="frag819" style="display:none"><pre>
+    def get_test_cases():
+
+        test_cases = [
+            # Binary input data of shape (N,) or (N, 1)
+            (torch.randint(0, 2, size=(50,)).long(), torch.randint(0, 2, size=(50,)).long(), 1),
+            (torch.randint(0, 2, size=(50, 1)).long(), torch.randint(0, 2, size=(50, 1)).long(), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50,)).long(), torch.randint(0, 2, size=(50,)).long(), 16),
+            (torch.randint(0, 2, size=(50, 1)).long(), torch.randint(0, 2, size=(50, 1)).long(), 16),
+            # Binary input data of shape (N, L)
+            (torch.randint(0, 2, size=(50, 4)).long(), torch.randint(0, 2, size=(50, 4)).long(), 1),
+            (torch.randint(0, 2, size=(50, 7)).long(), torch.randint(0, 2, size=(50, 7)).long(), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50, 4)).long(), torch.randint(0, 2, size=(50, 4)).long(), 16),
+            (torch.randint(0, 2, size=(50, 7)).long(), torch.randint(0, 2, size=(50, 7)).long(), 16),
+        ]
+
+        return test_cases
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag826')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_average_precision.py: 187-204
+</a>
+<div class="mid" id="frag826" style="display:none"><pre>
+    def get_test_cases():
+
+        test_cases = [
+            # Binary input data of shape (N,) or (N, 1)
+            (torch.randint(0, 2, size=(10,)).long(), torch.randint(0, 2, size=(10,)).long(), 1),
+            (torch.randint(0, 2, size=(10, 1)).long(), torch.randint(0, 2, size=(10, 1)).long(), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50,)).long(), torch.randint(0, 2, size=(50,)).long(), 16),
+            (torch.randint(0, 2, size=(50, 1)).long(), torch.randint(0, 2, size=(50, 1)).long(), 16),
+            # Binary input data of shape (N, L)
+            (torch.randint(0, 2, size=(10, 4)).long(), torch.randint(0, 2, size=(10, 4)).long(), 1),
+            (torch.randint(0, 2, size=(10, 7)).long(), torch.randint(0, 2, size=(10, 7)).long(), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50, 4)).long(), torch.randint(0, 2, size=(50, 4)).long(), 16),
+            (torch.randint(0, 2, size=(50, 7)).long(), torch.randint(0, 2, size=(50, 7)).long(), 16),
+        ]
+        return test_cases
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag903')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_roc_auc.py: 201-217
+</a>
+<div class="mid" id="frag903" style="display:none"><pre>
+    def get_test_cases():
+        test_cases = [
+            # Binary input data of shape (N,) or (N, 1)
+            (torch.randint(0, 2, size=(10,)).long(), torch.randint(0, 2, size=(10,)).long(), 1),
+            (torch.randint(0, 2, size=(10, 1)).long(), torch.randint(0, 2, size=(10, 1)).long(), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50,)).long(), torch.randint(0, 2, size=(50,)).long(), 16),
+            (torch.randint(0, 2, size=(50, 1)).long(), torch.randint(0, 2, size=(50, 1)).long(), 16),
+            # Binary input data of shape (N, L)
+            (torch.randint(0, 2, size=(10, 4)).long(), torch.randint(0, 2, size=(10, 4)).long(), 1),
+            (torch.randint(0, 2, size=(10, 7)).long(), torch.randint(0, 2, size=(10, 7)).long(), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50, 4)).long(), torch.randint(0, 2, size=(50, 4)).long(), 16),
+            (torch.randint(0, 2, size=(50, 7)).long(), torch.randint(0, 2, size=(50, 7)).long(), 16),
+        ]
+        return test_cases
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag895')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_roc_auc.py: 88-104
+</a>
+<div class="mid" id="frag895" style="display:none"><pre>
+    def get_test_cases():
+        test_cases = [
+            # Binary input data of shape (N,) or (N, 1)
+            (torch.randint(0, 2, size=(50,)).long(), torch.randint(0, 2, size=(50,)).long(), 1),
+            (torch.randint(0, 2, size=(50, 1)).long(), torch.randint(0, 2, size=(50, 1)).long(), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50,)).long(), torch.randint(0, 2, size=(50,)).long(), 16),
+            (torch.randint(0, 2, size=(50, 1)).long(), torch.randint(0, 2, size=(50, 1)).long(), 16),
+            # Binary input data of shape (N, L)
+            (torch.randint(0, 2, size=(50, 4)).long(), torch.randint(0, 2, size=(50, 4)).long(), 1),
+            (torch.randint(0, 2, size=(50, 7)).long(), torch.randint(0, 2, size=(50, 7)).long(), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50, 4)).long(), torch.randint(0, 2, size=(50, 4)).long(), 16),
+            (torch.randint(0, 2, size=(50, 7)).long(), torch.randint(0, 2, size=(50, 7)).long(), 16),
+        ]
+        return test_cases
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 22:</b> &nbsp; 2 fragments, nominal size 29 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag820')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_average_precision.py: 112-154
+</a>
+<div class="mid" id="frag820" style="display:none"><pre>
+def test_integration_binary_and_mulitlabel_inputs():
+    def _test(y_pred, y, batch_size):
+        def update_fn(engine, batch):
+            idx = (engine.state.iteration - 1) * batch_size
+            y_true_batch = np_y[idx : idx + batch_size]
+            y_pred_batch = np_y_pred[idx : idx + batch_size]
+            return torch.from_numpy(y_pred_batch), torch.from_numpy(y_true_batch)
+
+        engine = Engine(update_fn)
+
+        ap_metric = AveragePrecision()
+        ap_metric.attach(engine, "ap")
+
+        np_y = y.numpy()
+        np_y_pred = y_pred.numpy()
+
+        np_ap = average_precision_score(np_y, np_y_pred)
+
+        data = list(range(y_pred.shape[0] // batch_size))
+        ap = engine.run(data, max_epochs=1).metrics["ap"]
+
+        assert isinstance(ap, float)
+        assert np_ap == pytest.approx(ap)
+
+    def get_test_cases():
+
+        test_cases = [
+            # Binary input data of shape (N,) or (N, 1)
+            (torch.randint(0, 2, size=(100,)).long(), torch.randint(0, 2, size=(100,)).long(), 10),
+            (torch.randint(0, 2, size=(100, 1)).long(), torch.randint(0, 2, size=(100, 1)).long(), 10),
+            # Binary input data of shape (N, L)
+            (torch.randint(0, 2, size=(100, 3)).long(), torch.randint(0, 2, size=(100, 3)).long(), 10),
+            (torch.randint(0, 2, size=(100, 4)).long(), torch.randint(0, 2, size=(100, 4)).long(), 10),
+        ]
+        return test_cases
+
+    for _ in range(5):
+        # check multiple random inputs as random exact occurencies are rare
+        test_cases = get_test_cases()
+        for y_pred, y, batch_size in test_cases:
+            _test(y_pred, y, batch_size)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag897')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_roc_auc.py: 128-169
+</a>
+<div class="mid" id="frag897" style="display:none"><pre>
+def test_integration_binary_and_multilabel_inputs():
+    def _test(y_pred, y, batch_size):
+        def update_fn(engine, batch):
+            idx = (engine.state.iteration - 1) * batch_size
+            y_true_batch = np_y[idx : idx + batch_size]
+            y_pred_batch = np_y_pred[idx : idx + batch_size]
+            return torch.from_numpy(y_pred_batch), torch.from_numpy(y_true_batch)
+
+        engine = Engine(update_fn)
+
+        roc_auc_metric = ROC_AUC()
+        roc_auc_metric.attach(engine, "roc_auc")
+
+        np_y = y.numpy()
+        np_y_pred = y_pred.numpy()
+
+        np_roc_auc = roc_auc_score(np_y, np_y_pred)
+
+        data = list(range(y_pred.shape[0] // batch_size))
+        roc_auc = engine.run(data, max_epochs=1).metrics["roc_auc"]
+
+        assert isinstance(roc_auc, float)
+        assert np_roc_auc == pytest.approx(roc_auc)
+
+    def get_test_cases():
+        test_cases = [
+            # Binary input data of shape (N,) or (N, 1)
+            (torch.randint(0, 2, size=(100,)).long(), torch.randint(0, 2, size=(100,)).long(), 10),
+            (torch.randint(0, 2, size=(100, 1)).long(), torch.randint(0, 2, size=(100, 1)).long(), 10),
+            # Binary input data of shape (N, L)
+            (torch.randint(0, 2, size=(100, 3)).long(), torch.randint(0, 2, size=(100, 3)).long(), 10),
+            (torch.randint(0, 2, size=(100, 4)).long(), torch.randint(0, 2, size=(100, 4)).long(), 10),
+        ]
+        return test_cases
+
+    for _ in range(5):
+        # check multiple random inputs as random exact occurencies are rare
+        test_cases = get_test_cases()
+        for y_pred, y, batch_size in test_cases:
+            _test(y_pred, y, batch_size)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 23:</b> &nbsp; 2 fragments, nominal size 40 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag824')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_average_precision.py: 155-212
+</a>
+<div class="mid" id="frag824" style="display:none"><pre>
+def _test_distrib_binary_and_multilabel_inputs(device):
+
+    rank = idist.get_rank()
+    torch.manual_seed(12)
+
+    def _test(y_pred, y, batch_size, metric_device):
+
+        metric_device = torch.device(metric_device)
+        ap = AveragePrecision(device=metric_device)
+        torch.manual_seed(10 + rank)
+
+        ap.reset()
+
+        if batch_size &gt; 1:
+            n_iters = y.shape[0] // batch_size + 1
+            for i in range(n_iters):
+                idx = i * batch_size
+                ap.update((y_pred[idx : idx + batch_size], y[idx : idx + batch_size]))
+        else:
+            ap.update((y_pred, y))
+
+        # gather y_pred, y
+        y_pred = idist.all_gather(y_pred)
+        y = idist.all_gather(y)
+
+        np_y = y.cpu().numpy()
+        np_y_pred = y_pred.cpu().numpy()
+
+        res = ap.compute()
+        assert isinstance(res, float)
+        assert average_precision_score(np_y, np_y_pred) == pytest.approx(res)
+
+    def get_test_cases():
+
+        test_cases = [
+            # Binary input data of shape (N,) or (N, 1)
+            (torch.randint(0, 2, size=(10,)).long(), torch.randint(0, 2, size=(10,)).long(), 1),
+            (torch.randint(0, 2, size=(10, 1)).long(), torch.randint(0, 2, size=(10, 1)).long(), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50,)).long(), torch.randint(0, 2, size=(50,)).long(), 16),
+            (torch.randint(0, 2, size=(50, 1)).long(), torch.randint(0, 2, size=(50, 1)).long(), 16),
+            # Binary input data of shape (N, L)
+            (torch.randint(0, 2, size=(10, 4)).long(), torch.randint(0, 2, size=(10, 4)).long(), 1),
+            (torch.randint(0, 2, size=(10, 7)).long(), torch.randint(0, 2, size=(10, 7)).long(), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50, 4)).long(), torch.randint(0, 2, size=(50, 4)).long(), 16),
+            (torch.randint(0, 2, size=(50, 7)).long(), torch.randint(0, 2, size=(50, 7)).long(), 16),
+        ]
+        return test_cases
+
+    for _ in range(3):
+        test_cases = get_test_cases()
+        for y_pred, y, batch_size in test_cases:
+            _test(y_pred, y, batch_size, "cpu")
+            if device.type != "xla":
+                _test(y_pred, y, batch_size, idist.device())
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag901')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_roc_auc.py: 170-225
+</a>
+<div class="mid" id="frag901" style="display:none"><pre>
+def _test_distrib_binary_and_multilabel_inputs(device):
+
+    rank = idist.get_rank()
+    torch.manual_seed(12)
+
+    def _test(y_pred, y, batch_size, metric_device):
+        metric_device = torch.device(metric_device)
+        roc_auc = ROC_AUC(device=metric_device)
+
+        torch.manual_seed(10 + rank)
+
+        roc_auc.reset()
+        if batch_size &gt; 1:
+            n_iters = y.shape[0] // batch_size + 1
+            for i in range(n_iters):
+                idx = i * batch_size
+                roc_auc.update((y_pred[idx : idx + batch_size], y[idx : idx + batch_size]))
+        else:
+            roc_auc.update((y_pred, y))
+
+        # gather y_pred, y
+        y_pred = idist.all_gather(y_pred)
+        y = idist.all_gather(y)
+
+        np_y = y.cpu().numpy()
+        np_y_pred = y_pred.cpu().numpy()
+
+        res = roc_auc.compute()
+        assert isinstance(res, float)
+        assert roc_auc_score(np_y, np_y_pred) == pytest.approx(res)
+
+    def get_test_cases():
+        test_cases = [
+            # Binary input data of shape (N,) or (N, 1)
+            (torch.randint(0, 2, size=(10,)).long(), torch.randint(0, 2, size=(10,)).long(), 1),
+            (torch.randint(0, 2, size=(10, 1)).long(), torch.randint(0, 2, size=(10, 1)).long(), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50,)).long(), torch.randint(0, 2, size=(50,)).long(), 16),
+            (torch.randint(0, 2, size=(50, 1)).long(), torch.randint(0, 2, size=(50, 1)).long(), 16),
+            # Binary input data of shape (N, L)
+            (torch.randint(0, 2, size=(10, 4)).long(), torch.randint(0, 2, size=(10, 4)).long(), 1),
+            (torch.randint(0, 2, size=(10, 7)).long(), torch.randint(0, 2, size=(10, 7)).long(), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50, 4)).long(), torch.randint(0, 2, size=(50, 4)).long(), 16),
+            (torch.randint(0, 2, size=(50, 7)).long(), torch.randint(0, 2, size=(50, 7)).long(), 16),
+        ]
+        return test_cases
+
+    for _ in range(5):
+        test_cases = get_test_cases()
+        for y_pred, y, batch_size in test_cases:
+            _test(y_pred, y, batch_size, "cpu")
+            if device.type != "xla":
+                _test(y_pred, y, batch_size, idist.device())
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 24:</b> &nbsp; 3 fragments, nominal size 19 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag825')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_average_precision.py: 160-186
+</a>
+<div class="mid" id="frag825" style="display:none"><pre>
+    def _test(y_pred, y, batch_size, metric_device):
+
+        metric_device = torch.device(metric_device)
+        ap = AveragePrecision(device=metric_device)
+        torch.manual_seed(10 + rank)
+
+        ap.reset()
+
+        if batch_size &gt; 1:
+            n_iters = y.shape[0] // batch_size + 1
+            for i in range(n_iters):
+                idx = i * batch_size
+                ap.update((y_pred[idx : idx + batch_size], y[idx : idx + batch_size]))
+        else:
+            ap.update((y_pred, y))
+
+        # gather y_pred, y
+        y_pred = idist.all_gather(y_pred)
+        y = idist.all_gather(y)
+
+        np_y = y.cpu().numpy()
+        np_y_pred = y_pred.cpu().numpy()
+
+        res = ap.compute()
+        assert isinstance(res, float)
+        assert average_precision_score(np_y, np_y_pred) == pytest.approx(res)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag867')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_cohen_kappa.py: 178-204
+</a>
+<div class="mid" id="frag867" style="display:none"><pre>
+    def _test(y_pred, y, batch_size, metric_device):
+
+        metric_device = torch.device(metric_device)
+        ck = CohenKappa(device=metric_device)
+
+        torch.manual_seed(10 + rank)
+
+        ck.reset()
+        if batch_size &gt; 1:
+            n_iters = y.shape[0] // batch_size + 1
+            for i in range(n_iters):
+                idx = i * batch_size
+                ck.update((y_pred[idx : idx + batch_size], y[idx : idx + batch_size]))
+        else:
+            ck.update((y_pred, y))
+
+        # gather y_pred, y
+        y_pred = idist.all_gather(y_pred)
+        y = idist.all_gather(y)
+
+        np_y = y.cpu().numpy()
+        np_y_pred = y_pred.cpu().numpy()
+
+        res = ck.compute()
+        assert isinstance(res, float)
+        assert cohen_kappa_score(np_y, np_y_pred) == pytest.approx(res)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag902')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_roc_auc.py: 175-200
+</a>
+<div class="mid" id="frag902" style="display:none"><pre>
+    def _test(y_pred, y, batch_size, metric_device):
+        metric_device = torch.device(metric_device)
+        roc_auc = ROC_AUC(device=metric_device)
+
+        torch.manual_seed(10 + rank)
+
+        roc_auc.reset()
+        if batch_size &gt; 1:
+            n_iters = y.shape[0] // batch_size + 1
+            for i in range(n_iters):
+                idx = i * batch_size
+                roc_auc.update((y_pred[idx : idx + batch_size], y[idx : idx + batch_size]))
+        else:
+            roc_auc.update((y_pred, y))
+
+        # gather y_pred, y
+        y_pred = idist.all_gather(y_pred)
+        y = idist.all_gather(y)
+
+        np_y = y.cpu().numpy()
+        np_y_pred = y_pred.cpu().numpy()
+
+        res = roc_auc.compute()
+        assert isinstance(res, float)
+        assert roc_auc_score(np_y, np_y_pred) == pytest.approx(res)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 25:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag828')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_average_precision.py: 222-239
+</a>
+<div class="mid" id="frag828" style="display:none"><pre>
+    def _test(y_preds, y_true, n_epochs, metric_device, update_fn):
+        metric_device = torch.device(metric_device)
+
+        engine = Engine(update_fn)
+
+        ap = AveragePrecision(device=metric_device)
+        ap.attach(engine, "ap")
+
+        data = list(range(n_iters))
+        engine.run(data=data, max_epochs=n_epochs)
+
+        assert "ap" in engine.state.metrics
+
+        res = engine.state.metrics["ap"]
+
+        true_res = average_precision_score(y_true.cpu().numpy(), y_preds.cpu().numpy())
+        assert pytest.approx(res) == true_res
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag905')" href="javascript:;">
+ignite-0.4.8/tests/ignite/contrib/metrics/test_roc_auc.py: 235-252
+</a>
+<div class="mid" id="frag905" style="display:none"><pre>
+    def _test(y_preds, y_true, n_epochs, metric_device, update_fn):
+        metric_device = torch.device(metric_device)
+
+        engine = Engine(update_fn)
+
+        roc_auc = ROC_AUC(device=metric_device)
+        roc_auc.attach(engine, "roc_auc")
+
+        data = list(range(n_iters))
+        engine.run(data=data, max_epochs=n_epochs)
+
+        assert "roc_auc" in engine.state.metrics
+
+        res = engine.state.metrics["roc_auc"]
+
+        true_res = roc_auc_score(y_true.cpu().numpy(), y_preds.cpu().numpy())
+        assert pytest.approx(res) == true_res
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 26:</b> &nbsp; 2 fragments, nominal size 14 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1084')" href="javascript:;">
+ignite-0.4.8/tests/ignite/handlers/test_time_profilers.py: 253-272
+</a>
+<div class="mid" id="frag1084" style="display:none"><pre>
+def test_event_handler_started_basic_profiler():
+    true_event_handler_time = 0.1
+    true_max_epochs = 2
+    true_num_iters = 2
+
+    profiler = BasicTimeProfiler()
+    dummy_trainer = Engine(_do_nothing_update_fn)
+    profiler.attach(dummy_trainer)
+
+    @dummy_trainer.on(Events.STARTED)
+    def delay_start(engine):
+        time.sleep(true_event_handler_time)
+
+    dummy_trainer.run(range(true_num_iters), max_epochs=true_max_epochs)
+    results = profiler.get_results()
+    event_results = results["event_handlers_stats"]["STARTED"]
+
+    assert event_results["total"] == approx(true_event_handler_time, abs=1e-1)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1088')" href="javascript:;">
+ignite-0.4.8/tests/ignite/handlers/test_time_profilers.py: 296-315
+</a>
+<div class="mid" id="frag1088" style="display:none"><pre>
+def test_event_handler_completed_basic_profiler():
+    true_event_handler_time = 0.1
+    true_max_epochs = 2
+    true_num_iters = 2
+
+    profiler = BasicTimeProfiler()
+    dummy_trainer = Engine(_do_nothing_update_fn)
+    profiler.attach(dummy_trainer)
+
+    @dummy_trainer.on(Events.COMPLETED)
+    def delay_complete(engine):
+        time.sleep(true_event_handler_time)
+
+    dummy_trainer.run(range(true_num_iters), max_epochs=true_max_epochs)
+    results = profiler.get_results()
+    event_results = results["event_handlers_stats"]["COMPLETED"]
+
+    assert event_results["total"] == approx(true_event_handler_time, abs=1e-1)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 27:</b> &nbsp; 2 fragments, nominal size 16 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1086')" href="javascript:;">
+ignite-0.4.8/tests/ignite/handlers/test_time_profilers.py: 273-295
+</a>
+<div class="mid" id="frag1086" style="display:none"><pre>
+def test_event_handler_started_handlers_profiler():
+    true_event_handler_time = 0.1
+    true_max_epochs = 2
+    true_num_iters = 2
+
+    profiler = HandlersTimeProfiler()
+    dummy_trainer = Engine(_do_nothing_update_fn)
+    profiler.attach(dummy_trainer)
+
+    @dummy_trainer.on(Events.STARTED)
+    def delay_start(engine):
+        time.sleep(true_event_handler_time)
+
+    dummy_trainer.run(range(true_num_iters), max_epochs=true_max_epochs)
+    results = profiler.get_results()
+    event_results = results[0]
+
+    assert "delay_start" in event_results[0]
+    assert event_results[1] == "STARTED"
+
+    assert event_results[2] == approx(true_event_handler_time, abs=1e-1)  # total
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1090')" href="javascript:;">
+ignite-0.4.8/tests/ignite/handlers/test_time_profilers.py: 316-337
+</a>
+<div class="mid" id="frag1090" style="display:none"><pre>
+def test_event_handler_completed_handlers_profiler():
+    true_event_handler_time = 0.1
+    true_max_epochs = 2
+    true_num_iters = 2
+
+    profiler = HandlersTimeProfiler()
+    dummy_trainer = Engine(_do_nothing_update_fn)
+    profiler.attach(dummy_trainer)
+
+    @dummy_trainer.on(Events.COMPLETED)
+    def delay_complete(engine):
+        time.sleep(true_event_handler_time)
+
+    dummy_trainer.run(range(true_num_iters), max_epochs=true_max_epochs)
+    results = profiler.get_results()
+    event_results = results[0]
+    assert "delay_complete" in event_results[0]
+    assert event_results[1] == "COMPLETED"
+
+    assert event_results[2] == approx(true_event_handler_time, abs=1e-1)  # total
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 28:</b> &nbsp; 2 fragments, nominal size 18 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1092')" href="javascript:;">
+ignite-0.4.8/tests/ignite/handlers/test_time_profilers.py: 338-361
+</a>
+<div class="mid" id="frag1092" style="display:none"><pre>
+def test_event_handler_epoch_started_basic_profiler():
+    true_event_handler_time = 0.1
+    true_max_epochs = 2
+    true_num_iters = 1
+
+    profiler = BasicTimeProfiler()
+    dummy_trainer = Engine(_do_nothing_update_fn)
+    profiler.attach(dummy_trainer)
+
+    @dummy_trainer.on(Events.EPOCH_STARTED)
+    def delay_epoch_start(engine):
+        time.sleep(true_event_handler_time)
+
+    dummy_trainer.run(range(true_num_iters), max_epochs=true_max_epochs)
+    results = profiler.get_results()
+    event_results = results["event_handlers_stats"]["EPOCH_STARTED"]
+
+    assert event_results["min/index"][0] == approx(true_event_handler_time, abs=1e-1)
+    assert event_results["max/index"][0] == approx(true_event_handler_time, abs=1e-1)
+    assert event_results["mean"] == approx(true_event_handler_time, abs=1e-1)
+    assert event_results["std"] == approx(0.0, abs=1e-1)
+    assert event_results["total"] == approx(true_max_epochs * true_event_handler_time, abs=1e-1)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1096')" href="javascript:;">
+ignite-0.4.8/tests/ignite/handlers/test_time_profilers.py: 388-411
+</a>
+<div class="mid" id="frag1096" style="display:none"><pre>
+def test_event_handler_epoch_completed_basic_profiler():
+    true_event_handler_time = 0.1
+    true_max_epochs = 2
+    true_num_iters = 1
+
+    profiler = BasicTimeProfiler()
+    dummy_trainer = Engine(_do_nothing_update_fn)
+    profiler.attach(dummy_trainer)
+
+    @dummy_trainer.on(Events.EPOCH_COMPLETED)
+    def delay_epoch_complete(engine):
+        time.sleep(true_event_handler_time)
+
+    dummy_trainer.run(range(true_num_iters), max_epochs=true_max_epochs)
+    results = profiler.get_results()
+    event_results = results["event_handlers_stats"]["EPOCH_COMPLETED"]
+
+    assert event_results["min/index"][0] == approx(true_event_handler_time, abs=1e-1)
+    assert event_results["max/index"][0] == approx(true_event_handler_time, abs=1e-1)
+    assert event_results["mean"] == approx(true_event_handler_time, abs=1e-1)
+    assert event_results["std"] == approx(0.0, abs=1e-1)
+    assert event_results["total"] == approx(true_max_epochs * true_event_handler_time, abs=1e-1)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 29:</b> &nbsp; 2 fragments, nominal size 20 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1094')" href="javascript:;">
+ignite-0.4.8/tests/ignite/handlers/test_time_profilers.py: 362-387
+</a>
+<div class="mid" id="frag1094" style="display:none"><pre>
+def test_event_handler_epoch_started_handlers_profiler():
+    true_event_handler_time = 0.1
+    true_max_epochs = 2
+    true_num_iters = 1
+
+    profiler = HandlersTimeProfiler()
+    dummy_trainer = Engine(_do_nothing_update_fn)
+    profiler.attach(dummy_trainer)
+
+    @dummy_trainer.on(Events.EPOCH_STARTED)
+    def delay_epoch_start(engine):
+        time.sleep(true_event_handler_time)
+
+    dummy_trainer.run(range(true_num_iters), max_epochs=true_max_epochs)
+    results = profiler.get_results()
+    event_results = results[0]
+    assert "delay_epoch_start" in event_results[0]
+    assert event_results[1] == "EPOCH_STARTED"
+
+    assert event_results[2] == approx(true_max_epochs * true_event_handler_time, abs=1e-1)  # total
+    assert event_results[3][0] == approx(true_event_handler_time, abs=1e-1)  # min
+    assert event_results[4][0] == approx(true_event_handler_time, abs=1e-1)  # max
+    assert event_results[5] == approx(true_event_handler_time, abs=1e-1)  # mean
+    assert event_results[6] == approx(0.0, abs=1e-1)  # stddev
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1098')" href="javascript:;">
+ignite-0.4.8/tests/ignite/handlers/test_time_profilers.py: 412-437
+</a>
+<div class="mid" id="frag1098" style="display:none"><pre>
+def test_event_handler_epoch_completed_handlers_profiler():
+    true_event_handler_time = 0.1
+    true_max_epochs = 2
+    true_num_iters = 1
+
+    profiler = HandlersTimeProfiler()
+    dummy_trainer = Engine(_do_nothing_update_fn)
+    profiler.attach(dummy_trainer)
+
+    @dummy_trainer.on(Events.EPOCH_COMPLETED)
+    def delay_epoch_complete(engine):
+        time.sleep(true_event_handler_time)
+
+    dummy_trainer.run(range(true_num_iters), max_epochs=true_max_epochs)
+    results = profiler.get_results()
+    event_results = results[0]
+    assert "delay_epoch_complete" in event_results[0]
+    assert event_results[1] == "EPOCH_COMPLETED"
+
+    assert event_results[2] == approx(true_max_epochs * true_event_handler_time, abs=1e-1)  # total
+    assert event_results[3][0] == approx(true_event_handler_time, abs=1e-1)  # min
+    assert event_results[4][0] == approx(true_event_handler_time, abs=1e-1)  # max
+    assert event_results[5] == approx(true_event_handler_time, abs=1e-1)  # mean
+    assert event_results[6] == approx(0.0, abs=1e-1)  # stddev
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 30:</b> &nbsp; 4 fragments, nominal size 18 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1100')" href="javascript:;">
+ignite-0.4.8/tests/ignite/handlers/test_time_profilers.py: 438-461
+</a>
+<div class="mid" id="frag1100" style="display:none"><pre>
+def test_event_handler_iteration_started_basic_profiler():
+    true_event_handler_time = 0.1
+    true_max_epochs = 1
+    true_num_iters = 2
+
+    profiler = BasicTimeProfiler()
+    dummy_trainer = Engine(_do_nothing_update_fn)
+    profiler.attach(dummy_trainer)
+
+    @dummy_trainer.on(Events.ITERATION_STARTED)
+    def delay_iter_start(engine):
+        time.sleep(true_event_handler_time)
+
+    dummy_trainer.run(range(true_num_iters), max_epochs=true_max_epochs)
+    results = profiler.get_results()
+    event_results = results["event_handlers_stats"]["ITERATION_STARTED"]
+
+    assert event_results["min/index"][0] == approx(true_event_handler_time, abs=1e-1)
+    assert event_results["max/index"][0] == approx(true_event_handler_time, abs=1e-1)
+    assert event_results["mean"] == approx(true_event_handler_time, abs=1e-1)
+    assert event_results["std"] == approx(0.0, abs=1e-1)
+    assert event_results["total"] == approx(true_max_epochs * true_num_iters * true_event_handler_time, abs=1e-1)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1108')" href="javascript:;">
+ignite-0.4.8/tests/ignite/handlers/test_time_profilers.py: 538-561
+</a>
+<div class="mid" id="frag1108" style="display:none"><pre>
+def test_event_handler_get_batch_started_basic_profiler():
+    true_event_handler_time = 0.1
+    true_max_epochs = 1
+    true_num_iters = 2
+
+    profiler = BasicTimeProfiler()
+    dummy_trainer = Engine(_do_nothing_update_fn)
+    profiler.attach(dummy_trainer)
+
+    @dummy_trainer.on(Events.GET_BATCH_STARTED)
+    def delay_get_batch_started(engine):
+        time.sleep(true_event_handler_time)
+
+    dummy_trainer.run(range(true_num_iters), max_epochs=true_max_epochs)
+    results = profiler.get_results()
+    event_results = results["event_handlers_stats"]["GET_BATCH_STARTED"]
+
+    assert event_results["min/index"][0] == approx(true_event_handler_time, abs=1e-1)
+    assert event_results["max/index"][0] == approx(true_event_handler_time, abs=1e-1)
+    assert event_results["mean"] == approx(true_event_handler_time, abs=1e-1)
+    assert event_results["std"] == approx(0.0, abs=1e-1)
+    assert event_results["total"] == approx(true_max_epochs * true_num_iters * true_event_handler_time, abs=1e-1)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1112')" href="javascript:;">
+ignite-0.4.8/tests/ignite/handlers/test_time_profilers.py: 588-611
+</a>
+<div class="mid" id="frag1112" style="display:none"><pre>
+def test_event_handler_get_batch_completed():
+    true_event_handler_time = 0.1
+    true_max_epochs = 1
+    true_num_iters = 2
+
+    profiler = BasicTimeProfiler()
+    dummy_trainer = Engine(_do_nothing_update_fn)
+    profiler.attach(dummy_trainer)
+
+    @dummy_trainer.on(Events.GET_BATCH_COMPLETED)
+    def delay_get_batch_completed(engine):
+        time.sleep(true_event_handler_time)
+
+    dummy_trainer.run(range(true_num_iters), max_epochs=true_max_epochs)
+    results = profiler.get_results()
+    event_results = results["event_handlers_stats"]["GET_BATCH_COMPLETED"]
+
+    assert event_results["min/index"][0] == approx(true_event_handler_time, abs=1e-1)
+    assert event_results["max/index"][0] == approx(true_event_handler_time, abs=1e-1)
+    assert event_results["mean"] == approx(true_event_handler_time, abs=1e-1)
+    assert event_results["std"] == approx(0.0, abs=1e-1)
+    assert event_results["total"] == approx(true_max_epochs * true_num_iters * true_event_handler_time, abs=1e-1)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1104')" href="javascript:;">
+ignite-0.4.8/tests/ignite/handlers/test_time_profilers.py: 488-511
+</a>
+<div class="mid" id="frag1104" style="display:none"><pre>
+def test_event_handler_iteration_completed_basic_profiler():
+    true_event_handler_time = 0.1
+    true_max_epochs = 1
+    true_num_iters = 2
+
+    profiler = BasicTimeProfiler()
+    dummy_trainer = Engine(_do_nothing_update_fn)
+    profiler.attach(dummy_trainer)
+
+    @dummy_trainer.on(Events.ITERATION_COMPLETED)
+    def delay_iter_complete(engine):
+        time.sleep(true_event_handler_time)
+
+    dummy_trainer.run(range(true_num_iters), max_epochs=true_max_epochs)
+    results = profiler.get_results()
+    event_results = results["event_handlers_stats"]["ITERATION_COMPLETED"]
+
+    assert event_results["min/index"][0] == approx(true_event_handler_time, abs=1e-1)
+    assert event_results["max/index"][0] == approx(true_event_handler_time, abs=1e-1)
+    assert event_results["mean"] == approx(true_event_handler_time, abs=1e-1)
+    assert event_results["std"] == approx(0.0, abs=1e-1)
+    assert event_results["total"] == approx(true_max_epochs * true_num_iters * true_event_handler_time, abs=1e-1)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 31:</b> &nbsp; 4 fragments, nominal size 20 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1102')" href="javascript:;">
+ignite-0.4.8/tests/ignite/handlers/test_time_profilers.py: 462-487
+</a>
+<div class="mid" id="frag1102" style="display:none"><pre>
+def test_event_handler_iteration_started_handlers_profiler():
+    true_event_handler_time = 0.1
+    true_max_epochs = 1
+    true_num_iters = 2
+
+    profiler = HandlersTimeProfiler()
+    dummy_trainer = Engine(_do_nothing_update_fn)
+    profiler.attach(dummy_trainer)
+
+    @dummy_trainer.on(Events.ITERATION_STARTED)
+    def delay_iter_start(engine):
+        time.sleep(true_event_handler_time)
+
+    dummy_trainer.run(range(true_num_iters), max_epochs=true_max_epochs)
+    results = profiler.get_results()
+    event_results = results[0]
+    assert "delay_iter_start" in event_results[0]
+    assert event_results[1] == "ITERATION_STARTED"
+
+    assert event_results[2] == approx(true_max_epochs * true_num_iters * true_event_handler_time, abs=1e-1)  # total
+    assert event_results[3][0] == approx(true_event_handler_time, abs=1e-1)  # min
+    assert event_results[4][0] == approx(true_event_handler_time, abs=1e-1)  # max
+    assert event_results[5] == approx(true_event_handler_time, abs=1e-1)  # mean
+    assert event_results[6] == approx(0.0, abs=1e-1)  # stddev
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1106')" href="javascript:;">
+ignite-0.4.8/tests/ignite/handlers/test_time_profilers.py: 512-537
+</a>
+<div class="mid" id="frag1106" style="display:none"><pre>
+def test_event_handler_iteration_completed_handlers_profiler():
+    true_event_handler_time = 0.1
+    true_max_epochs = 1
+    true_num_iters = 2
+
+    profiler = HandlersTimeProfiler()
+    dummy_trainer = Engine(_do_nothing_update_fn)
+    profiler.attach(dummy_trainer)
+
+    @dummy_trainer.on(Events.ITERATION_COMPLETED)
+    def delay_iter_complete(engine):
+        time.sleep(true_event_handler_time)
+
+    dummy_trainer.run(range(true_num_iters), max_epochs=true_max_epochs)
+    results = profiler.get_results()
+    event_results = results[0]
+    assert "delay_iter_complete" in event_results[0]
+    assert event_results[1] == "ITERATION_COMPLETED"
+
+    assert event_results[2] == approx(true_max_epochs * true_num_iters * true_event_handler_time, abs=1e-1)  # total
+    assert event_results[3][0] == approx(true_event_handler_time, abs=1e-1)  # min
+    assert event_results[4][0] == approx(true_event_handler_time, abs=1e-1)  # max
+    assert event_results[5] == approx(true_event_handler_time, abs=1e-1)  # mean
+    assert event_results[6] == approx(0.0, abs=1e-1)  # stddev
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1114')" href="javascript:;">
+ignite-0.4.8/tests/ignite/handlers/test_time_profilers.py: 612-637
+</a>
+<div class="mid" id="frag1114" style="display:none"><pre>
+def test_event_handler_get_batch_completed_handlers_profiler():
+    true_event_handler_time = 0.1
+    true_max_epochs = 1
+    true_num_iters = 2
+
+    profiler = HandlersTimeProfiler()
+    dummy_trainer = Engine(_do_nothing_update_fn)
+    profiler.attach(dummy_trainer)
+
+    @dummy_trainer.on(Events.GET_BATCH_COMPLETED)
+    def delay_get_batch_completed(engine):
+        time.sleep(true_event_handler_time)
+
+    dummy_trainer.run(range(true_num_iters), max_epochs=true_max_epochs)
+    results = profiler.get_results()
+    event_results = results[0]
+    assert "delay_get_batch_completed" in event_results[0]
+    assert event_results[1] == "GET_BATCH_COMPLETED"
+
+    assert event_results[2] == approx(true_max_epochs * true_num_iters * true_event_handler_time, abs=1e-1)  # total
+    assert event_results[3][0] == approx(true_event_handler_time, abs=1e-1)  # min
+    assert event_results[4][0] == approx(true_event_handler_time, abs=1e-1)  # max
+    assert event_results[5] == approx(true_event_handler_time, abs=1e-1)  # mean
+    assert event_results[6] == approx(0.0, abs=1e-1)  # stddev
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1110')" href="javascript:;">
+ignite-0.4.8/tests/ignite/handlers/test_time_profilers.py: 562-587
+</a>
+<div class="mid" id="frag1110" style="display:none"><pre>
+def test_event_handler_get_batch_started_handlers_profiler():
+    true_event_handler_time = 0.1
+    true_max_epochs = 1
+    true_num_iters = 2
+
+    profiler = HandlersTimeProfiler()
+    dummy_trainer = Engine(_do_nothing_update_fn)
+    profiler.attach(dummy_trainer)
+
+    @dummy_trainer.on(Events.GET_BATCH_STARTED)
+    def delay_get_batch_started(engine):
+        time.sleep(true_event_handler_time)
+
+    dummy_trainer.run(range(true_num_iters), max_epochs=true_max_epochs)
+    results = profiler.get_results()
+    event_results = results[0]
+    assert "delay_get_batch_started" in event_results[0]
+    assert event_results[1] == "GET_BATCH_STARTED"
+
+    assert event_results[2] == approx(true_max_epochs * true_num_iters * true_event_handler_time, abs=1e-1)  # total
+    assert event_results[3][0] == approx(true_event_handler_time, abs=1e-1)  # min
+    assert event_results[4][0] == approx(true_event_handler_time, abs=1e-1)  # max
+    assert event_results[5] == approx(true_event_handler_time, abs=1e-1)  # mean
+    assert event_results[6] == approx(0.0, abs=1e-1)  # stddev
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 32:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1896')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_recall.py: 16-29
+</a>
+<div class="mid" id="frag1896" style="display:none"><pre>
+def test_no_update():
+    recall = Recall()
+    assert recall._updated is False
+    with pytest.raises(NotComputableError, match=r"Recall must have at least one example before it can be computed"):
+        recall.compute()
+    assert recall._updated is False
+
+    recall = Recall(is_multilabel=True, average=True)
+    assert recall._updated is False
+    with pytest.raises(NotComputableError, match=r"Recall must have at least one example before it can be computed"):
+        recall.compute()
+    assert recall._updated is False
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2151')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_precision.py: 16-29
+</a>
+<div class="mid" id="frag2151" style="display:none"><pre>
+def test_no_update():
+    precision = Precision()
+    assert precision._updated is False
+    with pytest.raises(NotComputableError, match=r"Precision must have at least one example before it can be computed"):
+        precision.compute()
+    assert precision._updated is False
+
+    precision = Precision(is_multilabel=True, average=True)
+    assert precision._updated is False
+    with pytest.raises(NotComputableError, match=r"Precision must have at least one example before it can be computed"):
+        precision.compute()
+    assert precision._updated is False
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 33:</b> &nbsp; 2 fragments, nominal size 42 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1898')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_recall.py: 61-121
+</a>
+<div class="mid" id="frag1898" style="display:none"><pre>
+def test_binary_input(average):
+
+    re = Recall(average=average)
+    assert re._updated is False
+
+    def _test(y_pred, y, batch_size):
+        re.reset()
+        assert re._updated is False
+
+        if batch_size &gt; 1:
+            n_iters = y.shape[0] // batch_size + 1
+            for i in range(n_iters):
+                idx = i * batch_size
+                re.update((y_pred[idx : idx + batch_size], y[idx : idx + batch_size]))
+        else:
+            re.update((y_pred, y))
+
+        np_y = y.numpy().ravel()
+        np_y_pred = y_pred.numpy().ravel()
+
+        assert re._type == "binary"
+        assert re._updated is True
+        assert isinstance(re.compute(), float if average else torch.Tensor)
+        re_compute = re.compute() if average else re.compute().numpy()
+        assert recall_score(np_y, np_y_pred, average="binary") == pytest.approx(re_compute)
+
+    def get_test_cases():
+
+        test_cases = [
+            # Binary accuracy on input of shape (N, 1) or (N, )
+            (torch.randint(0, 2, size=(10,)), torch.randint(0, 2, size=(10,)), 1),
+            (torch.randint(0, 2, size=(10, 1)), torch.randint(0, 2, size=(10, 1)), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50,)), torch.randint(0, 2, size=(50,)), 16),
+            (torch.randint(0, 2, size=(50, 1)), torch.randint(0, 2, size=(50, 1)), 16),
+            # Binary accuracy on input of shape (N, L)
+            (torch.randint(0, 2, size=(10, 5)), torch.randint(0, 2, size=(10, 5)), 1),
+            (torch.randint(0, 2, size=(10, 1, 5)), torch.randint(0, 2, size=(10, 1, 5)), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50, 5)), torch.randint(0, 2, size=(50, 5)), 16),
+            (torch.randint(0, 2, size=(50, 1, 5)), torch.randint(0, 2, size=(50, 1, 5)), 16),
+            # Binary accuracy on input of shape (N, H, W)
+            (torch.randint(0, 2, size=(10, 12, 10)), torch.randint(0, 2, size=(10, 12, 10)), 1),
+            (torch.randint(0, 2, size=(10, 1, 12, 10)), torch.randint(0, 2, size=(10, 1, 12, 10)), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50, 12, 10)), torch.randint(0, 2, size=(50, 12, 10)), 16),
+            (torch.randint(0, 2, size=(50, 1, 12, 10)), torch.randint(0, 2, size=(50, 1, 12, 10)), 16),
+            # Corner case with all zeros predictions
+            (torch.zeros(size=(10,)), torch.randint(0, 2, size=(10,)), 1),
+            (torch.zeros(size=(10, 1)), torch.randint(0, 2, size=(10, 1)), 1),
+        ]
+
+        return test_cases
+
+    for _ in range(5):
+        # check multiple random inputs as random exact occurencies are rare
+        test_cases = get_test_cases()
+        for y_pred, y, batch_size in test_cases:
+            _test(y_pred, y, batch_size)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2153')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_precision.py: 61-121
+</a>
+<div class="mid" id="frag2153" style="display:none"><pre>
+def test_binary_input(average):
+
+    pr = Precision(average=average)
+    assert pr._updated is False
+
+    def _test(y_pred, y, batch_size):
+        pr.reset()
+        assert pr._updated is False
+
+        if batch_size &gt; 1:
+            n_iters = y.shape[0] // batch_size + 1
+            for i in range(n_iters):
+                idx = i * batch_size
+                pr.update((y_pred[idx : idx + batch_size], y[idx : idx + batch_size]))
+        else:
+            pr.update((y_pred, y))
+
+        np_y = y.numpy().ravel()
+        np_y_pred = y_pred.numpy().ravel()
+
+        assert pr._type == "binary"
+        assert pr._updated is True
+        assert isinstance(pr.compute(), float if average else torch.Tensor)
+        pr_compute = pr.compute() if average else pr.compute().numpy()
+        assert precision_score(np_y, np_y_pred, average="binary") == pytest.approx(pr_compute)
+
+    def get_test_cases():
+
+        test_cases = [
+            # Binary accuracy on input of shape (N, 1) or (N, )
+            (torch.randint(0, 2, size=(10,)), torch.randint(0, 2, size=(10,)), 1),
+            (torch.randint(0, 2, size=(10, 1)), torch.randint(0, 2, size=(10, 1)), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50,)), torch.randint(0, 2, size=(50,)), 16),
+            (torch.randint(0, 2, size=(50, 1)), torch.randint(0, 2, size=(50, 1)), 16),
+            # Binary accuracy on input of shape (N, L)
+            (torch.randint(0, 2, size=(10, 5)), torch.randint(0, 2, size=(10, 5)), 1),
+            (torch.randint(0, 2, size=(10, 1, 5)), torch.randint(0, 2, size=(10, 1, 5)), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50, 5)), torch.randint(0, 2, size=(50, 5)), 16),
+            (torch.randint(0, 2, size=(50, 1, 5)), torch.randint(0, 2, size=(50, 1, 5)), 16),
+            # Binary accuracy on input of shape (N, H, W)
+            (torch.randint(0, 2, size=(10, 12, 10)), torch.randint(0, 2, size=(10, 12, 10)), 1),
+            (torch.randint(0, 2, size=(10, 1, 12, 10)), torch.randint(0, 2, size=(10, 1, 12, 10)), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50, 12, 10)), torch.randint(0, 2, size=(50, 12, 10)), 16),
+            (torch.randint(0, 2, size=(50, 1, 12, 10)), torch.randint(0, 2, size=(50, 1, 12, 10)), 16),
+            # Corner case with all zeros predictions
+            (torch.zeros(size=(10,)), torch.randint(0, 2, size=(10,)), 1),
+            (torch.zeros(size=(10, 1)), torch.randint(0, 2, size=(10, 1)), 1),
+        ]
+
+        return test_cases
+
+    for _ in range(5):
+        # check multiple random inputs as random exact occurencies are rare
+        test_cases = get_test_cases()
+        for y_pred, y, batch_size in test_cases:
+            _test(y, y_pred, batch_size)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 34:</b> &nbsp; 2 fragments, nominal size 32 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1901')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_recall.py: 122-171
+</a>
+<div class="mid" id="frag1901" style="display:none"><pre>
+def test_multiclass_wrong_inputs():
+    re = Recall()
+    assert re._updated is False
+
+    with pytest.raises(ValueError):
+        # incompatible shapes
+        re.update((torch.rand(10, 5, 4), torch.randint(0, 2, size=(10,)).long()))
+    assert re._updated is False
+
+    with pytest.raises(ValueError):
+        # incompatible shapes
+        re.update((torch.rand(10, 5, 6), torch.randint(0, 5, size=(10, 5)).long()))
+    assert re._updated is False
+
+    with pytest.raises(ValueError):
+        # incompatible shapes
+        re.update((torch.rand(10), torch.randint(0, 5, size=(10, 5, 6)).long()))
+    assert re._updated is False
+
+    re = Recall(average=True)
+    assert re._updated is False
+
+    with pytest.raises(ValueError):
+        # incompatible shapes between two updates
+        re.update((torch.rand(10, 5), torch.randint(0, 5, size=(10,)).long()))
+        re.update((torch.rand(10, 6), torch.randint(0, 5, size=(10,)).long()))
+    assert re._updated is True
+
+    with pytest.raises(ValueError):
+        # incompatible shapes between two updates
+        re.update((torch.rand(10, 5, 12, 14), torch.randint(0, 5, size=(10, 12, 14)).long()))
+        re.update((torch.rand(10, 6, 12, 14), torch.randint(0, 5, size=(10, 12, 14)).long()))
+    assert re._updated is True
+
+    re = Recall(average=False)
+    assert re._updated is False
+
+    with pytest.raises(ValueError):
+        # incompatible shapes between two updates
+        re.update((torch.rand(10, 5), torch.randint(0, 5, size=(10,)).long()))
+        re.update((torch.rand(10, 6), torch.randint(0, 5, size=(10,)).long()))
+    assert re._updated is True
+
+    with pytest.raises(ValueError):
+        # incompatible shapes between two updates
+        re.update((torch.rand(10, 5, 12, 14), torch.randint(0, 5, size=(10, 12, 14)).long()))
+        re.update((torch.rand(10, 6, 12, 14), torch.randint(0, 5, size=(10, 12, 14)).long()))
+    assert re._updated is True
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2156')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_precision.py: 122-171
+</a>
+<div class="mid" id="frag2156" style="display:none"><pre>
+def test_multiclass_wrong_inputs():
+    pr = Precision()
+    assert pr._updated is False
+
+    with pytest.raises(ValueError):
+        # incompatible shapes
+        pr.update((torch.rand(10, 5, 4), torch.randint(0, 2, size=(10,)).long()))
+    assert pr._updated is False
+
+    with pytest.raises(ValueError):
+        # incompatible shapes
+        pr.update((torch.rand(10, 5, 6), torch.randint(0, 5, size=(10, 5)).long()))
+    assert pr._updated is False
+
+    with pytest.raises(ValueError):
+        # incompatible shapes
+        pr.update((torch.rand(10), torch.randint(0, 5, size=(10, 5, 6)).long()))
+    assert pr._updated is False
+
+    pr = Precision(average=True)
+    assert pr._updated is False
+
+    with pytest.raises(ValueError):
+        # incompatible shapes between two updates
+        pr.update((torch.rand(10, 5), torch.randint(0, 5, size=(10,)).long()))
+        pr.update((torch.rand(10, 6), torch.randint(0, 5, size=(10,)).long()))
+    assert pr._updated is True
+
+    with pytest.raises(ValueError):
+        # incompatible shapes between two updates
+        pr.update((torch.rand(10, 5, 12, 14), torch.randint(0, 5, size=(10, 12, 14)).long()))
+        pr.update((torch.rand(10, 6, 12, 14), torch.randint(0, 5, size=(10, 12, 14)).long()))
+    assert pr._updated is True
+
+    pr = Precision(average=False)
+    assert pr._updated is False
+
+    with pytest.raises(ValueError):
+        # incompatible shapes between two updates
+        pr.update((torch.rand(10, 5), torch.randint(0, 5, size=(10,)).long()))
+        pr.update((torch.rand(10, 6), torch.randint(0, 5, size=(10,)).long()))
+    assert pr._updated is True
+
+    with pytest.raises(ValueError):
+        # incompatible shapes between two updates
+        pr.update((torch.rand(10, 5, 12, 14), torch.randint(0, 5, size=(10, 12, 14)).long()))
+        pr.update((torch.rand(10, 6, 12, 14), torch.randint(0, 5, size=(10, 12, 14)).long()))
+    assert pr._updated is True
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 35:</b> &nbsp; 2 fragments, nominal size 47 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1902')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_recall.py: 173-238
+</a>
+<div class="mid" id="frag1902" style="display:none"><pre>
+def test_multiclass_input(average):
+
+    re = Recall(average=average)
+    assert re._updated is False
+
+    def _test(y_pred, y, batch_size):
+        re.reset()
+        assert re._updated is False
+
+        if batch_size &gt; 1:
+            n_iters = y.shape[0] // batch_size + 1
+            for i in range(n_iters):
+                idx = i * batch_size
+                re.update((y_pred[idx : idx + batch_size], y[idx : idx + batch_size]))
+        else:
+            re.update((y_pred, y))
+
+        num_classes = y_pred.shape[1]
+        np_y_pred = y_pred.argmax(dim=1).numpy().ravel()
+        np_y = y.numpy().ravel()
+
+        assert re._type == "multiclass"
+        assert re._updated is True
+        assert isinstance(re.compute(), float if average else torch.Tensor)
+        re_compute = re.compute() if average else re.compute().numpy()
+        sk_average_parameter = "macro" if average else None
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UndefinedMetricWarning)
+            sk_compute = recall_score(np_y, np_y_pred, labels=range(0, num_classes), average=sk_average_parameter)
+            assert sk_compute == pytest.approx(re_compute)
+
+    def get_test_cases():
+
+        test_cases = [
+            # Multiclass input data of shape (N, ) and (N, C)
+            (torch.rand(10, 6), torch.randint(0, 6, size=(10,)), 1),
+            (torch.rand(10, 4), torch.randint(0, 4, size=(10,)), 1),
+            # updated batches
+            (torch.rand(50, 6), torch.randint(0, 6, size=(50,)), 16),
+            (torch.rand(50, 4), torch.randint(0, 4, size=(50,)), 16),
+            # Multiclass input data of shape (N, L) and (N, C, L)
+            (torch.rand(10, 5, 8), torch.randint(0, 5, size=(10, 8)), 1),
+            (torch.rand(10, 8, 12), torch.randint(0, 8, size=(10, 12)), 1),
+            # updated batches
+            (torch.rand(50, 5, 8), torch.randint(0, 5, size=(50, 8)), 16),
+            (torch.rand(50, 8, 12), torch.randint(0, 8, size=(50, 12)), 16),
+            # Multiclass input data of shape (N, H, W, ...) and (N, C, H, W, ...)
+            (torch.rand(10, 5, 18, 16), torch.randint(0, 5, size=(10, 18, 16)), 1),
+            (torch.rand(10, 7, 20, 12), torch.randint(0, 7, size=(10, 20, 12)), 1),
+            # updated batches
+            (torch.rand(50, 5, 18, 16), torch.randint(0, 5, size=(50, 18, 16)), 16),
+            (torch.rand(50, 7, 20, 12), torch.randint(0, 7, size=(50, 20, 12)), 16),
+            # Corner case with all zeros predictions
+            (torch.zeros(size=(10, 6)), torch.randint(0, 6, size=(10,)), 1),
+            (torch.zeros(size=(10, 4)), torch.randint(0, 4, size=(10,)), 1),
+        ]
+
+        return test_cases
+
+    for _ in range(5):
+        # check multiple random inputs as random exact occurencies are rare
+        test_cases = get_test_cases()
+        for y_pred, y, batch_size in test_cases:
+            _test(y_pred, y, batch_size)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2157')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_precision.py: 173-238
+</a>
+<div class="mid" id="frag2157" style="display:none"><pre>
+def test_multiclass_input(average):
+
+    pr = Precision(average=average)
+    assert pr._updated is False
+
+    def _test(y_pred, y, batch_size):
+        pr.reset()
+        assert pr._updated is False
+
+        if batch_size &gt; 1:
+            n_iters = y.shape[0] // batch_size + 1
+            for i in range(n_iters):
+                idx = i * batch_size
+                pr.update((y_pred[idx : idx + batch_size], y[idx : idx + batch_size]))
+        else:
+            pr.update((y_pred, y))
+
+        num_classes = y_pred.shape[1]
+        np_y_pred = y_pred.argmax(dim=1).numpy().ravel()
+        np_y = y.numpy().ravel()
+
+        assert pr._type == "multiclass"
+        assert pr._updated is True
+        assert isinstance(pr.compute(), float if average else torch.Tensor)
+        pr_compute = pr.compute() if average else pr.compute().numpy()
+        sk_average_parameter = "macro" if average else None
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UndefinedMetricWarning)
+            sk_compute = precision_score(np_y, np_y_pred, labels=range(0, num_classes), average=sk_average_parameter)
+            assert sk_compute == pytest.approx(pr_compute)
+
+    def get_test_cases():
+
+        test_cases = [
+            # Multiclass input data of shape (N, ) and (N, C)
+            (torch.rand(10, 6), torch.randint(0, 6, size=(10,)), 1),
+            (torch.rand(10, 4), torch.randint(0, 4, size=(10,)), 1),
+            # updated batches
+            (torch.rand(50, 6), torch.randint(0, 6, size=(50,)), 16),
+            (torch.rand(50, 4), torch.randint(0, 4, size=(50,)), 16),
+            # Multiclass input data of shape (N, L) and (N, C, L)
+            (torch.rand(10, 5, 8), torch.randint(0, 5, size=(10, 8)), 1),
+            (torch.rand(10, 8, 12), torch.randint(0, 8, size=(10, 12)), 1),
+            # updated batches
+            (torch.rand(50, 5, 8), torch.randint(0, 5, size=(50, 8)), 16),
+            (torch.rand(50, 8, 12), torch.randint(0, 8, size=(50, 12)), 16),
+            # Multiclass input data of shape (N, H, W, ...) and (N, C, H, W, ...)
+            (torch.rand(10, 5, 18, 16), torch.randint(0, 5, size=(10, 18, 16)), 1),
+            (torch.rand(10, 7, 20, 12), torch.randint(0, 7, size=(10, 20, 12)), 1),
+            # updated batches
+            (torch.rand(50, 5, 18, 16), torch.randint(0, 5, size=(50, 18, 16)), 16),
+            (torch.rand(50, 7, 20, 12), torch.randint(0, 7, size=(50, 20, 12)), 16),
+            # Corner case with all zeros predictions
+            (torch.zeros(size=(10, 6)), torch.randint(0, 6, size=(10,)), 1),
+            (torch.zeros(size=(10, 4)), torch.randint(0, 4, size=(10,)), 1),
+        ]
+
+        return test_cases
+
+    for _ in range(5):
+        # check multiple random inputs as random exact occurencies are rare
+        test_cases = get_test_cases()
+        for y_pred, y, batch_size in test_cases:
+            _test(y_pred, y, batch_size)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 36:</b> &nbsp; 2 fragments, nominal size 16 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1905')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_recall.py: 239-264
+</a>
+<div class="mid" id="frag1905" style="display:none"><pre>
+def test_multilabel_wrong_inputs():
+    re = Recall(average=True, is_multilabel=True)
+    assert re._updated is False
+
+    with pytest.raises(ValueError):
+        # incompatible shapes
+        re.update((torch.randint(0, 2, size=(10,)), torch.randint(0, 2, size=(10,)).long()))
+    assert re._updated is False
+
+    with pytest.raises(ValueError):
+        # incompatible y_pred
+        re.update((torch.rand(10, 5), torch.randint(0, 2, size=(10, 5)).long()))
+    assert re._updated is False
+
+    with pytest.raises(ValueError):
+        # incompatible y
+        re.update((torch.randint(0, 5, size=(10, 5, 6)), torch.rand(10)))
+    assert re._updated is False
+
+    with pytest.raises(ValueError):
+        # incompatible shapes between two updates
+        re.update((torch.randint(0, 2, size=(20, 5)), torch.randint(0, 2, size=(20, 5)).long()))
+        re.update((torch.randint(0, 2, size=(20, 6)), torch.randint(0, 2, size=(20, 6)).long()))
+    assert re._updated is True
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2160')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_precision.py: 239-264
+</a>
+<div class="mid" id="frag2160" style="display:none"><pre>
+def test_multilabel_wrong_inputs():
+    pr = Precision(average=True, is_multilabel=True)
+    assert pr._updated is False
+
+    with pytest.raises(ValueError):
+        # incompatible shapes
+        pr.update((torch.randint(0, 2, size=(10,)), torch.randint(0, 2, size=(10,)).long()))
+    assert pr._updated is False
+
+    with pytest.raises(ValueError):
+        # incompatible y_pred
+        pr.update((torch.rand(10, 5), torch.randint(0, 2, size=(10, 5)).long()))
+    assert pr._updated is False
+
+    with pytest.raises(ValueError):
+        # incompatible y
+        pr.update((torch.randint(0, 5, size=(10, 5, 6)), torch.rand(10)))
+    assert pr._updated is False
+
+    with pytest.raises(ValueError):
+        # incompatible shapes between two updates
+        pr.update((torch.randint(0, 2, size=(20, 5)), torch.randint(0, 2, size=(20, 5)).long()))
+        pr.update((torch.randint(0, 2, size=(20, 6)), torch.randint(0, 2, size=(20, 6)).long()))
+    assert pr._updated is True
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 37:</b> &nbsp; 2 fragments, nominal size 54 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1907')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_recall.py: 274-347
+</a>
+<div class="mid" id="frag1907" style="display:none"><pre>
+def test_multilabel_input(average):
+
+    re = Recall(average=average, is_multilabel=True)
+    assert re._updated is False
+
+    def _test(y_pred, y, batch_size):
+        re.reset()
+        assert re._updated is False
+
+        if batch_size &gt; 1:
+            n_iters = y.shape[0] // batch_size + 1
+            for i in range(n_iters):
+                idx = i * batch_size
+                re.update((y_pred[idx : idx + batch_size], y[idx : idx + batch_size]))
+        else:
+            re.update((y_pred, y))
+
+        np_y_pred = to_numpy_multilabel(y_pred)
+        np_y = to_numpy_multilabel(y)
+
+        assert re._type == "multilabel"
+        assert re._updated is True
+        re_compute = re.compute() if average else re.compute().mean().item()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UndefinedMetricWarning)
+            assert recall_score(np_y, np_y_pred, average="samples") == pytest.approx(re_compute)
+
+        re1 = Recall(is_multilabel=True, average=True)
+        re2 = Recall(is_multilabel=True, average=False)
+        assert re1._updated is False
+        assert re2._updated is False
+        re1.update((y_pred, y))
+        re2.update((y_pred, y))
+        assert re1._updated is True
+        assert re2._updated is True
+        assert re1.compute() == pytest.approx(re2.compute().mean().item())
+        assert re1._updated is True
+        assert re2._updated is True
+
+    def get_test_cases():
+
+        test_cases = [
+            # Multilabel input data of shape (N, C)
+            (torch.randint(0, 2, size=(10, 5)), torch.randint(0, 2, size=(10, 5)), 1),
+            (torch.randint(0, 2, size=(10, 4)), torch.randint(0, 2, size=(10, 4)), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50, 5)), torch.randint(0, 2, size=(50, 5)), 16),
+            (torch.randint(0, 2, size=(50, 4)), torch.randint(0, 2, size=(50, 4)), 16),
+            # Multilabel input data of shape (N, H, W)
+            (torch.randint(0, 2, size=(10, 5, 10)), torch.randint(0, 2, size=(10, 5, 10)), 1),
+            (torch.randint(0, 2, size=(10, 4, 10)), torch.randint(0, 2, size=(10, 4, 10)), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50, 5, 10)), torch.randint(0, 2, size=(50, 5, 10)), 16),
+            (torch.randint(0, 2, size=(50, 4, 10)), torch.randint(0, 2, size=(50, 4, 10)), 16),
+            # Multilabel input data of shape (N, C, H, W, ...)
+            (torch.randint(0, 2, size=(10, 5, 18, 16)), torch.randint(0, 2, size=(10, 5, 18, 16)), 1),
+            (torch.randint(0, 2, size=(10, 4, 20, 23)), torch.randint(0, 2, size=(10, 4, 20, 23)), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50, 5, 18, 16)), torch.randint(0, 2, size=(50, 5, 18, 16)), 16),
+            (torch.randint(0, 2, size=(50, 4, 20, 23)), torch.randint(0, 2, size=(50, 4, 20, 23)), 16),
+            # Corner case with all zeros predictions
+            (torch.zeros(size=(10, 5)), torch.randint(0, 2, size=(10, 5)), 1),
+            (torch.zeros(size=(10, 4)), torch.randint(0, 2, size=(10, 4)), 1),
+        ]
+
+        return test_cases
+
+    for _ in range(5):
+        # check multiple random inputs as random exact occurencies are rare
+        test_cases = get_test_cases()
+        for y_pred, y, batch_size in test_cases:
+            _test(y_pred, y, batch_size)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2162')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_precision.py: 274-347
+</a>
+<div class="mid" id="frag2162" style="display:none"><pre>
+def test_multilabel_input(average):
+
+    pr = Precision(average=average, is_multilabel=True)
+    assert pr._updated is False
+
+    def _test(y_pred, y, batch_size):
+        pr.reset()
+        assert pr._updated is False
+
+        if batch_size &gt; 1:
+            n_iters = y.shape[0] // batch_size + 1
+            for i in range(n_iters):
+                idx = i * batch_size
+                pr.update((y_pred[idx : idx + batch_size], y[idx : idx + batch_size]))
+        else:
+            pr.update((y_pred, y))
+
+        np_y_pred = to_numpy_multilabel(y_pred)
+        np_y = to_numpy_multilabel(y)
+
+        assert pr._type == "multilabel"
+        assert pr._updated is True
+        pr_compute = pr.compute() if average else pr.compute().mean().item()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UndefinedMetricWarning)
+            assert precision_score(np_y, np_y_pred, average="samples") == pytest.approx(pr_compute)
+
+        pr1 = Precision(is_multilabel=True, average=True)
+        pr2 = Precision(is_multilabel=True, average=False)
+        assert pr1._updated is False
+        assert pr2._updated is False
+        pr1.update((y_pred, y))
+        pr2.update((y_pred, y))
+        assert pr1._updated is True
+        assert pr2._updated is True
+        assert pr1.compute() == pytest.approx(pr2.compute().mean().item())
+        assert pr1._updated is True
+        assert pr2._updated is True
+
+    def get_test_cases():
+
+        test_cases = [
+            # Multilabel input data of shape (N, C)
+            (torch.randint(0, 2, size=(10, 5)), torch.randint(0, 2, size=(10, 5)), 1),
+            (torch.randint(0, 2, size=(10, 4)), torch.randint(0, 2, size=(10, 4)), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50, 5)), torch.randint(0, 2, size=(50, 5)), 16),
+            (torch.randint(0, 2, size=(50, 4)), torch.randint(0, 2, size=(50, 4)), 16),
+            # Multilabel input data of shape (N, C, L)
+            (torch.randint(0, 2, size=(10, 5, 10)), torch.randint(0, 2, size=(10, 5, 10)), 1),
+            (torch.randint(0, 2, size=(10, 4, 10)), torch.randint(0, 2, size=(10, 4, 10)), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50, 5, 10)), torch.randint(0, 2, size=(50, 5, 10)), 16),
+            (torch.randint(0, 2, size=(50, 4, 10)), torch.randint(0, 2, size=(50, 4, 10)), 16),
+            # Multilabel input data of shape (N, H, W, ...) and (N, C, H, W, ...)
+            (torch.randint(0, 2, size=(10, 5, 18, 16)), torch.randint(0, 2, size=(10, 5, 18, 16)), 1),
+            (torch.randint(0, 2, size=(10, 4, 20, 23)), torch.randint(0, 2, size=(10, 4, 20, 23)), 1),
+            # updated batches
+            (torch.randint(0, 2, size=(50, 5, 18, 16)), torch.randint(0, 2, size=(50, 5, 18, 16)), 16),
+            (torch.randint(0, 2, size=(50, 4, 20, 23)), torch.randint(0, 2, size=(50, 4, 20, 23)), 16),
+            # Corner case with all zeros predictions
+            (torch.zeros(size=(10, 5)), torch.randint(0, 2, size=(10, 5)), 1),
+            (torch.zeros(size=(10, 4)), torch.randint(0, 2, size=(10, 4)), 1),
+        ]
+
+        return test_cases
+
+    for _ in range(5):
+        # check multiple random inputs as random exact occurencies are rare
+        test_cases = get_test_cases()
+        for y_pred, y, batch_size in test_cases:
+            _test(y_pred, y, batch_size)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 38:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1912')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_recall.py: 384-401
+</a>
+<div class="mid" id="frag1912" style="display:none"><pre>
+def test_incorrect_y_classes():
+    def _test(average):
+        re = Recall(average=average)
+
+        assert re._updated is False
+
+        y_pred = torch.randint(0, 2, size=(10, 4)).float()
+        y = torch.randint(4, 5, size=(10,)).long()
+
+        with pytest.raises(ValueError):
+            re.update((y_pred, y))
+
+        assert re._updated is False
+
+    _test(average=True)
+    _test(average=False)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2167')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_precision.py: 384-401
+</a>
+<div class="mid" id="frag2167" style="display:none"><pre>
+def test_incorrect_y_classes():
+    def _test(average):
+        pr = Precision(average=average)
+
+        assert pr._updated is False
+
+        y_pred = torch.randint(0, 2, size=(10, 4)).float()
+        y = torch.randint(4, 5, size=(10,)).long()
+
+        with pytest.raises(ValueError):
+            pr.update((y_pred, y))
+
+        assert pr._updated is False
+
+    _test(average=True)
+    _test(average=False)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 39:</b> &nbsp; 2 fragments, nominal size 40 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1914')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_recall.py: 402-457
+</a>
+<div class="mid" id="frag1914" style="display:none"><pre>
+def _test_distrib_integration_multiclass(device):
+
+    from ignite.engine import Engine
+
+    rank = idist.get_rank()
+    torch.manual_seed(12)
+
+    def _test(average, n_epochs, metric_device):
+        n_iters = 60
+        s = 16
+        n_classes = 7
+
+        offset = n_iters * s
+        y_true = torch.randint(0, n_classes, size=(offset * idist.get_world_size(),)).to(device)
+        y_preds = torch.rand(offset * idist.get_world_size(), n_classes).to(device)
+
+        def update(engine, i):
+            return (
+                y_preds[i * s + rank * offset : (i + 1) * s + rank * offset, :],
+                y_true[i * s + rank * offset : (i + 1) * s + rank * offset],
+            )
+
+        engine = Engine(update)
+
+        re = Recall(average=average, device=metric_device)
+        re.attach(engine, "re")
+        assert re._updated is False
+
+        data = list(range(n_iters))
+        engine.run(data=data, max_epochs=n_epochs)
+
+        assert "re" in engine.state.metrics
+        assert re._updated is True
+        res = engine.state.metrics["re"]
+        if isinstance(res, torch.Tensor):
+            # Fixes https://github.com/pytorch/ignite/issues/1635#issuecomment-863026919
+            assert res.device.type == "cpu"
+            res = res.cpu().numpy()
+
+        true_res = recall_score(
+            y_true.cpu().numpy(), torch.argmax(y_preds, dim=1).cpu().numpy(), average="macro" if average else None
+        )
+
+        assert pytest.approx(res) == true_res
+
+    metric_devices = [torch.device("cpu")]
+    if device.type != "xla":
+        metric_devices.append(idist.device())
+    for _ in range(2):
+        for metric_device in metric_devices:
+            _test(average=True, n_epochs=1, metric_device=metric_device)
+            _test(average=True, n_epochs=2, metric_device=metric_device)
+            _test(average=False, n_epochs=1, metric_device=metric_device)
+            _test(average=False, n_epochs=2, metric_device=metric_device)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2169')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_precision.py: 402-456
+</a>
+<div class="mid" id="frag2169" style="display:none"><pre>
+def _test_distrib_integration_multiclass(device):
+    from ignite.engine import Engine
+
+    rank = idist.get_rank()
+    torch.manual_seed(12)
+
+    def _test(average, n_epochs, metric_device):
+        n_iters = 60
+        s = 16
+        n_classes = 7
+
+        offset = n_iters * s
+        y_true = torch.randint(0, n_classes, size=(offset * idist.get_world_size(),)).to(device)
+        y_preds = torch.rand(offset * idist.get_world_size(), n_classes).to(device)
+
+        def update(engine, i):
+            return (
+                y_preds[i * s + rank * offset : (i + 1) * s + rank * offset, :],
+                y_true[i * s + rank * offset : (i + 1) * s + rank * offset],
+            )
+
+        engine = Engine(update)
+
+        pr = Precision(average=average, device=metric_device)
+        pr.attach(engine, "pr")
+        assert pr._updated is False
+
+        data = list(range(n_iters))
+        engine.run(data=data, max_epochs=n_epochs)
+
+        assert "pr" in engine.state.metrics
+        assert pr._updated is True
+        res = engine.state.metrics["pr"]
+        if isinstance(res, torch.Tensor):
+            # Fixes https://github.com/pytorch/ignite/issues/1635#issuecomment-863026919
+            assert res.device.type == "cpu"
+            res = res.cpu().numpy()
+
+        true_res = precision_score(
+            y_true.cpu().numpy(), torch.argmax(y_preds, dim=1).cpu().numpy(), average="macro" if average else None
+        )
+
+        assert pytest.approx(res) == true_res
+
+    metric_devices = [torch.device("cpu")]
+    if device.type != "xla":
+        metric_devices.append(idist.device())
+    for _ in range(2):
+        for metric_device in metric_devices:
+            _test(average=True, n_epochs=1, metric_device=metric_device)
+            _test(average=True, n_epochs=2, metric_device=metric_device)
+            _test(average=False, n_epochs=1, metric_device=metric_device)
+            _test(average=False, n_epochs=2, metric_device=metric_device)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 40:</b> &nbsp; 2 fragments, nominal size 59 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1917')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_recall.py: 458-530
+</a>
+<div class="mid" id="frag1917" style="display:none"><pre>
+def _test_distrib_integration_multilabel(device):
+
+    from ignite.engine import Engine
+
+    rank = idist.get_rank()
+    torch.manual_seed(12)
+
+    def _test(average, n_epochs, metric_device):
+        n_iters = 60
+        s = 16
+        n_classes = 7
+
+        offset = n_iters * s
+        y_true = torch.randint(0, 2, size=(offset * idist.get_world_size(), n_classes, 6, 8)).to(device)
+        y_preds = torch.randint(0, 2, size=(offset * idist.get_world_size(), n_classes, 6, 8)).to(device)
+
+        def update(engine, i):
+            return (
+                y_preds[i * s + rank * offset : (i + 1) * s + rank * offset, ...],
+                y_true[i * s + rank * offset : (i + 1) * s + rank * offset, ...],
+            )
+
+        engine = Engine(update)
+
+        re = Recall(average=average, is_multilabel=True, device=metric_device)
+        re.attach(engine, "re")
+        assert re._updated is False
+
+        data = list(range(n_iters))
+        engine.run(data=data, max_epochs=n_epochs)
+
+        assert "re" in engine.state.metrics
+        assert re._updated is True
+        res = engine.state.metrics["re"]
+        res2 = re.compute()
+        if isinstance(res, torch.Tensor):
+            res = res.cpu().numpy()
+            res2 = res2.cpu().numpy()
+            assert (res == res2).all()
+        else:
+            assert res == res2
+
+        np_y_preds = to_numpy_multilabel(y_preds)
+        np_y_true = to_numpy_multilabel(y_true)
+        assert re._type == "multilabel"
+        res = res if average else res.mean().item()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UndefinedMetricWarning)
+            assert recall_score(np_y_true, np_y_preds, average="samples") == pytest.approx(res)
+
+    metric_devices = ["cpu"]
+    if device.type != "xla":
+        metric_devices.append(idist.device())
+    for _ in range(2):
+        for metric_device in metric_devices:
+            _test(average=True, n_epochs=1, metric_device=metric_device)
+            _test(average=True, n_epochs=2, metric_device=metric_device)
+            _test(average=False, n_epochs=1, metric_device=metric_device)
+            _test(average=False, n_epochs=2, metric_device=metric_device)
+
+    re1 = Recall(is_multilabel=True, average=True)
+    re2 = Recall(is_multilabel=True, average=False)
+    assert re1._updated is False
+    assert re2._updated is False
+    y_pred = torch.randint(0, 2, size=(10, 4, 20, 23))
+    y = torch.randint(0, 2, size=(10, 4, 20, 23)).long()
+    re1.update((y_pred, y))
+    re2.update((y_pred, y))
+    assert re1._updated is True
+    assert re2._updated is True
+    assert re1.compute() == pytest.approx(re2.compute().mean().item())
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2172')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_precision.py: 457-529
+</a>
+<div class="mid" id="frag2172" style="display:none"><pre>
+def _test_distrib_integration_multilabel(device):
+
+    from ignite.engine import Engine
+
+    rank = idist.get_rank()
+    torch.manual_seed(12)
+
+    def _test(average, n_epochs, metric_device):
+        n_iters = 60
+        s = 16
+        n_classes = 7
+
+        offset = n_iters * s
+        y_true = torch.randint(0, 2, size=(offset * idist.get_world_size(), n_classes, 6, 8)).to(device)
+        y_preds = torch.randint(0, 2, size=(offset * idist.get_world_size(), n_classes, 6, 8)).to(device)
+
+        def update(engine, i):
+            return (
+                y_preds[i * s + rank * offset : (i + 1) * s + rank * offset, ...],
+                y_true[i * s + rank * offset : (i + 1) * s + rank * offset, ...],
+            )
+
+        engine = Engine(update)
+
+        pr = Precision(average=average, is_multilabel=True, device=metric_device)
+        pr.attach(engine, "pr")
+        assert pr._updated is False
+
+        data = list(range(n_iters))
+        engine.run(data=data, max_epochs=n_epochs)
+
+        assert "pr" in engine.state.metrics
+        assert pr._updated is True
+        res = engine.state.metrics["pr"]
+        res2 = pr.compute()
+        if isinstance(res, torch.Tensor):
+            res = res.cpu().numpy()
+            res2 = res2.cpu().numpy()
+            assert (res == res2).all()
+        else:
+            assert res == res2
+
+        np_y_preds = to_numpy_multilabel(y_preds)
+        np_y_true = to_numpy_multilabel(y_true)
+        assert pr._type == "multilabel"
+        res = res if average else res.mean().item()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UndefinedMetricWarning)
+            assert precision_score(np_y_true, np_y_preds, average="samples") == pytest.approx(res)
+
+    metric_devices = ["cpu"]
+    if device.type != "xla":
+        metric_devices.append(idist.device())
+    for _ in range(2):
+        for metric_device in metric_devices:
+            _test(average=True, n_epochs=1, metric_device=metric_device)
+            _test(average=True, n_epochs=2, metric_device=metric_device)
+            _test(average=False, n_epochs=1, metric_device=metric_device)
+            _test(average=False, n_epochs=2, metric_device=metric_device)
+
+    pr1 = Precision(is_multilabel=True, average=True)
+    pr2 = Precision(is_multilabel=True, average=False)
+    assert pr1._updated is False
+    assert pr2._updated is False
+    y_pred = torch.randint(0, 2, size=(10, 4, 20, 23))
+    y = torch.randint(0, 2, size=(10, 4, 20, 23)).long()
+    pr1.update((y_pred, y))
+    pr2.update((y_pred, y))
+    assert pr1._updated is True
+    assert pr2._updated is True
+    assert pr1.compute() == pytest.approx(pr2.compute().mean().item())
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 41:</b> &nbsp; 2 fragments, nominal size 19 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1920')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_recall.py: 531-560
+</a>
+<div class="mid" id="frag1920" style="display:none"><pre>
+def _test_distrib_accumulator_device(device):
+    # Binary accuracy on input of shape (N, 1) or (N, )
+
+    def _test(average, metric_device):
+        re = Recall(average=average, device=metric_device)
+        assert re._device == metric_device
+        assert re._updated is False
+        # Since the shape of the accumulated amount isn't known before the first update
+        # call, the internal variables aren't tensors on the right device yet.
+
+        y_reed = torch.randint(0, 2, size=(10,))
+        y = torch.randint(0, 2, size=(10,)).long()
+        re.update((y_reed, y))
+
+        assert re._updated is True
+        assert (
+            re._true_positives.device == metric_device
+        ), f"{type(re._true_positives.device)}:{re._true_positives.device} vs {type(metric_device)}:{metric_device}"
+        assert (
+            re._positives.device == metric_device
+        ), f"{type(re._positives.device)}:{re._positives.device} vs {type(metric_device)}:{metric_device}"
+
+    metric_devices = [torch.device("cpu")]
+    if device.type != "xla":
+        metric_devices.append(idist.device())
+    for metric_device in metric_devices:
+        _test(True, metric_device=metric_device)
+        _test(False, metric_device=metric_device)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2175')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_precision.py: 530-559
+</a>
+<div class="mid" id="frag2175" style="display:none"><pre>
+def _test_distrib_accumulator_device(device):
+    # Binary accuracy on input of shape (N, 1) or (N, )
+
+    def _test(average, metric_device):
+        pr = Precision(average=average, device=metric_device)
+        assert pr._device == metric_device
+        assert pr._updated is False
+        # Since the shape of the accumulated amount isn't known before the first update
+        # call, the internal variables aren't tensors on the right device yet.
+
+        y_pred = torch.randint(0, 2, size=(10,))
+        y = torch.randint(0, 2, size=(10,)).long()
+        pr.update((y_pred, y))
+
+        assert pr._updated is True
+        assert (
+            pr._true_positives.device == metric_device
+        ), f"{type(pr._true_positives.device)}:{pr._true_positives.device} vs {type(metric_device)}:{metric_device}"
+        assert (
+            pr._positives.device == metric_device
+        ), f"{type(pr._positives.device)}:{pr._positives.device} vs {type(metric_device)}:{metric_device}"
+
+    metric_devices = [torch.device("cpu")]
+    if device.type != "xla":
+        metric_devices.append(idist.device())
+    for metric_device in metric_devices:
+        _test(True, metric_device=metric_device)
+        _test(False, metric_device=metric_device)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 42:</b> &nbsp; 2 fragments, nominal size 23 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1922')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_recall.py: 561-595
+</a>
+<div class="mid" id="frag1922" style="display:none"><pre>
+def _test_distrib_multilabel_accumulator_device(device):
+    # Multiclass input data of shape (N, ) and (N, C)
+
+    def _test(average, metric_device):
+        re = Recall(is_multilabel=True, average=average, device=metric_device)
+
+        assert re._updated is False
+        assert re._device == metric_device
+        assert (
+            re._true_positives.device == metric_device
+        ), f"{type(re._true_positives.device)}:{re._true_positives.device} vs {type(metric_device)}:{metric_device}"
+        assert (
+            re._positives.device == metric_device
+        ), f"{type(re._positives.device)}:{re._positives.device} vs {type(metric_device)}:{metric_device}"
+
+        y_reed = torch.randint(0, 2, size=(10, 4, 20, 23))
+        y = torch.randint(0, 2, size=(10, 4, 20, 23)).long()
+        re.update((y_reed, y))
+
+        assert re._updated is True
+        assert (
+            re._true_positives.device == metric_device
+        ), f"{type(re._true_positives.device)}:{re._true_positives.device} vs {type(metric_device)}:{metric_device}"
+        assert (
+            re._positives.device == metric_device
+        ), f"{type(re._positives.device)}:{re._positives.device} vs {type(metric_device)}:{metric_device}"
+
+    metric_devices = [torch.device("cpu")]
+    if device.type != "xla":
+        metric_devices.append(idist.device())
+    for metric_device in metric_devices:
+        _test(True, metric_device=metric_device)
+        _test(False, metric_device=metric_device)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2177')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_precision.py: 560-594
+</a>
+<div class="mid" id="frag2177" style="display:none"><pre>
+def _test_distrib_multilabel_accumulator_device(device):
+    # Multiclass input data of shape (N, ) and (N, C)
+
+    def _test(average, metric_device):
+        pr = Precision(is_multilabel=True, average=average, device=metric_device)
+
+        assert pr._updated is False
+        assert pr._device == metric_device
+        assert (
+            pr._true_positives.device == metric_device
+        ), f"{type(pr._true_positives.device)}:{pr._true_positives.device} vs {type(metric_device)}:{metric_device}"
+        assert (
+            pr._positives.device == metric_device
+        ), f"{type(pr._positives.device)}:{pr._positives.device} vs {type(metric_device)}:{metric_device}"
+
+        y_pred = torch.randint(0, 2, size=(10, 4, 20, 23))
+        y = torch.randint(0, 2, size=(10, 4, 20, 23)).long()
+        pr.update((y_pred, y))
+
+        assert pr._updated is True
+        assert (
+            pr._true_positives.device == metric_device
+        ), f"{type(pr._true_positives.device)}:{pr._true_positives.device} vs {type(metric_device)}:{metric_device}"
+        assert (
+            pr._positives.device == metric_device
+        ), f"{type(pr._positives.device)}:{pr._positives.device} vs {type(metric_device)}:{metric_device}"
+
+    metric_devices = [torch.device("cpu")]
+    if device.type != "xla":
+        metric_devices.append(idist.device())
+    for metric_device in metric_devices:
+        _test(True, metric_device=metric_device)
+        _test(False, metric_device=metric_device)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 43:</b> &nbsp; 2 fragments, nominal size 12 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1954')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_confusion_matrix.py: 186-204
+</a>
+<div class="mid" id="frag1954" style="display:none"><pre>
+def test_iou_wrong_input():
+
+    with pytest.raises(TypeError, match="Argument cm should be instance of ConfusionMatrix"):
+        IoU(None)
+
+    cm = ConfusionMatrix(num_classes=10)
+    with pytest.raises(ValueError, match="ignore_index should be non-negative integer"):
+        IoU(cm, ignore_index=-1)
+
+    with pytest.raises(ValueError, match="ignore_index should be non-negative integer"):
+        IoU(cm, ignore_index="a")
+
+    with pytest.raises(ValueError, match="ignore_index should be non-negative integer"):
+        IoU(cm, ignore_index=10)
+
+    with pytest.raises(ValueError, match="ignore_index should be non-negative integer"):
+        IoU(cm, ignore_index=11)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1962')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_confusion_matrix.py: 400-418
+</a>
+<div class="mid" id="frag1962" style="display:none"><pre>
+def test_dice_coefficient_wrong_input():
+
+    with pytest.raises(TypeError, match="Argument cm should be instance of ConfusionMatrix"):
+        DiceCoefficient(None)
+
+    cm = ConfusionMatrix(num_classes=10)
+    with pytest.raises(ValueError, match="ignore_index should be non-negative integer"):
+        DiceCoefficient(cm, ignore_index=-1)
+
+    with pytest.raises(ValueError, match="ignore_index should be non-negative integer"):
+        DiceCoefficient(cm, ignore_index="a")
+
+    with pytest.raises(ValueError, match="ignore_index should be non-negative integer"):
+        DiceCoefficient(cm, ignore_index=10)
+
+    with pytest.raises(ValueError, match="ignore_index should be non-negative integer"):
+        DiceCoefficient(cm, ignore_index=11)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 44:</b> &nbsp; 2 fragments, nominal size 30 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1955')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_confusion_matrix.py: 205-247
+</a>
+<div class="mid" id="frag1955" style="display:none"><pre>
+def test_iou():
+    def _test(average=None):
+
+        y_true, y_pred = get_y_true_y_pred()
+        th_y_true, th_y_logits = compute_th_y_true_y_logits(y_true, y_pred)
+
+        true_res = [0, 0, 0]
+        for index in range(3):
+            bin_y_true = y_true == index
+            bin_y_pred = y_pred == index
+            intersection = bin_y_true &amp; bin_y_pred
+            union = bin_y_true | bin_y_pred
+            true_res[index] = intersection.sum() / union.sum()
+
+        cm = ConfusionMatrix(num_classes=3, average=average)
+        iou_metric = IoU(cm)
+
+        # Update metric
+        output = (th_y_logits, th_y_true)
+        cm.update(output)
+
+        res = iou_metric.compute().numpy()
+
+        assert np.all(res == true_res)
+
+        for ignore_index in range(3):
+            cm = ConfusionMatrix(num_classes=3)
+            iou_metric = IoU(cm, ignore_index=ignore_index)
+            # Update metric
+            output = (th_y_logits, th_y_true)
+            cm.update(output)
+            res = iou_metric.compute().numpy()
+            true_res_ = true_res[:ignore_index] + true_res[ignore_index + 1 :]
+            assert np.all(res == true_res_), f"{ignore_index}: {res} vs {true_res_}"
+
+    _test()
+    _test(average="samples")
+
+    with pytest.raises(ValueError, match=r"ConfusionMatrix should have average attribute either"):
+        cm = ConfusionMatrix(num_classes=3, average="precision")
+        IoU(cm)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1967')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_confusion_matrix.py: 546-588
+</a>
+<div class="mid" id="frag1967" style="display:none"><pre>
+def test_jaccard_index():
+    def _test(average=None):
+
+        y_true, y_pred = get_y_true_y_pred()
+        th_y_true, th_y_logits = compute_th_y_true_y_logits(y_true, y_pred)
+
+        true_res = [0, 0, 0]
+        for index in range(3):
+            bin_y_true = y_true == index
+            bin_y_pred = y_pred == index
+            intersection = bin_y_true &amp; bin_y_pred
+            union = bin_y_true | bin_y_pred
+            true_res[index] = intersection.sum() / union.sum()
+
+        cm = ConfusionMatrix(num_classes=3, average=average)
+        jaccard_index = JaccardIndex(cm)
+
+        # Update metric
+        output = (th_y_logits, th_y_true)
+        cm.update(output)
+
+        res = jaccard_index.compute().numpy()
+
+        assert np.all(res == true_res)
+
+        for ignore_index in range(3):
+            cm = ConfusionMatrix(num_classes=3)
+            jaccard_index_metric = JaccardIndex(cm, ignore_index=ignore_index)
+            # Update metric
+            output = (th_y_logits, th_y_true)
+            cm.update(output)
+            res = jaccard_index_metric.compute().numpy()
+            true_res_ = true_res[:ignore_index] + true_res[ignore_index + 1 :]
+            assert np.all(res == true_res_), f"{ignore_index}: {res} vs {true_res_}"
+
+    _test()
+    _test(average="samples")
+
+    with pytest.raises(ValueError, match=r"ConfusionMatrix should have average attribute either"):
+        cm = ConfusionMatrix(num_classes=3, average="precision")
+        JaccardIndex(cm)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 45:</b> &nbsp; 2 fragments, nominal size 17 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1959')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_confusion_matrix.py: 304-334
+</a>
+<div class="mid" id="frag1959" style="display:none"><pre>
+def test_cm_precision():
+
+    y_true, y_pred = np.random.randint(0, 10, size=(1000,)), np.random.randint(0, 10, size=(1000,))
+    th_y_true, th_y_logits = compute_th_y_true_y_logits(y_true, y_pred)
+
+    true_pr = precision_score(y_true.reshape(-1), y_pred.reshape(-1), average="macro")
+
+    cm = ConfusionMatrix(num_classes=10)
+    pr_metric = cmPrecision(cm, average=True)
+
+    # Update metric
+    output = (th_y_logits, th_y_true)
+    cm.update(output)
+
+    res = pr_metric.compute().numpy()
+
+    assert pytest.approx(res) == true_pr
+
+    true_pr = precision_score(y_true.reshape(-1), y_pred.reshape(-1), average=None)
+    cm = ConfusionMatrix(num_classes=10)
+    pr_metric = cmPrecision(cm, average=False)
+
+    # Update metric
+    output = (th_y_logits, th_y_true)
+    cm.update(output)
+
+    res = pr_metric.compute().numpy()
+
+    assert np.all(res == true_pr)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1960')" href="javascript:;">
+ignite-0.4.8/tests/ignite/metrics/test_confusion_matrix.py: 335-365
+</a>
+<div class="mid" id="frag1960" style="display:none"><pre>
+def test_cm_recall():
+
+    y_true, y_pred = np.random.randint(0, 10, size=(1000,)), np.random.randint(0, 10, size=(1000,))
+    th_y_true, th_y_logits = compute_th_y_true_y_logits(y_true, y_pred)
+
+    true_re = recall_score(y_true.reshape(-1), y_pred.reshape(-1), average="macro")
+
+    cm = ConfusionMatrix(num_classes=10)
+    re_metric = cmRecall(cm, average=True)
+
+    # Update metric
+    output = (th_y_logits, th_y_true)
+    cm.update(output)
+
+    res = re_metric.compute().numpy()
+
+    assert pytest.approx(res) == true_re
+
+    true_re = recall_score(y_true.reshape(-1), y_pred.reshape(-1), average=None)
+    cm = ConfusionMatrix(num_classes=10)
+    re_metric = cmRecall(cm, average=False)
+
+    # Update metric
+    output = (th_y_logits, th_y_true)
+    cm.update(output)
+
+    res = re_metric.compute().numpy()
+
+    assert np.all(res == true_re)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 46:</b> &nbsp; 2 fragments, nominal size 10 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2570')" href="javascript:;">
+ignite-0.4.8/examples/mnist/mnist_with_visdom.py: 97-109
+</a>
+<div class="mid" id="frag2570" style="display:none"><pre>
+    def log_training_results(engine):
+        evaluator.run(train_loader)
+        metrics = evaluator.state.metrics
+        avg_accuracy = metrics["accuracy"]
+        avg_nll = metrics["nll"]
+        print(
+            f"Training Results - Epoch: {engine.state.epoch} Avg accuracy: {avg_accuracy:.2f} Avg loss: {avg_nll:.2f}"
+        )
+        vis.line(
+            X=np.array([engine.state.epoch]), Y=np.array([avg_accuracy]), win=train_avg_accuracy_window, update="append"
+        )
+        vis.line(X=np.array([engine.state.epoch]), Y=np.array([avg_nll]), win=train_avg_loss_window, update="append")
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2571')" href="javascript:;">
+ignite-0.4.8/examples/mnist/mnist_with_visdom.py: 111-124
+</a>
+<div class="mid" id="frag2571" style="display:none"><pre>
+    def log_validation_results(engine):
+        evaluator.run(val_loader)
+        metrics = evaluator.state.metrics
+        avg_accuracy = metrics["accuracy"]
+        avg_nll = metrics["nll"]
+        print(
+            f"Validation Results - Epoch: {engine.state.epoch} Avg accuracy: {avg_accuracy:.2f} Avg loss: {avg_nll:.2f}"
+        )
+        vis.line(
+            X=np.array([engine.state.epoch]), Y=np.array([avg_accuracy]), win=val_avg_accuracy_window, update="append"
+        )
+        vis.line(X=np.array([engine.state.epoch]), Y=np.array([avg_nll]), win=val_avg_loss_window, update="append")
+
+    # kick everything off
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 47:</b> &nbsp; 2 fragments, nominal size 40 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2613')" href="javascript:;">
+ignite-0.4.8/examples/reinforcement_learning/reinforce.py: 65-120
+</a>
+<div class="mid" id="frag2613" style="display:none"><pre>
+def main(env, args):
+
+    model = Policy()
+    optimizer = optim.Adam(model.parameters(), lr=1e-2)
+    eps = np.finfo(np.float32).eps.item()
+    timesteps = list(range(10000))
+
+    def run_single_timestep(engine, timestep):
+        observation = engine.state.observation
+        action = select_action(model, observation)
+        engine.state.observation, reward, done, _ = env.step(action)
+        if args.render:
+            env.render()
+        model.rewards.append(reward)
+
+        if done:
+            engine.terminate_epoch()
+            engine.state.timestep = timestep
+
+    trainer = Engine(run_single_timestep)
+
+    @trainer.on(Events.STARTED)
+    def initialize(engine):
+        engine.state.running_reward = 10
+
+    @trainer.on(EPISODE_STARTED)
+    def reset_environment_state(engine):
+        engine.state.observation = env.reset()
+
+    @trainer.on(EPISODE_COMPLETED)
+    def update_model(engine):
+        t = engine.state.timestep
+        engine.state.running_reward = engine.state.running_reward * 0.99 + t * 0.01
+        finish_episode(model, optimizer, args.gamma, eps)
+
+    @trainer.on(EPISODE_COMPLETED(every=args.log_interval))
+    def log_episode(engine):
+        i_episode = engine.state.epoch
+        print(
+            f"Episode {i_episode}\tLast length: {engine.state.timestep:5d}"
+            f"\tAverage length: {engine.state.running_reward:.2f}"
+        )
+
+    @trainer.on(EPISODE_COMPLETED)
+    def should_finish_training(engine):
+        running_reward = engine.state.running_reward
+        if running_reward &gt; env.spec.reward_threshold:
+            print(
+                f"Solved! Running reward is now {running_reward} and "
+                f"the last episode runs to {engine.state.timestep} time steps!"
+            )
+            engine.should_terminate = True
+
+    trainer.run(timesteps, max_epochs=args.max_episodes)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2624')" href="javascript:;">
+ignite-0.4.8/examples/reinforcement_learning/actor_critic.py: 75-130
+</a>
+<div class="mid" id="frag2624" style="display:none"><pre>
+def main(env, args):
+
+    model = Policy()
+    optimizer = optim.Adam(model.parameters(), lr=3e-2)
+    eps = np.finfo(np.float32).eps.item()
+    timesteps = list(range(10000))
+
+    def run_single_timestep(engine, timestep):
+        observation = engine.state.observation
+        action = select_action(model, observation)
+        engine.state.observation, reward, done, _ = env.step(action)
+        if args.render:
+            env.render()
+        model.rewards.append(reward)
+
+        if done:
+            engine.terminate_epoch()
+            engine.state.timestep = timestep
+
+    trainer = Engine(run_single_timestep)
+
+    @trainer.on(Events.STARTED)
+    def initialize(engine):
+        engine.state.running_reward = 10
+
+    @trainer.on(EPISODE_STARTED)
+    def reset_environment_state(engine):
+        engine.state.observation = env.reset()
+
+    @trainer.on(EPISODE_COMPLETED)
+    def update_model(engine):
+        t = engine.state.timestep
+        engine.state.running_reward = engine.state.running_reward * 0.99 + t * 0.01
+        finish_episode(model, optimizer, args.gamma, eps)
+
+    @trainer.on(EPISODE_COMPLETED(every=args.log_interval))
+    def log_episode(engine):
+        i_episode = engine.state.epoch
+        print(
+            f"Episode {i_episode}\tLast length: {engine.state.timestep:5d}"
+            f"\tAverage length: {engine.state.running_reward:.2f}"
+        )
+
+    @trainer.on(EPISODE_COMPLETED)
+    def should_finish_training(engine):
+        running_reward = engine.state.running_reward
+        if running_reward &gt; env.spec.reward_threshold:
+            print(
+                f"Solved! Running reward is now {running_reward} and "
+                f"the last episode runs to {engine.state.timestep} time steps!"
+            )
+            engine.should_terminate = True
+
+    trainer.run(timesteps, max_epochs=args.max_episodes)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<script language="JavaScript">
+function ShowHide(divId) { 
+    if(document.getElementById(divId).style.display == 'none') {
+        document.getElementById(divId).style.display='block';
+    } else { 
+        document.getElementById(divId).style.display = 'none';
+    } 
+}
+</script>
+</body>
+</html>

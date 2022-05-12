@@ -1,0 +1,1226 @@
+<clones>
+<systeminfo processor="nicad6" system="youtube-dl-2021.12.17" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="3405" npairs="33"/>
+<runinfo ncompares="453748" cputime="625774"/>
+<classinfo nclasses="20"/>
+
+<class classid="1" nclones="3" nlines="11" similarity="72">
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/postprocessor/ffmpeg.py" startline="549" endline="566" pcid="426">
+    def run(self, info):
+        stretched_ratio = info.get('stretched_ratio')
+        if stretched_ratio is None or stretched_ratio == 1:
+            return [], info
+
+        filename = info['filepath']
+        temp_filename = prepend_extension(filename, 'temp')
+
+        options = ['-c', 'copy', '-aspect', '%f' % stretched_ratio]
+        self._downloader.to_screen('[ffmpeg] Fixing aspect ratio in "%s"' % filename)
+        self.run_ffmpeg(filename, temp_filename, options)
+
+        os.remove(encodeFilename(filename))
+        os.rename(encodeFilename(temp_filename), encodeFilename(filename))
+
+        return [], info
+
+
+</source>
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/postprocessor/ffmpeg.py" startline="568" endline="584" pcid="427">
+    def run(self, info):
+        if info.get('container') != 'm4a_dash':
+            return [], info
+
+        filename = info['filepath']
+        temp_filename = prepend_extension(filename, 'temp')
+
+        options = ['-c', 'copy', '-f', 'mp4']
+        self._downloader.to_screen('[ffmpeg] Correcting container in "%s"' % filename)
+        self.run_ffmpeg(filename, temp_filename, options)
+
+        os.remove(encodeFilename(filename))
+        os.rename(encodeFilename(temp_filename), encodeFilename(filename))
+
+        return [], info
+
+
+</source>
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/postprocessor/ffmpeg.py" startline="586" endline="599" pcid="428">
+    def run(self, info):
+        filename = info['filepath']
+        if self.get_audio_codec(filename) == 'aac':
+            temp_filename = prepend_extension(filename, 'temp')
+
+            options = ['-c', 'copy', '-f', 'mp4', '-bsf:a', 'aac_adtstoasc']
+            self._downloader.to_screen('[ffmpeg] Fixing malformed AAC bitstream in "%s"' % filename)
+            self.run_ffmpeg(filename, temp_filename, options)
+
+            os.remove(encodeFilename(filename))
+            os.rename(encodeFilename(temp_filename), encodeFilename(filename))
+        return [], info
+
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="44" similarity="71">
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/downloader/ism.py" startline="213" endline="259" pcid="459">
+    def real_download(self, filename, info_dict):
+        segments = info_dict['fragments'][:1] if self.params.get(
+            'test', False) else info_dict['fragments']
+
+        ctx = {
+            'filename': filename,
+            'total_frags': len(segments),
+        }
+
+        self._prepare_and_start_frag_download(ctx)
+
+        fragment_retries = self.params.get('fragment_retries', 0)
+        skip_unavailable_fragments = self.params.get('skip_unavailable_fragments', True)
+
+        track_written = False
+        frag_index = 0
+        for i, segment in enumerate(segments):
+            frag_index += 1
+            if frag_index <= ctx['fragment_index']:
+                continue
+            count = 0
+            while count <= fragment_retries:
+                try:
+                    success, frag_content = self._download_fragment(ctx, segment['url'], info_dict)
+                    if not success:
+                        return False
+                    if not track_written:
+                        tfhd_data = extract_box_data(frag_content, [b'moof', b'traf', b'tfhd'])
+                        info_dict['_download_params']['track_id'] = u32.unpack(tfhd_data[4:8])[0]
+                        write_piff_header(ctx['dest_stream'], info_dict['_download_params'])
+                        track_written = True
+                    self._append_fragment(ctx, frag_content)
+                    break
+                except compat_urllib_error.HTTPError as err:
+                    count += 1
+                    if count <= fragment_retries:
+                        self.report_retry_fragment(err, frag_index, count, fragment_retries)
+            if count > fragment_retries:
+                if skip_unavailable_fragments:
+                    self.report_skip_fragment(frag_index)
+                    continue
+                self.report_error('giving up after %s fragment retries' % fragment_retries)
+                return False
+
+        self._finish_frag_download(ctx)
+
+        return True
+</source>
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/downloader/dash.py" startline="18" endline="80" pcid="543">
+    def real_download(self, filename, info_dict):
+        fragment_base_url = info_dict.get('fragment_base_url')
+        fragments = info_dict['fragments'][:1] if self.params.get(
+            'test', False) else info_dict['fragments']
+
+        ctx = {
+            'filename': filename,
+            'total_frags': len(fragments),
+        }
+
+        self._prepare_and_start_frag_download(ctx)
+
+        fragment_retries = self.params.get('fragment_retries', 0)
+        skip_unavailable_fragments = self.params.get('skip_unavailable_fragments', True)
+
+        frag_index = 0
+        for i, fragment in enumerate(fragments):
+            frag_index += 1
+            if frag_index <= ctx['fragment_index']:
+                continue
+            # In DASH, the first segment contains necessary headers to
+            # generate a valid MP4 file, so always abort for the first segment
+            fatal = i == 0 or not skip_unavailable_fragments
+            count = 0
+            while count <= fragment_retries:
+                try:
+                    fragment_url = fragment.get('url')
+                    if not fragment_url:
+                        assert fragment_base_url
+                        fragment_url = urljoin(fragment_base_url, fragment['path'])
+                    success, frag_content = self._download_fragment(ctx, fragment_url, info_dict)
+                    if not success:
+                        return False
+                    self._append_fragment(ctx, frag_content)
+                    break
+                except compat_urllib_error.HTTPError as err:
+                    # YouTube may often return 404 HTTP error for a fragment causing the
+                    # whole download to fail. However if the same fragment is immediately
+                    # retried with the same request data this usually succeeds (1-2 attempts
+                    # is usually enough) thus allowing to download the whole file successfully.
+                    # To be future-proof we will retry all fragments that fail with any
+                    # HTTP error.
+                    count += 1
+                    if count <= fragment_retries:
+                        self.report_retry_fragment(err, frag_index, count, fragment_retries)
+                except DownloadError:
+                    # Don't retry fragment if error occurred during HTTP downloading
+                    # itself since it has own retry settings
+                    if not fatal:
+                        self.report_skip_fragment(frag_index)
+                        break
+                    raise
+
+            if count > fragment_retries:
+                if not fatal:
+                    self.report_skip_fragment(frag_index)
+                    continue
+                self.report_error('giving up after %s fragment retries' % fragment_retries)
+                return False
+
+        self._finish_frag_download(ctx)
+
+        return True
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="18" similarity="75">
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/downloader/external.py" startline="116" endline="136" pcid="496">
+    def _make_cmd(self, tmpfilename, info_dict):
+        cmd = [self.exe, '--location', '-o', tmpfilename]
+        for key, val in info_dict['http_headers'].items():
+            cmd += ['--header', '%s: %s' % (key, val)]
+        cmd += self._bool_option('--continue-at', 'continuedl', '-', '0')
+        cmd += self._valueless_option('--silent', 'noprogress')
+        cmd += self._valueless_option('--verbose', 'verbose')
+        cmd += self._option('--limit-rate', 'ratelimit')
+        retry = self._option('--retry', 'retries')
+        if len(retry) == 2:
+            if retry[1] in ('inf', 'infinite'):
+                retry[1] = '2147483647'
+            cmd += retry
+        cmd += self._option('--max-filesize', 'max_filesize')
+        cmd += self._option('--interface', 'source_address')
+        cmd += self._option('--proxy', 'proxy')
+        cmd += self._valueless_option('--insecure', 'nocheckcertificate')
+        cmd += self._configuration_args()
+        cmd += ['--', info_dict['url']]
+        return cmd
+
+</source>
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/downloader/external.py" startline="163" endline="180" pcid="499">
+    def _make_cmd(self, tmpfilename, info_dict):
+        cmd = [self.exe, '-O', tmpfilename, '-nv', '--no-cookies']
+        for key, val in info_dict['http_headers'].items():
+            cmd += ['--header', '%s: %s' % (key, val)]
+        cmd += self._option('--limit-rate', 'ratelimit')
+        retry = self._option('--tries', 'retries')
+        if len(retry) == 2:
+            if retry[1] in ('inf', 'infinite'):
+                retry[1] = '0'
+            cmd += retry
+        cmd += self._option('--bind-address', 'source_address')
+        cmd += self._option('--proxy', 'proxy')
+        cmd += self._valueless_option('--no-check-certificate', 'nocheckcertificate')
+        cmd += self._configuration_args()
+        cmd += ['--', info_dict['url']]
+        return cmd
+
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="11" similarity="72">
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/abcnews.py" startline="61" endline="73" pcid="709">
+    def _real_extract(self, url):
+        mobj = re.match(self._VALID_URL, url)
+        display_id = mobj.group('display_id')
+        video_id = mobj.group('id')
+        info_dict = self._extract_feed_info(
+            'http://abcnews.go.com/video/itemfeed?id=%s' % video_id)
+        info_dict.update({
+            'id': video_id,
+            'display_id': display_id,
+        })
+        return info_dict
+
+
+</source>
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/lovehomeporn.py" startline="25" endline="37" pcid="2317">
+    def _real_extract(self, url):
+        mobj = re.match(self._VALID_URL, url)
+        video_id = mobj.group('id')
+        display_id = mobj.group('display_id')
+
+        info = self._extract_nuevo(
+            'http://lovehomeporn.com/media/nuevo/config.php?key=%s' % video_id,
+            video_id)
+        info.update({
+            'display_id': display_id,
+            'age_limit': 18
+        })
+        return info
+</source>
+</class>
+
+<class classid="5" nclones="6" nlines="21" similarity="70">
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/ruhd.py" startline="21" endline="45" pcid="807">
+    def _real_extract(self, url):
+        video_id = self._match_id(url)
+        webpage = self._download_webpage(url, video_id)
+
+        video_url = self._html_search_regex(
+            r'<param name="src" value="([^"]+)"', webpage, 'video url')
+        title = self._html_search_regex(
+            r'<title>([^<]+)&nbsp;&nbsp; RUHD\.ru - Видео Высокого качества №1 в России!</title>',
+            webpage, 'title')
+        description = self._html_search_regex(
+            r'(?s)<div id="longdesc">(.+?)<span id="showlink">',
+            webpage, 'description', fatal=False)
+        thumbnail = self._html_search_regex(
+            r'<param name="previewImage" value="([^"]+)"',
+            webpage, 'thumbnail', fatal=False)
+        if thumbnail:
+            thumbnail = 'http://www.ruhd.ru' + thumbnail
+
+        return {
+            'id': video_id,
+            'url': video_url,
+            'title': title,
+            'description': description,
+            'thumbnail': thumbnail,
+        }
+</source>
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/morningstar.py" startline="27" endline="50" pcid="1824">
+    def _real_extract(self, url):
+        mobj = re.match(self._VALID_URL, url)
+        video_id = mobj.group('id')
+
+        webpage = self._download_webpage(url, video_id)
+        title = self._html_search_regex(
+            r'<h1 id="titleLink">(.*?)</h1>', webpage, 'title')
+        video_url = self._html_search_regex(
+            r'<input type="hidden" id="hidVideoUrl" value="([^"]+)"',
+            webpage, 'video URL')
+        thumbnail = self._html_search_regex(
+            r'<input type="hidden" id="hidSnapshot" value="([^"]+)"',
+            webpage, 'thumbnail', fatal=False)
+        description = self._html_search_regex(
+            r'<div id="mstarDeck".*?>(.*?)</div>',
+            webpage, 'description', fatal=False)
+
+        return {
+            'id': video_id,
+            'title': title,
+            'url': video_url,
+            'thumbnail': thumbnail,
+            'description': description,
+        }
+</source>
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/sztvhu.py" startline="20" endline="41" pcid="2705">
+    def _real_extract(self, url):
+        video_id = self._match_id(url)
+        webpage = self._download_webpage(url, video_id)
+        video_file = self._search_regex(
+            r'file: "...:(.*?)",', webpage, 'video file')
+        title = self._html_search_regex(
+            r'<meta name="title" content="([^"]*?) - [^-]*? - [^-]*?"',
+            webpage, 'video title')
+        description = self._html_search_regex(
+            r'<meta name="description" content="([^"]*)"/>',
+            webpage, 'video description', fatal=False)
+        thumbnail = self._og_search_thumbnail(webpage)
+
+        video_url = 'http://media.sztv.hu/vod/' + video_file
+
+        return {
+            'id': video_id,
+            'url': video_url,
+            'title': title,
+            'description': description,
+            'thumbnail': thumbnail,
+        }
+</source>
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/academicearth.py" startline="21" endline="41" pcid="2052">
+    def _real_extract(self, url):
+        playlist_id = self._match_id(url)
+
+        webpage = self._download_webpage(url, playlist_id)
+        title = self._html_search_regex(
+            r'<h1 class="playlist-name"[^>]*?>(.*?)</h1>', webpage, 'title')
+        description = self._html_search_regex(
+            r'<p class="excerpt"[^>]*?>(.*?)</p>',
+            webpage, 'description', fatal=False)
+        urls = re.findall(
+            r'<li class="lecture-preview">\s*?<a target="_blank" href="([^"]+)">',
+            webpage)
+        entries = [self.url_result(u) for u in urls]
+
+        return {
+            '_type': 'playlist',
+            'id': playlist_id,
+            'title': title,
+            'description': description,
+            'entries': entries,
+        }
+</source>
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/echomsk.py" startline="21" endline="46" pcid="1338">
+    def _real_extract(self, url):
+        video_id = self._match_id(url)
+
+        webpage = self._download_webpage(url, video_id)
+
+        audio_url = self._search_regex(
+            r'<a rel="mp3" href="([^"]+)">', webpage, 'audio URL')
+
+        title = self._html_search_regex(
+            r'<a href="/programs/[^"]+" target="_blank">([^<]+)</a>',
+            webpage, 'title')
+
+        air_date = self._html_search_regex(
+            r'(?s)<div class="date">(.+?)</div>',
+            webpage, 'date', fatal=False, default=None)
+
+        if air_date:
+            air_date = re.sub(r'(\s)\1+', r'\1', air_date)
+            if air_date:
+                title = '%s - %s' % (title, air_date)
+
+        return {
+            'id': video_id,
+            'url': audio_url,
+            'title': title,
+        }
+</source>
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/biobiochiletv.py" startline="61" endline="86" pcid="1136">
+    def _real_extract(self, url):
+        video_id = self._match_id(url)
+
+        webpage = self._download_webpage(url, video_id)
+
+        rudo_url = self._search_regex(
+            r'<iframe[^>]+src=(?P<q1>[\'"])(?P<url>(?:https?:)?//rudo\.video/vod/[0-9a-zA-Z]+)(?P=q1)',
+            webpage, 'embed URL', None, group='url')
+        if not rudo_url:
+            raise ExtractorError('No videos found')
+
+        title = remove_end(self._og_search_title(webpage), ' - BioBioChile TV')
+
+        thumbnail = self._og_search_thumbnail(webpage)
+        uploader = self._html_search_regex(
+            r'<a[^>]+href=["\'](?:https?://(?:busca|www)\.biobiochile\.cl)?/(?:lista/)?(?:author|autor)[^>]+>(.+?)</a>',
+            webpage, 'uploader', fatal=False)
+
+        return {
+            '_type': 'url_transparent',
+            'url': rudo_url,
+            'id': video_id,
+            'title': title,
+            'thumbnail': thumbnail,
+            'uploader': uploader,
+        }
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="11" similarity="72">
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/nonktube.py" startline="25" endline="38" pcid="847">
+    def _real_extract(self, url):
+        video_id = self._match_id(url)
+
+        webpage = self._download_webpage(url, video_id)
+
+        title = self._og_search_title(webpage)
+        info = self._parse_html5_media_entries(url, webpage, video_id)[0]
+
+        info.update({
+            'id': video_id,
+            'title': title,
+            'age_limit': 18,
+        })
+        return info
+</source>
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/onet.py" startline="140" endline="156" pcid="1766">
+    def _real_extract(self, url):
+        mobj = re.match(self._VALID_URL, url)
+        display_id, video_id = mobj.group('display_id', 'id')
+
+        webpage = self._download_webpage(url, display_id)
+
+        mvp_id = self._search_mvp_id(webpage)
+
+        info_dict = self._extract_from_id(mvp_id, webpage)
+        info_dict.update({
+            'id': video_id,
+            'display_id': display_id,
+        })
+
+        return info_dict
+
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="10" similarity="77">
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/cbc.py" startline="199" endline="211" pcid="1022">
+    def _real_extract(self, url):
+        video_id = self._match_id(url)
+        return {
+            '_type': 'url_transparent',
+            'ie_key': 'ThePlatform',
+            'url': smuggle_url(
+                'http://link.theplatform.com/s/ExhSPC/media/guid/2655402169/%s?mbr=true&formats=MPEG4,FLV,MP3' % video_id, {
+                    'force_smil_url': True
+                }),
+            'id': video_id,
+        }
+
+
+</source>
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/cnbc.py" startline="29" endline="40" pcid="2149">
+    def _real_extract(self, url):
+        video_id = self._match_id(url)
+        return {
+            '_type': 'url_transparent',
+            'ie_key': 'ThePlatform',
+            'url': smuggle_url(
+                'http://link.theplatform.com/s/gZWlPC/media/guid/2408950221/%s?mbr=true&manifest=m3u' % video_id,
+                {'force_smil_url': True}),
+            'id': video_id,
+        }
+
+
+</source>
+</class>
+
+<class classid="8" nclones="3" nlines="16" similarity="75">
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/twitch.py" startline="371" endline="387" pcid="1099">
+def _make_video_result(node):
+    assert isinstance(node, dict)
+    video_id = node.get('id')
+    if not video_id:
+        return
+    return {
+        '_type': 'url_transparent',
+        'ie_key': TwitchVodIE.ie_key(),
+        'id': video_id,
+        'url': 'https://www.twitch.tv/videos/%s' % video_id,
+        'title': node.get('title'),
+        'thumbnail': node.get('previewThumbnailURL'),
+        'duration': float_or_none(node.get('lengthSeconds')),
+        'view_count': int_or_none(node.get('viewCount')),
+    }
+
+
+</source>
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/twitch.py" startline="684" endline="700" pcid="1110">
+    def _extract_entry(node):
+        assert isinstance(node, dict)
+        collection_id = node.get('id')
+        if not collection_id:
+            return
+        return {
+            '_type': 'url_transparent',
+            'ie_key': TwitchCollectionIE.ie_key(),
+            'id': collection_id,
+            'url': 'https://www.twitch.tv/collections/%s' % collection_id,
+            'title': node.get('title'),
+            'thumbnail': node.get('thumbnailURL'),
+            'duration': float_or_none(node.get('lengthSeconds')),
+            'timestamp': unified_timestamp(node.get('updatedAt')),
+            'view_count': int_or_none(node.get('viewCount')),
+        }
+
+</source>
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/twitch.py" startline="630" endline="647" pcid="1107">
+    def _extract_entry(node):
+        assert isinstance(node, dict)
+        clip_url = url_or_none(node.get('url'))
+        if not clip_url:
+            return
+        return {
+            '_type': 'url_transparent',
+            'ie_key': TwitchClipsIE.ie_key(),
+            'id': node.get('id'),
+            'url': clip_url,
+            'title': node.get('title'),
+            'thumbnail': node.get('thumbnailURL'),
+            'duration': float_or_none(node.get('durationSeconds')),
+            'timestamp': unified_timestamp(node.get('createdAt')),
+            'view_count': int_or_none(node.get('viewCount')),
+            'language': node.get('language'),
+        }
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="29" similarity="70">
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/scte.py" startline="20" endline="56" pcid="1234">
+    def _login(self):
+        username, password = self._get_login_info()
+        if username is None:
+            return
+
+        login_popup = self._download_webpage(
+            self._LOGIN_URL, None, 'Downloading login popup')
+
+        def is_logged(webpage):
+            return any(re.search(p, webpage) for p in (
+                r'class=["\']welcome\b', r'>Sign Out<'))
+
+        # already logged in
+        if is_logged(login_popup):
+            return
+
+        login_form = self._hidden_inputs(login_popup)
+
+        login_form.update({
+            'ctl01$TemplateBody$WebPartManager1$gwpciNewContactSignInCommon$ciNewContactSignInCommon$signInUserName': username,
+            'ctl01$TemplateBody$WebPartManager1$gwpciNewContactSignInCommon$ciNewContactSignInCommon$signInPassword': password,
+            'ctl01$TemplateBody$WebPartManager1$gwpciNewContactSignInCommon$ciNewContactSignInCommon$RememberMe': 'on',
+        })
+
+        response = self._download_webpage(
+            self._LOGIN_URL, None, 'Logging in',
+            data=urlencode_postdata(login_form))
+
+        if '|pageRedirect|' not in response and not is_logged(response):
+            error = self._html_search_regex(
+                r'(?s)<[^>]+class=["\']AsiError["\'][^>]*>(.+?)</',
+                response, 'error message', default=None)
+            if error:
+                raise ExtractorError('Unable to login: %s' % error, expected=True)
+            raise ExtractorError('Unable to log in')
+
+
+</source>
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/udemy.py" startline="174" endline="213" pcid="2895">
+    def _login(self):
+        username, password = self._get_login_info()
+        if username is None:
+            return
+
+        login_popup = self._download_webpage(
+            self._LOGIN_URL, None, 'Downloading login popup')
+
+        def is_logged(webpage):
+            return any(re.search(p, webpage) for p in (
+                r'href=["\'](?:https://www\.udemy\.com)?/user/logout/',
+                r'>Logout<'))
+
+        # already logged in
+        if is_logged(login_popup):
+            return
+
+        login_form = self._form_hidden_inputs('login-form', login_popup)
+
+        login_form.update({
+            'email': username,
+            'password': password,
+        })
+
+        response = self._download_webpage(
+            self._LOGIN_URL, None, 'Logging in',
+            data=urlencode_postdata(login_form),
+            headers={
+                'Referer': self._ORIGIN_URL,
+                'Origin': self._ORIGIN_URL,
+            })
+
+        if not is_logged(response):
+            error = self._html_search_regex(
+                r'(?s)<div[^>]+class="form-errors[^"]*">(.+?)</div>',
+                response, 'error message', default=None)
+            if error:
+                raise ExtractorError('Unable to login: %s' % error, expected=True)
+            raise ExtractorError('Unable to log in')
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="19" similarity="89">
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/awaan.py" startline="77" endline="99" pcid="1332">
+    def _real_extract(self, url):
+        video_id = self._match_id(url)
+
+        video_data = self._download_json(
+            'http://admin.mangomolo.com/analytics/index.php/plus/video?id=%s' % video_id,
+            video_id, headers={'Origin': 'http://awaan.ae'})
+        info = self._parse_video_data(video_data, video_id, False)
+
+        embed_url = 'http://admin.mangomolo.com/analytics/index.php/customers/embed/video?' + compat_urllib_parse_urlencode({
+            'id': video_data['id'],
+            'user_id': video_data['user_id'],
+            'signature': video_data['signature'],
+            'countries': 'Q0M=',
+            'filter': 'DENY',
+        })
+        info.update({
+            '_type': 'url_transparent',
+            'url': embed_url,
+            'ie_key': 'MangomoloVideo',
+        })
+        return info
+
+
+</source>
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/awaan.py" startline="119" endline="141" pcid="1333">
+    def _real_extract(self, url):
+        channel_id = self._match_id(url)
+
+        channel_data = self._download_json(
+            'http://admin.mangomolo.com/analytics/index.php/plus/getchanneldetails?channel_id=%s' % channel_id,
+            channel_id, headers={'Origin': 'http://awaan.ae'})
+        info = self._parse_video_data(channel_data, channel_id, True)
+
+        embed_url = 'http://admin.mangomolo.com/analytics/index.php/customers/embed/index?' + compat_urllib_parse_urlencode({
+            'id': base64.b64encode(channel_data['user_id'].encode()).decode(),
+            'channelid': base64.b64encode(channel_data['id'].encode()).decode(),
+            'signature': channel_data['signature'],
+            'countries': 'Q0M=',
+            'filter': 'DENY',
+        })
+        info.update({
+            '_type': 'url_transparent',
+            'url': embed_url,
+            'ie_key': 'MangomoloLive',
+        })
+        return info
+
+
+</source>
+</class>
+
+<class classid="11" nclones="2" nlines="60" similarity="85">
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/orf.py" startline="420" endline="489" pcid="1639">
+    def _real_extract(self, url):
+        story_id = self._match_id(url)
+
+        webpage = self._download_webpage(
+            'http://iptv.orf.at/stories/%s' % story_id, story_id)
+
+        video_id = self._search_regex(
+            r'data-video(?:id)?="(\d+)"', webpage, 'video id')
+
+        data = self._download_json(
+            'http://bits.orf.at/filehandler/static-api/json/current/data.json?file=%s' % video_id,
+            video_id)[0]
+
+        duration = float_or_none(data['duration'], 1000)
+
+        video = data['sources']['default']
+        load_balancer_url = video['loadBalancerUrl']
+        abr = int_or_none(video.get('audioBitrate'))
+        vbr = int_or_none(video.get('bitrate'))
+        fps = int_or_none(video.get('videoFps'))
+        width = int_or_none(video.get('videoWidth'))
+        height = int_or_none(video.get('videoHeight'))
+        thumbnail = video.get('preview')
+
+        rendition = self._download_json(
+            load_balancer_url, video_id, transform_source=strip_jsonp)
+
+        f = {
+            'abr': abr,
+            'vbr': vbr,
+            'fps': fps,
+            'width': width,
+            'height': height,
+        }
+
+        formats = []
+        for format_id, format_url in rendition['redirect'].items():
+            if format_id == 'rtmp':
+                ff = f.copy()
+                ff.update({
+                    'url': format_url,
+                    'format_id': format_id,
+                })
+                formats.append(ff)
+            elif determine_ext(format_url) == 'f4m':
+                formats.extend(self._extract_f4m_formats(
+                    format_url, video_id, f4m_id=format_id))
+            elif determine_ext(format_url) == 'm3u8':
+                formats.extend(self._extract_m3u8_formats(
+                    format_url, video_id, 'mp4', m3u8_id=format_id))
+            else:
+                continue
+        self._sort_formats(formats)
+
+        title = remove_end(self._og_search_title(webpage), ' - iptv.ORF.at')
+        description = self._og_search_description(webpage)
+        upload_date = unified_strdate(self._html_search_meta(
+            'dc.date', webpage, 'upload date'))
+
+        return {
+            'id': video_id,
+            'title': title,
+            'description': description,
+            'duration': duration,
+            'thumbnail': thumbnail,
+            'upload_date': upload_date,
+            'formats': formats,
+        }
+
+
+</source>
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/orf.py" startline="522" endline="592" pcid="1640">
+    def _real_extract(self, url):
+        story_id = self._match_id(url)
+        webpage = self._download_webpage(url, story_id)
+
+        entries = []
+        all_ids = orderedSet(re.findall(r'data-video(?:id)?="(\d+)"', webpage))
+        for idx, video_id in enumerate(all_ids):
+            data = self._download_json(
+                'http://bits.orf.at/filehandler/static-api/json/current/data.json?file=%s' % video_id,
+                video_id)[0]
+
+            duration = float_or_none(data['duration'], 1000)
+
+            video = data['sources']['q8c']
+            load_balancer_url = video['loadBalancerUrl']
+            abr = int_or_none(video.get('audioBitrate'))
+            vbr = int_or_none(video.get('bitrate'))
+            fps = int_or_none(video.get('videoFps'))
+            width = int_or_none(video.get('videoWidth'))
+            height = int_or_none(video.get('videoHeight'))
+            thumbnail = video.get('preview')
+
+            rendition = self._download_json(
+                load_balancer_url, video_id, transform_source=strip_jsonp)
+
+            f = {
+                'abr': abr,
+                'vbr': vbr,
+                'fps': fps,
+                'width': width,
+                'height': height,
+            }
+
+            formats = []
+            for format_id, format_url in rendition['redirect'].items():
+                if format_id == 'rtmp':
+                    ff = f.copy()
+                    ff.update({
+                        'url': format_url,
+                        'format_id': format_id,
+                    })
+                    formats.append(ff)
+                elif determine_ext(format_url) == 'f4m':
+                    formats.extend(self._extract_f4m_formats(
+                        format_url, video_id, f4m_id=format_id))
+                elif determine_ext(format_url) == 'm3u8':
+                    formats.extend(self._extract_m3u8_formats(
+                        format_url, video_id, 'mp4', m3u8_id=format_id))
+                else:
+                    continue
+            self._sort_formats(formats)
+
+            title = remove_end(self._og_search_title(webpage), ' - fm4.ORF.at')
+            if idx >= 1:
+                # Titles are duplicates, make them unique
+                title += ' (' + str(idx + 1) + ')'
+            description = self._og_search_description(webpage)
+            upload_date = unified_strdate(self._html_search_meta(
+                'dc.date', webpage, 'upload date'))
+
+            entries.append({
+                'id': video_id,
+                'title': title,
+                'description': description,
+                'duration': duration,
+                'thumbnail': thumbnail,
+                'upload_date': upload_date,
+                'formats': formats,
+            })
+
+        return self.playlist_result(entries)
+</source>
+</class>
+
+<class classid="12" nclones="2" nlines="15" similarity="100">
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/common.py" startline="814" endline="834" pcid="2348">
+    def _download_xml_handle(
+            self, url_or_request, video_id, note='Downloading XML',
+            errnote='Unable to download XML', transform_source=None,
+            fatal=True, encoding=None, data=None, headers={}, query={},
+            expected_status=None):
+        """
+        Return a tuple (xml as an compat_etree_Element, URL handle).
+
+        See _download_webpage docstring for arguments specification.
+        """
+        res = self._download_webpage_handle(
+            url_or_request, video_id, note, errnote, fatal=fatal,
+            encoding=encoding, data=data, headers=headers, query=query,
+            expected_status=expected_status)
+        if res is False:
+            return res
+        xml_string, urlh = res
+        return self._parse_xml(
+            xml_string, video_id, transform_source=transform_source,
+            fatal=fatal), urlh
+
+</source>
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/common.py" startline="864" endline="884" pcid="2351">
+    def _download_json_handle(
+            self, url_or_request, video_id, note='Downloading JSON metadata',
+            errnote='Unable to download JSON metadata', transform_source=None,
+            fatal=True, encoding=None, data=None, headers={}, query={},
+            expected_status=None):
+        """
+        Return a tuple (JSON object, URL handle).
+
+        See _download_webpage docstring for arguments specification.
+        """
+        res = self._download_webpage_handle(
+            url_or_request, video_id, note, errnote, fatal=fatal,
+            encoding=encoding, data=data, headers=headers, query=query,
+            expected_status=expected_status)
+        if res is False:
+            return res
+        json_string, urlh = res
+        return self._parse_json(
+            json_string, video_id, transform_source=transform_source,
+            fatal=fatal), urlh
+
+</source>
+</class>
+
+<class classid="13" nclones="2" nlines="11" similarity="90">
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/common.py" startline="852" endline="863" pcid="2350">
+    def _parse_xml(self, xml_string, video_id, transform_source=None, fatal=True):
+        if transform_source:
+            xml_string = transform_source(xml_string)
+        try:
+            return compat_etree_fromstring(xml_string.encode('utf-8'))
+        except compat_xml_parse_error as ve:
+            errmsg = '%s: Failed to parse XML ' % video_id
+            if fatal:
+                raise ExtractorError(errmsg, cause=ve)
+            else:
+                self.report_warning(errmsg + str(ve))
+
+</source>
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/common.py" startline="902" endline="913" pcid="2353">
+    def _parse_json(self, json_string, video_id, transform_source=None, fatal=True):
+        if transform_source:
+            json_string = transform_source(json_string)
+        try:
+            return json.loads(json_string)
+        except ValueError as ve:
+            errmsg = '%s: Failed to parse JSON ' % video_id
+            if fatal:
+                raise ExtractorError(errmsg, cause=ve)
+            else:
+                self.report_warning(errmsg + str(ve))
+
+</source>
+</class>
+
+<class classid="14" nclones="2" nlines="12" similarity="81">
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/common.py" startline="1155" endline="1170" pcid="2381">
+    def _media_rating_search(self, html):
+        # See http://www.tjg-designs.com/WP/metadata-code-examples-adding-metadata-to-your-web-pages/
+        rating = self._html_search_meta('rating', html)
+
+        if not rating:
+            return None
+
+        RATING_TABLE = {
+            'safe for kids': 0,
+            'general': 8,
+            '14 years': 14,
+            'mature': 17,
+            'restricted': 19,
+        }
+        return RATING_TABLE.get(rating.lower())
+
+</source>
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/common.py" startline="1171" endline="1186" pcid="2382">
+    def _family_friendly_search(self, html):
+        # See http://schema.org/VideoObject
+        family_friendly = self._html_search_meta(
+            'isFamilyFriendly', html, default=None)
+
+        if not family_friendly:
+            return None
+
+        RATING_TABLE = {
+            '1': 0,
+            'true': 0,
+            '0': 18,
+            'false': 18,
+        }
+        return RATING_TABLE.get(family_friendly.lower())
+
+</source>
+</class>
+
+<class classid="15" nclones="2" nlines="13" similarity="78">
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/common.py" startline="2074" endline="2089" pcid="2416">
+    def _extract_mpd_formats(self, mpd_url, video_id, mpd_id=None, note=None, errnote=None, fatal=True, data=None, headers={}, query={}):
+        res = self._download_xml_handle(
+            mpd_url, video_id,
+            note=note or 'Downloading MPD manifest',
+            errnote=errnote or 'Failed to download MPD manifest',
+            fatal=fatal, data=data, headers=headers, query=query)
+        if res is False:
+            return []
+        mpd_doc, urlh = res
+        if mpd_doc is None:
+            return []
+        mpd_base_url = base_url(urlh.geturl())
+
+        return self._parse_mpd_formats(
+            mpd_doc, mpd_id, mpd_base_url, mpd_url)
+
+</source>
+<source file="systems/youtube-dl-2021.12.17/youtube_dl/extractor/common.py" startline="2373" endline="2386" pcid="2426">
+    def _extract_ism_formats(self, ism_url, video_id, ism_id=None, note=None, errnote=None, fatal=True, data=None, headers={}, query={}):
+        res = self._download_xml_handle(
+            ism_url, video_id,
+            note=note or 'Downloading ISM manifest',
+            errnote=errnote or 'Failed to download ISM manifest',
+            fatal=fatal, data=data, headers=headers, query=query)
+        if res is False:
+            return []
+        ism_doc, urlh = res
+        if ism_doc is None:
+            return []
+
+        return self._parse_ism_formats(ism_doc, urlh.geturl(), ism_id)
+
+</source>
+</class>
+
+<class classid="16" nclones="4" nlines="12" similarity="83">
+<source file="systems/youtube-dl-2021.12.17/test/test_verbose_output.py" startline="17" endline="29" pcid="3005">
+    def test_private_info_arg(self):
+        outp = subprocess.Popen(
+            [
+                sys.executable, 'youtube_dl/__main__.py', '-v',
+                '--username', 'johnsmith@gmail.com',
+                '--password', 'secret',
+            ], cwd=rootDir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        sout, serr = outp.communicate()
+        self.assertTrue(b'--username' in serr)
+        self.assertTrue(b'johnsmith' not in serr)
+        self.assertTrue(b'--password' in serr)
+        self.assertTrue(b'secret' not in serr)
+
+</source>
+<source file="systems/youtube-dl-2021.12.17/test/test_verbose_output.py" startline="56" endline="69" pcid="3008">
+    def test_private_info_shortarg_eq(self):
+        outp = subprocess.Popen(
+            [
+                sys.executable, 'youtube_dl/__main__.py', '-v',
+                '-u=johnsmith@gmail.com',
+                '-p=secret',
+            ], cwd=rootDir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        sout, serr = outp.communicate()
+        self.assertTrue(b'-u' in serr)
+        self.assertTrue(b'johnsmith' not in serr)
+        self.assertTrue(b'-p' in serr)
+        self.assertTrue(b'secret' not in serr)
+
+
+</source>
+<source file="systems/youtube-dl-2021.12.17/test/test_verbose_output.py" startline="30" endline="42" pcid="3006">
+    def test_private_info_shortarg(self):
+        outp = subprocess.Popen(
+            [
+                sys.executable, 'youtube_dl/__main__.py', '-v',
+                '-u', 'johnsmith@gmail.com',
+                '-p', 'secret',
+            ], cwd=rootDir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        sout, serr = outp.communicate()
+        self.assertTrue(b'-u' in serr)
+        self.assertTrue(b'johnsmith' not in serr)
+        self.assertTrue(b'-p' in serr)
+        self.assertTrue(b'secret' not in serr)
+
+</source>
+<source file="systems/youtube-dl-2021.12.17/test/test_verbose_output.py" startline="43" endline="55" pcid="3007">
+    def test_private_info_eq(self):
+        outp = subprocess.Popen(
+            [
+                sys.executable, 'youtube_dl/__main__.py', '-v',
+                '--username=johnsmith@gmail.com',
+                '--password=secret',
+            ], cwd=rootDir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        sout, serr = outp.communicate()
+        self.assertTrue(b'--username' in serr)
+        self.assertTrue(b'johnsmith' not in serr)
+        self.assertTrue(b'--password' in serr)
+        self.assertTrue(b'secret' not in serr)
+
+</source>
+</class>
+
+<class classid="17" nclones="2" nlines="10" similarity="100">
+<source file="systems/youtube-dl-2021.12.17/test/test_socks.py" startline="56" endline="66" pcid="3012">
+    def test_secondary_proxy_http(self):
+        params = self._check_params(['secondary_proxy', 'secondary_server_ip'])
+        if params is None:
+            return
+        ydl = FakeYDL()
+        req = compat_urllib_request.Request('http://yt-dl.org/ip')
+        req.add_header('Ytdl-request-proxy', params['secondary_proxy'])
+        self.assertEqual(
+            ydl.urlopen(req).read().decode('utf-8'),
+            params['secondary_server_ip'])
+
+</source>
+<source file="systems/youtube-dl-2021.12.17/test/test_socks.py" startline="67" endline="78" pcid="3013">
+    def test_secondary_proxy_https(self):
+        params = self._check_params(['secondary_proxy', 'secondary_server_ip'])
+        if params is None:
+            return
+        ydl = FakeYDL()
+        req = compat_urllib_request.Request('https://yt-dl.org/ip')
+        req.add_header('Ytdl-request-proxy', params['secondary_proxy'])
+        self.assertEqual(
+            ydl.urlopen(req).read().decode('utf-8'),
+            params['secondary_server_ip'])
+
+
+</source>
+</class>
+
+<class classid="18" nclones="2" nlines="13" similarity="71">
+<source file="systems/youtube-dl-2021.12.17/test/test_utils.py" startline="613" endline="625" pcid="3116">
+    def test_fix_xml_ampersands(self):
+        self.assertEqual(
+            fix_xml_ampersands('"&x=y&z=a'), '"&amp;x=y&amp;z=a')
+        self.assertEqual(
+            fix_xml_ampersands('"&amp;x=y&wrong;&z=a'),
+            '"&amp;x=y&amp;wrong;&amp;z=a')
+        self.assertEqual(
+            fix_xml_ampersands('&amp;&apos;&gt;&lt;&quot;'),
+            '&amp;&apos;&gt;&lt;&quot;')
+        self.assertEqual(
+            fix_xml_ampersands('&#1234;&#x1abC;'), '&#1234;&#x1abC;')
+        self.assertEqual(fix_xml_ampersands('&#&#'), '&amp;#&amp;#')
+
+</source>
+<source file="systems/youtube-dl-2021.12.17/test/test_utils.py" startline="869" endline="887" pcid="3138">
+    def test_escape_url(self):
+        self.assertEqual(
+            escape_url('http://wowza.imust.org/srv/vod/telemb/new/UPLOAD/UPLOAD/20224_IncendieHavré_FD.mp4'),
+            'http://wowza.imust.org/srv/vod/telemb/new/UPLOAD/UPLOAD/20224_IncendieHavre%CC%81_FD.mp4'
+        )
+        self.assertEqual(
+            escape_url('http://www.ardmediathek.de/tv/Sturm-der-Liebe/Folge-2036-Zu-Mann-und-Frau-erklärt/Das-Erste/Video?documentId=22673108&bcastId=5290'),
+            'http://www.ardmediathek.de/tv/Sturm-der-Liebe/Folge-2036-Zu-Mann-und-Frau-erkl%C3%A4rt/Das-Erste/Video?documentId=22673108&bcastId=5290'
+        )
+        self.assertEqual(
+            escape_url('http://тест.рф/фрагмент'),
+            'http://xn--e1aybc.xn--p1ai/%D1%84%D1%80%D0%B0%D0%B3%D0%BC%D0%B5%D0%BD%D1%82'
+        )
+        self.assertEqual(
+            escape_url('http://тест.рф/абв?абв=абв#абв'),
+            'http://xn--e1aybc.xn--p1ai/%D0%B0%D0%B1%D0%B2?%D0%B0%D0%B1%D0%B2=%D0%B0%D0%B1%D0%B2#%D0%B0%D0%B1%D0%B2'
+        )
+        self.assertEqual(escape_url('http://vimeo.com/56015672#at=0'), 'http://vimeo.com/56015672#at=0')
+
+</source>
+</class>
+
+<class classid="19" nclones="2" nlines="11" similarity="83">
+<source file="systems/youtube-dl-2021.12.17/test/test_utils.py" startline="1091" endline="1103" pcid="3146">
+    def test_parse_filesize(self):
+        self.assertEqual(parse_filesize(None), None)
+        self.assertEqual(parse_filesize(''), None)
+        self.assertEqual(parse_filesize('91 B'), 91)
+        self.assertEqual(parse_filesize('foobar'), None)
+        self.assertEqual(parse_filesize('2 MiB'), 2097152)
+        self.assertEqual(parse_filesize('5 GB'), 5000000000)
+        self.assertEqual(parse_filesize('1.2Tb'), 1200000000000)
+        self.assertEqual(parse_filesize('1.2tb'), 1200000000000)
+        self.assertEqual(parse_filesize('1,24 KB'), 1240)
+        self.assertEqual(parse_filesize('1,24 kb'), 1240)
+        self.assertEqual(parse_filesize('8.5 megabytes'), 8500000)
+
+</source>
+<source file="systems/youtube-dl-2021.12.17/test/test_utils.py" startline="1104" endline="1114" pcid="3147">
+    def test_parse_count(self):
+        self.assertEqual(parse_count(None), None)
+        self.assertEqual(parse_count(''), None)
+        self.assertEqual(parse_count('0'), 0)
+        self.assertEqual(parse_count('1000'), 1000)
+        self.assertEqual(parse_count('1.000'), 1000)
+        self.assertEqual(parse_count('1.1k'), 1100)
+        self.assertEqual(parse_count('1.1kk'), 1100000)
+        self.assertEqual(parse_count('1.1kk '), 1100000)
+        self.assertEqual(parse_count('1.1kk views'), 1100000)
+
+</source>
+</class>
+
+<class classid="20" nclones="2" nlines="26" similarity="81">
+<source file="systems/youtube-dl-2021.12.17/test/test_YoutubeDL.py" startline="148" endline="177" pcid="3309">
+    def test_format_selection_audio(self):
+        formats = [
+            {'format_id': 'audio-low', 'ext': 'webm', 'preference': 1, 'vcodec': 'none', 'url': TEST_URL},
+            {'format_id': 'audio-mid', 'ext': 'webm', 'preference': 2, 'vcodec': 'none', 'url': TEST_URL},
+            {'format_id': 'audio-high', 'ext': 'flv', 'preference': 3, 'vcodec': 'none', 'url': TEST_URL},
+            {'format_id': 'vid', 'ext': 'mp4', 'preference': 4, 'url': TEST_URL},
+        ]
+        info_dict = _make_result(formats)
+
+        ydl = YDL({'format': 'bestaudio'})
+        ydl.process_ie_result(info_dict.copy())
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_id'], 'audio-high')
+
+        ydl = YDL({'format': 'worstaudio'})
+        ydl.process_ie_result(info_dict.copy())
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_id'], 'audio-low')
+
+        formats = [
+            {'format_id': 'vid-low', 'ext': 'mp4', 'preference': 1, 'url': TEST_URL},
+            {'format_id': 'vid-high', 'ext': 'mp4', 'preference': 2, 'url': TEST_URL},
+        ]
+        info_dict = _make_result(formats)
+
+        ydl = YDL({'format': 'bestaudio/worstaudio/best'})
+        ydl.process_ie_result(info_dict.copy())
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_id'], 'vid-high')
+
+</source>
+<source file="systems/youtube-dl-2021.12.17/test/test_YoutubeDL.py" startline="209" endline="241" pcid="3311">
+    def test_format_selection_video(self):
+        formats = [
+            {'format_id': 'dash-video-low', 'ext': 'mp4', 'preference': 1, 'acodec': 'none', 'url': TEST_URL},
+            {'format_id': 'dash-video-high', 'ext': 'mp4', 'preference': 2, 'acodec': 'none', 'url': TEST_URL},
+            {'format_id': 'vid', 'ext': 'mp4', 'preference': 3, 'url': TEST_URL},
+        ]
+        info_dict = _make_result(formats)
+
+        ydl = YDL({'format': 'bestvideo'})
+        ydl.process_ie_result(info_dict.copy())
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_id'], 'dash-video-high')
+
+        ydl = YDL({'format': 'worstvideo'})
+        ydl.process_ie_result(info_dict.copy())
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_id'], 'dash-video-low')
+
+        ydl = YDL({'format': 'bestvideo[format_id^=dash][format_id$=low]'})
+        ydl.process_ie_result(info_dict.copy())
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_id'], 'dash-video-low')
+
+        formats = [
+            {'format_id': 'vid-vcodec-dot', 'ext': 'mp4', 'preference': 1, 'vcodec': 'avc1.123456', 'acodec': 'none', 'url': TEST_URL},
+        ]
+        info_dict = _make_result(formats)
+
+        ydl = YDL({'format': 'bestvideo[vcodec=avc1.123456]'})
+        ydl.process_ie_result(info_dict.copy())
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_id'], 'vid-vcodec-dot')
+
+</source>
+</class>
+
+</clones>

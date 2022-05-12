@@ -1,0 +1,4451 @@
+<clones>
+<systeminfo processor="nicad6" system="luigi-3.0.3" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="3134" npairs="235"/>
+<runinfo ncompares="107250" cputime="265824"/>
+<classinfo nclasses="68"/>
+
+<class classid="1" nclones="2" nlines="14" similarity="92">
+<source file="systems/luigi-3.0.3/luigi/contrib/dataproc.py" startline="58" endline="77" pcid="4">
+
+    def submit_spark_job(self, jars, main_class, job_args=None):
+
+        if job_args is None:
+            job_args = []
+
+        job_config = {"job": {
+            "placement": {
+                "clusterName": self.dataproc_cluster_name
+            },
+            "sparkJob": {
+                "args": job_args,
+                "mainClass": main_class,
+                "jarFileUris": jars
+            }
+        }}
+        self.submit_job(job_config)
+        self._job_name = os.path.basename(self._job['sparkJob']['mainClass'])
+        logger.info("Submitted new dataproc job:{} id:{}".format(self._job_name, self._job_id))
+        return self._job
+</source>
+<source file="systems/luigi-3.0.3/luigi/contrib/dataproc.py" startline="78" endline="97" pcid="5">
+
+    def submit_pyspark_job(self, job_file, extra_files=list(), job_args=None):
+
+        if job_args is None:
+            job_args = []
+
+        job_config = {"job": {
+            "placement": {
+                "clusterName": self.dataproc_cluster_name
+            },
+            "pysparkJob": {
+                "mainPythonFileUri": job_file,
+                "pythonFileUris": extra_files,
+                "args": job_args
+            }
+        }}
+        self.submit_job(job_config)
+        self._job_name = os.path.basename(self._job['pysparkJob']['mainPythonFileUri'])
+        logger.info("Submitted new dataproc job:{} id:{}".format(self._job_name, self._job_id))
+        return self._job
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="13" similarity="76">
+<source file="systems/luigi-3.0.3/luigi/contrib/redshift.py" startline="425" endline="445" pcid="91">
+    def does_schema_exist(self, connection):
+        """
+        Determine whether the schema already exists.
+        """
+
+        if '.' in self.table:
+            query = ("select 1 as schema_exists "
+                     "from pg_namespace "
+                     "where nspname = lower(%s) limit 1")
+        else:
+            return True
+
+        cursor = connection.cursor()
+        try:
+            schema = self.table.split('.')[0]
+            cursor.execute(query, [schema])
+            result = cursor.fetchone()
+            return bool(result)
+        finally:
+            cursor.close()
+
+</source>
+<source file="systems/luigi-3.0.3/luigi/contrib/redshift.py" startline="446" endline="466" pcid="92">
+    def does_table_exist(self, connection):
+        """
+        Determine whether the table already exists.
+        """
+
+        if '.' in self.table:
+            query = ("select 1 as table_exists "
+                     "from information_schema.tables "
+                     "where table_schema = lower(%s) and table_name = lower(%s) limit 1")
+        else:
+            query = ("select 1 as table_exists "
+                     "from pg_table_def "
+                     "where tablename = lower(%s) limit 1")
+        cursor = connection.cursor()
+        try:
+            cursor.execute(query, tuple(self.table.split('.')))
+            result = cursor.fetchone()
+            return bool(result)
+        finally:
+            cursor.close()
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="13" similarity="100">
+<source file="systems/luigi-3.0.3/luigi/contrib/sge_runner.py" startline="59" endline="76" pcid="168">
+def _extract_packages_archive(work_dir):
+    package_file = os.path.join(work_dir, "packages.tar")
+    if not os.path.exists(package_file):
+        return
+
+    curdir = os.path.abspath(os.curdir)
+
+    os.chdir(work_dir)
+    tar = tarfile.open(package_file)
+    for tarinfo in tar:
+        tar.extract(tarinfo)
+    tar.close()
+    if '' not in sys.path:
+        sys.path.insert(0, '')
+
+    os.chdir(curdir)
+
+
+</source>
+<source file="systems/luigi-3.0.3/luigi/contrib/lsf_runner.py" startline="47" endline="64" pcid="762">
+def extract_packages_archive(work_dir):
+    package_file = os.path.join(work_dir, "packages.tar")
+    if not os.path.exists(package_file):
+        return
+
+    curdir = os.path.abspath(os.curdir)
+
+    os.chdir(work_dir)
+    tar = tarfile.open(package_file)
+    for tarinfo in tar:
+        tar.extract(tarinfo)
+    tar.close()
+    if '' not in sys.path:
+        sys.path.insert(0, '')
+
+    os.chdir(curdir)
+
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="13" similarity="84">
+<source file="systems/luigi-3.0.3/luigi/contrib/mssqldb.py" startline="44" endline="70" pcid="552">
+    def __init__(self, host, database, user, password, table, update_id):
+        """
+        Initializes a MsSqlTarget instance.
+
+        :param host: MsSql server address. Possibly a host:port string.
+        :type host: str
+        :param database: database name.
+        :type database: str
+        :param user: database user
+        :type user: str
+        :param password: password for specified user.
+        :type password: str
+        :param update_id: an identifier for this data set.
+        :type update_id: str
+        """
+        if ':' in host:
+            self.host, self.port = host.split(':')
+            self.port = int(self.port)
+        else:
+            self.host = host
+            self.port = 1433
+        self.database = database
+        self.user = user
+        self.password = password
+        self.table = table
+        self.update_id = update_id
+
+</source>
+<source file="systems/luigi-3.0.3/luigi/contrib/mysqldb.py" startline="41" endline="70" pcid="718">
+    def __init__(self, host, database, user, password, table, update_id, **cnx_kwargs):
+        """
+        Initializes a MySqlTarget instance.
+
+        :param host: MySql server address. Possibly a host:port string.
+        :type host: str
+        :param database: database name.
+        :type database: str
+        :param user: database user
+        :type user: str
+        :param password: password for specified user.
+        :type password: str
+        :param update_id: an identifier for this data set.
+        :type update_id: str
+        :param cnx_kwargs: optional params for mysql connector constructor.
+            See https://dev.mysql.com/doc/connector-python/en/connector-python-connectargs.html.
+        """
+        if ':' in host:
+            self.host, self.port = host.split(':')
+            self.port = int(self.port)
+        else:
+            self.host = host
+            self.port = 3306
+        self.database = database
+        self.user = user
+        self.password = password
+        self.table = table
+        self.update_id = update_id
+        self.cnx_kwargs = cnx_kwargs
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="13" similarity="76">
+<source file="systems/luigi-3.0.3/luigi/contrib/mssqldb.py" startline="130" endline="154" pcid="556">
+    def create_marker_table(self):
+        """
+        Create marker table if it doesn't exist.
+        Use a separate connection since the transaction might have to be reset.
+        """
+        connection = self.connect()
+        try:
+            connection.execute_non_query(
+                """ CREATE TABLE {marker_table} (
+                        id            BIGINT    NOT NULL IDENTITY(1,1),
+                        update_id     VARCHAR(128)  NOT NULL,
+                        target_table  VARCHAR(128),
+                        inserted      DATETIME DEFAULT(GETDATE()),
+                        PRIMARY KEY (update_id)
+                    )
+                """
+                .format(marker_table=self.marker_table)
+            )
+        except _mssql.MSSQLDatabaseException as e:
+            # Table already exists code
+            if e.number == 2714:
+                pass
+            else:
+                raise
+        connection.close()
+</source>
+<source file="systems/luigi-3.0.3/luigi/contrib/mysqldb.py" startline="125" endline="153" pcid="722">
+    def create_marker_table(self):
+        """
+        Create marker table if it doesn't exist.
+
+        Using a separate connection since the transaction might have to be reset.
+        """
+        connection = self.connect(autocommit=True)
+        cursor = connection.cursor()
+        try:
+            cursor.execute(
+                """ CREATE TABLE {marker_table} (
+                        id            BIGINT(20)    NOT NULL AUTO_INCREMENT,
+                        update_id     VARCHAR(128)  NOT NULL,
+                        target_table  VARCHAR(128),
+                        inserted      TIMESTAMP DEFAULT NOW(),
+                        PRIMARY KEY (update_id),
+                        KEY id (id)
+                    )
+                """
+                .format(marker_table=self.marker_table)
+            )
+        except mysql.connector.Error as e:
+            if e.errno == errorcode.ER_TABLE_EXISTS_ERROR:
+                pass
+            else:
+                raise
+        connection.close()
+
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="14" similarity="80">
+<source file="systems/luigi-3.0.3/luigi/contrib/hdfs/format.py" startline="49" endline="62" pcid="622">
+    def close(self):
+        super(HdfsAtomicWritePipe, self).close()
+        try:
+            if exists(self.path):
+                remove(self.path)
+        except Exception as ex:
+            if isinstance(ex, HDFSCliError) or ex.args[0].contains("FileNotFoundException"):
+                pass
+            else:
+                raise ex
+        if not all(result['result'] for result in rename(self.tmppath, self.path) or []):
+            raise HdfsAtomicWriteError('Atomic write to {} failed'.format(self.path))
+
+
+</source>
+<source file="systems/luigi-3.0.3/luigi/contrib/hdfs/format.py" startline="80" endline="99" pcid="625">
+    def close(self):
+        super(HdfsAtomicWriteDirPipe, self).close()
+        try:
+            if exists(self.path):
+                remove(self.path)
+        except Exception as ex:
+            if isinstance(ex, HDFSCliError) or ex.args[0].contains("FileNotFoundException"):
+                pass
+            else:
+                raise ex
+
+        # it's unlikely to fail in this way but better safe than sorry
+        if not all(result['result'] for result in rename(self.tmppath, self.path) or []):
+            raise HdfsAtomicWriteError('Atomic write to {} failed'.format(self.path))
+
+        if os.path.basename(self.tmppath) in map(os.path.basename, listdir(self.path)):
+            remove(self.path)
+            raise HdfsAtomicWriteError('Atomic write to {} failed'.format(self.path))
+
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="15" similarity="86">
+<source file="systems/luigi-3.0.3/luigi/contrib/postgres.py" startline="166" endline="184" pcid="707">
+    def exists(self, connection=None):
+        if connection is None:
+            connection = self.connect()
+            connection.autocommit = True
+        cursor = connection.cursor()
+        try:
+            cursor.execute("""SELECT 1 FROM {marker_table}
+                WHERE update_id = %s
+                LIMIT 1""".format(marker_table=self.marker_table),
+                           (self.update_id,)
+                           )
+            row = cursor.fetchone()
+        except psycopg2.ProgrammingError as e:
+            if e.pgcode == psycopg2.errorcodes.UNDEFINED_TABLE:
+                row = None
+            else:
+                raise
+        return row is not None
+
+</source>
+<source file="systems/luigi-3.0.3/luigi/contrib/mysqldb.py" startline="96" endline="114" pcid="720">
+    def exists(self, connection=None):
+        if connection is None:
+            connection = self.connect()
+            connection.autocommit = True
+        cursor = connection.cursor()
+        try:
+            cursor.execute("""SELECT 1 FROM {marker_table}
+                WHERE update_id = %s
+                LIMIT 1""".format(marker_table=self.marker_table),
+                           (self.update_id,)
+                           )
+            row = cursor.fetchone()
+        except mysql.connector.Error as e:
+            if e.errno == errorcode.ER_NO_SUCH_TABLE:
+                row = None
+            else:
+                raise
+        return row is not None
+
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="13" similarity="84">
+<source file="systems/luigi-3.0.3/test/contrib/spark_test.py" startline="173" endline="186" pcid="1157">
+    def test_handle_failed_job(self, proc, file, logger):
+        proc.return_value.returncode = 1
+        file.return_value = BytesIO(b'spark test error')
+        try:
+            job = TestSparkSubmitTask()
+            job.run()
+        except ExternalProgramRunError as e:
+            self.assertEqual(e.err, 'spark test error')
+            self.assertIn('spark test error', str(e))
+            self.assertIn(call.info('Program stderr:\nspark test error'),
+                          logger.mock_calls)
+        else:
+            self.fail("Should have thrown ExternalProgramRunError")
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/external_program_test.py" startline="92" endline="104" pcid="1787">
+    def test_handle_failed_job(self, proc, file, logger):
+        proc.return_value.returncode = 1
+        file.return_value = BytesIO(b'stderr')
+        try:
+            job = TestExternalProgramTask()
+            job.run()
+        except ExternalProgramRunError as e:
+            self.assertEqual(e.err, 'stderr')
+            self.assertIn('STDERR: stderr', str(e))
+            self.assertIn(call.info('Program stderr:\nstderr'), logger.mock_calls)
+        else:
+            self.fail('Should have thrown ExternalProgramRunError')
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="10" similarity="100">
+<source file="systems/luigi-3.0.3/test/contrib/spark_test.py" startline="207" endline="219" pcid="1160">
+    def test_app_interruption(self, proc):
+
+        def interrupt():
+            raise KeyboardInterrupt()
+
+        proc.return_value.wait = interrupt
+        try:
+            job = TestSparkSubmitTask()
+            job.run()
+        except KeyboardInterrupt:
+            pass
+        proc.return_value.kill.check_called()
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/external_program_test.py" startline="160" endline="172" pcid="1794">
+    def test_app_interruption(self, proc):
+
+        def interrupt():
+            raise KeyboardInterrupt()
+
+        proc.return_value.wait = interrupt
+        try:
+            job = TestExternalProgramTask()
+            job.run()
+        except KeyboardInterrupt:
+            pass
+        proc.return_value.kill.check_called()
+
+</source>
+</class>
+
+<class classid="10" nclones="6" nlines="12" similarity="76">
+<source file="systems/luigi-3.0.3/test/contrib/spark_test.py" startline="221" endline="237" pcid="1162">
+    def test_tracking_url_is_found_in_stderr_client_mode(self):
+        test_val = Value('i', 0)
+
+        def fake_set_tracking_url(val, url):
+            if url == "http://10.66.76.155:4040":
+                val.value += 1
+
+        def Popen_wrap(args, **kwargs):
+            return Popen('>&2 echo "INFO SparkUI: Bound SparkUI to 0.0.0.0, and started at http://10.66.76.155:4040"',
+                         shell=True, **kwargs)
+
+        task = TestSparkSubmitTask()
+        with mock.patch('luigi.contrib.external_program.subprocess.Popen', wraps=Popen_wrap):
+            with mock.patch.object(task, 'set_tracking_url', new=partial(fake_set_tracking_url, test_val)):
+                task.run()
+                self.assertEqual(test_val.value, 1)
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/spark_test.py" startline="239" endline="255" pcid="1165">
+    def test_tracking_url_is_found_in_stderr_cluster_mode(self):
+        test_val = Value('i', 0)
+
+        def fake_set_tracking_url(val, url):
+            if url == "https://127.0.0.1:4040":
+                val.value += 1
+
+        def Popen_wrap(args, **kwargs):
+            return Popen('>&2 echo "tracking URL: https://127.0.0.1:4040"', shell=True, **kwargs)
+
+        task = TestSparkSubmitTask()
+        with mock.patch('luigi.contrib.external_program.subprocess.Popen', wraps=Popen_wrap):
+            with mock.patch.object(task, 'set_tracking_url', new=partial(fake_set_tracking_url, test_val)):
+                task.run()
+                self.assertEqual(test_val.value, 1)
+
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/external_program_test.py" startline="218" endline="235" pcid="1801">
+    def test_tracking_url_pattern_works_with_stderr(self):
+        test_val = Value('i', 0)
+
+        def fake_set_tracking_url(val, url):
+            if url == "THING_ELSE":
+                val.value += 1
+
+        def Popen_wrap(args, **kwargs):
+            return Popen('>&2 echo "ANYTHING_ELSE"', shell=True, **kwargs)
+
+        task = TestEchoTask(capture_output=True, stream_for_searching_tracking_url='stderr',
+                            tracking_url_pattern=r"ANY(.*)")
+
+        with mock.patch('luigi.contrib.external_program.subprocess.Popen', wraps=Popen_wrap):
+            with mock.patch.object(task, 'set_tracking_url', new=partial(fake_set_tracking_url, test_val)):
+                task.run()
+                self.assertEqual(test_val.value, 1)
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/external_program_test.py" startline="188" endline="202" pcid="1797">
+    def test_tracking_url_pattern_works_with_capture_output_disabled(self):
+        test_val = Value('i', 0)
+
+        def fake_set_tracking_url(val, url):
+            if url == "TEXT":
+                val.value += 1
+
+        task = TestEchoTask(capture_output=False, stream_for_searching_tracking_url='stdout',
+                            tracking_url_pattern=r"SOME (.*)")
+        task.MESSAGE = "SOME TEXT"
+
+        with mock.patch.object(task, 'set_tracking_url', new=partial(fake_set_tracking_url, test_val)):
+            task.run()
+            self.assertEqual(test_val.value, 1)
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/external_program_test.py" startline="247" endline="261" pcid="1806">
+    def test_tracking_url_context_works_without_capture_output(self):
+        test_val = Value('i', 0)
+
+        def fake_set_tracking_url(val, url):
+            if url == "world":
+                val.value += 1
+
+        task = TestEchoTask(capture_output=False, stream_for_searching_tracking_url='stdout',
+                            tracking_url_pattern=r"Hello, (.*)!")
+        test_args = list(map(str, task.program_args()))
+        with mock.patch.object(task, 'set_tracking_url', new=partial(fake_set_tracking_url, test_val)):
+            with task._proc_with_tracking_url_context(proc_args=test_args, proc_kwargs={}) as proc:
+                proc.wait()
+        self.assertEqual(test_val.value, 1)
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/external_program_test.py" startline="203" endline="217" pcid="1799">
+    def test_tracking_url_pattern_works_with_capture_output_enabled(self):
+        test_val = Value('i', 0)
+
+        def fake_set_tracking_url(val, url):
+            if url == "THING":
+                val.value += 1
+
+        task = TestEchoTask(capture_output=True, stream_for_searching_tracking_url='stdout',
+                            tracking_url_pattern=r"ANY(.*)")
+        task.MESSAGE = "ANYTHING"
+
+        with mock.patch.object(task, 'set_tracking_url', new=partial(fake_set_tracking_url, test_val)):
+            task.run()
+            self.assertEqual(test_val.value, 1)
+
+</source>
+</class>
+
+<class classid="11" nclones="3" nlines="11" similarity="72">
+<source file="systems/luigi-3.0.3/test/contrib/spark_test.py" startline="262" endline="272" pcid="1168">
+    def test_run(self, proc):
+        setup_run_process(proc)
+        job = TestPySparkTask()
+        job.run()
+        proc_arg_list = proc.call_args[0][0]
+        self.assertEqual(proc_arg_list[0:7],
+                         ['ss-stub', '--master', 'spark://host:7077', '--deploy-mode', 'client', '--name',
+                          'TestPySparkTask'])
+        self.assertTrue(os.path.exists(proc_arg_list[7]))
+        self.assertTrue(proc_arg_list[8].endswith('TestPySparkTask.pickle'))
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/spark_test.py" startline="289" endline="300" pcid="1170">
+    def test_run_with_cluster(self, proc):
+        setup_run_process(proc)
+        job = TestPySparkTask()
+        job.run()
+        proc_arg_list = proc.call_args[0][0]
+        self.assertEqual(proc_arg_list[0:8],
+                         ['ss-stub', '--master', 'spark://host:7077', '--deploy-mode', 'cluster', '--name',
+                          'TestPySparkTask', '--files'])
+        self.assertTrue(proc_arg_list[8].endswith('TestPySparkTask.pickle'))
+        self.assertTrue(os.path.exists(proc_arg_list[9]))
+        self.assertEqual('TestPySparkTask.pickle', proc_arg_list[10])
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/spark_test.py" startline="275" endline="286" pcid="1169">
+    def test_run_with_pickle_dump(self, proc):
+        setup_run_process(proc)
+        job = TestPySparkTask()
+        luigi.build([job], local_scheduler=True)
+        self.assertEqual(proc.call_count, 1)
+        proc_arg_list = proc.call_args[0][0]
+        self.assertEqual(proc_arg_list[0:7],
+                         ['ss-stub', '--master', 'spark://host:7077', '--deploy-mode', 'client', '--name',
+                          'TestPySparkTask'])
+        self.assertTrue(os.path.exists(proc_arg_list[7]))
+        self.assertTrue(proc_arg_list[8].endswith('TestPySparkTask.pickle'))
+
+</source>
+</class>
+
+<class classid="12" nclones="2" nlines="11" similarity="81">
+<source file="systems/luigi-3.0.3/test/contrib/redis_test.py" startline="45" endline="55" pcid="1182">
+    def test_touch_and_exists(self):
+        target = RedisTarget(HOST, PORT, DB, 'update_id', PASSWORD)
+        target.marker_prefix = MARKER_PREFIX
+        flush()
+        self.assertFalse(target.exists(),
+                         'Target should not exist before touching it')
+        target.touch()
+        self.assertTrue(target.exists(),
+                        'Target should exist after touching it')
+        flush()
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/esindex_test.py" startline="73" endline="87" pcid="1755">
+    def test_touch_and_exists(self):
+        """ Basic test. """
+        target = ElasticsearchTarget(HOST, PORT, INDEX, DOC_TYPE, 'update_id', http_auth=HTTP_AUTH)
+        target.marker_index = MARKER_INDEX
+        target.marker_doc_type = MARKER_DOC_TYPE
+
+        delete()
+        self.assertFalse(target.exists(),
+                         'Target should not exist before touching it')
+        target.touch()
+        self.assertTrue(target.exists(),
+                        'Target should exist after touching it')
+        delete()
+
+
+</source>
+</class>
+
+<class classid="13" nclones="2" nlines="17" similarity="76">
+<source file="systems/luigi-3.0.3/test/contrib/presto_test.py" startline="47" endline="73" pcid="1192">
+    def test_watch(self, sleep):
+        # arrange
+        status = {
+            "stats": {
+                "progressPercentage": 1.2
+            },
+            "infoUri": "http://127.0.0.1:8080/ui/query.html?query=123"
+        }
+        cursor = mock.MagicMock(spec=Cursor)
+        cursor.poll.side_effect = [status, None]
+
+        connection = mock.MagicMock(spec=Connection)
+        connection.cursor.return_value = cursor
+
+        client = PrestoClient(connection)
+        query = 'select 1'
+
+        # act
+        statuses = list(client.execute(query))
+
+        # assert
+        assert client.percentage_progress == 1.2
+        assert client.info_uri == 'http://127.0.0.1:8080/ui/query.html?query=123'
+        assert statuses == [status]
+        cursor.execute.assert_called_once_with(query, None)
+        cursor.close.assert_called_once_with()
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/presto_test.py" startline="75" endline="100" pcid="1193">
+    def test_fetch(self, sleep):
+        # arrange
+        status = {
+            "infoUri": "http://127.0.0.1:8080/ui/query.html?query=123"
+        }
+        cursor = mock.MagicMock(spec=Cursor)
+        cursor.poll.side_effect = [status, None]
+        cursor.fetchall.return_value = [(1,), (2,)]
+
+        connection = mock.MagicMock(spec=Connection)
+        connection.cursor.return_value = cursor
+
+        client = PrestoClient(connection)
+        query = 'select 1'
+
+        # act
+        result = list(client.execute(query, mode='fetch'))
+
+        # assert
+        assert client.percentage_progress == .1
+        assert client.info_uri == "http://127.0.0.1:8080/ui/query.html?query=123"
+        cursor.execute.assert_called_once_with(query, None)
+        cursor.close.assert_called_once_with()
+        assert result == [(1,), (2,)]
+
+
+</source>
+</class>
+
+<class classid="14" nclones="2" nlines="17" similarity="72">
+<source file="systems/luigi-3.0.3/test/contrib/presto_test.py" startline="102" endline="124" pcid="1194">
+    def test_non_partitioned(self):
+        # arrange
+        client = mock.MagicMock(spec=PrestoClient)
+        client.execute.return_value = iter([(7, None), ])
+
+        catalog = 'hive'
+        database = 'schm1'
+        table = 'tbl1'
+
+        # act
+        target = PrestoTarget(client, catalog, database, table)
+        count = target.count()
+        exists = target.exists()
+
+        # assert
+        client.execute.assert_called_once_with(
+            'SELECT COUNT(*) AS cnt FROM hive.schm1.tbl1 WHERE 1 = %s LIMIT 1',
+            [1, ],
+            mode='fetch'
+        )
+        assert count == 7
+        assert exists
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/presto_test.py" startline="125" endline="151" pcid="1195">
+    def test_partitioned(self):
+        # arrange
+        client = mock.MagicMock(spec=PrestoClient)
+        client.execute.return_value = iter([(7, None), ])
+
+        catalog = 'hive'
+        database = 'schm1'
+        table = 'tbl1'
+        partition = {
+            'a': 2,
+            'b': 'x'
+        }
+
+        # act
+        target = PrestoTarget(client, catalog, database, table, partition)
+        count = target.count()
+        exists = target.exists()
+
+        # assert
+        client.execute.assert_called_once_with(
+            'SELECT COUNT(*) AS cnt FROM hive.schm1.tbl1 WHERE a = %s AND b = %s LIMIT 1',
+            [2, 'x'],
+            mode='fetch'
+        )
+        assert count == 7
+        assert exists
+
+</source>
+</class>
+
+<class classid="15" nclones="2" nlines="17" similarity="100">
+<source file="systems/luigi-3.0.3/test/contrib/hive_test.py" startline="97" endline="119" pcid="1373">
+        self.assertEqual('hdfs://localhost:9000/user/hive/warehouse/mytable', returned)
+
+    @mock.patch("luigi.contrib.hive.run_hive_cmd")
+    def test_table_exists(self, run_command):
+        run_command.return_value = "OK"
+        returned = self.client.table_exists("mytable")
+        self.assertFalse(returned)
+
+        run_command.return_value = "OK\n" \
+                                   "mytable"
+        returned = self.client.table_exists("mytable")
+        self.assertTrue(returned)
+
+        # Issue #896 test case insensitivity
+        returned = self.client.table_exists("MyTable")
+        self.assertTrue(returned)
+
+        run_command.return_value = "day=2013-06-28/hour=3\n" \
+                                   "day=2013-06-28/hour=4\n" \
+                                   "day=2013-07-07/hour=2\n"
+        self.client.partition_spec = mock.Mock(name="partition_spec")
+        self.client.partition_spec.return_value = "somepart"
+        returned = self.client.table_exists("mytable", partition={'a': 'b'})
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/hive_test.py" startline="148" endline="170" pcid="1376">
+                    ('hour', 'smallint', 'None'),
+                    ('',),
+                    ('# Partition Information',),
+                    ('# col_name', 'data_type', 'comment'),
+                    ('',),
+                    ('day', 'string', 'None'),
+                    ('hour', 'smallint', 'None'),
+                    ('Time taken: 2.08 seconds, Fetched: 34 row(s)',)]
+        returned = self.client.table_schema("mytable")
+        self.assertEqual(expected, returned)
+
+    def test_partition_spec(self):
+        returned = self.client.partition_spec({'a': 'b', 'c': 'd'})
+        self.assertEqual("`a`='b',`c`='d'", returned)
+
+    @mock.patch("luigi.contrib.hive.run_hive_cmd")
+    def test_apacheclient_table_exists(self, run_command):
+        run_command.return_value = "OK"
+        returned = self.apacheclient.table_exists("mytable")
+        self.assertFalse(returned)
+
+        run_command.return_value = "OK\n" \
+                                   "mytable"
+</source>
+</class>
+
+<class classid="16" nclones="2" nlines="20" similarity="100">
+<source file="systems/luigi-3.0.3/test/contrib/hive_test.py" startline="121" endline="142" pcid="1374">
+
+        run_command.return_value = ""
+        returned = self.client.table_exists("mytable", partition={'a': 'b'})
+        self.assertFalse(returned)
+
+    @mock.patch("luigi.contrib.hive.run_hive_cmd")
+    def test_table_schema(self, run_command):
+        run_command.return_value = "FAILED: SemanticException [Error 10001]: blah does not exist\nSome other stuff"
+        returned = self.client.table_schema("mytable")
+        self.assertFalse(returned)
+
+        run_command.return_value = "OK\n" \
+                                   "col1       	string              	None                \n" \
+                                   "col2            	string              	None                \n" \
+                                   "col3         	string              	None                \n" \
+                                   "day                 	string              	None                \n" \
+                                   "hour                	smallint            	None                \n\n" \
+                                   "# Partition Information	 	 \n" \
+                                   "# col_name            	data_type           	comment             \n\n" \
+                                   "day                 	string              	None                \n" \
+                                   "hour                	smallint            	None                \n" \
+                                   "Time taken: 2.08 seconds, Fetched: 34 row(s)\n"
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/hive_test.py" startline="172" endline="193" pcid="1377">
+        self.assertTrue(returned)
+
+        # Issue #896 test case insensitivity
+        returned = self.apacheclient.table_exists("MyTable")
+        self.assertTrue(returned)
+
+        run_command.return_value = "day=2013-06-28/hour=3\n" \
+                                   "day=2013-06-28/hour=4\n" \
+                                   "day=2013-07-07/hour=2\n"
+        self.apacheclient.partition_spec = mock.Mock(name="partition_spec")
+        self.apacheclient.partition_spec.return_value = "somepart"
+        returned = self.apacheclient.table_exists("mytable", partition={'a': 'b'})
+        self.assertTrue(returned)
+
+        run_command.return_value = ""
+        returned = self.apacheclient.table_exists("mytable", partition={'a': 'b'})
+        self.assertFalse(returned)
+
+    @mock.patch("luigi.contrib.hive.run_hive_cmd")
+    def test_apacheclient_table_schema(self, run_command):
+        run_command.return_value = "FAILED: SemanticException [Error 10001]: Table not found mytable\nSome other stuff"
+        returned = self.apacheclient.table_schema("mytable")
+</source>
+</class>
+
+<class classid="17" nclones="2" nlines="18" similarity="73">
+<source file="systems/luigi-3.0.3/test/contrib/hive_test.py" startline="263" endline="289" pcid="1382">
+
+        hive_syntax.get_config.return_value.get.return_value = "warehouse"
+        client = luigi.contrib.hive.get_default_client()
+        self.assertEqual(luigi.contrib.hive.WarehouseHiveClient, type(client))
+
+    @mock.patch('subprocess.Popen')
+    def test_run_hive_command(self, popen):
+        # I'm testing this again to check the return codes
+        # I didn't want to tear up all the existing tests to change how run_hive is mocked
+        comm = mock.Mock(name='communicate_mock')
+        comm.return_value = b'some return stuff', ''
+
+        preturn = mock.Mock(name='open_mock')
+        preturn.returncode = 0
+        preturn.communicate = comm
+        popen.return_value = preturn
+
+        returned = luigi.contrib.hive.run_hive(["blah", "blah"])
+        self.assertEqual("some return stuff", returned)
+
+        preturn.returncode = 17
+        self.assertRaises(luigi.contrib.hive.HiveCommandError, luigi.contrib.hive.run_hive, ["blah", "blah"])
+
+        comm.return_value = b'', 'some stderr stuff'
+        returned = luigi.contrib.hive.run_hive(["blah", "blah"], False)
+        self.assertEqual("", returned)
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/hive_test.py" startline="291" endline="317" pcid="1383">
+class WarehouseHiveClientTest(unittest.TestCase):
+    def test_table_exists_files_actually_exist(self):
+        # arrange
+        hdfs_client = mock.Mock(name='hdfs_client')
+        hdfs_client.exists.return_value = True
+        hdfs_client.listdir.return_value = [
+            '00000_0',
+            '00000_1',
+            '00000_2',
+            '.tmp/'
+        ]
+
+        warehouse_hive_client = luigi.contrib.hive.WarehouseHiveClient(
+            hdfs_client=hdfs_client,
+            warehouse_location='/apps/hive/warehouse'
+        )
+
+        # act
+        exists = warehouse_hive_client.table_exists(
+            database='some_db',
+            table='table_name',
+            partition=OrderedDict(a=1, b=2)
+        )
+
+        # assert
+        assert exists
+        hdfs_client.exists.assert_called_once_with('/apps/hive/warehouse/some_db.db/table_name/a=1/b=2')
+</source>
+</class>
+
+<class classid="18" nclones="2" nlines="13" similarity="100">
+<source file="systems/luigi-3.0.3/test/contrib/pai_test.py" startline="58" endline="78" pcid="1396">
+    def test_success(self):
+        """
+        Here using the responses lib to mock the PAI rest api call, the following specify the response of the call.
+        """
+        responses.add(responses.POST, 'http://127.0.0.1:9186/api/v1/token',
+                      json={"token": "test", "user": "admin", "admin": True}, status=200)
+        sk_task = SklearnJob()
+
+        responses.add(responses.POST, 'http://127.0.0.1:9186/api/v1/jobs',
+                      json={"message": "update job {0} successfully".format(sk_task.name)}, status=202)
+
+        responses.add(responses.GET, 'http://127.0.0.1:9186/api/v1/jobs/{0}'.format(sk_task.name),
+                      json={}, status=404)
+
+        responses.add(responses.GET, 'http://127.0.0.1:9186/api/v1/jobs/{0}'.format(sk_task.name),
+                      body='{"jobStatus": {"state":"SUCCEED"}}', status=200)
+
+        success = luigi.build([sk_task], local_scheduler=True)
+        self.assertTrue(success)
+        self.assertTrue(sk_task.complete())
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/pai_test.py" startline="80" endline="99" pcid="1397">
+    def test_fail(self):
+        """
+        Here using the responses lib to mock the PAI rest api call, the following specify the response of the call.
+        """
+        responses.add(responses.POST, 'http://127.0.0.1:9186/api/v1/token',
+                      json={"token": "test", "user": "admin", "admin": True}, status=200)
+        fail_task = SklearnJob()
+
+        responses.add(responses.POST, 'http://127.0.0.1:9186/api/v1/jobs',
+                      json={"message": "update job {0} successfully".format(fail_task.name)}, status=202)
+
+        responses.add(responses.GET, 'http://127.0.0.1:9186/api/v1/jobs/{0}'.format(fail_task.name),
+                      json={}, status=404)
+
+        responses.add(responses.GET, 'http://127.0.0.1:9186/api/v1/jobs/{0}'.format(fail_task.name),
+                      body='{"jobStatus": {"state":"FAILED"}}', status=200)
+
+        success = luigi.build([fail_task], local_scheduler=True)
+        self.assertFalse(success)
+        self.assertFalse(fail_task.complete())
+</source>
+</class>
+
+<class classid="19" nclones="3" nlines="12" similarity="71">
+<source file="systems/luigi-3.0.3/test/contrib/dataproc_test.py" startline="62" endline="78" pcid="1402">
+    def test_3_submit_minimal_job(self):
+        # The job itself will fail because the job files don't exist
+        # We don't care, because then we would be testing spark
+        # We care the job was submitted correctly, so that's what we test
+
+        luigi.run(['--local-scheduler',
+                   '--no-lock',
+                   'DataprocSparkTask',
+                   '--gcloud-project-id=' + PROJECT_ID,
+                   '--dataproc-cluster-name=' + CLUSTER_NAME,
+                   '--main-class=my.MinimalMainClass'])
+
+        response = dataproc.get_dataproc_client().projects().regions().jobs() \
+            .list(projectId=PROJECT_ID, region=REGION, clusterName=CLUSTER_NAME).execute()
+        lastJob = response['jobs'][0]['sparkJob']
+
+        self.assertEqual(lastJob['mainClass'], "my.MinimalMainClass")
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/dataproc_test.py" startline="100" endline="120" pcid="1404">
+        self.assertEqual(lastJob['args'], ["foo", "bar"])
+
+    def test_5_submit_pyspark_job(self):
+        # The job itself will fail because the job files don't exist
+        # We don't care, because then we would be testing pyspark
+        # We care the job was submitted correctly, so that's what we test
+
+        luigi.run(['--local-scheduler',
+                   '--no-lock',
+                   'DataprocPysparkTask',
+                   '--gcloud-project-id=' + PROJECT_ID,
+                   '--dataproc-cluster-name=' + CLUSTER_NAME,
+                   '--job-file=main_job.py',
+                   '--extra-files=extra1.py,extra2.py',
+                   '--job-args=foo,bar'])
+
+        response = dataproc.get_dataproc_client().projects().regions().jobs()\
+            .list(projectId=PROJECT_ID, region=REGION, clusterName=CLUSTER_NAME).execute()
+        lastJob = response['jobs'][0]['pysparkJob']
+
+        self.assertEqual(lastJob['mainPythonFileUri'], "main_job.py")
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/dataproc_test.py" startline="79" endline="99" pcid="1403">
+
+    def test_4_submit_spark_job(self):
+        # The job itself will fail because the job files don't exist
+        # We don't care, because then we would be testing spark
+        # We care the job was submitted correctly, so that's what we test
+
+        luigi.run(['--local-scheduler',
+                   '--no-lock',
+                   'DataprocSparkTask',
+                   '--gcloud-project-id=' + PROJECT_ID,
+                   '--dataproc-cluster-name=' + CLUSTER_NAME,
+                   '--main-class=my.MainClass',
+                   '--jars=one.jar,two.jar',
+                   '--job-args=foo,bar'])
+
+        response = dataproc.get_dataproc_client().projects().regions().jobs() \
+            .list(projectId=PROJECT_ID, region=REGION, clusterName=CLUSTER_NAME).execute()
+        lastJob = response['jobs'][0]['sparkJob']
+
+        self.assertEqual(lastJob['mainClass'], "my.MainClass")
+        self.assertEqual(lastJob['jarFileUris'], ["one.jar", "two.jar"])
+</source>
+</class>
+
+<class classid="20" nclones="3" nlines="14" similarity="78">
+<source file="systems/luigi-3.0.3/test/contrib/beam_dataflow_test.py" startline="311" endline="327" pcid="1446">
+    def test_dataflow_successful_run_callbacks(self):
+        task = DummyCmdLineTestTask()
+
+        task.before_run = MagicMock()
+        task.validate_output = MagicMock()
+        task.on_successful_run = MagicMock()
+        task.on_successful_output_validation = MagicMock()
+        task.cleanup_on_error = MagicMock()
+
+        task.run()
+
+        task.before_run.assert_called_once_with()
+        task.validate_output.assert_called_once_with()
+        task.cleanup_on_error.assert_not_called()
+        task.on_successful_run.assert_called_once_with()
+        task.on_successful_output_validation.assert_called_once_with()
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/beam_dataflow_test.py" startline="348" endline="364" pcid="1448">
+    def test_dataflow_failed_run_callbacks(self, popen, os_exit):
+        task = DummyCmdLineTestTask()
+
+        task.before_run = MagicMock()
+        task.validate_output = MagicMock()
+        task.on_successful_run = MagicMock()
+        task.on_successful_output_validation = MagicMock()
+        task.cleanup_on_error = MagicMock()
+
+        with self.assertRaises(OSError):
+            task.run()
+
+        task.before_run.assert_called_once_with()
+        task.validate_output.assert_not_called()
+        task.cleanup_on_error.assert_called_once_with(mock.ANY)
+        task.on_successful_run.assert_not_called()
+        task.on_successful_output_validation.assert_not_called()
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/beam_dataflow_test.py" startline="328" endline="345" pcid="1447">
+    def test_dataflow_successful_run_invalid_output_callbacks(self):
+        task = DummyCmdLineTestTask()
+
+        task.before_run = MagicMock()
+        task.validate_output = MagicMock(return_value=False)
+        task.on_successful_run = MagicMock()
+        task.on_successful_output_validation = MagicMock()
+        task.cleanup_on_error = MagicMock()
+
+        with self.assertRaises(ValueError):
+            task.run()
+
+        task.before_run.assert_called_once_with()
+        task.validate_output.assert_called_once_with()
+        task.cleanup_on_error.assert_called_once_with(mock.ANY)
+        task.on_successful_run.assert_called_once_with()
+        task.on_successful_output_validation.assert_not_called()
+
+</source>
+</class>
+
+<class classid="21" nclones="5" nlines="15" similarity="70">
+<source file="systems/luigi-3.0.3/test/contrib/rdbms_test.py" startline="75" endline="93" pcid="1450">
+    def test_copy_check_meta_columns_to_table_if_exists(self,
+                                                        mock_redshift_target,
+                                                        mock_metadata_columns,
+                                                        mock_metadata_columns_enabled):
+        task = DummyS3CopyToTableKey(table='my_test_table')
+        task.run()
+
+        mock_cursor = (mock_redshift_target.return_value
+                                           .connect
+                                           .return_value
+                                           .cursor
+                                           .return_value)
+
+        executed_query = mock_cursor.execute.call_args_list[1][0][0]
+
+        expected_output = "SELECT 1 AS column_exists FROM information_schema.columns " \
+                          "WHERE table_name = LOWER('{table}') " \
+                          "AND column_name = LOWER('{column}') " \
+                          "LIMIT 1;".format(table='my_test_table', column='created_tz')
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/rdbms_test.py" startline="97" endline="115" pcid="1451">
+    @mock.patch("luigi.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
+    @mock.patch("luigi.contrib.redshift.S3CopyToTable.metadata_columns", new_callable=mock.PropertyMock, return_value=[('created_tz', 'TIMESTAMP')])
+    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    def test_copy_check_meta_columns_to_schematable_if_exists(self,
+                                                              mock_redshift_target,
+                                                              mock_metadata_columns,
+                                                              mock_metadata_columns_enabled):
+        task = DummyS3CopyToTableKey(table='test.my_test_table')
+        task.run()
+
+        mock_cursor = (mock_redshift_target.return_value
+                                           .connect
+                                           .return_value
+                                           .cursor
+                                           .return_value)
+
+        executed_query = mock_cursor.execute.call_args_list[2][0][0]
+
+        expected_output = "SELECT 1 AS column_exists FROM information_schema.columns " \
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/rdbms_test.py" startline="176" endline="197" pcid="1455">
+                          "ADD COLUMN {column} {type};".format(table='my_test_table', column='created_tz', type='TIMESTAMP')
+
+        self.assertEqual(executed_query, expected_output)
+
+    @mock.patch("luigi.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
+    @mock.patch("luigi.contrib.redshift.S3CopyToTable.metadata_columns", new_callable=mock.PropertyMock, return_value=[('created_tz', 'TIMESTAMP', 'bytedict')])
+    @mock.patch("luigi.contrib.redshift.S3CopyToTable._column_exists",  return_value=False)
+    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    def test_copy_add_encoded_column(self,
+                                     mock_redshift_target,
+                                     mock_columns_exists,
+                                     mock_metadata_columns,
+                                     mock_metadata_columns_enabled):
+        task = DummyS3CopyToTableKey(table='my_test_table')
+        task.run()
+
+        mock_cursor = (mock_redshift_target.return_value
+                                           .connect
+                                           .return_value
+                                           .cursor
+                                           .return_value)
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/rdbms_test.py" startline="230" endline="249" pcid="1458">
+                                                mock_metadata_columns_enabled):
+        task = DummyS3CopyToTableKey()
+
+        with self.assertRaises(ValueError):
+            task.run()
+
+    @mock.patch("luigi.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
+    @mock.patch("luigi.contrib.redshift.S3CopyToTable.metadata_queries",  new_callable=mock.PropertyMock, return_value=['SELECT 1 FROM X', 'SELECT 2 FROM Y'])
+    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    def test_post_copy_metacolumns(self,
+                                   mock_redshift_target,
+                                   mock_metadata_queries,
+                                   mock_metadata_columns_enabled):
+        task = DummyS3CopyToTableKey()
+        task.run()
+
+        mock_cursor = (mock_redshift_target.return_value
+                                           .connect
+                                           .return_value
+                                           .cursor
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/rdbms_test.py" startline="152" endline="171" pcid="1454">
+
+        self.assertTrue(mock_add_to_table.called)
+
+    @mock.patch("luigi.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
+    @mock.patch("luigi.contrib.redshift.S3CopyToTable.metadata_columns", new_callable=mock.PropertyMock, return_value=[('created_tz', 'TIMESTAMP')])
+    @mock.patch("luigi.contrib.redshift.S3CopyToTable._column_exists",  return_value=False)
+    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    def test_copy_add_regular_column(self,
+                                     mock_redshift_target,
+                                     mock_columns_exists,
+                                     mock_metadata_columns,
+                                     mock_metadata_columns_enabled):
+        task = DummyS3CopyToTableKey(table='my_test_table')
+        task.run()
+
+        mock_cursor = (mock_redshift_target.return_value
+                                           .connect
+                                           .return_value
+                                           .cursor
+                                           .return_value)
+</source>
+</class>
+
+<class classid="22" nclones="3" nlines="10" similarity="90">
+<source file="systems/luigi-3.0.3/test/contrib/redshift_test.py" startline="319" endline="330" pcid="1479">
+    def test_s3_copy_to_missing_schema(self, mock_redshift_target, mock_does_exist):
+        task = DummyS3CopyToTableKey(table='schema.table_with_schema')
+        task.run()
+
+        mock_cursor = (mock_redshift_target.return_value
+                                           .connect
+                                           .return_value
+                                           .cursor
+                                           .return_value)
+        executed_query = mock_cursor.execute.call_args_list[0][0][0]
+        assert executed_query.startswith("CREATE SCHEMA IF NOT EXISTS schema")
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/redshift_test.py" startline="347" endline="358" pcid="1481">
+    def test_s3_copy_to_existing_schema_with_schema(self, mock_redshift_target, mock_does_exist):
+        task = DummyS3CopyToTableKey(table='schema.table_with_schema')
+        task.run()
+
+        mock_cursor = (mock_redshift_target.return_value
+                                           .connect
+                                           .return_value
+                                           .cursor
+                                           .return_value)
+        executed_query = mock_cursor.execute.call_args_list[0][0][0]
+        assert not executed_query.startswith("CREATE SCHEMA IF NOT EXISTS")
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/redshift_test.py" startline="333" endline="344" pcid="1480">
+    def test_s3_copy_to_missing_schema_with_no_schema(self, mock_redshift_target, mock_does_exist):
+        task = DummyS3CopyToTableKey(table='table_with_no_schema')
+        task.run()
+
+        mock_cursor = (mock_redshift_target.return_value
+                                           .connect
+                                           .return_value
+                                           .cursor
+                                           .return_value)
+        executed_query = mock_cursor.execute.call_args_list[0][0][0]
+        assert not executed_query.startswith("CREATE SCHEMA IF NOT EXISTS")
+
+</source>
+</class>
+
+<class classid="23" nclones="3" nlines="22" similarity="95">
+<source file="systems/luigi-3.0.3/test/contrib/redshift_test.py" startline="456" endline="492" pcid="1485">
+    def test_s3_copy_with_valid_columns(self, mock_redshift_target):
+        task = DummyS3CopyToTableKey()
+        task.run()
+
+        # The mocked connection cursor passed to
+        # S3CopyToTable.copy(self, cursor, f).
+        mock_cursor = (mock_redshift_target.return_value
+                                           .connect
+                                           .return_value
+                                           .cursor
+                                           .return_value)
+
+        # `mock_redshift_target` is the mocked `RedshiftTarget` object
+        # returned by S3CopyToTable.output(self).
+        mock_redshift_target.assert_called_once_with(
+            database=task.database,
+            host=task.host,
+            update_id=task.task_id,
+            user=task.user,
+            table=task.table,
+            password=task.password,
+        )
+
+        # To get the proper intendation in the multiline `COPY` statement the
+        # SQL string was copied from redshift.py.
+        mock_cursor.execute.assert_called_with("""
+         COPY {table} {colnames} from '{source}'
+         CREDENTIALS '{creds}'
+         {options}
+         ;""".format(
+            table='dummy_table',
+            colnames='(some_text,some_int)',
+            source='s3://bucket/key',
+            creds='aws_access_key_id=key;aws_secret_access_key=secret',
+            options='')
+        )
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/redshift_test.py" startline="532" endline="569" pcid="1487">
+    def test_s3_copy_with_nonetype_columns(self, mock_redshift_target):
+        task = DummyS3CopyToTableKey(columns=None)
+        task.run()
+
+        # The mocked connection cursor passed to
+        # S3CopyToTable.copy(self, cursor, f).
+        mock_cursor = (mock_redshift_target.return_value
+                                           .connect
+                                           .return_value
+                                           .cursor
+                                           .return_value)
+
+        # `mock_redshift_target` is the mocked `RedshiftTarget` object
+        # returned by S3CopyToTable.output(self).
+        mock_redshift_target.assert_called_once_with(
+            database=task.database,
+            host=task.host,
+            update_id=task.task_id,
+            user=task.user,
+            table=task.table,
+            password=task.password,
+        )
+
+        # To get the proper intendation in the multiline `COPY` statement the
+        # SQL string was copied from redshift.py.
+        mock_cursor.execute.assert_called_with("""
+         COPY {table} {colnames} from '{source}'
+         CREDENTIALS '{creds}'
+         {options}
+         ;""".format(
+            table='dummy_table',
+            colnames='',
+            source='s3://bucket/key',
+            creds='aws_access_key_id=key;aws_secret_access_key=secret',
+            options='')
+        )
+
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/redshift_test.py" startline="494" endline="530" pcid="1486">
+    def test_s3_copy_with_default_columns(self, mock_redshift_target):
+        task = DummyS3CopyToTableKey(columns=[])
+        task.run()
+
+        # The mocked connection cursor passed to
+        # S3CopyToTable.copy(self, cursor, f).
+        mock_cursor = (mock_redshift_target.return_value
+                                           .connect
+                                           .return_value
+                                           .cursor
+                                           .return_value)
+
+        # `mock_redshift_target` is the mocked `RedshiftTarget` object
+        # returned by S3CopyToTable.output(self).
+        mock_redshift_target.assert_called_once_with(
+            database=task.database,
+            host=task.host,
+            update_id=task.task_id,
+            user=task.user,
+            table=task.table,
+            password=task.password,
+        )
+
+        # To get the proper intendation in the multiline `COPY` statement the
+        # SQL string was copied from redshift.py.
+        mock_cursor.execute.assert_called_with("""
+         COPY {table} {colnames} from '{source}'
+         CREDENTIALS '{creds}'
+         {options}
+         ;""".format(
+            table='dummy_table',
+            colnames='',
+            source='s3://bucket/key',
+            creds='aws_access_key_id=key;aws_secret_access_key=secret',
+            options='')
+        )
+
+</source>
+</class>
+
+<class classid="24" nclones="2" nlines="19" similarity="85">
+<source file="systems/luigi-3.0.3/test/contrib/redshift_test.py" startline="677" endline="698" pcid="1493">
+    def test_run(self):
+        with mock_s3():
+            client = S3Client()
+            client.s3.meta.client.create_bucket(Bucket=BUCKET)
+            for key in FILES:
+                k = '%s/%s' % (KEY, key)
+                client.put_string('', 's3://%s/%s' % (BUCKET, k))
+            folder_path = 's3://%s/%s' % (BUCKET, KEY)
+            path = 's3://%s/%s/%s' % (BUCKET, 'manifest', 'test.manifest')
+            folder_paths = [folder_path]
+
+            m = mock.mock_open()
+            with mock.patch('luigi.contrib.s3.S3Target.open', m, create=True):
+                t = redshift.RedshiftManifestTask(path, folder_paths)
+                luigi.build([t], local_scheduler=True)
+
+            expected_manifest_output = json.dumps(
+                generate_manifest_json(folder_paths, FILES))
+
+            handle = m()
+            handle.write.assert_called_with(expected_manifest_output)
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/redshift_test.py" startline="699" endline="720" pcid="1494">
+    def test_run_multiple_paths(self):
+        with mock_s3():
+            client = S3Client()
+            client.s3.meta.client.create_bucket(Bucket=BUCKET)
+            for parent in [KEY, KEY_2]:
+                for key in FILES:
+                    k = '%s/%s' % (parent, key)
+                    client.put_string('', 's3://%s/%s' % (BUCKET, k))
+            folder_path_1 = 's3://%s/%s' % (BUCKET, KEY)
+            folder_path_2 = 's3://%s/%s' % (BUCKET, KEY_2)
+            folder_paths = [folder_path_1, folder_path_2]
+            path = 's3://%s/%s/%s' % (BUCKET, 'manifest', 'test.manifest')
+
+            m = mock.mock_open()
+            with mock.patch('luigi.contrib.s3.S3Target.open', m, create=True):
+                t = redshift.RedshiftManifestTask(path, folder_paths)
+                luigi.build([t], local_scheduler=True)
+
+            expected_manifest_output = json.dumps(
+                generate_manifest_json(folder_paths, FILES))
+            handle = m()
+            handle.write.assert_called_with(expected_manifest_output)
+</source>
+</class>
+
+<class classid="25" nclones="2" nlines="12" similarity="100">
+<source file="systems/luigi-3.0.3/test/contrib/hdfs_test.py" startline="121" endline="134" pcid="1622">
+    def test_rename_no_parent(self):
+        parent = self._test_dir() + '/foo'
+        if self.fs.exists(parent):
+            self.fs.remove(parent, skip_trash=True)
+
+        target1 = hdfs.HdfsTarget(is_tmp=True)
+        target2 = hdfs.HdfsTarget(parent + '/bar')
+        with target1.open('w'):
+            pass
+        self.assertTrue(target1.exists())
+        target1.move(target2.path)
+        self.assertFalse(target1.exists())
+        self.assertTrue(target2.exists())
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/hdfs_test.py" startline="135" endline="148" pcid="1623">
+    def test_rename_no_grandparent(self):
+        grandparent = self._test_dir() + '/foo'
+        if self.fs.exists(grandparent):
+            self.fs.remove(grandparent, skip_trash=True)
+
+        target1 = hdfs.HdfsTarget(is_tmp=True)
+        target2 = hdfs.HdfsTarget(grandparent + '/bar/baz')
+        with target1.open('w'):
+            pass
+        self.assertTrue(target1.exists())
+        target1.move(target2.path)
+        self.assertFalse(target1.exists())
+        self.assertTrue(target2.exists())
+
+</source>
+</class>
+
+<class classid="26" nclones="2" nlines="15" similarity="100">
+<source file="systems/luigi-3.0.3/test/contrib/mysqldb_test.py" startline="55" endline="74" pcid="1639">
+    def test_bulk_complete(self, mock_connect):
+        mock_cursor = MockMysqlCursor([  # Existing update_ids
+            DummyMysqlImporter(date=datetime.datetime(2015, 1, 3)).task_id
+        ])
+        mock_connect.return_value.cursor.return_value = mock_cursor
+
+        task = RangeDaily(of=DummyMysqlImporter,
+                          start=datetime.date(2015, 1, 2),
+                          now=datetime_to_epoch(datetime.datetime(2015, 1, 7)))
+        actual = sorted([t.task_id for t in task.requires()])
+
+        self.assertEqual(actual, sorted([
+            DummyMysqlImporter(date=datetime.datetime(2015, 1, 2)).task_id,
+            DummyMysqlImporter(date=datetime.datetime(2015, 1, 4)).task_id,
+            DummyMysqlImporter(date=datetime.datetime(2015, 1, 5)).task_id,
+            DummyMysqlImporter(date=datetime.datetime(2015, 1, 6)).task_id,
+        ]))
+        self.assertFalse(task.complete())
+
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/postgres_test.py" startline="66" endline="85" pcid="1666">
+    def test_bulk_complete(self, mock_connect):
+        mock_cursor = MockPostgresCursor([
+            DummyPostgresImporter(date=datetime.datetime(2015, 1, 3)).task_id
+        ])
+        mock_connect.return_value.cursor.return_value = mock_cursor
+
+        task = RangeDaily(of=DummyPostgresImporter,
+                          start=datetime.date(2015, 1, 2),
+                          now=datetime_to_epoch(datetime.datetime(2015, 1, 7)))
+        actual = sorted([t.task_id for t in task.requires()])
+
+        self.assertEqual(actual, sorted([
+            DummyPostgresImporter(date=datetime.datetime(2015, 1, 2)).task_id,
+            DummyPostgresImporter(date=datetime.datetime(2015, 1, 4)).task_id,
+            DummyPostgresImporter(date=datetime.datetime(2015, 1, 5)).task_id,
+            DummyPostgresImporter(date=datetime.datetime(2015, 1, 6)).task_id,
+        ]))
+        self.assertFalse(task.complete())
+
+
+</source>
+</class>
+
+<class classid="27" nclones="4" nlines="14" similarity="92">
+<source file="systems/luigi-3.0.3/test/contrib/mysqldb_test.py" startline="83" endline="101" pcid="1640">
+    def test_copy_with_metadata_columns_enabled(self,
+                                                mock_connect,
+                                                mock_mysql_target,
+                                                mock_rows,
+                                                mock_add_columns,
+                                                mock_update_columns,
+                                                mock_metadata_columns_enabled):
+
+        task = DummyMysqlImporter(date=datetime.datetime(1991, 3, 24))
+
+        mock_cursor = MockMysqlCursor([task.task_id])
+        mock_connect.return_value.cursor.return_value = mock_cursor
+
+        task = DummyMysqlImporter(date=datetime.datetime(1991, 3, 24))
+        task.run()
+
+        self.assertTrue(mock_add_columns.called)
+        self.assertTrue(mock_update_columns.called)
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/postgres_test.py" startline="175" endline="191" pcid="1671">
+    def test_copy_with_metadata_columns_disabled(self,
+                                                 mock_connect,
+                                                 mock_redshift_target,
+                                                 mock_rows,
+                                                 mock_add_columns,
+                                                 mock_update_columns,
+                                                 mock_metadata_columns_enabled):
+
+        task = DummyPostgresImporter(date=datetime.datetime(1991, 3, 24))
+
+        mock_cursor = MockPostgresCursor([task.task_id])
+        mock_connect.return_value.cursor.return_value = mock_cursor
+
+        task.run()
+
+        self.assertFalse(mock_add_columns.called)
+        self.assertFalse(mock_update_columns.called)
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/postgres_test.py" startline="150" endline="168" pcid="1670">
+    def test_copy_with_metadata_columns_enabled(self,
+                                                mock_connect,
+                                                mock_redshift_target,
+                                                mock_rows,
+                                                mock_add_columns,
+                                                mock_update_columns,
+                                                mock_metadata_columns_enabled):
+
+        task = DummyPostgresImporter(date=datetime.datetime(1991, 3, 24))
+
+        mock_cursor = MockPostgresCursor([task.task_id])
+        mock_connect.return_value.cursor.return_value = mock_cursor
+
+        task = DummyPostgresImporter(date=datetime.datetime(1991, 3, 24))
+        task.run()
+
+        self.assertTrue(mock_add_columns.called)
+        self.assertTrue(mock_update_columns.called)
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/mysqldb_test.py" startline="108" endline="124" pcid="1641">
+    def test_copy_with_metadata_columns_disabled(self,
+                                                 mock_connect,
+                                                 mock_mysql_target,
+                                                 mock_rows,
+                                                 mock_add_columns,
+                                                 mock_update_columns,
+                                                 mock_metadata_columns_enabled):
+
+        task = DummyMysqlImporter(date=datetime.datetime(1991, 3, 24))
+
+        mock_cursor = MockMysqlCursor([task.task_id])
+        mock_connect.return_value.cursor.return_value = mock_cursor
+
+        task.run()
+
+        self.assertFalse(mock_add_columns.called)
+        self.assertFalse(mock_update_columns.called)
+</source>
+</class>
+
+<class classid="28" nclones="3" nlines="11" similarity="71">
+<source file="systems/luigi-3.0.3/test/contrib/mongo_test.py" startline="70" endline="81" pcid="1651">
+    def test_exists(self):
+        test_values = [
+            ('person_1', 'surname', False),
+            ('person_2', 'surname', True),
+            ('person_3', 'surname', True),
+            ('unknow_person', 'surname', False),
+        ]
+
+        for id_, field, result in test_values:
+            target = MongoCellTarget(self.mongo_client, INDEX, COLLECTION, id_, field)
+            self.assertEqual(result, target.exists())
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/mongo_test.py" startline="98" endline="110" pcid="1653">
+    def test_read(self):
+        test_values = [
+            ('person_1', 'surname', None),
+            ('person_2', 'surname', 'Gilmore'),
+            ('person_3', 'surname', 'Specter'),
+            ('person_4', 'surname', ''),
+            ('unknown_person', 'surname', None),
+        ]
+
+        for id_, field, result in test_values:
+            target = MongoCellTarget(self.mongo_client, INDEX, COLLECTION, id_, field)
+            self.assertEqual(result, target.read())
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/mongo_test.py" startline="82" endline="97" pcid="1652">
+    def test_exists_nested(self):
+        test_values = [
+            ('person_1', 'infos', True),
+            ('person_1', 'infos.family', True),
+            ('person_2', 'family', False),
+            ('person_4', 'infos', True),
+            ('person_4', 'infos.family', True),
+            ('person_4', 'infos.sexe', False),
+            ('person_4', 'infos.family.children', True),
+            ('person_4', 'infos.family.aunt', False),
+        ]
+
+        for id_, path, result in test_values:
+            target = MongoCellTarget(self.mongo_client, INDEX, COLLECTION, id_, path)
+            self.assertEqual(result, target.exists())
+
+</source>
+</class>
+
+<class classid="29" nclones="3" nlines="11" similarity="100">
+<source file="systems/luigi-3.0.3/test/contrib/datadog_metric_test.py" startline="57" endline="69" pcid="1678">
+    def test_send_event_on_task_started(self):
+        task = self.startTask()
+        self.collector.handle_task_started(task)
+
+        self.mock_create.assert_called_once_with(alert_type='info',
+                                                 priority='low',
+                                                 tags=['task_name:DDTaskName',
+                                                       'task_state:STARTED',
+                                                       'environment:development',
+                                                       'application:luigi'],
+                                                 text='A task has been started in the pipeline named: DDTaskName',
+                                                 title='Luigi: A task has been started!')
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/datadog_metric_test.py" startline="123" endline="135" pcid="1684">
+    def test_send_event_on_task_done(self):
+        task = self.startTask()
+        self.collector.handle_task_done(task)
+
+        self.mock_create.assert_called_once_with(alert_type='info',
+                                                 priority='low',
+                                                 tags=['task_name:DDTaskName',
+                                                       'task_state:DONE',
+                                                       'environment:development',
+                                                       'application:luigi'],
+                                                 text='A task has completed in the pipeline named: DDTaskName',
+                                                 title='Luigi: A task has been completed!')
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/datadog_metric_test.py" startline="78" endline="90" pcid="1680">
+    def test_send_event_on_task_failed(self):
+        task = self.startTask()
+        self.collector.handle_task_failed(task)
+
+        self.mock_create.assert_called_once_with(alert_type='error',
+                                                 priority='normal',
+                                                 tags=['task_name:DDTaskName',
+                                                       'task_state:FAILED',
+                                                       'environment:development',
+                                                       'application:luigi'],
+                                                 text='A task has failed in the pipeline named: DDTaskName',
+                                                 title='Luigi: A task has failed!')
+
+</source>
+</class>
+
+<class classid="30" nclones="4" nlines="14" similarity="87">
+<source file="systems/luigi-3.0.3/test/contrib/bigquery_gcloud_test.py" startline="159" endline="175" pcid="1716">
+    def test_extract_to_gcs_csv(self):
+        task1 = TestLoadTask(
+            source=self.gcs_file,
+            dataset=self.table.dataset.dataset_id,
+            table=self.table.table_id)
+        task1.run()
+
+        task2 = TestExtractTask(
+            source=self.gcs_file,
+            dataset=self.table.dataset.dataset_id,
+            table=self.table.table_id,
+            extract_gcs_file=self.id() + '_extract_file',
+            destination_format=bigquery.DestinationFormat.CSV)
+        task2.run()
+
+        self.assertTrue(task2.output().exists)
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/bigquery_gcloud_test.py" startline="197" endline="213" pcid="1718">
+    def test_extract_to_gcs_json(self):
+        task1 = TestLoadTask(
+            source=self.gcs_file,
+            dataset=self.table.dataset.dataset_id,
+            table=self.table.table_id)
+        task1.run()
+
+        task2 = TestExtractTask(
+            source=self.gcs_file,
+            dataset=self.table.dataset.dataset_id,
+            table=self.table.table_id,
+            extract_gcs_file=self.id() + '_extract_file',
+            destination_format=bigquery.DestinationFormat.NEWLINE_DELIMITED_JSON)
+        task2.run()
+
+        self.assertTrue(task2.output().exists)
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/bigquery_gcloud_test.py" startline="176" endline="196" pcid="1717">
+    def test_extract_to_gcs_csv_alternate(self):
+        task1 = TestLoadTask(
+            source=self.gcs_file,
+            dataset=self.table.dataset.dataset_id,
+            table=self.table.table_id
+        )
+        task1.run()
+
+        task2 = TestExtractTask(
+            source=self.gcs_file,
+            dataset=self.table.dataset.dataset_id,
+            table=self.table.table_id,
+            extract_gcs_file=self.id() + '_extract_file',
+            destination_format=bigquery.DestinationFormat.CSV,
+            print_header=bigquery.PrintHeader.FALSE,
+            field_delimiter=bigquery.FieldDelimiter.PIPE
+        )
+        task2.run()
+
+        self.assertTrue(task2.output().exists)
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/bigquery_gcloud_test.py" startline="214" endline="230" pcid="1719">
+    def test_extract_to_gcs_avro(self):
+        task1 = TestLoadTask(
+            source=self.gcs_file,
+            dataset=self.table.dataset.dataset_id,
+            table=self.table.table_id)
+        task1.run()
+
+        task2 = TestExtractTask(
+            source=self.gcs_file,
+            dataset=self.table.dataset.dataset_id,
+            table=self.table.table_id,
+            extract_gcs_file=self.id() + '_extract_file',
+            destination_format=bigquery.DestinationFormat.AVRO)
+        task2.run()
+
+        self.assertTrue(task2.output().exists)
+
+</source>
+</class>
+
+<class classid="31" nclones="3" nlines="12" similarity="80">
+<source file="systems/luigi-3.0.3/test/contrib/bigquery_gcloud_test.py" startline="245" endline="258" pcid="1722">
+    def test_load_eu_to_eu(self):
+        task = TestLoadTask(source=self.gcs_file,
+                            dataset=self.table_eu.dataset.dataset_id,
+                            table=self.table_eu.table_id,
+                            location=EU_LOCATION)
+        task.run()
+
+        self.assertTrue(self.bq_client.dataset_exists(self.table_eu))
+        self.assertTrue(self.bq_client.table_exists(self.table_eu))
+        self.assertIn(self.table_eu.dataset_id,
+                      list(self.bq_client.list_datasets(self.table_eu.project_id)))
+        self.assertIn(self.table_eu.table_id,
+                      list(self.bq_client.list_tables(self.table_eu.dataset)))
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/bigquery_gcloud_test.py" startline="259" endline="271" pcid="1723">
+    def test_load_undefined_to_eu(self):
+        task = TestLoadTask(source=self.gcs_file,
+                            dataset=self.table_eu.dataset.dataset_id,
+                            table=self.table_eu.table_id)
+        task.run()
+
+        self.assertTrue(self.bq_client.dataset_exists(self.table_eu))
+        self.assertTrue(self.bq_client.table_exists(self.table_eu))
+        self.assertIn(self.table_eu.dataset_id,
+                      list(self.bq_client.list_datasets(self.table_eu.project_id)))
+        self.assertIn(self.table_eu.table_id,
+                      list(self.bq_client.list_tables(self.table_eu.dataset)))
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/bigquery_gcloud_test.py" startline="272" endline="290" pcid="1724">
+    def test_load_new_eu_dataset(self):
+        self.bq_client.delete_dataset(self.table.dataset)
+        self.bq_client.delete_dataset(self.table_eu.dataset)
+
+        self.assertFalse(self.bq_client.dataset_exists(self.table_eu))
+
+        task = TestLoadTask(source=self.gcs_file,
+                            dataset=self.table_eu.dataset.dataset_id,
+                            table=self.table_eu.table_id,
+                            location=EU_LOCATION)
+        task.run()
+
+        self.assertTrue(self.bq_client.dataset_exists(self.table_eu))
+        self.assertTrue(self.bq_client.table_exists(self.table_eu))
+        self.assertIn(self.table_eu.dataset_id,
+                      list(self.bq_client.list_datasets(self.table_eu.project_id)))
+        self.assertIn(self.table_eu.table_id,
+                      list(self.bq_client.list_tables(self.table_eu.dataset)))
+
+</source>
+</class>
+
+<class classid="32" nclones="2" nlines="12" similarity="75">
+<source file="systems/luigi-3.0.3/test/contrib/esindex_test.py" startline="180" endline="192" pcid="1765">
+    def test_copy_to_index(self):
+        """ Test a single document upload. """
+        task = IndexingTask1()
+        self.assertFalse(self.es.indices.exists(task.index))
+        self.assertFalse(task.complete())
+        luigi.build([task], local_scheduler=True)
+        self.assertTrue(self.es.indices.exists(task.index))
+        self.assertTrue(task.complete())
+        self.assertEqual(1, self.es.count(index=task.index).get('count'))
+        self.assertEqual({u'date': u'today', u'name': u'sample'},
+                         self.es.get_source(index=task.index,
+                                            doc_type=task.doc_type, id=123))
+
+</source>
+<source file="systems/luigi-3.0.3/test/contrib/esindex_test.py" startline="217" endline="232" pcid="1767">
+    def test_copy_to_index_purge_existing(self):
+        """ Test purge_existing_index purges index. """
+        task1 = IndexingTask1()
+        task2 = IndexingTask2()
+        task3 = IndexingTask3()
+        luigi.build([task1, task2], local_scheduler=True)
+        luigi.build([task3], local_scheduler=True)
+        self.assertTrue(self.es.indices.exists(task3.index))
+        self.assertTrue(task3.complete())
+        self.assertEqual(1, self.es.count(index=task3.index).get('count'))
+
+        self.assertEqual({u'date': u'today', u'name': u'yet another'},
+                         self.es.get_source(index=task3.index,
+                                            doc_type=task3.doc_type, id=234))
+
+
+</source>
+</class>
+
+<class classid="33" nclones="4" nlines="12" similarity="75">
+<source file="systems/luigi-3.0.3/test/util_test.py" startline="26" endline="39" pcid="1884">
+    def test_task_ids_using_inherits(self):
+        class ParentTask(luigi.Task):
+            my_param = luigi.Parameter()
+        luigi.namespace('blah')
+
+        @inherits(ParentTask)
+        class ChildTask(luigi.Task):
+            def requires(self):
+                return self.clone(ParentTask)
+        luigi.namespace('')
+        child_task = ChildTask(my_param='hello')
+        self.assertEqual(str(child_task), 'blah.ChildTask(my_param=hello)')
+        self.assertIn(ParentTask(my_param='hello'), luigi.task.flatten(child_task.requires()))
+
+</source>
+<source file="systems/luigi-3.0.3/test/util_test.py" startline="104" endline="116" pcid="1896">
+    def test_task_ids_using_requries(self):
+        class ParentTask(luigi.Task):
+            my_param = luigi.Parameter()
+        luigi.namespace('blah')
+
+        @requires(ParentTask)
+        class ChildTask(luigi.Task):
+            pass
+        luigi.namespace('')
+        child_task = ChildTask(my_param='hello')
+        self.assertEqual(str(child_task), 'blah.ChildTask(my_param=hello)')
+        self.assertIn(ParentTask(my_param='hello'), luigi.task.flatten(child_task.requires()))
+
+</source>
+<source file="systems/luigi-3.0.3/test/util_test.py" startline="117" endline="132" pcid="1897">
+    def test_task_ids_using_requries_2(self):
+        # Here we use this decorator in a unnormal way.
+        # But it should still work.
+        class ParentTask(luigi.Task):
+            my_param = luigi.Parameter()
+        decorator = requires(ParentTask)
+        luigi.namespace('blah')
+
+        class ChildTask(luigi.Task):
+            pass
+        luigi.namespace('')
+        ChildTask = decorator(ChildTask)
+        child_task = ChildTask(my_param='hello')
+        self.assertEqual(str(child_task), 'blah.ChildTask(my_param=hello)')
+        self.assertIn(ParentTask(my_param='hello'), luigi.task.flatten(child_task.requires()))
+
+</source>
+<source file="systems/luigi-3.0.3/test/util_test.py" startline="40" endline="56" pcid="1886">
+    def test_task_ids_using_inherits_2(self):
+        # Here we use this decorator in a unnormal way.
+        # But it should still work.
+        class ParentTask(luigi.Task):
+            my_param = luigi.Parameter()
+        decorator = inherits(ParentTask)
+        luigi.namespace('blah')
+
+        class ChildTask(luigi.Task):
+            def requires(self):
+                return self.clone_parent()
+        luigi.namespace('')
+        ChildTask = decorator(ChildTask)
+        child_task = ChildTask(my_param='hello')
+        self.assertEqual(str(child_task), 'blah.ChildTask(my_param=hello)')
+        self.assertIn(ParentTask(my_param='hello'), luigi.task.flatten(child_task.requires()))
+
+</source>
+</class>
+
+<class classid="34" nclones="2" nlines="13" similarity="84">
+<source file="systems/luigi-3.0.3/test/util_test.py" startline="57" endline="74" pcid="1888">
+    def _setup_parent_and_child_inherits(self):
+        class ParentTask(luigi.Task):
+            my_parameter = luigi.Parameter()
+            class_variable = 'notset'
+
+            def run(self):
+                self.__class__.class_variable = self.my_parameter
+
+            def complete(self):
+                return self.class_variable == 'actuallyset'
+
+        @inherits(ParentTask)
+        class ChildTask(RunOnceTask):
+            def requires(self):
+                return self.clone_parent()
+
+        return ParentTask
+
+</source>
+<source file="systems/luigi-3.0.3/test/util_test.py" startline="133" endline="149" pcid="1898">
+    def _setup_parent_and_child(self):
+        class ParentTask(luigi.Task):
+            my_parameter = luigi.Parameter()
+            class_variable = 'notset'
+
+            def run(self):
+                self.__class__.class_variable = self.my_parameter
+
+            def complete(self):
+                return self.class_variable == 'actuallyset'
+
+        @requires(ParentTask)
+        class ChildTask(RunOnceTask):
+            pass
+
+        return ParentTask
+
+</source>
+</class>
+
+<class classid="35" nclones="2" nlines="27" similarity="100">
+<source file="systems/luigi-3.0.3/test/worker_keep_alive_test.py" startline="41" endline="75" pcid="2018">
+    def test_alive_while_has_failure(self):
+        """
+        One dependency disables and one fails
+        """
+        class Disabler(luigi.Task):
+            pass
+
+        class Failer(luigi.Task):
+            did_run = False
+
+            def run(self):
+                self.did_run = True
+
+        class Wrapper(luigi.WrapperTask):
+            def requires(self):
+                return (Disabler(), Failer())
+
+        self.w.add(Wrapper())
+        disabler = Disabler().task_id
+        failer = Failer().task_id
+        self.sch.add_task(disabler, 'FAILED', worker='X')
+        self.sch.prune()  # Make scheduler unfail the disabled task
+        self.sch.add_task(disabler, 'FAILED', worker='X')  # Disable it
+        self.sch.add_task(failer, 'FAILED', worker='X')  # Fail it
+        try:
+            t = threading.Thread(target=self.w.run)
+            t.start()
+            t.join(timeout=1)  # Wait 1 second
+            self.assertTrue(t.is_alive())  # It shouldn't stop trying, the failed task should be retried!
+            self.assertFalse(Failer.did_run)  # It should never have run, the cooldown is longer than a second.
+        finally:
+            self.sch.prune()  # Make it, like die. Couldn't find a more forceful way to do this.
+            t.join(timeout=1)  # Wait 1 second
+            assert not t.is_alive()
+
+</source>
+<source file="systems/luigi-3.0.3/test/worker_keep_alive_test.py" startline="76" endline="113" pcid="2021">
+    def test_alive_while_has_success(self):
+        """
+        One dependency disables and one succeeds
+        """
+        # TODO: Fix copy paste mess
+        class Disabler(luigi.Task):
+            pass
+
+        class Succeeder(luigi.Task):
+            did_run = False
+
+            def run(self):
+                self.did_run = True
+
+        class Wrapper(luigi.WrapperTask):
+            def requires(self):
+                return (Disabler(), Succeeder())
+
+        self.w.add(Wrapper())
+        disabler = Disabler().task_id
+        succeeder = Succeeder().task_id
+        self.sch.add_task(disabler, 'FAILED', worker='X')
+        self.sch.prune()  # Make scheduler unfail the disabled task
+        self.sch.add_task(disabler, 'FAILED', worker='X')  # Disable it
+        self.sch.add_task(succeeder, 'DONE', worker='X')  # Fail it
+        try:
+            t = threading.Thread(target=self.w.run)
+            t.start()
+            t.join(timeout=1)  # Wait 1 second
+            self.assertFalse(t.is_alive())  # The worker should think that it should stop ...
+            # ... because in this case the only work remaining depends on DISABLED tasks,
+            # hence it's not worth considering the wrapper task as a PENDING task to
+            # keep the worker alive anymore.
+            self.assertFalse(Succeeder.did_run)  # It should never have run, it succeeded already
+        finally:
+            self.sch.prune()  # This shouldnt be necessary in this version, but whatevs
+            t.join(timeout=1)  # Wait 1 second
+            assert not t.is_alive()
+</source>
+</class>
+
+<class classid="36" nclones="2" nlines="11" similarity="72">
+<source file="systems/luigi-3.0.3/test/task_progress_percentage_test.py" startline="27" endline="38" pcid="2064">
+    def test_run(self):
+        sch = luigi.scheduler.Scheduler()
+        with luigi.worker.Worker(scheduler=sch) as w:
+            class MyTask(luigi.Task):
+                def run(self):
+                    self.set_progress_percentage(30)
+
+            task = MyTask()
+            w.add(task)
+            w.run()
+
+            self.assertEqual(sch.get_task_progress_percentage(task.task_id)["progressPercentage"], 30)
+</source>
+<source file="systems/luigi-3.0.3/test/task_status_message_test.py" startline="29" endline="41" pcid="2634">
+    def test_run(self):
+        message = "test message"
+        sch = luigi.scheduler.Scheduler()
+        with luigi.worker.Worker(scheduler=sch) as w:
+            class MyTask(luigi.Task):
+                def run(self):
+                    self.set_status_message(message)
+
+            task = MyTask()
+            w.add(task)
+            w.run()
+
+            self.assertEqual(sch.get_task_status_message(task.task_id)["statusMessage"], message)
+</source>
+</class>
+
+<class classid="37" nclones="2" nlines="13" similarity="84">
+<source file="systems/luigi-3.0.3/test/task_test.py" startline="209" endline="224" pcid="2121">
+    def test_externalize_same_id_with_task_namespace(self):
+        # Dependent on the new behavior from spotify/luigi#1953
+        class MyTask(luigi.Task):
+            task_namespace = "something.domething"
+
+            def run(self):
+                pass
+
+        task_normal = MyTask()
+        task_ext_1 = luigi.task.externalize(MyTask())
+        task_ext_2 = luigi.task.externalize(MyTask)()
+        self.assertEqual(task_normal.task_id, task_ext_1.task_id)
+        self.assertEqual(task_normal.task_id, task_ext_2.task_id)
+        self.assertEqual(str(task_normal), str(task_ext_1))
+        self.assertEqual(str(task_normal), str(task_ext_2))
+
+</source>
+<source file="systems/luigi-3.0.3/test/task_test.py" startline="225" endline="241" pcid="2123">
+    def test_externalize_same_id_with_luigi_namespace(self):
+        # Dependent on the new behavior from spotify/luigi#1953
+        luigi.namespace('lets.externalize')
+
+        class MyTask(luigi.Task):
+            def run(self):
+                pass
+        luigi.namespace()
+
+        task_normal = MyTask()
+        task_ext_1 = luigi.task.externalize(MyTask())
+        task_ext_2 = luigi.task.externalize(MyTask)()
+        self.assertEqual(task_normal.task_id, task_ext_1.task_id)
+        self.assertEqual(task_normal.task_id, task_ext_2.task_id)
+        self.assertEqual(str(task_normal), str(task_ext_1))
+        self.assertEqual(str(task_normal), str(task_ext_2))
+
+</source>
+</class>
+
+<class classid="38" nclones="3" nlines="10" similarity="72">
+<source file="systems/luigi-3.0.3/test/batch_notifier_test.py" startline="88" endline="100" pcid="2160">
+    def test_send_multiple_disables(self):
+        bn = BatchNotifier(batch_mode='family')
+        for _ in range(10):
+            bn.add_failure('Task(a=5)', 'Task', {'a': 5}, 'error', [])
+            bn.add_failure('Task(a=6)', 'Task', {'a': 6}, 'error', [])
+        bn.add_disable('Task(a=5)', 'Task', {'a': 5}, [])
+        bn.add_disable('Task(a=6)', 'Task', {'a': 6}, [])
+        bn.send_email()
+        self.check_email_send(
+            'Luigi: 20 failures, 2 disables in the last 60 minutes',
+            '- Task (20 failures, 2 disables)'
+        )
+
+</source>
+<source file="systems/luigi-3.0.3/test/batch_notifier_test.py" startline="133" endline="145" pcid="2164">
+    def test_group_on_family(self):
+        bn = BatchNotifier(batch_mode='family')
+        bn.add_failure('Task(a=5)', 'Task', {'a': 5}, 'error', [])
+        bn.add_failure('Task(a=6)', 'Task', {'a': 6}, 'error', [])
+        bn.add_failure('Task(a=6)', 'Task', {'a': 6}, 'error', [])
+        bn.add_failure('OtherTask(a=6)', 'OtherTask', {'a': 6}, 'error', [])
+        bn.send_email()
+        self.check_email_send(
+            'Luigi: 4 failures in the last 60 minutes',
+            '- Task (3 failures)\n'
+            '- OtherTask (1 failure)'
+        )
+
+</source>
+<source file="systems/luigi-3.0.3/test/batch_notifier_test.py" startline="250" endline="268" pcid="2170">
+    def test_include_two_expls_html_format(self):
+        self.email().format = 'html'
+        bn = BatchNotifier(batch_mode='family', error_messages=2)
+        bn.add_failure('Task(a=1)', 'Task', {'a': 1}, 'error 1', [])
+        bn.add_failure('Task(a=2)', 'Task', {'a': 2}, 'error 2', [])
+        bn.add_failure('TaskB(a=1)', 'TaskB', {'a': 1}, 'error', [])
+
+        bn.send_email()
+        self.check_email_send(
+            'Luigi: 3 failures in the last 60 minutes',
+            '<ul>\n'
+            '<li>Task (2 failures)\n'
+            '<pre>error 1</pre>\n'
+            '<pre>error 2</pre>\n'
+            '<li>TaskB (1 failure)\n'
+            '<pre>error</pre>\n'
+            '</ul>'
+        )
+
+</source>
+</class>
+
+<class classid="39" nclones="2" nlines="27" similarity="85">
+<source file="systems/luigi-3.0.3/test/batch_notifier_test.py" startline="217" endline="249" pcid="2169">
+    def test_expl_varies_by_owner(self):
+        bn = BatchNotifier(batch_mode='family', error_messages=1)
+        bn.add_failure('Task(a=1)', 'Task', {'a': '1'}, 'msg1', owners=['a@test.com'])
+        bn.add_failure('Task(a=2)', 'Task', {'a': '2'}, 'msg2', owners=['b@test.com'])
+        bn.send_email()
+        send_calls = [
+            mock.call(
+                'Luigi: Your tasks have 1 failure in the last 60 minutes',
+                '- Task (1 failure)\n'
+                '\n'
+                '      msg1',
+                'sender@test.com',
+                ('a@test.com',),
+            ),
+            mock.call(
+                'Luigi: Your tasks have 1 failure in the last 60 minutes',
+                '- Task (1 failure)\n'
+                '\n'
+                '      msg2',
+                'sender@test.com',
+                ('b@test.com',),
+            ),
+            mock.call(
+                'Luigi: 2 failures in the last 60 minutes',
+                '- Task (2 failures)\n'
+                '\n'
+                '      msg2',
+                'sender@test.com',
+                ('r@test.com',),
+            ),
+        ]
+        self.send_email.assert_has_calls(send_calls, any_order=True)
+
+</source>
+<source file="systems/luigi-3.0.3/test/batch_notifier_test.py" startline="394" endline="424" pcid="2179">
+    def test_send_batch_failure_emails_to_owners(self):
+        bn = BatchNotifier(batch_mode='all')
+        bn.add_failure('Task(a=1)', 'Task', {'a': '1'}, 'error', ['a@test.com', 'b@test.com'])
+        bn.add_failure('Task(a=1)', 'Task', {'a': '1'}, 'error', ['b@test.com'])
+        bn.add_failure('Task(a=2)', 'Task', {'a': '2'}, 'error', ['a@test.com'])
+        bn.send_email()
+
+        send_calls = [
+            mock.call(
+                'Luigi: 3 failures in the last 60 minutes',
+                '- Task(a=1) (2 failures)\n'
+                '- Task(a=2) (1 failure)',
+                'sender@test.com',
+                ('r@test.com',),
+            ),
+            mock.call(
+                'Luigi: Your tasks have 2 failures in the last 60 minutes',
+                '- Task(a=1) (1 failure)\n'
+                '- Task(a=2) (1 failure)',
+                'sender@test.com',
+                ('a@test.com',),
+            ),
+            mock.call(
+                'Luigi: Your tasks have 2 failures in the last 60 minutes',
+                '- Task(a=1) (2 failures)',
+                'sender@test.com',
+                ('b@test.com',),
+            ),
+        ]
+        self.send_email.assert_has_calls(send_calls, any_order=True)
+
+</source>
+</class>
+
+<class classid="40" nclones="3" nlines="12" similarity="73">
+<source file="systems/luigi-3.0.3/test/batch_notifier_test.py" startline="325" endline="339" pcid="2175">
+    def test_auto_send_on_update_after_time_period(self):
+        bn = BatchNotifier(batch_mode='all')
+        bn.add_failure('Task(a=5)', 'Task', {'a': 5}, 'error', [])
+
+        for i in range(60):
+            bn.update()
+            self.send_email.assert_not_called()
+            self.incr_time(minutes=1)
+
+        bn.update()
+        self.check_email_send(
+            'Luigi: 1 failure in the last 60 minutes',
+            '- Task(a=5) (1 failure)'
+        )
+
+</source>
+<source file="systems/luigi-3.0.3/test/batch_notifier_test.py" startline="355" endline="374" pcid="2177">
+    def test_no_auto_send_until_end_of_interval_with_error(self):
+        bn = BatchNotifier(batch_mode='all')
+
+        for i in range(90):
+            bn.update()
+            self.send_email.assert_not_called()
+            self.incr_time(minutes=1)
+
+        bn.add_failure('Task(a=5)', 'Task', {'a': 5}, 'error', [])
+        for i in range(30):
+            bn.update()
+            self.send_email.assert_not_called()
+            self.incr_time(minutes=1)
+
+        bn.update()
+        self.check_email_send(
+            'Luigi: 1 failure in the last 60 minutes',
+            '- Task(a=5) (1 failure)'
+        )
+
+</source>
+<source file="systems/luigi-3.0.3/test/batch_notifier_test.py" startline="340" endline="354" pcid="2176">
+    def test_auto_send_on_update_after_time_period_with_disable_only(self):
+        bn = BatchNotifier(batch_mode='all')
+        bn.add_disable('Task(a=5)', 'Task', {'a': 5}, [])
+
+        for i in range(60):
+            bn.update()
+            self.send_email.assert_not_called()
+            self.incr_time(minutes=1)
+
+        bn.update()
+        self.check_email_send(
+            'Luigi: 1 disable in the last 60 minutes',
+            '- Task(a=5) (1 disable)'
+        )
+
+</source>
+</class>
+
+<class classid="41" nclones="2" nlines="12" similarity="91">
+<source file="systems/luigi-3.0.3/test/batch_notifier_test.py" startline="446" endline="466" pcid="2181">
+    def test_batch_identical_expls(self):
+        bn = BatchNotifier(error_messages=1, group_by_error_messages=True)
+        bn.add_failure('Task(a=1)', 'Task', {'a': '1'}, 'msg1', [])
+        bn.add_failure('Task(a=2)', 'Task', {'a': '2'}, 'msg1', [])
+        bn.add_failure('Task(a=3)', 'Task', {'a': '3'}, 'msg1', [])
+        bn.add_failure('Task(a=4)', 'Task', {'a': '4'}, 'msg2', [])
+        bn.add_failure('Task(a=4)', 'Task', {'a': '4'}, 'msg2', [])
+        bn.send_email()
+        self.check_email_send(
+            'Luigi: 5 failures in the last 60 minutes',
+            '- Task(a=1) (1 failure)\n'
+            '  Task(a=2) (1 failure)\n'
+            '  Task(a=3) (1 failure)\n'
+            '\n'
+            '      msg1\n'
+            '\n'
+            '- Task(a=4) (2 failures)\n'
+            '\n'
+            '      msg2'
+        )
+
+</source>
+<source file="systems/luigi-3.0.3/test/batch_notifier_test.py" startline="467" endline="487" pcid="2182">
+    def test_batch_identical_expls_html(self):
+        self.email().format = 'html'
+        bn = BatchNotifier(error_messages=1, group_by_error_messages=True)
+        bn.add_failure('Task(a=1)', 'Task', {'a': '1'}, 'msg1', [])
+        bn.add_failure('Task(a=2)', 'Task', {'a': '2'}, 'msg1', [])
+        bn.add_failure('Task(a=3)', 'Task', {'a': '3'}, 'msg1', [])
+        bn.add_failure('Task(a=4)', 'Task', {'a': '4'}, 'msg2', [])
+        bn.add_failure('Task(a=4)', 'Task', {'a': '4'}, 'msg2', [])
+        bn.send_email()
+        self.check_email_send(
+            'Luigi: 5 failures in the last 60 minutes',
+            '<ul>\n'
+            '<li>Task(a=1) (1 failure)\n'
+            '<br>Task(a=2) (1 failure)\n'
+            '<br>Task(a=3) (1 failure)\n'
+            '<pre>msg1</pre>\n'
+            '<li>Task(a=4) (2 failures)\n'
+            '<pre>msg2</pre>\n'
+            '</ul>'
+        )
+
+</source>
+</class>
+
+<class classid="42" nclones="2" nlines="10" similarity="100">
+<source file="systems/luigi-3.0.3/test/batch_notifier_test.py" startline="523" endline="536" pcid="2186">
+    def test_unicode_param_value_html(self):
+        self.email().format = 'html'
+        for batch_mode in ('all', 'unbatched_params'):
+            self.send_email.reset_mock()
+            bn = BatchNotifier(batch_mode=batch_mode)
+            bn.add_failure('Task(a=á)', 'Task', {'a': 'á'}, 'error', [])
+            bn.send_email()
+            self.check_email_send(
+                'Luigi: 1 failure in the last 60 minutes',
+                '<ul>\n'
+                '<li>Task(a=á) (1 failure)\n'
+                '</ul>'
+            )
+
+</source>
+<source file="systems/luigi-3.0.3/test/batch_notifier_test.py" startline="548" endline="561" pcid="2188">
+    def test_unicode_param_name_html(self):
+        self.email().format = 'html'
+        for batch_mode in ('all', 'unbatched_params'):
+            self.send_email.reset_mock()
+            bn = BatchNotifier(batch_mode=batch_mode)
+            bn.add_failure('Task(á=a)', 'Task', {'á': 'a'}, 'error', [])
+            bn.send_email()
+            self.check_email_send(
+                'Luigi: 1 failure in the last 60 minutes',
+                '<ul>\n'
+                '<li>Task(á=a) (1 failure)\n'
+                '</ul>'
+            )
+
+</source>
+</class>
+
+<class classid="43" nclones="2" nlines="15" similarity="81">
+<source file="systems/luigi-3.0.3/test/parameter_test.py" startline="912" endline="933" pcid="2332">
+    def testCommandLineWithDefault(self):
+        """
+        Verify that we also read from the config when we build tasks from the
+        command line parsers.
+        """
+        class MyClass(luigi.Task):
+            p_not_global = luigi.Parameter(default='banana')
+
+            def complete(self):
+                import sys
+                luigi.configuration.get_config().write(sys.stdout)
+                if self.p_not_global != "123":
+                    raise ValueError("The parameter didn't get set!!")
+                return True
+
+            def run(self):
+                pass
+
+        self.assertTrue(self.run_locally(['MyClass']))
+        self.assertFalse(self.run_locally(['MyClass', '--p-not-global', '124']))
+        self.assertFalse(self.run_locally(['MyClass', '--MyClass-p-not-global', '124']))
+
+</source>
+<source file="systems/luigi-3.0.3/test/parameter_test.py" startline="935" endline="958" pcid="2335">
+    def testCommandLineNoDefault(self):
+        """
+        Verify that we also read from the config when we build tasks from the
+        command line parsers.
+        """
+        class MyClass2(luigi.Task):
+            """ TODO: Make luigi clean it's register for tests. Hate this 2 dance. """
+            p_not_global_no_default = luigi.Parameter()
+
+            def complete(self):
+                import sys
+                luigi.configuration.get_config().write(sys.stdout)
+                luigi.configuration.get_config().write(sys.stdout)
+                if self.p_not_global_no_default != "123":
+                    raise ValueError("The parameter didn't get set!!")
+                return True
+
+            def run(self):
+                pass
+
+        self.assertTrue(self.run_locally(['MyClass2']))
+        self.assertFalse(self.run_locally(['MyClass2', '--p-not-global-no-default', '124']))
+        self.assertFalse(self.run_locally(['MyClass2', '--MyClass2-p-not-global-no-default', '124']))
+
+</source>
+</class>
+
+<class classid="44" nclones="3" nlines="12" similarity="83">
+<source file="systems/luigi-3.0.3/test/parameter_test.py" startline="968" endline="984" pcid="2339">
+    def testWithNamespaceCli(self):
+        class A(luigi.Task):
+            task_namespace = 'mynamespace'
+            p = luigi.IntParameter(default=100)
+            expected = luigi.IntParameter()
+
+            def complete(self):
+                if self.p != self.expected:
+                    raise ValueError
+                return True
+
+        self.assertTrue(self.run_locally_split('mynamespace.A --expected 100'))
+        # TODO(arash): Why is `--p 200` hanging with multiprocessing stuff?
+        # self.assertTrue(self.run_locally_split('mynamespace.A --p 200 --expected 200'))
+        self.assertTrue(self.run_locally_split('mynamespace.A --mynamespace.A-p 200 --expected 200'))
+        self.assertFalse(self.run_locally_split('mynamespace.A --A-p 200 --expected 200'))
+
+</source>
+<source file="systems/luigi-3.0.3/test/parameter_test.py" startline="999" endline="1012" pcid="2343">
+    def testTupleWithNamespaceCli(self):
+        class A(luigi.Task):
+            task_namespace = 'mynamespace'
+            t = luigi.TupleParameter(default=((1, 2), (3, 4)))
+            expected = luigi.TupleParameter()
+
+            def complete(self):
+                if self.t != self.expected:
+                    raise ValueError
+                return True
+
+        self.assertTrue(self.run_locally_split('mynamespace.A --expected ((1,2),(3,4))'))
+        self.assertTrue(self.run_locally_split('mynamespace.A --mynamespace.A-t ((1,2),(3,4)) --expected ((1,2),(3,4))'))
+
+</source>
+<source file="systems/luigi-3.0.3/test/parameter_test.py" startline="985" endline="998" pcid="2341">
+    def testListWithNamespaceCli(self):
+        class A(luigi.Task):
+            task_namespace = 'mynamespace'
+            l_param = luigi.ListParameter(default=[1, 2, 3])
+            expected = luigi.ListParameter()
+
+            def complete(self):
+                if self.l_param != self.expected:
+                    raise ValueError
+                return True
+
+        self.assertTrue(self.run_locally_split('mynamespace.A --expected [1,2,3]'))
+        self.assertTrue(self.run_locally_split('mynamespace.A --mynamespace.A-l [1,2,3] --expected [1,2,3]'))
+
+</source>
+</class>
+
+<class classid="45" nclones="2" nlines="16" similarity="82">
+<source file="systems/luigi-3.0.3/test/worker_multiprocess_test.py" startline="62" endline="83" pcid="2379">
+    def test_positive_path(self):
+        a = DummyTask("a")
+        b = DummyTask("b")
+
+        class MultipleRequirementTask(DummyTask):
+
+            def requires(self):
+                return [a, b]
+
+        c = MultipleRequirementTask("C")
+
+        self.assertTrue(self.worker.add(c))
+
+        self.scheduler.get_work = Mock(side_effect=[self.gw_res(3, a.task_id),
+                                                    self.gw_res(2, b.task_id),
+                                                    self.gw_res(1, c.task_id),
+                                                    self.gw_res(0, None),
+                                                    self.gw_res(0, None)])
+
+        self.assertTrue(self.worker.run())
+        self.assertTrue(c.has_run)
+
+</source>
+<source file="systems/luigi-3.0.3/test/worker_multiprocess_test.py" startline="84" endline="110" pcid="2381">
+    def test_path_with_task_failures(self):
+        class FailingTask(DummyTask):
+
+            def run(self):
+                raise Exception("I am failing")
+
+        a = FailingTask("a")
+        b = FailingTask("b")
+
+        class MultipleRequirementTask(DummyTask):
+
+            def requires(self):
+                return [a, b]
+
+        c = MultipleRequirementTask("C")
+
+        self.assertTrue(self.worker.add(c))
+
+        self.scheduler.get_work = Mock(side_effect=[self.gw_res(3, a.task_id),
+                                                    self.gw_res(2, b.task_id),
+                                                    self.gw_res(1, c.task_id),
+                                                    self.gw_res(0, None),
+                                                    self.gw_res(0, None)])
+
+        self.assertFalse(self.worker.run())
+
+
+</source>
+</class>
+
+<class classid="46" nclones="4" nlines="11" similarity="100">
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="227" endline="244" pcid="2445">
+    def setUp(self):
+        # yucky to create separate callbacks; would be nicer if the callback
+        # received an instance of a subclass of Event, so one callback could
+        # accumulate all types
+        @RangeDailyBase.event_handler(RangeEvent.DELAY)
+        def callback_delay(*args):
+            self.events.setdefault(RangeEvent.DELAY, []).append(args)
+
+        @RangeDailyBase.event_handler(RangeEvent.COMPLETE_COUNT)
+        def callback_complete_count(*args):
+            self.events.setdefault(RangeEvent.COMPLETE_COUNT, []).append(args)
+
+        @RangeDailyBase.event_handler(RangeEvent.COMPLETE_FRACTION)
+        def callback_complete_fraction(*args):
+            self.events.setdefault(RangeEvent.COMPLETE_FRACTION, []).append(args)
+
+        self.events = {}
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="518" endline="535" pcid="2469">
+    def setUp(self):
+        # yucky to create separate callbacks; would be nicer if the callback
+        # received an instance of a subclass of Event, so one callback could
+        # accumulate all types
+        @RangeByMinutesBase.event_handler(RangeEvent.DELAY)
+        def callback_delay(*args):
+            self.events.setdefault(RangeEvent.DELAY, []).append(args)
+
+        @RangeByMinutesBase.event_handler(RangeEvent.COMPLETE_COUNT)
+        def callback_complete_count(*args):
+            self.events.setdefault(RangeEvent.COMPLETE_COUNT, []).append(args)
+
+        @RangeByMinutesBase.event_handler(RangeEvent.COMPLETE_FRACTION)
+        def callback_complete_fraction(*args):
+            self.events.setdefault(RangeEvent.COMPLETE_FRACTION, []).append(args)
+
+        self.events = {}
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="344" endline="361" pcid="2456">
+    def setUp(self):
+        # yucky to create separate callbacks; would be nicer if the callback
+        # received an instance of a subclass of Event, so one callback could
+        # accumulate all types
+        @RangeHourlyBase.event_handler(RangeEvent.DELAY)
+        def callback_delay(*args):
+            self.events.setdefault(RangeEvent.DELAY, []).append(args)
+
+        @RangeHourlyBase.event_handler(RangeEvent.COMPLETE_COUNT)
+        def callback_complete_count(*args):
+            self.events.setdefault(RangeEvent.COMPLETE_COUNT, []).append(args)
+
+        @RangeHourlyBase.event_handler(RangeEvent.COMPLETE_FRACTION)
+        def callback_complete_fraction(*args):
+            self.events.setdefault(RangeEvent.COMPLETE_FRACTION, []).append(args)
+
+        self.events = {}
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="835" endline="852" pcid="2498">
+    def setUp(self):
+        # yucky to create separate callbacks; would be nicer if the callback
+        # received an instance of a subclass of Event, so one callback could
+        # accumulate all types
+        @RangeMonthly.event_handler(RangeEvent.DELAY)
+        def callback_delay(*args):
+            self.events.setdefault(RangeEvent.DELAY, []).append(args)
+
+        @RangeMonthly.event_handler(RangeEvent.COMPLETE_COUNT)
+        def callback_complete_count(*args):
+            self.events.setdefault(RangeEvent.COMPLETE_COUNT, []).append(args)
+
+        @RangeMonthly.event_handler(RangeEvent.COMPLETE_FRACTION)
+        def callback_complete_fraction(*args):
+            self.events.setdefault(RangeEvent.COMPLETE_FRACTION, []).append(args)
+
+        self.events = {}
+
+</source>
+</class>
+
+<class classid="47" nclones="4" nlines="15" similarity="86">
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="250" endline="267" pcid="2450">
+    def _empty_subcase(self, kwargs, expected_events):
+        calls = []
+
+        class RangeDailyDerived(RangeDailyBase):
+            def missing_datetimes(self, task_cls, finite_datetimes):
+                args = [self, task_cls, finite_datetimes]
+                calls.append(args)
+                return args[-1][:5]
+
+        task = RangeDailyDerived(of=CommonDateTask,
+                                 **kwargs)
+        self.assertEqual(task.requires(), [])
+        self.assertEqual(calls, [])
+        self.assertEqual(task.requires(), [])
+        self.assertEqual(calls, [])  # subsequent requires() should return the cached result, never call missing_datetimes
+        self.assertEqual(self.events, expected_events)
+        self.assertTrue(task.complete())
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="367" endline="384" pcid="2461">
+    def _empty_subcase(self, kwargs, expected_events):
+        calls = []
+
+        class RangeHourlyDerived(RangeHourlyBase):
+            def missing_datetimes(a, b, c):
+                args = [a, b, c]
+                calls.append(args)
+                return args[-1][:5]
+
+        task = RangeHourlyDerived(of=CommonDateHourTask,
+                                  **kwargs)
+        self.assertEqual(task.requires(), [])
+        self.assertEqual(calls, [])
+        self.assertEqual(task.requires(), [])
+        self.assertEqual(calls, [])  # subsequent requires() should return the cached result, never call missing_datetimes
+        self.assertEqual(self.events, expected_events)
+        self.assertTrue(task.complete())
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="853" endline="869" pcid="2502">
+    def _empty_subcase(self, kwargs, expected_events):
+        calls = []
+
+        class RangeMonthlyDerived(RangeMonthly):
+            def missing_datetimes(self, task_cls, finite_datetimes):
+                args = [self, task_cls, finite_datetimes]
+                calls.append(args)
+                return args[-1][:5]
+
+        task = RangeMonthlyDerived(of=CommonMonthTask, **kwargs)
+        self.assertEqual(task.requires(), [])
+        self.assertEqual(calls, [])
+        self.assertEqual(task.requires(), [])
+        self.assertEqual(calls, [])  # subsequent requires() should return the cached result, never call missing_datetimes
+        self.assertEqual(self.events, expected_events)
+        self.assertTrue(task.complete())
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="544" endline="560" pcid="2474">
+    def _empty_subcase(self, kwargs, expected_events):
+        calls = []
+
+        class RangeByMinutesDerived(RangeByMinutesBase):
+            def missing_datetimes(a, b, c):
+                args = [a, b, c]
+                calls.append(args)
+                return args[-1][:5]
+
+        task = RangeByMinutesDerived(of=CommonDateMinuteTask, **kwargs)
+        self.assertEqual(task.requires(), [])
+        self.assertEqual(calls, [])
+        self.assertEqual(task.requires(), [])
+        self.assertEqual(calls, [])  # subsequent requires() should return the cached result, never call missing_datetimes
+        self.assertEqual(self.events, expected_events)
+        self.assertTrue(task.complete())
+
+</source>
+</class>
+
+<class classid="48" nclones="5" nlines="20" similarity="90">
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="268" endline="290" pcid="2452">
+    def test_stop_before_days_back(self):
+        # nothing to do because stop is earlier
+        self._empty_subcase(
+            {
+                'now': datetime_to_epoch(datetime.datetime(2015, 1, 1, 4)),
+                'stop': datetime.date(2014, 3, 20),
+                'days_back': 4,
+                'days_forward': 20,
+                'reverse': True,
+            },
+            {
+                'event.tools.range.delay': [
+                    ('CommonDateTask', 0),
+                ],
+                'event.tools.range.complete.count': [
+                    ('CommonDateTask', 0),
+                ],
+                'event.tools.range.complete.fraction': [
+                    ('CommonDateTask', 1.),
+                ],
+            }
+        )
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="385" endline="406" pcid="2463">
+    def test_start_after_hours_forward(self):
+        # nothing to do because start is later
+        self._empty_subcase(
+            {
+                'now': datetime_to_epoch(datetime.datetime(2000, 1, 1, 4)),
+                'start': datetime.datetime(2014, 3, 20, 17),
+                'hours_back': 4,
+                'hours_forward': 20,
+            },
+            {
+                'event.tools.range.delay': [
+                    ('CommonDateHourTask', 0),
+                ],
+                'event.tools.range.complete.count': [
+                    ('CommonDateHourTask', 0),
+                ],
+                'event.tools.range.complete.fraction': [
+                    ('CommonDateHourTask', 1.),
+                ],
+            }
+        )
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="870" endline="892" pcid="2504">
+    def test_stop_before_months_back(self):
+        # nothing to do because stop is earlier
+        self._empty_subcase(
+            {
+                'now': datetime_to_epoch(datetime.datetime(2017, 1, 3)),
+                'stop': datetime.date(2016, 3, 20),
+                'months_back': 4,
+                'months_forward': 20,
+                'reverse': True,
+            },
+            {
+                'event.tools.range.delay': [
+                    ('CommonMonthTask', 0),
+                ],
+                'event.tools.range.complete.count': [
+                    ('CommonMonthTask', 0),
+                ],
+                'event.tools.range.complete.fraction': [
+                    ('CommonMonthTask', 1.),
+                ],
+            }
+        )
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="561" endline="583" pcid="2476">
+    def test_start_after_minutes_forward(self):
+        # nothing to do because start is later
+        self._empty_subcase(
+            {
+                'now': datetime_to_epoch(datetime.datetime(2000, 1, 1, 4)),
+                'start': datetime.datetime(2014, 3, 20, 17, 10),
+                'minutes_back': 4,
+                'minutes_forward': 20,
+                'minutes_interval': 5,
+            },
+            {
+                'event.tools.range.delay': [
+                    ('CommonDateMinuteTask', 0),
+                ],
+                'event.tools.range.complete.count': [
+                    ('CommonDateMinuteTask', 0),
+                ],
+                'event.tools.range.complete.fraction': [
+                    ('CommonDateMinuteTask', 1.),
+                ],
+            }
+        )
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="893" endline="914" pcid="2505">
+    def test_start_after_months_forward(self):
+        # nothing to do because start is later
+        self._empty_subcase(
+            {
+                'now': datetime_to_epoch(datetime.datetime(2000, 1, 1)),
+                'start': datetime.datetime(2014, 3, 20),
+                'months_back': 4,
+                'months_forward': 20,
+            },
+            {
+                'event.tools.range.delay': [
+                    ('CommonMonthTask', 0),
+                ],
+                'event.tools.range.complete.count': [
+                    ('CommonMonthTask', 0),
+                ],
+                'event.tools.range.complete.fraction': [
+                    ('CommonMonthTask', 1.),
+                ],
+            }
+        )
+
+</source>
+</class>
+
+<class classid="49" nclones="2" nlines="14" similarity="85">
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="291" endline="309" pcid="2453">
+    def _nonempty_subcase(self, kwargs, expected_finite_datetimes_range, expected_requires, expected_events):
+        calls = []
+
+        class RangeDailyDerived(RangeDailyBase):
+            def missing_datetimes(self, finite_datetimes):
+                # I only changed tests for number of arguments at this one
+                # place to test both old and new behavior
+                calls.append((self, finite_datetimes))
+                return finite_datetimes[:7]
+
+        task = RangeDailyDerived(of=CommonDateTask,
+                                 **kwargs)
+        self.assertEqual(list(map(str, task.requires())), expected_requires)
+        self.assertEqual((min(calls[0][1]), max(calls[0][1])), expected_finite_datetimes_range)
+        self.assertEqual(list(map(str, task.requires())), expected_requires)
+        self.assertEqual(len(calls), 1)  # subsequent requires() should return the cached result, not call missing_datetimes again
+        self.assertEqual(self.events, expected_events)
+        self.assertFalse(task.complete())
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="915" endline="930" pcid="2506">
+    def _nonempty_subcase(self, kwargs, expected_finite_datetimes_range, expected_requires, expected_events):
+        calls = []
+
+        class RangeDailyDerived(RangeMonthly):
+            def missing_datetimes(self, finite_datetimes):
+                calls.append((self, finite_datetimes))
+                return finite_datetimes[:7]
+
+        task = RangeDailyDerived(of=CommonMonthTask, **kwargs)
+        self.assertEqual(list(map(str, task.requires())), expected_requires)
+        self.assertEqual((min(calls[0][1]), max(calls[0][1])), expected_finite_datetimes_range)
+        self.assertEqual(list(map(str, task.requires())), expected_requires)
+        self.assertEqual(len(calls), 1)  # subsequent requires() should return the cached result, not call missing_datetimes again
+        self.assertEqual(self.events, expected_events)
+        self.assertFalse(task.complete())
+
+</source>
+</class>
+
+<class classid="50" nclones="13" nlines="28" similarity="70">
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="310" endline="340" pcid="2455">
+    def test_start_long_before_long_days_back_and_with_long_days_forward(self):
+        self._nonempty_subcase(
+            {
+                'now': datetime_to_epoch(datetime.datetime(2017, 10, 22, 12, 4, 29)),
+                'start': datetime.date(2011, 3, 20),
+                'stop': datetime.date(2025, 1, 29),
+                'task_limit': 4,
+                'days_back': 3 * 365,
+                'days_forward': 3 * 365,
+            },
+            (datetime.datetime(2014, 10, 24), datetime.datetime(2020, 10, 21)),
+            [
+                'CommonDateTask(d=2014-10-24)',
+                'CommonDateTask(d=2014-10-25)',
+                'CommonDateTask(d=2014-10-26)',
+                'CommonDateTask(d=2014-10-27)',
+            ],
+            {
+                'event.tools.range.delay': [
+                    ('CommonDateTask', 3750),
+                ],
+                'event.tools.range.complete.count': [
+                    ('CommonDateTask', 5057),
+                ],
+                'event.tools.range.complete.fraction': [
+                    ('CommonDateTask', 5057. / (5057 + 7)),
+                ],
+            }
+        )
+
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="426" endline="456" pcid="2466">
+    def test_start_long_before_hours_back(self):
+        self._nonempty_subcase(
+            {
+                'now': datetime_to_epoch(datetime.datetime(2000, 1, 1, 4)),
+                'start': datetime.datetime(1960, 3, 2, 1),
+                'hours_back': 5,
+                'hours_forward': 20,
+            },
+            (datetime.datetime(1999, 12, 31, 23), datetime.datetime(2000, 1, 1, 23)),
+            [
+                'CommonDateHourTask(dh=1999-12-31T23)',
+                'CommonDateHourTask(dh=2000-01-01T00)',
+                'CommonDateHourTask(dh=2000-01-01T01)',
+                'CommonDateHourTask(dh=2000-01-01T02)',
+                'CommonDateHourTask(dh=2000-01-01T03)',
+                'CommonDateHourTask(dh=2000-01-01T04)',
+                'CommonDateHourTask(dh=2000-01-01T05)',
+            ],
+            {
+                'event.tools.range.delay': [
+                    ('CommonDateHourTask', 25),  # because of short hours_back we're oblivious to those 40 preceding years
+                ],
+                'event.tools.range.complete.count': [
+                    ('CommonDateHourTask', 349192),
+                ],
+                'event.tools.range.complete.fraction': [
+                    ('CommonDateHourTask', 349192. / (349192 + 7)),
+                ],
+            }
+        )
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="1052" endline="1083" pcid="2512">
+    def test_months_forward_on_first_of_month(self):
+        total = (2017 - 2011) * 12 + 2
+        self._nonempty_subcase(
+            {
+                'now': datetime_to_epoch(datetime.datetime(2017, 10, 1, 12, 4, 29)),
+                'start': datetime.date(2011, 10, 1),
+                'task_limit': 10,
+                'months_back': 4,
+                'months_forward': 2
+            },
+            (datetime.datetime(2017, 6, 1), datetime.datetime(2017, 11, 1)),
+            [
+                'CommonMonthTask(m=2017-06)',
+                'CommonMonthTask(m=2017-07)',
+                'CommonMonthTask(m=2017-08)',
+                'CommonMonthTask(m=2017-09)',
+                'CommonMonthTask(m=2017-10)',
+                'CommonMonthTask(m=2017-11)',
+            ],
+            {
+                'event.tools.range.delay': [
+                    ('CommonMonthTask', 6),
+                ],
+                'event.tools.range.complete.count': [
+                    ('CommonMonthTask', total - 6),
+                ],
+                'event.tools.range.complete.fraction': [
+                    ('CommonMonthTask', (total - 6.0) / total),
+                ],
+            }
+        )
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="992" endline="1022" pcid="2510">
+    def test_start_long_before_long_months_back_and_with_long_months_forward(self):
+        total = (2025 - 2011) * 12 - 2
+        self._nonempty_subcase(
+            {
+                'now': datetime_to_epoch(datetime.datetime(2017, 10, 22, 12, 4, 29)),
+                'start': datetime.date(2011, 3, 20),
+                'stop': datetime.date(2025, 1, 29),
+                'task_limit': 4,
+                'months_back': 3 * 12,
+                'months_forward': 3 * 12,
+            },
+            (datetime.datetime(2014, 10, 1), datetime.datetime(2020, 9, 1)),
+            [
+                'CommonMonthTask(m=2014-10)',
+                'CommonMonthTask(m=2014-11)',
+                'CommonMonthTask(m=2014-12)',
+                'CommonMonthTask(m=2015-01)',
+            ],
+            {
+                'event.tools.range.delay': [
+                    ('CommonMonthTask', (2025 - (2017 - 3)) * 12 - 9),
+                ],
+                'event.tools.range.complete.count': [
+                    ('CommonMonthTask', total - 7),
+                ],
+                'event.tools.range.complete.fraction': [
+                    ('CommonMonthTask', (total - 7.0) / total),
+                ],
+            }
+        )
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="660" endline="689" pcid="2484">
+    def test_start_long_before_minutes_back(self):
+        self._nonempty_subcase(
+            {
+                'now': datetime_to_epoch(datetime.datetime(2000, 1, 1, 0, 3, 0)),
+                'start': datetime.datetime(1960, 1, 1, 0, 0, 0),
+                'minutes_back': 5,
+                'minutes_forward': 20,
+                'minutes_interval': 5,
+            },
+            (datetime.datetime(2000, 1, 1, 0, 0), datetime.datetime(2000, 1, 1, 0, 20, 0)),
+            [
+                'CommonDateMinuteTask(dh=2000-01-01T0000)',
+                'CommonDateMinuteTask(dh=2000-01-01T0005)',
+                'CommonDateMinuteTask(dh=2000-01-01T0010)',
+                'CommonDateMinuteTask(dh=2000-01-01T0015)',
+                'CommonDateMinuteTask(dh=2000-01-01T0020)',
+            ],
+            {
+                'event.tools.range.delay': [
+                    ('CommonDateMinuteTask', 5),  # because of short minutes_back we're oblivious to those 40 preceding years
+                ],
+                'event.tools.range.complete.count': [
+                    ('CommonDateMinuteTask', 4207680),  # expected intervals - missing.
+                ],
+                'event.tools.range.complete.fraction': [
+                    ('CommonDateMinuteTask', 4207680. / 4207685),  # (expected - missing) / expected
+                ],
+            }
+        )
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="1023" endline="1051" pcid="2511">
+    def test_zero_months_forward(self):
+        total = (2017 - 2011) * 12
+        self._nonempty_subcase(
+            {
+                'now': datetime_to_epoch(datetime.datetime(2017, 10, 31, 12, 4, 29)),
+                'start': datetime.date(2011, 10, 1),
+                'task_limit': 10,
+                'months_back': 4,
+            },
+            (datetime.datetime(2017, 6, 1), datetime.datetime(2017, 9, 1)),
+            [
+                'CommonMonthTask(m=2017-06)',
+                'CommonMonthTask(m=2017-07)',
+                'CommonMonthTask(m=2017-08)',
+                'CommonMonthTask(m=2017-09)',
+            ],
+            {
+                'event.tools.range.delay': [
+                    ('CommonMonthTask', 4),
+                ],
+                'event.tools.range.complete.count': [
+                    ('CommonMonthTask', total - 4),
+                ],
+                'event.tools.range.complete.fraction': [
+                    ('CommonMonthTask', (total - 4.0) / total),
+                ],
+            }
+        )
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="485" endline="514" pcid="2468">
+    def test_start_long_before_long_hours_back_and_with_long_hours_forward(self):
+        self._nonempty_subcase(
+            {
+                'now': datetime_to_epoch(datetime.datetime(2017, 10, 22, 12, 4, 29)),
+                'start': datetime.datetime(2011, 3, 20, 17),
+                'task_limit': 4,
+                'hours_back': 3 * 365 * 24,
+                'hours_forward': 3 * 365 * 24,
+            },
+            (datetime.datetime(2014, 10, 23, 13), datetime.datetime(2020, 10, 21, 12)),
+            [
+                'CommonDateHourTask(dh=2014-10-23T13)',
+                'CommonDateHourTask(dh=2014-10-23T14)',
+                'CommonDateHourTask(dh=2014-10-23T15)',
+                'CommonDateHourTask(dh=2014-10-23T16)',
+            ],
+            {
+                'event.tools.range.delay': [
+                    ('CommonDateHourTask', 52560),
+                ],
+                'event.tools.range.complete.count': [
+                    ('CommonDateHourTask', 84061),
+                ],
+                'event.tools.range.complete.fraction': [
+                    ('CommonDateHourTask', 84061. / (84061 + 7)),
+                ],
+            }
+        )
+
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="690" endline="718" pcid="2485">
+    def test_start_after_long_minutes_back(self):
+        self._nonempty_subcase(
+            {
+                'now': datetime_to_epoch(datetime.datetime(2014, 3, 20, 18, 4, 29)),
+                'start': datetime.datetime(2014, 3, 20, 17, 10),
+                'task_limit': 4,
+                'minutes_back': 365 * 24 * 60,
+                'minutes_interval': 5,
+            },
+            (datetime.datetime(2014, 3, 20, 17, 10, 0), datetime.datetime(2014, 3, 20, 18, 0, 0)),
+            [
+                'CommonDateMinuteTask(dh=2014-03-20T1710)',
+                'CommonDateMinuteTask(dh=2014-03-20T1715)',
+                'CommonDateMinuteTask(dh=2014-03-20T1720)',
+                'CommonDateMinuteTask(dh=2014-03-20T1725)',
+            ],
+            {
+                'event.tools.range.delay': [
+                    ('CommonDateMinuteTask', 11),
+                ],
+                'event.tools.range.complete.count': [
+                    ('CommonDateMinuteTask', 4),
+                ],
+                'event.tools.range.complete.fraction': [
+                    ('CommonDateMinuteTask', 4. / 11),
+                ],
+            }
+        )
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="628" endline="659" pcid="2483">
+    def test_start_and_minutes_period(self):
+        self._nonempty_subcase(
+            {
+                'now': datetime_to_epoch(datetime.datetime(2016, 9, 1, 12, 0, 0)),
+                'start': datetime.datetime(2016, 9, 1, 11, 0, 0),
+                'minutes_back': 24 * 60,
+                'minutes_forward': 0,
+                'minutes_interval': 3,
+            },
+            (datetime.datetime(2016, 9, 1, 11, 0), datetime.datetime(2016, 9, 1, 11, 57, 0)),
+            [
+                'CommonDateMinuteTask(dh=2016-09-01T1100)',
+                'CommonDateMinuteTask(dh=2016-09-01T1103)',
+                'CommonDateMinuteTask(dh=2016-09-01T1106)',
+                'CommonDateMinuteTask(dh=2016-09-01T1109)',
+                'CommonDateMinuteTask(dh=2016-09-01T1112)',
+                'CommonDateMinuteTask(dh=2016-09-01T1115)',
+                'CommonDateMinuteTask(dh=2016-09-01T1118)',
+            ],
+            {
+                'event.tools.range.delay': [
+                    ('CommonDateMinuteTask', 20),  # First missing is the 20th
+                ],
+                'event.tools.range.complete.count': [
+                    ('CommonDateMinuteTask', 13),  # 20 intervals - 7 missing
+                ],
+                'event.tools.range.complete.fraction': [
+                    ('CommonDateMinuteTask', 13. / (13 + 7)),  # (exptected - missing) / expected
+                ],
+            }
+        )
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="931" endline="962" pcid="2508">
+    def test_start_long_before_months_back(self):
+        total = (2000 - 1960) * 12 + 20 - 2
+        self._nonempty_subcase(
+            {
+                'now': datetime_to_epoch(datetime.datetime(2000, 1, 1)),
+                'start': datetime.datetime(1960, 3, 2, 1),
+                'months_back': 5,
+                'months_forward': 20,
+            },
+            (datetime.datetime(1999, 8, 1), datetime.datetime(2001, 8, 1)),
+            [
+                'CommonMonthTask(m=1999-08)',
+                'CommonMonthTask(m=1999-09)',
+                'CommonMonthTask(m=1999-10)',
+                'CommonMonthTask(m=1999-11)',
+                'CommonMonthTask(m=1999-12)',
+                'CommonMonthTask(m=2000-01)',
+                'CommonMonthTask(m=2000-02)',
+            ],
+            {
+                'event.tools.range.delay': [
+                    ('CommonMonthTask', 25),
+                ],
+                'event.tools.range.complete.count': [
+                    ('CommonMonthTask', total - 7),
+                ],
+                'event.tools.range.complete.fraction': [
+                    ('CommonMonthTask', (total - 7.0) / total),
+                ],
+            }
+        )
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="457" endline="484" pcid="2467">
+    def test_start_after_long_hours_back(self):
+        self._nonempty_subcase(
+            {
+                'now': datetime_to_epoch(datetime.datetime(2014, 10, 22, 12, 4, 29)),
+                'start': datetime.datetime(2014, 3, 20, 17),
+                'task_limit': 4,
+                'hours_back': 365 * 24,
+            },
+            (datetime.datetime(2014, 3, 20, 17), datetime.datetime(2014, 10, 22, 12)),
+            [
+                'CommonDateHourTask(dh=2014-03-20T17)',
+                'CommonDateHourTask(dh=2014-03-20T18)',
+                'CommonDateHourTask(dh=2014-03-20T19)',
+                'CommonDateHourTask(dh=2014-03-20T20)',
+            ],
+            {
+                'event.tools.range.delay': [
+                    ('CommonDateHourTask', 5180),
+                ],
+                'event.tools.range.complete.count': [
+                    ('CommonDateHourTask', 5173),
+                ],
+                'event.tools.range.complete.fraction': [
+                    ('CommonDateHourTask', 5173. / (5173 + 7)),
+                ],
+            }
+        )
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="719" endline="749" pcid="2486">
+    def test_start_long_before_long_minutes_back_and_with_long_minutes_forward(self):
+        self._nonempty_subcase(
+            {
+                'now': datetime_to_epoch(datetime.datetime(2017, 3, 22, 20, 4, 29)),
+                'start': datetime.datetime(2011, 3, 20, 17, 10, 0),
+                'task_limit': 4,
+                'minutes_back': 365 * 24 * 60,
+                'minutes_forward': 365 * 24 * 60,
+                'minutes_interval': 5,
+            },
+            (datetime.datetime(2016, 3, 22, 20, 5), datetime.datetime(2018, 3, 22, 20, 0)),
+            [
+                'CommonDateMinuteTask(dh=2016-03-22T2005)',
+                'CommonDateMinuteTask(dh=2016-03-22T2010)',
+                'CommonDateMinuteTask(dh=2016-03-22T2015)',
+                'CommonDateMinuteTask(dh=2016-03-22T2020)',
+            ],
+            {
+                'event.tools.range.delay': [
+                    ('CommonDateMinuteTask', 210240),
+                ],
+                'event.tools.range.complete.count': [
+                    ('CommonDateMinuteTask', 737020),
+                ],
+                'event.tools.range.complete.fraction': [
+                    ('CommonDateMinuteTask', 737020. / (737020 + 7)),
+                ],
+            }
+        )
+
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="963" endline="991" pcid="2509">
+    def test_start_after_long_months_back(self):
+        total = 12 - 4
+        self._nonempty_subcase(
+            {
+                'now': datetime_to_epoch(datetime.datetime(2014, 11, 22)),
+                'start': datetime.datetime(2014, 3, 1),
+                'task_limit': 4,
+                'months_back': 12 * 24,
+            },
+            (datetime.datetime(2014, 3, 1), datetime.datetime(2014, 10, 1)),
+            [
+                'CommonMonthTask(m=2014-03)',
+                'CommonMonthTask(m=2014-04)',
+                'CommonMonthTask(m=2014-05)',
+                'CommonMonthTask(m=2014-06)',
+            ],
+            {
+                'event.tools.range.delay': [
+                    ('CommonMonthTask', total),
+                ],
+                'event.tools.range.complete.count': [
+                    ('CommonMonthTask', total - 7),
+                ],
+                'event.tools.range.complete.fraction': [
+                    ('CommonMonthTask', (total - 7.0) / total),
+                ],
+            }
+        )
+
+</source>
+</class>
+
+<class classid="51" nclones="2" nlines="16" similarity="87">
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="407" endline="425" pcid="2464">
+    def _nonempty_subcase(self, kwargs, expected_finite_datetimes_range, expected_requires, expected_events):
+        calls = []
+
+        class RangeHourlyDerived(RangeHourlyBase):
+            def missing_datetimes(a, b, c):
+                args = [a, b, c]
+                calls.append(args)
+                return args[-1][:7]
+
+        task = RangeHourlyDerived(of=CommonDateHourTask,
+                                  **kwargs)
+        self.assertEqual(list(map(str, task.requires())), expected_requires)
+        self.assertEqual(calls[0][1], CommonDateHourTask)
+        self.assertEqual((min(calls[0][2]), max(calls[0][2])), expected_finite_datetimes_range)
+        self.assertEqual(list(map(str, task.requires())), expected_requires)
+        self.assertEqual(len(calls), 1)  # subsequent requires() should return the cached result, not call missing_datetimes again
+        self.assertEqual(self.events, expected_events)
+        self.assertFalse(task.complete())
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="584" endline="601" pcid="2477">
+    def _nonempty_subcase(self, kwargs, expected_finite_datetimes_range, expected_requires, expected_events):
+        calls = []
+
+        class RangeByMinutesDerived(RangeByMinutesBase):
+            def missing_datetimes(a, b, c):
+                args = [a, b, c]
+                calls.append(args)
+                return args[-1][:7]
+
+        task = RangeByMinutesDerived(of=CommonDateMinuteTask, **kwargs)
+        self.assertEqual(list(map(str, task.requires())), expected_requires)
+        self.assertEqual(calls[0][1], CommonDateMinuteTask)
+        self.assertEqual((min(calls[0][2]), max(calls[0][2])), expected_finite_datetimes_range)
+        self.assertEqual(list(map(str, task.requires())), expected_requires)
+        self.assertEqual(len(calls), 1)  # subsequent requires() should return the cached result, not call missing_datetimes again
+        self.assertEqual(self.events, expected_events)
+        self.assertFalse(task.complete())
+
+</source>
+</class>
+
+<class classid="52" nclones="2" nlines="10" similarity="90">
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="602" endline="614" pcid="2479">
+    def test_negative_interval(self):
+        class SomeByMinutesTask(luigi.Task):
+            d = luigi.DateMinuteParameter()
+
+            def output(self):
+                return MockTarget(self.d.strftime('/data/2014/p/v/z/%Y_/_%m-_-%doctor/20/%HZ%MOOO'))
+
+        task = RangeByMinutes(now=datetime_to_epoch(datetime.datetime(2016, 4, 1)),
+                              of=SomeByMinutesTask,
+                              start=datetime.datetime(2014, 3, 20, 17),
+                              minutes_interval=-1)
+        self.assertRaises(luigi.parameter.ParameterException, task.requires)
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="615" endline="627" pcid="2481">
+    def test_non_dividing_interval(self):
+        class SomeByMinutesTask(luigi.Task):
+            d = luigi.DateMinuteParameter()
+
+            def output(self):
+                return MockTarget(self.d.strftime('/data/2014/p/v/z/%Y_/_%m-_-%doctor/20/%HZ%MOOO'))
+
+        task = RangeByMinutes(now=datetime_to_epoch(datetime.datetime(2016, 4, 1)),
+                              of=SomeByMinutesTask,
+                              start=datetime.datetime(2014, 3, 20, 17),
+                              minutes_interval=8)
+        self.assertRaises(luigi.parameter.ParameterException, task.requires)
+
+</source>
+</class>
+
+<class classid="53" nclones="2" nlines="11" similarity="100">
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="1093" endline="1109" pcid="2514">
+    def test_old_month_instantiation(self):
+        """
+        Verify that you can still programmatically set of param as string
+        """
+        class MyTask(luigi.Task):
+            month_param = luigi.MonthParameter()
+
+            def complete(self):
+                return False
+
+        range_task = RangeMonthly(now=datetime_to_epoch(datetime.datetime(2016, 1, 1)),
+                                  of=MyTask,
+                                  start=datetime.date(2015, 12, 1),
+                                  stop=datetime.date(2016, 1, 1))
+        expected_task = MyTask(month_param=datetime.date(2015, 12, 1))
+        self.assertEqual(expected_task, list(range_task._requires())[0])
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="1515" endline="1531" pcid="2555">
+    def test_old_instantiation(self):
+        """
+        Verify that you can still programatically set of param as string
+        """
+        class MyTask(luigi.Task):
+            date_param = luigi.DateParameter()
+
+            def complete(self):
+                return False
+
+        range_task = RangeDailyBase(now=datetime_to_epoch(datetime.datetime(2015, 12, 2)),
+                                    of=MyTask,
+                                    start=datetime.date(2015, 12, 1),
+                                    stop=datetime.date(2015, 12, 2))
+        expected_task = MyTask(date_param=datetime.date(2015, 12, 1))
+        self.assertEqual(expected_task, list(range_task._requires())[0])
+
+</source>
+</class>
+
+<class classid="54" nclones="2" nlines="14" similarity="100">
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="1110" endline="1131" pcid="2516">
+    def test_month_cli_instantiation(self):
+        """
+        Verify that you can still use Range through CLI
+        """
+
+        class MyTask(luigi.Task):
+            task_namespace = "wohoo"
+            month_param = luigi.MonthParameter()
+            secret = 'some-value-to-sooth-python-linters'
+            comp = False
+
+            def complete(self):
+                return self.comp
+
+            def run(self):
+                self.comp = True
+                MyTask.secret = 'yay'
+
+        now = str(int(datetime_to_epoch(datetime.datetime(2016, 1, 1))))
+        self.run_locally_split('RangeMonthly --of wohoo.MyTask --now {now} --start 2015-12 --stop 2016-01'.format(now=now))
+        self.assertEqual(MyTask(month_param=datetime.date(1934, 12, 1)).secret, 'yay')
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="1532" endline="1553" pcid="2557">
+    def test_cli_instantiation(self):
+        """
+        Verify that you can still use Range through CLI
+        """
+
+        class MyTask(luigi.Task):
+            task_namespace = "wohoo"
+            date_param = luigi.DateParameter()
+            secret = 'some-value-to-sooth-python-linters'
+            comp = False
+
+            def complete(self):
+                return self.comp
+
+            def run(self):
+                self.comp = True
+                MyTask.secret = 'yay'
+
+        now = str(int(datetime_to_epoch(datetime.datetime(2015, 12, 2))))
+        self.run_locally_split('RangeDailyBase --of wohoo.MyTask --now {now} --start 2015-12-01 --stop 2015-12-02'.format(now=now))
+        self.assertEqual(MyTask(date_param=datetime.date(1934, 12, 1)).secret, 'yay')
+
+</source>
+</class>
+
+<class classid="55" nclones="4" nlines="13" similarity="92">
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="1132" endline="1147" pcid="2519">
+    def test_param_name(self):
+        class MyTask(luigi.Task):
+            some_non_range_param = luigi.Parameter(default='woo')
+            month_param = luigi.MonthParameter()
+
+            def complete(self):
+                return False
+
+        range_task = RangeMonthly(now=datetime_to_epoch(datetime.datetime(2016, 1, 1)),
+                                  of=MyTask,
+                                  start=datetime.date(2015, 12, 1),
+                                  stop=datetime.date(2016, 1, 1),
+                                  param_name='month_param')
+        expected_task = MyTask('woo', datetime.date(2015, 12, 1))
+        self.assertEqual(expected_task, list(range_task._requires())[0])
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="1570" endline="1585" pcid="2562">
+    def test_param_name_with_inferred_fs(self):
+        class MyTask(luigi.Task):
+            some_non_range_param = luigi.Parameter(default='woo')
+            date_param = luigi.DateParameter()
+
+            def output(self):
+                return MockTarget(self.date_param.strftime('/n2000y01a05n/%Y_%m-_-%daww/21mm%Hdara21/ooo'))
+
+        range_task = RangeDaily(now=datetime_to_epoch(datetime.datetime(2015, 12, 2)),
+                                of=MyTask,
+                                start=datetime.date(2015, 12, 1),
+                                stop=datetime.date(2015, 12, 2),
+                                param_name='date_param')
+        expected_task = MyTask('woo', datetime.date(2015, 12, 1))
+        self.assertEqual(expected_task, list(range_task._requires())[0])
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="1554" endline="1569" pcid="2560">
+    def test_param_name(self):
+        class MyTask(luigi.Task):
+            some_non_range_param = luigi.Parameter(default='woo')
+            date_param = luigi.DateParameter()
+
+            def complete(self):
+                return False
+
+        range_task = RangeDailyBase(now=datetime_to_epoch(datetime.datetime(2015, 12, 2)),
+                                    of=MyTask,
+                                    start=datetime.date(2015, 12, 1),
+                                    stop=datetime.date(2015, 12, 2),
+                                    param_name='date_param')
+        expected_task = MyTask('woo', datetime.date(2015, 12, 1))
+        self.assertEqual(expected_task, list(range_task._requires())[0])
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="1148" endline="1163" pcid="2521">
+    def test_param_name_with_inferred_fs(self):
+        class MyTask(luigi.Task):
+            some_non_range_param = luigi.Parameter(default='woo')
+            month_param = luigi.MonthParameter()
+
+            def output(self):
+                return MockTarget(self.month_param.strftime('/n2000y01a05n/%Y_%m-aww/21mm%Hdara21/ooo'))
+
+        range_task = RangeMonthly(now=datetime_to_epoch(datetime.datetime(2016, 1, 1)),
+                                  of=MyTask,
+                                  start=datetime.date(2015, 12, 1),
+                                  stop=datetime.date(2016, 1, 1),
+                                  param_name='month_param')
+        expected_task = MyTask('woo', datetime.date(2015, 12, 1))
+        self.assertEqual(expected_task, list(range_task._requires())[0])
+
+</source>
+</class>
+
+<class classid="56" nclones="2" nlines="17" similarity="100">
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="1164" endline="1183" pcid="2523">
+    def test_of_param_distinction(self):
+        class MyTask(luigi.Task):
+            arbitrary_param = luigi.Parameter(default='foo')
+            arbitrary_integer_param = luigi.IntParameter(default=10)
+            month_param = luigi.MonthParameter()
+
+            def complete(self):
+                return False
+
+        range_task_1 = RangeMonthly(now=datetime_to_epoch(datetime.datetime(2015, 12, 2)),
+                                    of=MyTask,
+                                    start=datetime.date(2015, 12, 1),
+                                    stop=datetime.date(2016, 1, 1))
+        range_task_2 = RangeMonthly(now=datetime_to_epoch(datetime.datetime(2015, 12, 2)),
+                                    of=MyTask,
+                                    of_params=dict(arbitrary_param="bar", abitrary_integer_param=2),
+                                    start=datetime.date(2015, 12, 1),
+                                    stop=datetime.date(2016, 1, 1))
+        self.assertNotEqual(range_task_1.task_id, range_task_2.task_id)
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="1586" endline="1605" pcid="2564">
+    def test_of_param_distinction(self):
+        class MyTask(luigi.Task):
+            arbitrary_param = luigi.Parameter(default='foo')
+            arbitrary_integer_param = luigi.IntParameter(default=10)
+            date_param = luigi.DateParameter()
+
+            def complete(self):
+                return False
+
+        range_task_1 = RangeDaily(now=datetime_to_epoch(datetime.datetime(2015, 12, 2)),
+                                  of=MyTask,
+                                  start=datetime.date(2015, 12, 1),
+                                  stop=datetime.date(2015, 12, 2))
+        range_task_2 = RangeDaily(now=datetime_to_epoch(datetime.datetime(2015, 12, 2)),
+                                  of=MyTask,
+                                  of_params=dict(arbitrary_param="bar", abitrary_integer_param=2),
+                                  start=datetime.date(2015, 12, 1),
+                                  stop=datetime.date(2015, 12, 2))
+        self.assertNotEqual(range_task_1.task_id, range_task_2.task_id)
+
+</source>
+</class>
+
+<class classid="57" nclones="2" nlines="18" similarity="88">
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="1184" endline="1206" pcid="2525">
+    def test_of_param_commandline(self):
+        class MyTask(luigi.Task):
+            task_namespace = "wohoo"
+            month_param = luigi.MonthParameter()
+            arbitrary_param = luigi.Parameter(default='foo')
+            arbitrary_integer_param = luigi.IntParameter(default=10)
+            state = (None, None)
+            comp = False
+
+            def complete(self):
+                return self.comp
+
+            def run(self):
+                self.comp = True
+                MyTask.state = (self.arbitrary_param, self.arbitrary_integer_param)
+
+        now = str(int(datetime_to_epoch(datetime.datetime(2016, 1, 1))))
+        self.run_locally(['RangeMonthly', '--of', 'wohoo.MyTask',
+                          '--of-params', '{"arbitrary_param":"bar","arbitrary_integer_param":5}',
+                          '--now', '{0}'.format(now), '--start', '2015-12', '--stop', '2016-01'])
+        self.assertEqual(MyTask.state, ('bar', 5))
+
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="1606" endline="1625" pcid="2566">
+    def test_of_param_commandline(self):
+        class MyTask(luigi.Task):
+            task_namespace = "wohoo"
+            date_param = luigi.DateParameter()
+            arbitrary_param = luigi.Parameter(default='foo')
+            arbitrary_integer_param = luigi.IntParameter(default=10)
+            state = (None, None)
+            comp = False
+
+            def complete(self):
+                return self.comp
+
+            def run(self):
+                self.comp = True
+                MyTask.state = (self.arbitrary_param, self.arbitrary_integer_param)
+
+        now = str(int(datetime_to_epoch(datetime.datetime(2015, 12, 2))))
+        self.run_locally(['RangeDailyBase', '--of', 'wohoo.MyTask', '--of-params', '{"arbitrary_param":"bar","arbitrary_integer_param":5}',
+                          '--now', '{0}'.format(now), '--start', '2015-12-01', '--stop', '2015-12-02'])
+        self.assertEqual(MyTask.state, ('bar', 5))
+</source>
+</class>
+
+<class classid="58" nclones="7" nlines="20" similarity="70">
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="1209" endline="1232" pcid="2528">
+    def test_bulk_complete_correctly_interfaced(self):
+        class BulkCompleteDailyTask(luigi.Task):
+            d = luigi.DateParameter()
+
+            @classmethod
+            def bulk_complete(self, parameter_tuples):
+                return list(parameter_tuples)[:-2]
+
+            def output(self):
+                raise RuntimeError("Shouldn't get called while resolving deps via bulk_complete")
+
+        task = RangeDaily(now=datetime_to_epoch(datetime.datetime(2015, 12, 1)),
+                          of=BulkCompleteDailyTask,
+                          start=datetime.date(2015, 11, 1),
+                          stop=datetime.date(2015, 12, 1))
+
+        expected = [
+            'BulkCompleteDailyTask(d=2015-11-29)',
+            'BulkCompleteDailyTask(d=2015-11-30)',
+        ]
+
+        actual = [str(t) for t in task.requires()]
+        self.assertEqual(actual, expected)
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="1347" endline="1375" pcid="2541">
+    def test_bulk_complete_of_params(self):
+        class BulkCompleteHourlyTask(luigi.Task):
+            non_positional_arbitrary_argument = luigi.Parameter(default="whatever", positional=False, significant=False)
+            dh = luigi.DateHourParameter()
+            arbitrary_argument = luigi.BoolParameter()
+
+            @classmethod
+            def bulk_complete(cls, parameter_tuples):
+                for t in map(cls, parameter_tuples):
+                    assert t.arbitrary_argument
+                return parameter_tuples[:-2]
+
+            def output(self):
+                raise RuntimeError("Shouldn't get called while resolving deps via bulk_complete")
+
+        task = RangeHourly(now=datetime_to_epoch(datetime.datetime(2015, 12, 1)),
+                           of=BulkCompleteHourlyTask,
+                           of_params=dict(arbitrary_argument=True),
+                           start=datetime.datetime(2015, 11, 1),
+                           stop=datetime.datetime(2015, 12, 1))
+
+        expected = [
+            'BulkCompleteHourlyTask(dh=2015-11-30T22, arbitrary_argument=True)',
+            'BulkCompleteHourlyTask(dh=2015-11-30T23, arbitrary_argument=True)',
+        ]
+
+        actual = [str(t) for t in task.requires()]
+        self.assertEqual(actual, expected)
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="1323" endline="1346" pcid="2538">
+    def test_bulk_complete_correctly_interfaced(self):
+        class BulkCompleteHourlyTask(luigi.Task):
+            dh = luigi.DateHourParameter()
+
+            @classmethod
+            def bulk_complete(cls, parameter_tuples):
+                return parameter_tuples[:-2]
+
+            def output(self):
+                raise RuntimeError("Shouldn't get called while resolving deps via bulk_complete")
+
+        task = RangeHourly(now=datetime_to_epoch(datetime.datetime(2015, 12, 1)),
+                           of=BulkCompleteHourlyTask,
+                           start=datetime.datetime(2015, 11, 1),
+                           stop=datetime.datetime(2015, 12, 1))
+
+        expected = [
+            'BulkCompleteHourlyTask(dh=2015-11-30T22)',
+            'BulkCompleteHourlyTask(dh=2015-11-30T23)',
+        ]
+
+        actual = [str(t) for t in task.requires()]
+        self.assertEqual(actual, expected)
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="1441" endline="1465" pcid="2548">
+    def test_bulk_complete_correctly_interfaced(self):
+        class BulkCompleteByMinutesTask(luigi.Task):
+            dh = luigi.DateMinuteParameter()
+
+            @classmethod
+            def bulk_complete(cls, parameter_tuples):
+                return list(parameter_tuples)[:-2]
+
+            def output(self):
+                raise RuntimeError("Shouldn't get called while resolving deps via bulk_complete")
+
+        task = RangeByMinutes(now=datetime_to_epoch(datetime.datetime(2015, 12, 1)),
+                              of=BulkCompleteByMinutesTask,
+                              start=datetime.datetime(2015, 11, 1),
+                              stop=datetime.datetime(2015, 12, 1),
+                              minutes_interval=5)
+
+        expected = [
+            'BulkCompleteByMinutesTask(dh=2015-11-30T2350)',
+            'BulkCompleteByMinutesTask(dh=2015-11-30T2355)',
+        ]
+
+        actual = [str(t) for t in task.requires()]
+        self.assertEqual(actual, expected)
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="1270" endline="1290" pcid="2534">
+    def test_missing_tasks_correctly_required(self):
+        class SomeDailyTask(luigi.Task):
+            d = luigi.DateParameter()
+
+            def output(self):
+                return MockTarget(self.d.strftime('/data/2014/p/v/z/%Y_/_%m-_-%doctor/20/ZOOO'))
+
+        task = RangeDaily(now=datetime_to_epoch(datetime.datetime(2016, 4, 1)),
+                          of=SomeDailyTask,
+                          start=datetime.date(2014, 3, 20),
+                          task_limit=3,
+                          days_back=3 * 365)
+        expected = [
+            'SomeDailyTask(d=2014-03-20)',
+            'SomeDailyTask(d=2014-03-22)',
+            'SomeDailyTask(d=2014-03-25)',
+        ]
+        actual = [str(t) for t in task.requires()]
+        self.assertEqual(actual, expected)
+
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="1233" endline="1261" pcid="2531">
+    def test_bulk_complete_of_params(self):
+        class BulkCompleteDailyTask(luigi.Task):
+            non_positional_arbitrary_argument = luigi.Parameter(default="whatever", positional=False, significant=False)
+            d = luigi.DateParameter()
+            arbitrary_argument = luigi.BoolParameter()
+
+            @classmethod
+            def bulk_complete(cls, parameter_tuples):
+                ptuples = list(parameter_tuples)
+                for t in map(cls, ptuples):
+                    assert t.arbitrary_argument
+                return ptuples[:-2]
+
+            def output(self):
+                raise RuntimeError("Shouldn't get called while resolving deps via bulk_complete")
+
+        task = RangeDaily(now=datetime_to_epoch(datetime.datetime(2015, 12, 1)),
+                          of=BulkCompleteDailyTask,
+                          of_params=dict(arbitrary_argument=True),
+                          start=datetime.date(2015, 11, 1),
+                          stop=datetime.date(2015, 12, 1))
+        expected = [
+            'BulkCompleteDailyTask(d=2015-11-29, arbitrary_argument=True)',
+            'BulkCompleteDailyTask(d=2015-11-30, arbitrary_argument=True)',
+        ]
+
+        actual = [str(t) for t in task.requires()]
+        self.assertEqual(actual, expected)
+
+</source>
+<source file="systems/luigi-3.0.3/test/range_test.py" startline="1466" endline="1496" pcid="2551">
+    def test_bulk_complete_of_params(self):
+        class BulkCompleteByMinutesTask(luigi.Task):
+            non_positional_arbitrary_argument = luigi.Parameter(default="whatever", positional=False, significant=False)
+            dh = luigi.DateMinuteParameter()
+            arbitrary_argument = luigi.BoolParameter()
+
+            @classmethod
+            def bulk_complete(cls, parameter_tuples):
+                ptuples = list(parameter_tuples)
+                for t in map(cls, parameter_tuples):
+                    assert t.arbitrary_argument
+                return ptuples[:-2]
+
+            def output(self):
+                raise RuntimeError("Shouldn't get called while resolving deps via bulk_complete")
+
+        task = RangeByMinutes(now=datetime_to_epoch(datetime.datetime(2015, 12, 1)),
+                              of=BulkCompleteByMinutesTask,
+                              of_params=dict(arbitrary_argument=True),
+                              start=datetime.datetime(2015, 11, 1),
+                              stop=datetime.datetime(2015, 12, 1),
+                              minutes_interval=5)
+
+        expected = [
+            'BulkCompleteByMinutesTask(dh=2015-11-30T2350, arbitrary_argument=True)',
+            'BulkCompleteByMinutesTask(dh=2015-11-30T2355, arbitrary_argument=True)',
+        ]
+
+        actual = [str(t) for t in task.requires()]
+        self.assertEqual(actual, expected)
+
+</source>
+</class>
+
+<class classid="59" nclones="2" nlines="13" similarity="100">
+<source file="systems/luigi-3.0.3/test/scheduler_message_test.py" startline="71" endline="87" pcid="2605">
+    def test_receive_messsage(self):
+        sch = luigi.scheduler.Scheduler(send_messages=True)
+        with fast_worker(sch) as w:
+            with tempfile.NamedTemporaryFile() as tmp:
+                if os.path.exists(tmp.name):
+                    os.remove(tmp.name)
+
+                task = WriteMessageToFile(path=tmp.name)
+                w.add(task)
+
+                sch.send_scheduler_message(w._id, task.task_id, "test")
+                w.run()
+
+                self.assertTrue(os.path.exists(tmp.name))
+                with open(tmp.name, "r") as f:
+                    self.assertEqual(str(f.read()).strip(), "test")
+
+</source>
+<source file="systems/luigi-3.0.3/test/scheduler_message_test.py" startline="104" endline="119" pcid="2608">
+    def test_send_messages_disabled(self):
+        sch = luigi.scheduler.Scheduler(send_messages=False)
+        with fast_worker(sch) as w:
+            with tempfile.NamedTemporaryFile() as tmp:
+                if os.path.exists(tmp.name):
+                    os.remove(tmp.name)
+
+                task = WriteMessageToFile(path=tmp.name)
+                w.add(task)
+
+                sch.send_scheduler_message(w._id, task.task_id, "test")
+                w.run()
+
+                self.assertTrue(os.path.exists(tmp.name))
+                with open(tmp.name, "r") as f:
+                    self.assertEqual(str(f.read()).strip(), "")
+</source>
+</class>
+
+<class classid="60" nclones="4" nlines="11" similarity="84">
+<source file="systems/luigi-3.0.3/test/server_test.py" startline="120" endline="132" pcid="2677">
+    def test_api_preflight_cors_headers(self):
+        response = self.fetch('/api/graph', method='OPTIONS', headers={'Origin': 'foo'})
+        headers = dict(response.headers)
+
+        self.assertEqual(self._default_cors.allowed_headers,
+                         headers['Access-Control-Allow-Headers'])
+        self.assertEqual(self._default_cors.allowed_methods,
+                         headers['Access-Control-Allow-Methods'])
+        self.assertEqual('*', headers['Access-Control-Allow-Origin'])
+        self.assertEqual(str(self._default_cors.max_age), headers['Access-Control-Max-Age'])
+        self.assertIsNone(headers.get('Access-Control-Allow-Credentials'))
+        self.assertIsNone(headers.get('Access-Control-Expose-Headers'))
+
+</source>
+<source file="systems/luigi-3.0.3/test/server_test.py" startline="148" endline="160" pcid="2679">
+    def test_api_preflight_cors_headers_null_origin(self):
+        response = self.fetch('/api/graph', method='OPTIONS', headers={'Origin': 'null'})
+        headers = dict(response.headers)
+
+        self.assertEqual(self._default_cors.allowed_headers,
+                         headers['Access-Control-Allow-Headers'])
+        self.assertEqual(self._default_cors.allowed_methods,
+                         headers['Access-Control-Allow-Methods'])
+        self.assertEqual('null', headers['Access-Control-Allow-Origin'])
+        self.assertEqual(str(self._default_cors.max_age), headers['Access-Control-Max-Age'])
+        self.assertIsNone(headers.get('Access-Control-Allow-Credentials'))
+        self.assertIsNone(headers.get('Access-Control-Expose-Headers'))
+
+</source>
+<source file="systems/luigi-3.0.3/test/server_test.py" startline="173" endline="187" pcid="2681">
+    def test_api_preflight_cors_headers_disallow_any(self):
+        get_config().set('cors', 'allow_any_origin', 'false')
+        get_config().set('cors', 'allowed_origins', '["foo", "bar"]')
+        response = self.fetch('/api/graph', method='OPTIONS', headers={'Origin': 'foo'})
+        headers = dict(response.headers)
+
+        self.assertEqual(self._default_cors.allowed_headers,
+                         headers['Access-Control-Allow-Headers'])
+        self.assertEqual(self._default_cors.allowed_methods,
+                         headers['Access-Control-Allow-Methods'])
+        self.assertEqual('foo', headers['Access-Control-Allow-Origin'])
+        self.assertEqual(str(self._default_cors.max_age), headers['Access-Control-Max-Age'])
+        self.assertIsNone(headers.get('Access-Control-Allow-Credentials'))
+        self.assertIsNone(headers.get('Access-Control-Expose-Headers'))
+
+</source>
+<source file="systems/luigi-3.0.3/test/server_test.py" startline="133" endline="147" pcid="2678">
+    def test_api_preflight_cors_headers_all_response_headers(self):
+        get_config().set('cors', 'allow_credentials', 'true')
+        get_config().set('cors', 'exposed_headers', 'foo, bar')
+        response = self.fetch('/api/graph', method='OPTIONS', headers={'Origin': 'foo'})
+        headers = dict(response.headers)
+
+        self.assertEqual(self._default_cors.allowed_headers,
+                         headers['Access-Control-Allow-Headers'])
+        self.assertEqual(self._default_cors.allowed_methods,
+                         headers['Access-Control-Allow-Methods'])
+        self.assertEqual('*', headers['Access-Control-Allow-Origin'])
+        self.assertEqual(str(self._default_cors.max_age), headers['Access-Control-Max-Age'])
+        self.assertEqual('true', headers['Access-Control-Allow-Credentials'])
+        self.assertEqual('foo, bar', headers['Access-Control-Expose-Headers'])
+
+</source>
+</class>
+
+<class classid="61" nclones="4" nlines="10" similarity="90">
+<source file="systems/luigi-3.0.3/test/server_test.py" startline="161" endline="172" pcid="2680">
+    def test_api_preflight_cors_headers_disallow_null(self):
+        get_config().set('cors', 'allow_null_origin', 'false')
+        response = self.fetch('/api/graph', method='OPTIONS', headers={'Origin': 'null'})
+        headers = dict(response.headers)
+
+        self.assertNotIn('Access-Control-Allow-Headers', headers)
+        self.assertNotIn('Access-Control-Allow-Methods', headers)
+        self.assertNotIn('Access-Control-Allow-Origin', headers)
+        self.assertNotIn('Access-Control-Max-Age', headers)
+        self.assertNotIn('Access-Control-Allow-Credentials', headers)
+        self.assertNotIn('Access-Control-Expose-Headers', headers)
+
+</source>
+<source file="systems/luigi-3.0.3/test/server_test.py" startline="213" endline="224" pcid="2684">
+    def test_api_preflight_cors_headers_disabled(self):
+        get_config().set('cors', 'enabled', 'false')
+        response = self.fetch('/api/graph', method='OPTIONS', headers={'Origin': 'foo'})
+        headers = dict(response.headers)
+
+        self.assertNotIn('Access-Control-Allow-Headers', headers)
+        self.assertNotIn('Access-Control-Allow-Methods', headers)
+        self.assertNotIn('Access-Control-Allow-Origin', headers)
+        self.assertNotIn('Access-Control-Max-Age', headers)
+        self.assertNotIn('Access-Control-Allow-Credentials', headers)
+        self.assertNotIn('Access-Control-Expose-Headers', headers)
+
+</source>
+<source file="systems/luigi-3.0.3/test/server_test.py" startline="201" endline="212" pcid="2683">
+    def test_api_preflight_cors_headers_disallow_any_no_allowed_origins(self):
+        get_config().set('cors', 'allow_any_origin', 'false')
+        response = self.fetch('/api/graph', method='OPTIONS', headers={'Origin': 'foo'})
+        headers = dict(response.headers)
+
+        self.assertNotIn('Access-Control-Allow-Headers', headers)
+        self.assertNotIn('Access-Control-Allow-Methods', headers)
+        self.assertNotIn('Access-Control-Allow-Origin', headers)
+        self.assertNotIn('Access-Control-Max-Age', headers)
+        self.assertNotIn('Access-Control-Allow-Credentials', headers)
+        self.assertNotIn('Access-Control-Expose-Headers', headers)
+
+</source>
+<source file="systems/luigi-3.0.3/test/server_test.py" startline="188" endline="200" pcid="2682">
+    def test_api_preflight_cors_headers_disallow_any_no_matched_allowed_origins(self):
+        get_config().set('cors', 'allow_any_origin', 'false')
+        get_config().set('cors', 'allowed_origins', '["foo", "bar"]')
+        response = self.fetch('/api/graph', method='OPTIONS', headers={'Origin': 'foobar'})
+        headers = dict(response.headers)
+
+        self.assertNotIn('Access-Control-Allow-Headers', headers)
+        self.assertNotIn('Access-Control-Allow-Methods', headers)
+        self.assertNotIn('Access-Control-Allow-Origin', headers)
+        self.assertNotIn('Access-Control-Max-Age', headers)
+        self.assertNotIn('Access-Control-Allow-Credentials', headers)
+        self.assertNotIn('Access-Control-Expose-Headers', headers)
+
+</source>
+</class>
+
+<class classid="62" nclones="3" nlines="12" similarity="75">
+<source file="systems/luigi-3.0.3/test/retcodes_test.py" startline="109" endline="124" pcid="2751">
+    def test_task_limit(self):
+        class TaskB(luigi.Task):
+            def complete(self):
+                return False
+
+        class TaskA(luigi.Task):
+            def requires(sefl):
+                yield TaskB()
+
+        class TaskLimitTest(luigi.Task):
+            def requires(self):
+                yield TaskA()
+
+        self.run_and_expect('TaskLimitTest --worker-task-limit 2', 0)
+        self.run_and_expect('TaskLimitTest --worker-task-limit 2 --retcode-scheduling-error 3', 3)
+
+</source>
+<source file="systems/luigi-3.0.3/test/retcodes_test.py" startline="157" endline="173" pcid="2761">
+    def test_unknown_reason(self):
+
+        class TaskA(luigi.Task):
+            def complete(self):
+                return True
+
+        class RequiringTask(luigi.Task):
+            def requires(self):
+                yield TaskA()
+
+        def new_func(*args, **kwargs):
+            return None
+
+        with mock.patch('luigi.scheduler.Scheduler.add_task', new_func):
+            self.run_and_expect('RequiringTask', 0)
+            self.run_and_expect('RequiringTask --retcode-not-run 5', 5)
+
+</source>
+<source file="systems/luigi-3.0.3/test/retcodes_test.py" startline="139" endline="156" pcid="2757">
+    def test_when_mixed_errors(self):
+
+        class FailingTask(luigi.Task):
+            def run(self):
+                raise ValueError()
+
+        class MissingDataTask(luigi.ExternalTask):
+            def complete(self):
+                return False
+
+        class RequiringTask(luigi.Task):
+            def requires(self):
+                yield FailingTask()
+                yield MissingDataTask()
+
+        self.run_and_expect('RequiringTask --retcode-task-failed 4 --retcode-missing-data 5', 5)
+        self.run_and_expect('RequiringTask --retcode-task-failed 7 --retcode-missing-data 6', 7)
+
+</source>
+</class>
+
+<class classid="63" nclones="6" nlines="11" similarity="72">
+<source file="systems/luigi-3.0.3/test/visualiser/visualiser_test.py" startline="120" endline="144" pcid="2790">
+    def test_keeps_table_filter_after_page_refresh(self):
+        port = self.get_http_port()
+        driver = webdriver.PhantomJS()
+
+        driver.get('http://localhost:{}'.format(port))
+
+        # Check initial state.
+        search_input = driver.find_element_by_css_selector('input[type="search"]')
+        assert search_input.get_attribute('value') == ''
+        assert len(driver.find_elements_by_css_selector('#taskTable tbody tr')) == 10
+
+        # Now filter and check filtered table.
+        search_input.send_keys('ber')
+        # UberTask only should be displayed.
+        assert len(driver.find_elements_by_css_selector('#taskTable tbody tr')) == 1
+
+        # Now refresh page and check. Filter input should contain 'ber' and table should contain
+        # one row (UberTask).
+        driver.refresh()
+
+        # Once page refreshed we have to find all selectors again.
+        search_input = driver.find_element_by_css_selector('input[type="search"]')
+        assert search_input.get_attribute('value') == 'ber'
+        assert len(driver.find_elements_by_css_selector('#taskTable tbody tr')) == 1
+
+</source>
+<source file="systems/luigi-3.0.3/test/visualiser/visualiser_test.py" startline="230" endline="250" pcid="2795">
+        assert invert_checkbox.is_selected()
+
+    def test_keeps_task_id_after_page_refresh(self):
+        port = self.get_http_port()
+        driver = webdriver.PhantomJS()
+
+        driver.get('http://localhost:{}/static/visualiser/index.html#tab=graph'.format(port))
+
+        # Check initial state.
+        task_id_input = driver.find_element_by_css_selector('#js-task-id')
+        assert task_id_input.get_attribute('value') == ''
+
+        # Change task id
+        task_id_input.send_keys('1')
+        driver.find_element_by_css_selector('#loadTaskForm button[type=submit]').click()
+
+        # Now refresh page and check. Task ID field should contain 1
+        driver.refresh()
+
+        # Once page refreshed we have to find all selectors again.
+        task_id_input = driver.find_element_by_css_selector('#js-task-id')
+</source>
+<source file="systems/luigi-3.0.3/test/visualiser/visualiser_test.py" startline="271" endline="291" pcid="2797">
+        assert hide_done_checkbox.is_selected()
+
+    def test_keeps_visualisation_type_after_page_refresh(self):
+        port = self.get_http_port()
+        driver = webdriver.PhantomJS()
+
+        driver.get('http://localhost:{}/static/visualiser/index.html#tab=graph'.format(port))
+
+        # Check initial state.
+        svg_radio = driver.find_element_by_css_selector('input[value=svg]')
+        assert svg_radio.is_selected()
+
+        # Change vistype to d3 by clicking on its label.
+        d3_radio = driver.find_element_by_css_selector('input[value=d3]')
+        d3_radio.find_element_by_xpath('..').click()
+
+        # Now refresh page and check. D3 checkbox shoud be checked.
+        driver.refresh()
+
+        # Once page refreshed we have to find all selectors again.
+        d3_radio = driver.find_element_by_css_selector('input[value=d3]')
+</source>
+<source file="systems/luigi-3.0.3/test/visualiser/visualiser_test.py" startline="251" endline="270" pcid="2796">
+        assert task_id_input.get_attribute('value') == '1'
+
+    def test_keeps_hide_done_after_page_refresh(self):
+        port = self.get_http_port()
+        driver = webdriver.PhantomJS()
+
+        driver.get('http://localhost:{}/static/visualiser/index.html#tab=graph'.format(port))
+
+        # Check initial state.
+        hide_done_checkbox = driver.find_element_by_css_selector('#hideDoneCheckbox')
+        assert hide_done_checkbox.is_selected() is False
+
+        # Change invert checkbox.
+        hide_done_checkbox.click()
+
+        # Now refresh page and check. Invert checkbox shoud be checked.
+        driver.refresh()
+
+        # Once page refreshed we have to find all selectors again.
+        hide_done_checkbox = driver.find_element_by_css_selector('#hideDoneCheckbox')
+</source>
+<source file="systems/luigi-3.0.3/test/visualiser/visualiser_test.py" startline="169" endline="188" pcid="2792">
+    def test_keeps_filter_on_server_after_page_refresh(self):
+        port = self.get_http_port()
+        driver = webdriver.PhantomJS()
+
+        driver.get('http://localhost:{}/static/visualiser/index.html#tab=tasks'.format(port))
+
+        # Check initial state.
+        checkbox = driver.find_element_by_css_selector('#serverSideCheckbox')
+        assert checkbox.is_selected() is False
+
+        # Change invert checkbox.
+        checkbox.click()
+
+        # Now refresh page and check. Invert checkbox shoud be checked.
+        driver.refresh()
+
+        # Once page refreshed we have to find all selectors again.
+        checkbox = driver.find_element_by_css_selector('#serverSideCheckbox')
+        assert checkbox.is_selected()
+
+</source>
+<source file="systems/luigi-3.0.3/test/visualiser/visualiser_test.py" startline="210" endline="229" pcid="2794">
+    # graph tab tests.
+
+    def test_keeps_invert_after_page_refresh(self):
+        port = self.get_http_port()
+        driver = webdriver.PhantomJS()
+
+        driver.get('http://localhost:{}/static/visualiser/index.html#tab=graph'.format(port))
+
+        # Check initial state.
+        invert_checkbox = driver.find_element_by_css_selector('#invertCheckbox')
+        assert invert_checkbox.is_selected() is False
+
+        # Change invert checkbox.
+        invert_checkbox.click()
+
+        # Now refresh page and check. Invert checkbox shoud be checked.
+        driver.refresh()
+
+        # Once page refreshed we have to find all selectors again.
+        invert_checkbox = driver.find_element_by_css_selector('#invertCheckbox')
+</source>
+</class>
+
+<class classid="64" nclones="2" nlines="14" similarity="92">
+<source file="systems/luigi-3.0.3/test/notifications_test.py" startline="208" endline="230" pcid="2870">
+    def test_sends_smtp_email(self):
+        """
+        Call notifications.send_email_smtp with fixture parameters with smtp_without_tls  set to False
+        and check that sendmail is properly called.
+        """
+
+        smtp_kws = {"host": "my.smtp.local",
+                    "port": 999,
+                    "local_hostname": "ptms",
+                    "timeout": 1200}
+
+        with mock.patch('smtplib.SMTP') as SMTP:
+            with mock.patch('luigi.notifications.generate_email') as generate_email:
+                generate_email.return_value\
+                    .as_string.return_value = self.mocked_email_msg
+
+                notifications.send_email_smtp(*self.notification_args)
+
+                SMTP.assert_called_once_with(**smtp_kws)
+                SMTP.return_value.login.assert_called_once_with("Robin", "dooH")
+                SMTP.return_value.starttls.assert_called_once_with()
+                SMTP.return_value.sendmail\
+                    .assert_called_once_with(self.sender, self.recipients,
+</source>
+<source file="systems/luigi-3.0.3/test/notifications_test.py" startline="239" endline="261" pcid="2871">
+                           "password": "dooH",
+                           "no_tls": "True"}})
+    def test_sends_smtp_email_without_tls(self):
+        """
+        Call notifications.send_email_smtp with fixture parameters with no_tls  set to True
+        and check that sendmail is properly called without also calling
+        starttls.
+        """
+        smtp_kws = {"host": "my.smtp.local",
+                    "port": 999,
+                    "local_hostname": "ptms",
+                    "timeout": 1200}
+
+        with mock.patch('smtplib.SMTP') as SMTP:
+            with mock.patch('luigi.notifications.generate_email') as generate_email:
+                generate_email.return_value \
+                    .as_string.return_value = self.mocked_email_msg
+
+                notifications.send_email_smtp(*self.notification_args)
+
+                SMTP.assert_called_once_with(**smtp_kws)
+                self.assertEqual(SMTP.return_value.starttls.called, False)
+                SMTP.return_value.login.assert_called_once_with("Robin", "dooH")
+</source>
+</class>
+
+<class classid="65" nclones="3" nlines="15" similarity="82">
+<source file="systems/luigi-3.0.3/test/scheduler_visualisation_test.py" startline="150" endline="170" pcid="2940">
+    def test_large_graph_truncate(self):
+        class LinearTask(luigi.Task):
+            idx = luigi.IntParameter()
+
+            def requires(self):
+                if self.idx > 0:
+                    yield LinearTask(self.idx - 1)
+
+            def complete(self):
+                return False
+
+        root_task = LinearTask(100)
+
+        self.scheduler = luigi.scheduler.Scheduler(max_graph_nodes=10)
+        self._build([root_task])
+
+        graph = self.scheduler.dep_graph(root_task.task_id)
+        self.assertEqual(10, len(graph))
+        expected_nodes = [LinearTask(i).task_id for i in range(100, 90, -1)]
+        self.assertCountEqual(expected_nodes, graph)
+
+</source>
+<source file="systems/luigi-3.0.3/test/scheduler_visualisation_test.py" startline="171" endline="191" pcid="2943">
+    def test_large_inverse_graph_truncate(self):
+        class LinearTask(luigi.Task):
+            idx = luigi.IntParameter()
+
+            def requires(self):
+                if self.idx > 0:
+                    yield LinearTask(self.idx - 1)
+
+            def complete(self):
+                return False
+
+        root_task = LinearTask(100)
+
+        self.scheduler = luigi.scheduler.Scheduler(max_graph_nodes=10)
+        self._build([root_task])
+
+        graph = self.scheduler.inverse_dep_graph(LinearTask(0).task_id)
+        self.assertEqual(10, len(graph))
+        expected_nodes = [LinearTask(i).task_id for i in range(10)]
+        self.assertCountEqual(expected_nodes, graph)
+
+</source>
+<source file="systems/luigi-3.0.3/test/scheduler_visualisation_test.py" startline="210" endline="232" pcid="2948">
+    def test_truncate_graph_with_multiple_depths(self):
+        class LinearTask(luigi.Task):
+            idx = luigi.IntParameter()
+
+            def requires(self):
+                if self.idx > 0:
+                    yield LinearTask(self.idx - 1)
+                yield LinearTask(0)
+
+            def complete(self):
+                return False
+
+        root_task = LinearTask(100)
+
+        self.scheduler = luigi.scheduler.Scheduler(max_graph_nodes=10)
+        self._build([root_task])
+
+        graph = self.scheduler.dep_graph(root_task.task_id)
+        self.assertEqual(10, len(graph))
+        expected_nodes = [LinearTask(i).task_id for i in range(100, 91, -1)] + \
+                         [LinearTask(0).task_id]
+        self.maxDiff = None
+        self.assertCountEqual(expected_nodes, graph)
+</source>
+</class>
+
+<class classid="66" nclones="2" nlines="15" similarity="87">
+<source file="systems/luigi-3.0.3/test/scheduler_visualisation_test.py" startline="263" endline="284" pcid="2956">
+
+    def test_dep_graph_tree(self):
+        self._build([FactorTask(30)])
+        remote = self._remote()
+        dep_graph = remote.dep_graph(FactorTask(product=30).task_id)
+        self.assertEqual(len(dep_graph), 5)
+        self._assert_all_done(dep_graph)
+
+        d30 = dep_graph[FactorTask(product=30).task_id]
+        self.assertEqual(sorted(d30[u'deps']), sorted([FactorTask(product=15).task_id, FactorTask(product=2).task_id]))
+
+        d2 = dep_graph[FactorTask(product=2).task_id]
+        self.assertEqual(sorted(d2[u'deps']), [])
+
+        d15 = dep_graph[FactorTask(product=15).task_id]
+        self.assertEqual(sorted(d15[u'deps']), sorted([FactorTask(product=3).task_id, FactorTask(product=5).task_id]))
+
+        d3 = dep_graph[FactorTask(product=3).task_id]
+        self.assertEqual(sorted(d3[u'deps']), [])
+
+        d5 = dep_graph[FactorTask(product=5).task_id]
+        self.assertEqual(sorted(d5[u'deps']), [])
+</source>
+<source file="systems/luigi-3.0.3/test/scheduler_visualisation_test.py" startline="298" endline="316" pcid="2958">
+
+    def test_dep_graph_diamond(self):
+        self._build([FactorTask(12)])
+        remote = self._remote()
+        dep_graph = remote.dep_graph(FactorTask(product=12).task_id)
+        self.assertEqual(len(dep_graph), 4)
+        self._assert_all_done(dep_graph)
+
+        d12 = dep_graph[FactorTask(product=12).task_id]
+        self.assertEqual(sorted(d12[u'deps']), sorted([FactorTask(product=2).task_id, FactorTask(product=6).task_id]))
+
+        d6 = dep_graph[FactorTask(product=6).task_id]
+        self.assertEqual(sorted(d6[u'deps']), sorted([FactorTask(product=2).task_id, FactorTask(product=3).task_id]))
+
+        d3 = dep_graph[FactorTask(product=3).task_id]
+        self.assertEqual(sorted(d3[u'deps']), [])
+
+        d2 = dep_graph[FactorTask(product=2).task_id]
+        self.assertEqual(sorted(d2[u'deps']), [])
+</source>
+</class>
+
+<class classid="67" nclones="2" nlines="11" similarity="72">
+<source file="systems/luigi-3.0.3/test/scheduler_visualisation_test.py" startline="317" endline="330" pcid="2959">
+
+    def test_dep_graph_skip_done(self):
+        task = OddFibTask(9)
+        self._build([task])
+        remote = self._remote()
+
+        task_id = task.task_id
+        self.assertEqual(9, len(remote.dep_graph(task_id, include_done=True)))
+
+        skip_done_graph = remote.dep_graph(task_id, include_done=False)
+        self.assertEqual(5, len(skip_done_graph))
+        for task in skip_done_graph.values():
+            self.assertNotEqual('DONE', task['status'])
+            self.assertLess(len(task['deps']), 2)
+</source>
+<source file="systems/luigi-3.0.3/test/scheduler_visualisation_test.py" startline="331" endline="344" pcid="2960">
+
+    def test_inverse_dep_graph_skip_done(self):
+        self._build([OddFibTask(9, done=False)])
+        self._build([OddFibTask(9, done=True)])
+        remote = self._remote()
+
+        task_id = OddFibTask(1).task_id
+        self.assertEqual(9, len(remote.inverse_dep_graph(task_id, include_done=True)))
+
+        skip_done_graph = remote.inverse_dep_graph(task_id, include_done=False)
+        self.assertEqual(5, len(skip_done_graph))
+        for task in skip_done_graph.values():
+            self.assertNotEqual('DONE', task['status'])
+            self.assertLess(len(task['deps']), 2)
+</source>
+</class>
+
+<class classid="68" nclones="2" nlines="11" similarity="75">
+<source file="systems/luigi-3.0.3/test/worker_task_test.py" startline="57" endline="71" pcid="2993">
+    def test_update_result_queue_on_success(self):
+        # IMO this test makes no sense as it tests internal behavior and have
+        # already broken once during internal non-changing refactoring
+        class SuccessTask(luigi.Task):
+            def on_success(self):
+                return "test success expl"
+
+        task = SuccessTask()
+        result_queue = multiprocessing.Queue()
+        task_process = TaskProcess(task, 1, result_queue, mock.Mock())
+
+        with mock.patch.object(result_queue, 'put') as mock_put:
+            task_process.run()
+            mock_put.assert_called_once_with((task.task_id, DONE, "test success expl", [], None))
+
+</source>
+<source file="systems/luigi-3.0.3/test/worker_task_test.py" startline="72" endline="89" pcid="2995">
+    def test_update_result_queue_on_failure(self):
+        # IMO this test makes no sense as it tests internal behavior and have
+        # already broken once during internal non-changing refactoring
+        class FailTask(luigi.Task):
+            def run(self):
+                raise BaseException("Uh oh.")
+
+            def on_failure(self, exception):
+                return "test failure expl"
+
+        task = FailTask()
+        result_queue = multiprocessing.Queue()
+        task_process = TaskProcess(task, 1, result_queue, mock.Mock())
+
+        with mock.patch.object(result_queue, 'put') as mock_put:
+            task_process.run()
+            mock_put.assert_called_once_with((task.task_id, FAILED, "test failure expl", [], []))
+
+</source>
+</class>
+
+</clones>

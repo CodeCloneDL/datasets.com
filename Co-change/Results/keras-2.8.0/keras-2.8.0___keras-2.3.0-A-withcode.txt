@@ -1,0 +1,794 @@
+<clonepair1>
+<source file="systems/keras-2.8.0/keras/layers/cudnn_recurrent.py" startline="265" endline="311" pcid="4685"></source>
+  def _process_batch(self, inputs, initial_state):
+    if not self.time_major:
+      inputs = tf.transpose(inputs, perm=(1, 0, 2))
+    input_h = initial_state[0]
+    input_h = tf.expand_dims(input_h, axis=0)
+
+    params = recurrent_v2._canonical_to_params(    # pylint: disable=protected-access
+        weights=[
+            self.kernel[:, self.units:self.units * 2],
+            self.kernel[:, :self.units],
+            self.kernel[:, self.units * 2:],
+            self.recurrent_kernel[:, self.units:self.units * 2],
+            self.recurrent_kernel[:, :self.units],
+            self.recurrent_kernel[:, self.units * 2:],
+        ],
+        biases=[
+            self.bias[self.units:self.units * 2],
+            self.bias[:self.units],
+            self.bias[self.units * 2:self.units * 3],
+            self.bias[self.units * 4:self.units * 5],
+            self.bias[self.units * 3:self.units * 4],
+            self.bias[self.units * 5:],
+        ],
+        shape=self._vector_shape)
+
+    args = {
+        'input': inputs,
+        'input_h': input_h,
+        'input_c': 0,
+        'params': params,
+        'is_training': True,
+        'rnn_mode': 'gru',
+    }
+
+    outputs, h, _, _, _ = tf.raw_ops.CudnnRNNV2(**args)
+
+    if self.stateful or self.return_state:
+      h = h[0]
+    if self.return_sequences:
+      if self.time_major:
+        output = outputs
+      else:
+        output = tf.transpose(outputs, perm=(1, 0, 2))
+    else:
+      output = outputs[-1]
+    return output, [h]
+
+</clonepair1>
+
+<clonepair1>
+<source file="systems/keras-2.8.0/keras/layers/cudnn_recurrent.py" startline="461" endline="513" pcid="4691"></source>
+  def _process_batch(self, inputs, initial_state):
+    if not self.time_major:
+      inputs = tf.transpose(inputs, perm=(1, 0, 2))
+    input_h = initial_state[0]
+    input_c = initial_state[1]
+    input_h = tf.expand_dims(input_h, axis=0)
+    input_c = tf.expand_dims(input_c, axis=0)
+
+    params = recurrent_v2._canonical_to_params(    # pylint: disable=protected-access
+        weights=[
+            self.kernel[:, :self.units],
+            self.kernel[:, self.units:self.units * 2],
+            self.kernel[:, self.units * 2:self.units * 3],
+            self.kernel[:, self.units * 3:],
+            self.recurrent_kernel[:, :self.units],
+            self.recurrent_kernel[:, self.units:self.units * 2],
+            self.recurrent_kernel[:, self.units * 2:self.units * 3],
+            self.recurrent_kernel[:, self.units * 3:],
+        ],
+        biases=[
+            self.bias[:self.units],
+            self.bias[self.units:self.units * 2],
+            self.bias[self.units * 2:self.units * 3],
+            self.bias[self.units * 3:self.units * 4],
+            self.bias[self.units * 4:self.units * 5],
+            self.bias[self.units * 5:self.units * 6],
+            self.bias[self.units * 6:self.units * 7],
+            self.bias[self.units * 7:],
+        ],
+        shape=self._vector_shape)
+
+    args = {
+        'input': inputs,
+        'input_h': input_h,
+        'input_c': input_c,
+        'params': params,
+        'is_training': True,
+    }
+
+    outputs, h, c, _, _ = tf.raw_ops.CudnnRNNV2(**args)
+
+    if self.stateful or self.return_state:
+      h = h[0]
+      c = c[0]
+    if self.return_sequences:
+      if self.time_major:
+        output = outputs
+      else:
+        output = tf.transpose(outputs, perm=(1, 0, 2))
+    else:
+      output = outputs[-1]
+    return output, [h, c]
+
+</clonepair1>
+<clonepair2>
+<source file="systems/keras-2.8.0/keras/layers/recurrent.py" startline="1672" endline="1709" pcid="4330"></source>
+  def get_config(self):
+    config = {
+        'units':
+            self.units,
+        'activation':
+            activations.serialize(self.activation),
+        'use_bias':
+            self.use_bias,
+        'kernel_initializer':
+            initializers.serialize(self.kernel_initializer),
+        'recurrent_initializer':
+            initializers.serialize(self.recurrent_initializer),
+        'bias_initializer':
+            initializers.serialize(self.bias_initializer),
+        'kernel_regularizer':
+            regularizers.serialize(self.kernel_regularizer),
+        'recurrent_regularizer':
+            regularizers.serialize(self.recurrent_regularizer),
+        'bias_regularizer':
+            regularizers.serialize(self.bias_regularizer),
+        'activity_regularizer':
+            regularizers.serialize(self.activity_regularizer),
+        'kernel_constraint':
+            constraints.serialize(self.kernel_constraint),
+        'recurrent_constraint':
+            constraints.serialize(self.recurrent_constraint),
+        'bias_constraint':
+            constraints.serialize(self.bias_constraint),
+        'dropout':
+            self.dropout,
+        'recurrent_dropout':
+            self.recurrent_dropout
+    }
+    base_config = super(SimpleRNN, self).get_config()
+    config.update(_config_for_enable_caching_device(self.cell))
+    del base_config['cell']
+    return dict(list(base_config.items()) + list(config.items()))
+
+</clonepair2>
+
+<clonepair2>
+<source file="systems/keras-2.8.0/keras/layers/recurrent.py" startline="2901" endline="2944" pcid="4389"></source>
+  def get_config(self):
+    config = {
+        'units':
+            self.units,
+        'activation':
+            activations.serialize(self.activation),
+        'recurrent_activation':
+            activations.serialize(self.recurrent_activation),
+        'use_bias':
+            self.use_bias,
+        'kernel_initializer':
+            initializers.serialize(self.kernel_initializer),
+        'recurrent_initializer':
+            initializers.serialize(self.recurrent_initializer),
+        'bias_initializer':
+            initializers.serialize(self.bias_initializer),
+        'unit_forget_bias':
+            self.unit_forget_bias,
+        'kernel_regularizer':
+            regularizers.serialize(self.kernel_regularizer),
+        'recurrent_regularizer':
+            regularizers.serialize(self.recurrent_regularizer),
+        'bias_regularizer':
+            regularizers.serialize(self.bias_regularizer),
+        'activity_regularizer':
+            regularizers.serialize(self.activity_regularizer),
+        'kernel_constraint':
+            constraints.serialize(self.kernel_constraint),
+        'recurrent_constraint':
+            constraints.serialize(self.recurrent_constraint),
+        'bias_constraint':
+            constraints.serialize(self.bias_constraint),
+        'dropout':
+            self.dropout,
+        'recurrent_dropout':
+            self.recurrent_dropout,
+        'implementation':
+            self.implementation
+    }
+    config.update(_config_for_enable_caching_device(self.cell))
+    base_config = super(LSTM, self).get_config()
+    del base_config['cell']
+    return dict(list(base_config.items()) + list(config.items()))
+
+</clonepair2>
+<clonepair3>
+<source file="systems/keras-2.8.0/keras/layers/recurrent.py" startline="1427" endline="1462" pcid="4313"></source>
+  def get_config(self):
+    config = {
+        'units':
+            self.units,
+        'activation':
+            activations.serialize(self.activation),
+        'use_bias':
+            self.use_bias,
+        'kernel_initializer':
+            initializers.serialize(self.kernel_initializer),
+        'recurrent_initializer':
+            initializers.serialize(self.recurrent_initializer),
+        'bias_initializer':
+            initializers.serialize(self.bias_initializer),
+        'kernel_regularizer':
+            regularizers.serialize(self.kernel_regularizer),
+        'recurrent_regularizer':
+            regularizers.serialize(self.recurrent_regularizer),
+        'bias_regularizer':
+            regularizers.serialize(self.bias_regularizer),
+        'kernel_constraint':
+            constraints.serialize(self.kernel_constraint),
+        'recurrent_constraint':
+            constraints.serialize(self.recurrent_constraint),
+        'bias_constraint':
+            constraints.serialize(self.bias_constraint),
+        'dropout':
+            self.dropout,
+        'recurrent_dropout':
+            self.recurrent_dropout
+    }
+    config.update(_config_for_enable_caching_device(self))
+    base_config = super(SimpleRNNCell, self).get_config()
+    return dict(list(base_config.items()) + list(config.items()))
+
+
+</clonepair3>
+
+<clonepair3>
+<source file="systems/keras-2.8.0/keras/layers/recurrent.py" startline="2901" endline="2944" pcid="4389"></source>
+  def get_config(self):
+    config = {
+        'units':
+            self.units,
+        'activation':
+            activations.serialize(self.activation),
+        'recurrent_activation':
+            activations.serialize(self.recurrent_activation),
+        'use_bias':
+            self.use_bias,
+        'kernel_initializer':
+            initializers.serialize(self.kernel_initializer),
+        'recurrent_initializer':
+            initializers.serialize(self.recurrent_initializer),
+        'bias_initializer':
+            initializers.serialize(self.bias_initializer),
+        'unit_forget_bias':
+            self.unit_forget_bias,
+        'kernel_regularizer':
+            regularizers.serialize(self.kernel_regularizer),
+        'recurrent_regularizer':
+            regularizers.serialize(self.recurrent_regularizer),
+        'bias_regularizer':
+            regularizers.serialize(self.bias_regularizer),
+        'activity_regularizer':
+            regularizers.serialize(self.activity_regularizer),
+        'kernel_constraint':
+            constraints.serialize(self.kernel_constraint),
+        'recurrent_constraint':
+            constraints.serialize(self.recurrent_constraint),
+        'bias_constraint':
+            constraints.serialize(self.bias_constraint),
+        'dropout':
+            self.dropout,
+        'recurrent_dropout':
+            self.recurrent_dropout,
+        'implementation':
+            self.implementation
+    }
+    config.update(_config_for_enable_caching_device(self.cell))
+    base_config = super(LSTM, self).get_config()
+    del base_config['cell']
+    return dict(list(base_config.items()) + list(config.items()))
+
+</clonepair3>
+<clonepair4>
+<source file="systems/keras-2.8.0/keras/layers/recurrent.py" startline="1672" endline="1709" pcid="4330"></source>
+  def get_config(self):
+    config = {
+        'units':
+            self.units,
+        'activation':
+            activations.serialize(self.activation),
+        'use_bias':
+            self.use_bias,
+        'kernel_initializer':
+            initializers.serialize(self.kernel_initializer),
+        'recurrent_initializer':
+            initializers.serialize(self.recurrent_initializer),
+        'bias_initializer':
+            initializers.serialize(self.bias_initializer),
+        'kernel_regularizer':
+            regularizers.serialize(self.kernel_regularizer),
+        'recurrent_regularizer':
+            regularizers.serialize(self.recurrent_regularizer),
+        'bias_regularizer':
+            regularizers.serialize(self.bias_regularizer),
+        'activity_regularizer':
+            regularizers.serialize(self.activity_regularizer),
+        'kernel_constraint':
+            constraints.serialize(self.kernel_constraint),
+        'recurrent_constraint':
+            constraints.serialize(self.recurrent_constraint),
+        'bias_constraint':
+            constraints.serialize(self.bias_constraint),
+        'dropout':
+            self.dropout,
+        'recurrent_dropout':
+            self.recurrent_dropout
+    }
+    base_config = super(SimpleRNN, self).get_config()
+    config.update(_config_for_enable_caching_device(self.cell))
+    del base_config['cell']
+    return dict(list(base_config.items()) + list(config.items()))
+
+</clonepair4>
+
+<clonepair4>
+<source file="systems/keras-2.8.0/keras/layers/recurrent.py" startline="2226" endline="2269" pcid="4356"></source>
+  def get_config(self):
+    config = {
+        'units':
+            self.units,
+        'activation':
+            activations.serialize(self.activation),
+        'recurrent_activation':
+            activations.serialize(self.recurrent_activation),
+        'use_bias':
+            self.use_bias,
+        'kernel_initializer':
+            initializers.serialize(self.kernel_initializer),
+        'recurrent_initializer':
+            initializers.serialize(self.recurrent_initializer),
+        'bias_initializer':
+            initializers.serialize(self.bias_initializer),
+        'kernel_regularizer':
+            regularizers.serialize(self.kernel_regularizer),
+        'recurrent_regularizer':
+            regularizers.serialize(self.recurrent_regularizer),
+        'bias_regularizer':
+            regularizers.serialize(self.bias_regularizer),
+        'activity_regularizer':
+            regularizers.serialize(self.activity_regularizer),
+        'kernel_constraint':
+            constraints.serialize(self.kernel_constraint),
+        'recurrent_constraint':
+            constraints.serialize(self.recurrent_constraint),
+        'bias_constraint':
+            constraints.serialize(self.bias_constraint),
+        'dropout':
+            self.dropout,
+        'recurrent_dropout':
+            self.recurrent_dropout,
+        'implementation':
+            self.implementation,
+        'reset_after':
+            self.reset_after
+    }
+    config.update(_config_for_enable_caching_device(self.cell))
+    base_config = super(GRU, self).get_config()
+    del base_config['cell']
+    return dict(list(base_config.items()) + list(config.items()))
+
+</clonepair4>
+<clonepair5>
+<source file="systems/keras-2.8.0/keras/layers/recurrent.py" startline="1427" endline="1462" pcid="4313"></source>
+  def get_config(self):
+    config = {
+        'units':
+            self.units,
+        'activation':
+            activations.serialize(self.activation),
+        'use_bias':
+            self.use_bias,
+        'kernel_initializer':
+            initializers.serialize(self.kernel_initializer),
+        'recurrent_initializer':
+            initializers.serialize(self.recurrent_initializer),
+        'bias_initializer':
+            initializers.serialize(self.bias_initializer),
+        'kernel_regularizer':
+            regularizers.serialize(self.kernel_regularizer),
+        'recurrent_regularizer':
+            regularizers.serialize(self.recurrent_regularizer),
+        'bias_regularizer':
+            regularizers.serialize(self.bias_regularizer),
+        'kernel_constraint':
+            constraints.serialize(self.kernel_constraint),
+        'recurrent_constraint':
+            constraints.serialize(self.recurrent_constraint),
+        'bias_constraint':
+            constraints.serialize(self.bias_constraint),
+        'dropout':
+            self.dropout,
+        'recurrent_dropout':
+            self.recurrent_dropout
+    }
+    config.update(_config_for_enable_caching_device(self))
+    base_config = super(SimpleRNNCell, self).get_config()
+    return dict(list(base_config.items()) + list(config.items()))
+
+
+</clonepair5>
+
+<clonepair5>
+<source file="systems/keras-2.8.0/keras/layers/recurrent.py" startline="2226" endline="2269" pcid="4356"></source>
+  def get_config(self):
+    config = {
+        'units':
+            self.units,
+        'activation':
+            activations.serialize(self.activation),
+        'recurrent_activation':
+            activations.serialize(self.recurrent_activation),
+        'use_bias':
+            self.use_bias,
+        'kernel_initializer':
+            initializers.serialize(self.kernel_initializer),
+        'recurrent_initializer':
+            initializers.serialize(self.recurrent_initializer),
+        'bias_initializer':
+            initializers.serialize(self.bias_initializer),
+        'kernel_regularizer':
+            regularizers.serialize(self.kernel_regularizer),
+        'recurrent_regularizer':
+            regularizers.serialize(self.recurrent_regularizer),
+        'bias_regularizer':
+            regularizers.serialize(self.bias_regularizer),
+        'activity_regularizer':
+            regularizers.serialize(self.activity_regularizer),
+        'kernel_constraint':
+            constraints.serialize(self.kernel_constraint),
+        'recurrent_constraint':
+            constraints.serialize(self.recurrent_constraint),
+        'bias_constraint':
+            constraints.serialize(self.bias_constraint),
+        'dropout':
+            self.dropout,
+        'recurrent_dropout':
+            self.recurrent_dropout,
+        'implementation':
+            self.implementation,
+        'reset_after':
+            self.reset_after
+    }
+    config.update(_config_for_enable_caching_device(self.cell))
+    base_config = super(GRU, self).get_config()
+    del base_config['cell']
+    return dict(list(base_config.items()) + list(config.items()))
+
+</clonepair5>
+<clonepair6>
+<source file="systems/keras-2.8.0/keras/layers/recurrent.py" startline="1672" endline="1709" pcid="4330"></source>
+  def get_config(self):
+    config = {
+        'units':
+            self.units,
+        'activation':
+            activations.serialize(self.activation),
+        'use_bias':
+            self.use_bias,
+        'kernel_initializer':
+            initializers.serialize(self.kernel_initializer),
+        'recurrent_initializer':
+            initializers.serialize(self.recurrent_initializer),
+        'bias_initializer':
+            initializers.serialize(self.bias_initializer),
+        'kernel_regularizer':
+            regularizers.serialize(self.kernel_regularizer),
+        'recurrent_regularizer':
+            regularizers.serialize(self.recurrent_regularizer),
+        'bias_regularizer':
+            regularizers.serialize(self.bias_regularizer),
+        'activity_regularizer':
+            regularizers.serialize(self.activity_regularizer),
+        'kernel_constraint':
+            constraints.serialize(self.kernel_constraint),
+        'recurrent_constraint':
+            constraints.serialize(self.recurrent_constraint),
+        'bias_constraint':
+            constraints.serialize(self.bias_constraint),
+        'dropout':
+            self.dropout,
+        'recurrent_dropout':
+            self.recurrent_dropout
+    }
+    base_config = super(SimpleRNN, self).get_config()
+    config.update(_config_for_enable_caching_device(self.cell))
+    del base_config['cell']
+    return dict(list(base_config.items()) + list(config.items()))
+
+</clonepair6>
+
+<clonepair6>
+<source file="systems/keras-2.8.0/keras/layers/recurrent.py" startline="2509" endline="2549" pcid="4364"></source>
+  def get_config(self):
+    config = {
+        'units':
+            self.units,
+        'activation':
+            activations.serialize(self.activation),
+        'recurrent_activation':
+            activations.serialize(self.recurrent_activation),
+        'use_bias':
+            self.use_bias,
+        'kernel_initializer':
+            initializers.serialize(self.kernel_initializer),
+        'recurrent_initializer':
+            initializers.serialize(self.recurrent_initializer),
+        'bias_initializer':
+            initializers.serialize(self.bias_initializer),
+        'unit_forget_bias':
+            self.unit_forget_bias,
+        'kernel_regularizer':
+            regularizers.serialize(self.kernel_regularizer),
+        'recurrent_regularizer':
+            regularizers.serialize(self.recurrent_regularizer),
+        'bias_regularizer':
+            regularizers.serialize(self.bias_regularizer),
+        'kernel_constraint':
+            constraints.serialize(self.kernel_constraint),
+        'recurrent_constraint':
+            constraints.serialize(self.recurrent_constraint),
+        'bias_constraint':
+            constraints.serialize(self.bias_constraint),
+        'dropout':
+            self.dropout,
+        'recurrent_dropout':
+            self.recurrent_dropout,
+        'implementation':
+            self.implementation
+    }
+    config.update(_config_for_enable_caching_device(self))
+    base_config = super(LSTMCell, self).get_config()
+    return dict(list(base_config.items()) + list(config.items()))
+
+</clonepair6>
+<clonepair7>
+<source file="systems/keras-2.8.0/keras/layers/recurrent.py" startline="1427" endline="1462" pcid="4313"></source>
+  def get_config(self):
+    config = {
+        'units':
+            self.units,
+        'activation':
+            activations.serialize(self.activation),
+        'use_bias':
+            self.use_bias,
+        'kernel_initializer':
+            initializers.serialize(self.kernel_initializer),
+        'recurrent_initializer':
+            initializers.serialize(self.recurrent_initializer),
+        'bias_initializer':
+            initializers.serialize(self.bias_initializer),
+        'kernel_regularizer':
+            regularizers.serialize(self.kernel_regularizer),
+        'recurrent_regularizer':
+            regularizers.serialize(self.recurrent_regularizer),
+        'bias_regularizer':
+            regularizers.serialize(self.bias_regularizer),
+        'kernel_constraint':
+            constraints.serialize(self.kernel_constraint),
+        'recurrent_constraint':
+            constraints.serialize(self.recurrent_constraint),
+        'bias_constraint':
+            constraints.serialize(self.bias_constraint),
+        'dropout':
+            self.dropout,
+        'recurrent_dropout':
+            self.recurrent_dropout
+    }
+    config.update(_config_for_enable_caching_device(self))
+    base_config = super(SimpleRNNCell, self).get_config()
+    return dict(list(base_config.items()) + list(config.items()))
+
+
+</clonepair7>
+
+<clonepair7>
+<source file="systems/keras-2.8.0/keras/layers/recurrent.py" startline="2509" endline="2549" pcid="4364"></source>
+  def get_config(self):
+    config = {
+        'units':
+            self.units,
+        'activation':
+            activations.serialize(self.activation),
+        'recurrent_activation':
+            activations.serialize(self.recurrent_activation),
+        'use_bias':
+            self.use_bias,
+        'kernel_initializer':
+            initializers.serialize(self.kernel_initializer),
+        'recurrent_initializer':
+            initializers.serialize(self.recurrent_initializer),
+        'bias_initializer':
+            initializers.serialize(self.bias_initializer),
+        'unit_forget_bias':
+            self.unit_forget_bias,
+        'kernel_regularizer':
+            regularizers.serialize(self.kernel_regularizer),
+        'recurrent_regularizer':
+            regularizers.serialize(self.recurrent_regularizer),
+        'bias_regularizer':
+            regularizers.serialize(self.bias_regularizer),
+        'kernel_constraint':
+            constraints.serialize(self.kernel_constraint),
+        'recurrent_constraint':
+            constraints.serialize(self.recurrent_constraint),
+        'bias_constraint':
+            constraints.serialize(self.bias_constraint),
+        'dropout':
+            self.dropout,
+        'recurrent_dropout':
+            self.recurrent_dropout,
+        'implementation':
+            self.implementation
+    }
+    config.update(_config_for_enable_caching_device(self))
+    base_config = super(LSTMCell, self).get_config()
+    return dict(list(base_config.items()) + list(config.items()))
+
+</clonepair7>
+<clonepair8>
+<source file="systems/keras-2.8.0/keras/layers/recurrent.py" startline="1427" endline="1462" pcid="4313"></source>
+  def get_config(self):
+    config = {
+        'units':
+            self.units,
+        'activation':
+            activations.serialize(self.activation),
+        'use_bias':
+            self.use_bias,
+        'kernel_initializer':
+            initializers.serialize(self.kernel_initializer),
+        'recurrent_initializer':
+            initializers.serialize(self.recurrent_initializer),
+        'bias_initializer':
+            initializers.serialize(self.bias_initializer),
+        'kernel_regularizer':
+            regularizers.serialize(self.kernel_regularizer),
+        'recurrent_regularizer':
+            regularizers.serialize(self.recurrent_regularizer),
+        'bias_regularizer':
+            regularizers.serialize(self.bias_regularizer),
+        'kernel_constraint':
+            constraints.serialize(self.kernel_constraint),
+        'recurrent_constraint':
+            constraints.serialize(self.recurrent_constraint),
+        'bias_constraint':
+            constraints.serialize(self.bias_constraint),
+        'dropout':
+            self.dropout,
+        'recurrent_dropout':
+            self.recurrent_dropout
+    }
+    config.update(_config_for_enable_caching_device(self))
+    base_config = super(SimpleRNNCell, self).get_config()
+    return dict(list(base_config.items()) + list(config.items()))
+
+
+</clonepair8>
+
+<clonepair8>
+<source file="systems/keras-2.8.0/keras/layers/recurrent.py" startline="1672" endline="1709" pcid="4330"></source>
+  def get_config(self):
+    config = {
+        'units':
+            self.units,
+        'activation':
+            activations.serialize(self.activation),
+        'use_bias':
+            self.use_bias,
+        'kernel_initializer':
+            initializers.serialize(self.kernel_initializer),
+        'recurrent_initializer':
+            initializers.serialize(self.recurrent_initializer),
+        'bias_initializer':
+            initializers.serialize(self.bias_initializer),
+        'kernel_regularizer':
+            regularizers.serialize(self.kernel_regularizer),
+        'recurrent_regularizer':
+            regularizers.serialize(self.recurrent_regularizer),
+        'bias_regularizer':
+            regularizers.serialize(self.bias_regularizer),
+        'activity_regularizer':
+            regularizers.serialize(self.activity_regularizer),
+        'kernel_constraint':
+            constraints.serialize(self.kernel_constraint),
+        'recurrent_constraint':
+            constraints.serialize(self.recurrent_constraint),
+        'bias_constraint':
+            constraints.serialize(self.bias_constraint),
+        'dropout':
+            self.dropout,
+        'recurrent_dropout':
+            self.recurrent_dropout
+    }
+    base_config = super(SimpleRNN, self).get_config()
+    config.update(_config_for_enable_caching_device(self.cell))
+    del base_config['cell']
+    return dict(list(base_config.items()) + list(config.items()))
+
+</clonepair8>
+<clonepair9>
+<source file="systems/keras-2.8.0/keras/layers/cudnn_recurrent.py" startline="312" endline="333" pcid="4686"></source>
+  def get_config(self):
+    config = {
+        'units': self.units,
+        'kernel_initializer': initializers.serialize(self.kernel_initializer),
+        'recurrent_initializer':
+            initializers.serialize(self.recurrent_initializer),
+        'bias_initializer': initializers.serialize(self.bias_initializer),
+        'kernel_regularizer': regularizers.serialize(self.kernel_regularizer),
+        'recurrent_regularizer':
+            regularizers.serialize(self.recurrent_regularizer),
+        'bias_regularizer': regularizers.serialize(self.bias_regularizer),
+        'activity_regularizer':
+            regularizers.serialize(self.activity_regularizer),
+        'kernel_constraint': constraints.serialize(self.kernel_constraint),
+        'recurrent_constraint':
+            constraints.serialize(self.recurrent_constraint),
+        'bias_constraint': constraints.serialize(self.bias_constraint)
+    }
+    base_config = super(CuDNNGRU, self).get_config()
+    return dict(list(base_config.items()) + list(config.items()))
+
+
+</clonepair9>
+
+<clonepair9>
+<source file="systems/keras-2.8.0/keras/layers/cudnn_recurrent.py" startline="514" endline="534" pcid="4692"></source>
+  def get_config(self):
+    config = {
+        'units': self.units,
+        'kernel_initializer': initializers.serialize(self.kernel_initializer),
+        'recurrent_initializer':
+            initializers.serialize(self.recurrent_initializer),
+        'bias_initializer': initializers.serialize(self.bias_initializer),
+        'unit_forget_bias': self.unit_forget_bias,
+        'kernel_regularizer': regularizers.serialize(self.kernel_regularizer),
+        'recurrent_regularizer':
+            regularizers.serialize(self.recurrent_regularizer),
+        'bias_regularizer': regularizers.serialize(self.bias_regularizer),
+        'activity_regularizer':
+            regularizers.serialize(self.activity_regularizer),
+        'kernel_constraint': constraints.serialize(self.kernel_constraint),
+        'recurrent_constraint':
+            constraints.serialize(self.recurrent_constraint),
+        'bias_constraint': constraints.serialize(self.bias_constraint)
+    }
+    base_config = super(CuDNNLSTM, self).get_config()
+    return dict(list(base_config.items()) + list(config.items()))
+</clonepair9>
+<clonepair10>
+<source file="systems/keras-2.8.0/keras/constraints.py" startline="335" endline="348" pcid="834"></source>
+def get(identifier):
+  """Retrieves a Keras constraint function."""
+  if identifier is None:
+    return None
+  if isinstance(identifier, dict):
+    return deserialize(identifier)
+  elif isinstance(identifier, str):
+    config = {'class_name': str(identifier), 'config': {}}
+    return deserialize(config)
+  elif callable(identifier):
+    return identifier
+  else:
+    raise ValueError(
+        f'Could not interpret constraint function identifier: {identifier}')
+</clonepair10>
+
+<clonepair10>
+<source file="systems/keras-2.8.0/keras/regularizers.py" startline="367" endline="379" pcid="807"></source>
+def get(identifier):
+  """Retrieve a regularizer instance from a config or identifier."""
+  if identifier is None:
+    return None
+  if isinstance(identifier, dict):
+    return deserialize(identifier)
+  elif isinstance(identifier, str):
+    return deserialize(str(identifier))
+  elif callable(identifier):
+    return identifier
+  else:
+    raise ValueError(
+        f'Could not interpret regularizer identifier: {identifier}')
+</clonepair10>

@@ -1,0 +1,646 @@
+<clonepair1>
+<source file="systems/coach-0.11.0/rl_coach/orchestrators/kubernetes_orchestrator.py" startline="133" endline="212" pcid="556"></source>
+    def deploy_trainer(self) -> bool:
+        """
+        Deploys the training worker in Kubernetes.
+        """
+
+        trainer_params = self.params.run_type_params.get(str(RunType.TRAINER), None)
+        if not trainer_params:
+            return False
+
+        trainer_params.command += ['--memory_backend_params', json.dumps(self.params.memory_backend_parameters.__dict__)]
+        trainer_params.command += ['--data_store_params', json.dumps(self.params.data_store_params.__dict__)]
+
+        name = "{}-{}".format(trainer_params.run_type, uuid.uuid4())
+
+        if self.params.data_store_params.store_type == "nfs":
+            container = k8sclient.V1Container(
+                name=name,
+                image=trainer_params.image,
+                command=trainer_params.command,
+                args=trainer_params.arguments,
+                image_pull_policy='Always',
+                volume_mounts=[k8sclient.V1VolumeMount(
+                    name='nfs-pvc',
+                    mount_path=trainer_params.checkpoint_dir
+                )],
+                stdin=True,
+                tty=True
+            )
+            template = k8sclient.V1PodTemplateSpec(
+                metadata=k8sclient.V1ObjectMeta(labels={'app': name}),
+                spec=k8sclient.V1PodSpec(
+                    containers=[container],
+                    volumes=[k8sclient.V1Volume(
+                        name="nfs-pvc",
+                        persistent_volume_claim=self.nfs_pvc
+                    )],
+                    restart_policy='OnFailure'
+                ),
+            )
+        else:
+            container = k8sclient.V1Container(
+                name=name,
+                image=trainer_params.image,
+                command=trainer_params.command,
+                args=trainer_params.arguments,
+                image_pull_policy='Always',
+                env=[k8sclient.V1EnvVar("ACCESS_KEY_ID", self.s3_access_key),
+                     k8sclient.V1EnvVar("SECRET_ACCESS_KEY", self.s3_secret_key)],
+                stdin=True,
+                tty=True
+            )
+            template = k8sclient.V1PodTemplateSpec(
+                metadata=k8sclient.V1ObjectMeta(labels={'app': name}),
+                spec=k8sclient.V1PodSpec(
+                    containers=[container],
+                    restart_policy='OnFailure'
+                ),
+            )
+
+        job_spec = k8sclient.V1JobSpec(
+            completions=1,
+            template=template
+        )
+
+        job = k8sclient.V1Job(
+            api_version="batch/v1",
+            kind="Job",
+            metadata=k8sclient.V1ObjectMeta(name=name),
+            spec=job_spec
+        )
+
+        api_client = k8sclient.BatchV1Api()
+        try:
+            api_client.create_namespaced_job(self.params.namespace, job)
+            trainer_params.orchestration_params['job_name'] = name
+            return True
+        except k8sclient.rest.ApiException as e:
+            print("Got exception: %s\n while creating job", e)
+            return False
+
+</clonepair1>
+
+<clonepair1>
+<source file="systems/coach-0.11.0/rl_coach/orchestrators/kubernetes_orchestrator.py" startline="213" endline="294" pcid="557"></source>
+    def deploy_worker(self):
+        """
+        Deploys the rollout worker(s) in Kubernetes.
+        """
+
+        worker_params = self.params.run_type_params.get(str(RunType.ROLLOUT_WORKER), None)
+        if not worker_params:
+            return False
+
+        worker_params.command += ['--memory_backend_params', json.dumps(self.params.memory_backend_parameters.__dict__)]
+        worker_params.command += ['--data_store_params', json.dumps(self.params.data_store_params.__dict__)]
+        worker_params.command += ['--num_workers', '{}'.format(worker_params.num_replicas)]
+
+        name = "{}-{}".format(worker_params.run_type, uuid.uuid4())
+
+        if self.params.data_store_params.store_type == "nfs":
+            container = k8sclient.V1Container(
+                name=name,
+                image=worker_params.image,
+                command=worker_params.command,
+                args=worker_params.arguments,
+                image_pull_policy='Always',
+                volume_mounts=[k8sclient.V1VolumeMount(
+                    name='nfs-pvc',
+                    mount_path=worker_params.checkpoint_dir
+                )],
+                stdin=True,
+                tty=True
+            )
+            template = k8sclient.V1PodTemplateSpec(
+                metadata=k8sclient.V1ObjectMeta(labels={'app': name}),
+                spec=k8sclient.V1PodSpec(
+                    containers=[container],
+                    volumes=[k8sclient.V1Volume(
+                        name="nfs-pvc",
+                        persistent_volume_claim=self.nfs_pvc
+                    )],
+                    restart_policy='OnFailure'
+                ),
+            )
+        else:
+            container = k8sclient.V1Container(
+                name=name,
+                image=worker_params.image,
+                command=worker_params.command,
+                args=worker_params.arguments,
+                image_pull_policy='Always',
+                env=[k8sclient.V1EnvVar("ACCESS_KEY_ID", self.s3_access_key),
+                     k8sclient.V1EnvVar("SECRET_ACCESS_KEY", self.s3_secret_key)],
+                stdin=True,
+                tty=True
+            )
+            template = k8sclient.V1PodTemplateSpec(
+                metadata=k8sclient.V1ObjectMeta(labels={'app': name}),
+                spec=k8sclient.V1PodSpec(
+                    containers=[container],
+                    restart_policy='OnFailure'
+                )
+            )
+
+        job_spec = k8sclient.V1JobSpec(
+            completions=worker_params.num_replicas,
+            parallelism=worker_params.num_replicas,
+            template=template
+        )
+
+        job = k8sclient.V1Job(
+            api_version="batch/v1",
+            kind="Job",
+            metadata=k8sclient.V1ObjectMeta(name=name),
+            spec=job_spec
+        )
+
+        api_client = k8sclient.BatchV1Api()
+        try:
+            api_client.create_namespaced_job(self.params.namespace, job)
+            worker_params.orchestration_params['job_name'] = name
+            return True
+        except k8sclient.rest.ApiException as e:
+            print("Got exception: %s\n while creating Job", e)
+            return False
+
+</clonepair1>
+<clonepair2>
+<source file="systems/coach-0.11.0/rl_coach/architectures/tensorflow_components/embedders/embedder.py" startline="36" endline="76" pcid="1553"></source>
+    def __init__(self, input_size: List[int], activation_function=tf.nn.relu,
+                 scheme: EmbedderScheme=None, batchnorm: bool=False, dropout_rate: float=0.0,
+                 name: str= "embedder", input_rescaling=1.0, input_offset=0.0, input_clipping=None, dense_layer=Dense,
+                 is_training=False):
+        self.name = name
+        self.input_size = input_size
+        self.activation_function = activation_function
+        self.batchnorm = batchnorm
+        self.dropout_rate = dropout_rate
+        self.input = None
+        self.output = None
+        self.scheme = scheme
+        self.return_type = InputEmbedding
+        self.layers_params = []
+        self.layers = []
+        self.input_rescaling = input_rescaling
+        self.input_offset = input_offset
+        self.input_clipping = input_clipping
+        self.dense_layer = dense_layer
+        if self.dense_layer is None:
+            self.dense_layer = Dense
+        self.is_training = is_training
+
+        # layers order is conv -> batchnorm -> activation -> dropout
+        if isinstance(self.scheme, EmbedderScheme):
+            self.layers_params = copy.copy(self.schemes[self.scheme])
+        else:
+            # if scheme is specified directly, convert to TF layer if it's not a callable object
+            # NOTE: if layer object is callable, it must return a TF tensor when invoked
+            self.layers_params = [convert_layer(l) for l in copy.copy(self.scheme)]
+
+        # we allow adding batchnorm, dropout or activation functions after each layer.
+        # The motivation is to simplify the transition between a network with batchnorm and a network without
+        # batchnorm to a single flag (the same applies to activation function and dropout)
+        if self.batchnorm or self.activation_function or self.dropout_rate > 0:
+            for layer_idx in reversed(range(len(self.layers_params))):
+                self.layers_params.insert(layer_idx+1,
+                                          BatchnormActivationDropout(batchnorm=self.batchnorm,
+                                                                     activation_function=self.activation_function,
+                                                                     dropout_rate=self.dropout_rate))
+
+</clonepair2>
+
+<clonepair2>
+<source file="systems/coach-0.11.0/rl_coach/architectures/tensorflow_components/middlewares/middleware.py" startline="32" endline="66" pcid="1451"></source>
+    def __init__(self, activation_function=tf.nn.relu,
+                 scheme: MiddlewareScheme = MiddlewareScheme.Medium,
+                 batchnorm: bool = False, dropout_rate: float = 0.0, name="middleware_embedder", dense_layer=Dense,
+                 is_training=False):
+        self.name = name
+        self.input = None
+        self.output = None
+        self.activation_function = activation_function
+        self.batchnorm = batchnorm
+        self.dropout_rate = dropout_rate
+        self.scheme = scheme
+        self.return_type = MiddlewareEmbedding
+        self.dense_layer = dense_layer
+        if self.dense_layer is None:
+            self.dense_layer = Dense
+        self.is_training = is_training
+
+        # layers order is conv -> batchnorm -> activation -> dropout
+        if isinstance(self.scheme, MiddlewareScheme):
+            self.layers_params = copy.copy(self.schemes[self.scheme])
+        else:
+            # if scheme is specified directly, convert to TF layer if it's not a callable object
+            # NOTE: if layer object is callable, it must return a TF tensor when invoked
+            self.layers_params = [convert_layer(l) for l in copy.copy(self.scheme)]
+
+        # we allow adding batchnorm, dropout or activation functions after each layer.
+        # The motivation is to simplify the transition between a network with batchnorm and a network without
+        # batchnorm to a single flag (the same applies to activation function and dropout)
+        if self.batchnorm or self.activation_function or self.dropout_rate > 0:
+            for layer_idx in reversed(range(len(self.layers_params))):
+                self.layers_params.insert(layer_idx+1,
+                                          BatchnormActivationDropout(batchnorm=self.batchnorm,
+                                                                     activation_function=self.activation_function,
+                                                                     dropout_rate=self.dropout_rate))
+
+</clonepair2>
+<clonepair3>
+<source file="systems/coach-0.11.0/rl_coach/agents/categorical_dqn_agent.py" startline="93" endline="155" pcid="137"></source>
+    def learn_from_batch(self, batch):
+        network_keys = self.ap.network_wrappers['main'].input_embedders_parameters.keys()
+
+        # for the action we actually took, the error is calculated by the atoms distribution
+        # for all other actions, the error is 0
+        distributional_q_st_plus_1, TD_targets = self.networks['main'].parallel_prediction([
+            (self.networks['main'].target_network, batch.next_states(network_keys)),
+            (self.networks['main'].online_network, batch.states(network_keys))
+        ])
+
+        # select the optimal actions for the next state
+        target_actions = np.argmax(self.distribution_prediction_to_q_values(distributional_q_st_plus_1), axis=1)
+        m = np.zeros((self.ap.network_wrappers['main'].batch_size, self.z_values.size))
+
+        batches = np.arange(self.ap.network_wrappers['main'].batch_size)
+
+        # an alternative to the for loop. 3.7x perf improvement vs. the same code done with for looping.
+        # only 10% speedup overall - leaving commented out as the code is not as clear.
+
+        # tzj_ = np.fmax(np.fmin(batch.rewards() + (1.0 - batch.game_overs()) * self.ap.algorithm.discount *
+        #                        np.transpose(np.repeat(self.z_values[np.newaxis, :], batch.size, axis=0), (1, 0)),
+        #                     self.z_values[-1]),
+        #             self.z_values[0])
+        #
+        # bj_ = (tzj_ - self.z_values[0]) / (self.z_values[1] - self.z_values[0])
+        # u_ = (np.ceil(bj_)).astype(int)
+        # l_ = (np.floor(bj_)).astype(int)
+        # m_ = np.zeros((self.ap.network_wrappers['main'].batch_size, self.z_values.size))
+        # np.add.at(m_, [batches, l_],
+        #           np.transpose(distributional_q_st_plus_1[batches, target_actions], (1, 0)) * (u_ - bj_))
+        # np.add.at(m_, [batches, u_],
+        #           np.transpose(distributional_q_st_plus_1[batches, target_actions], (1, 0)) * (bj_ - l_))
+
+        for j in range(self.z_values.size):
+            tzj = np.fmax(np.fmin(batch.rewards() +
+                                  (1.0 - batch.game_overs()) * self.ap.algorithm.discount * self.z_values[j],
+                                  self.z_values[-1]),
+                          self.z_values[0])
+            bj = (tzj - self.z_values[0])/(self.z_values[1] - self.z_values[0])
+            u = (np.ceil(bj)).astype(int)
+            l = (np.floor(bj)).astype(int)
+            m[batches, l] += (distributional_q_st_plus_1[batches, target_actions, j] * (u - bj))
+            m[batches, u] += (distributional_q_st_plus_1[batches, target_actions, j] * (bj - l))
+
+        # total_loss = cross entropy between actual result above and predicted result for the given action
+        # only update the action that we have actually done in this transition
+        TD_targets[batches, batch.actions()] = m
+
+        # update errors in prioritized replay buffer
+        importance_weights = batch.info('weight') if isinstance(self.memory, PrioritizedExperienceReplay) else None
+
+        result = self.networks['main'].train_and_sync_networks(batch.states(network_keys), TD_targets,
+                                                               importance_weights=importance_weights)
+
+        total_loss, losses, unclipped_grads = result[:3]
+
+        # TODO: fix this spaghetti code
+        if isinstance(self.memory, PrioritizedExperienceReplay):
+            errors = losses[0][np.arange(batch.size), batch.actions()]
+            self.call_memory('update_priorities', (batch.info('idx'), errors))
+
+        return total_loss, losses, unclipped_grads
+
+</clonepair3>
+
+<clonepair3>
+<source file="systems/coach-0.11.0/rl_coach/agents/rainbow_dqn_agent.py" startline="83" endline="130" pcid="214"></source>
+    def learn_from_batch(self, batch):
+        network_keys = self.ap.network_wrappers['main'].input_embedders_parameters.keys()
+
+        ddqn_selected_actions = np.argmax(self.distribution_prediction_to_q_values(
+            self.networks['main'].online_network.predict(batch.next_states(network_keys))), axis=1)
+
+        # for the action we actually took, the error is calculated by the atoms distribution
+        # for all other actions, the error is 0
+        distributional_q_st_plus_n, TD_targets = self.networks['main'].parallel_prediction([
+            (self.networks['main'].target_network, batch.next_states(network_keys)),
+            (self.networks['main'].online_network, batch.states(network_keys))
+        ])
+
+        # only update the action that we have actually done in this transition (using the Double-DQN selected actions)
+        target_actions = ddqn_selected_actions
+        m = np.zeros((self.ap.network_wrappers['main'].batch_size, self.z_values.size))
+
+        batches = np.arange(self.ap.network_wrappers['main'].batch_size)
+        for j in range(self.z_values.size):
+            # we use batch.info('should_bootstrap_next_state') instead of (1 - batch.game_overs()) since with n-step,
+            # we will not bootstrap for the last n-step transitions in the episode
+            tzj = np.fmax(np.fmin(batch.n_step_discounted_rewards() + batch.info('should_bootstrap_next_state') *
+                                  (self.ap.algorithm.discount ** self.ap.algorithm.n_step) * self.z_values[j],
+                                  self.z_values[-1]), self.z_values[0])
+            bj = (tzj - self.z_values[0])/(self.z_values[1] - self.z_values[0])
+            u = (np.ceil(bj)).astype(int)
+            l = (np.floor(bj)).astype(int)
+            m[batches, l] += (distributional_q_st_plus_n[batches, target_actions, j] * (u - bj))
+            m[batches, u] += (distributional_q_st_plus_n[batches, target_actions, j] * (bj - l))
+
+        # total_loss = cross entropy between actual result above and predicted result for the given action
+        TD_targets[batches, batch.actions()] = m
+
+        # update errors in prioritized replay buffer
+        importance_weights = batch.info('weight') if isinstance(self.memory, PrioritizedExperienceReplay) else None
+
+        result = self.networks['main'].train_and_sync_networks(batch.states(network_keys), TD_targets,
+                                                               importance_weights=importance_weights)
+
+        total_loss, losses, unclipped_grads = result[:3]
+
+        # TODO: fix this spaghetti code
+        if isinstance(self.memory, PrioritizedExperienceReplay):
+            errors = losses[0][np.arange(batch.size), batch.actions()]
+            self.call_memory('update_priorities', (batch.info('idx'), errors))
+
+</clonepair3>
+<clonepair4>
+<source file="systems/coach-0.11.0/rl_coach/exploration_policies/truncated_normal.py" startline="75" endline="107" pcid="1237"></source>
+    def get_action(self, action_values: List[ActionType]) -> ActionType:
+        # set the current noise percentage
+        if self.phase == RunPhase.TEST:
+            current_noise_precentage = self.evaluation_noise_percentage
+        else:
+            current_noise_precentage = self.noise_percentage_schedule.current_value
+
+        # scale the noise to the action space range
+        action_values_std = current_noise_precentage * (self.action_space.high - self.action_space.low)
+
+        # extract the mean values
+        if isinstance(action_values, list):
+            # the action values are expected to be a list with the action mean and optionally the action stdev
+            action_values_mean = action_values[0].squeeze()
+        else:
+            # the action values are expected to be a numpy array representing the action mean
+            action_values_mean = action_values.squeeze()
+
+        # step the noise schedule
+        if self.phase == RunPhase.TRAIN:
+            self.noise_percentage_schedule.step()
+            # the second element of the list is assumed to be the standard deviation
+            if isinstance(action_values, list) and len(action_values) > 1:
+                action_values_std = action_values[1].squeeze()
+
+        # sample from truncated normal distribution
+        normalized_low = (self.clip_low - action_values_mean) / action_values_std
+        normalized_high = (self.clip_high - action_values_mean) / action_values_std
+        distribution = truncnorm(normalized_low, normalized_high, loc=action_values_mean, scale=action_values_std)
+        action = distribution.rvs(1)
+
+        return action
+</clonepair4>
+
+<clonepair4>
+<source file="systems/coach-0.11.0/rl_coach/exploration_policies/additive_noise.py" startline="69" endline="100" pcid="1202"></source>
+    def get_action(self, action_values: List[ActionType]) -> ActionType:
+        # TODO-potential-bug consider separating internally defined stdev and externally defined stdev into 2 policies
+
+        # set the current noise percentage
+        if self.phase == RunPhase.TEST:
+            current_noise_precentage = self.evaluation_noise_percentage
+        else:
+            current_noise_precentage = self.noise_percentage_schedule.current_value
+
+        # scale the noise to the action space range
+        action_values_std = current_noise_precentage * (self.action_space.high - self.action_space.low)
+
+        # extract the mean values
+        if isinstance(action_values, list):
+            # the action values are expected to be a list with the action mean and optionally the action stdev
+            action_values_mean = action_values[0].squeeze()
+        else:
+            # the action values are expected to be a numpy array representing the action mean
+            action_values_mean = action_values.squeeze()
+
+        # step the noise schedule
+        if self.phase == RunPhase.TRAIN:
+            self.noise_percentage_schedule.step()
+            # the second element of the list is assumed to be the standard deviation
+            if isinstance(action_values, list) and len(action_values) > 1:
+                action_values_std = action_values[1].squeeze()
+
+        # add noise to the action means
+        action = np.random.normal(action_values_mean, action_values_std)
+
+        return action
+</clonepair4>
+<clonepair5>
+<source file="systems/coach-0.11.0/rl_coach/tests/architectures/tensorflow_components/embedders/test_vector_embedder.py" startline="68" endline="95" pcid="811"></source>
+def test_activation_function(reset):
+    # creating a deep vector embedder with relu
+    embedder = VectorEmbedder(np.array([10]), name="relu", scheme=EmbedderScheme.Deep,
+                              activation_function=tf.nn.relu)
+
+    # call the embedder
+    embedder()
+
+    # try feeding a batch of one example
+    input = np.random.rand(1, 10)
+    sess = tf.Session()
+    sess.run(tf.global_variables_initializer())
+    output = sess.run(embedder.output, {embedder.input: input})
+    assert np.all(output >= 0)  # should have flattened the input
+
+    # creating a deep vector embedder with tanh
+    embedder_tanh = VectorEmbedder(np.array([10]), name="tanh", scheme=EmbedderScheme.Deep,
+                                   activation_function=tf.nn.tanh)
+
+    # call the embedder
+    embedder_tanh()
+
+    # try feeding a batch of one example
+    input = np.random.rand(1, 10)
+    sess = tf.Session()
+    sess.run(tf.global_variables_initializer())
+    output = sess.run(embedder_tanh.output, {embedder_tanh.input: input})
+    assert np.all(output >= -1) and np.all(output <= 1)
+</clonepair5>
+
+<clonepair5>
+<source file="systems/coach-0.11.0/rl_coach/tests/architectures/tensorflow_components/embedders/test_image_embedder.py" startline="72" endline="99" pcid="807"></source>
+def test_activation_function(reset):
+    # creating a deep image embedder with relu
+    embedder = ImageEmbedder(np.array([100, 100, 10]), name="relu", scheme=EmbedderScheme.Deep,
+                             activation_function=tf.nn.relu)
+
+    # call the embedder
+    embedder()
+
+    # try feeding a batch of one example
+    input = np.random.rand(1, 100, 100, 10)
+    sess = tf.Session()
+    sess.run(tf.global_variables_initializer())
+    output = sess.run(embedder.output, {embedder.input: input})
+    assert np.all(output >= 0)  # should have flattened the input
+
+    # creating a deep image embedder with tanh
+    embedder_tanh = ImageEmbedder(np.array([100, 100, 10]), name="tanh", scheme=EmbedderScheme.Deep,
+                                  activation_function=tf.nn.tanh)
+
+    # call the embedder
+    embedder_tanh()
+
+    # try feeding a batch of one example
+    input = np.random.rand(1, 100, 100, 10)
+    sess = tf.Session()
+    sess.run(tf.global_variables_initializer())
+    output = sess.run(embedder_tanh.output, {embedder_tanh.input: input})
+    assert np.all(output >= -1) and np.all(output <= 1)
+</clonepair5>
+<clonepair6>
+<source file="systems/coach-0.11.0/rl_coach/orchestrators/kubernetes_orchestrator.py" startline="295" endline="320" pcid="558"></source>
+    def worker_logs(self, path='./logs'):
+        """
+        :param path: Path to store the worker logs.
+        """
+        worker_params = self.params.run_type_params.get(str(RunType.ROLLOUT_WORKER), None)
+        if not worker_params:
+            return
+
+        api_client = k8sclient.CoreV1Api()
+        pods = None
+        try:
+            pods = api_client.list_namespaced_pod(self.params.namespace, label_selector='app={}'.format(
+                worker_params.orchestration_params['job_name']
+            ))
+
+            # pod = pods.items[0]
+        except k8sclient.rest.ApiException as e:
+            print("Got exception: %s\n while reading pods", e)
+            return
+
+        if not pods or len(pods.items) == 0:
+            return
+
+        for pod in pods.items:
+            Process(target=self._tail_log_file, args=(pod.metadata.name, api_client, self.params.namespace, path)).start()
+
+</clonepair6>
+
+<clonepair6>
+<source file="systems/coach-0.11.0/rl_coach/orchestrators/kubernetes_orchestrator.py" startline="328" endline="352" pcid="560"></source>
+    def trainer_logs(self):
+        """
+        Get the logs from trainer.
+        """
+        trainer_params = self.params.run_type_params.get(str(RunType.TRAINER), None)
+        if not trainer_params:
+            return
+
+        api_client = k8sclient.CoreV1Api()
+        pod = None
+        try:
+            pods = api_client.list_namespaced_pod(self.params.namespace, label_selector='app={}'.format(
+                trainer_params.orchestration_params['job_name']
+            ))
+
+            pod = pods.items[0]
+        except k8sclient.rest.ApiException as e:
+            print("Got exception: %s\n while reading pods", e)
+            return
+
+        if not pod:
+            return
+
+        self.tail_log(pod.metadata.name, api_client)
+
+</clonepair6>
+<clonepair7>
+<source file="systems/coach-0.11.0/rl_coach/filters/filter.py" startline="457" endline="476" pcid="451"></source>
+    def save_state_to_checkpoint(self, checkpoint_dir, checkpoint_prefix):
+        """
+        Save the filter's internal state to a checkpoint to file, so that it can be later restored.
+        :param checkpoint_dir: the directory in which to save the filter's state
+        :param checkpoint_prefix: the prefix of the checkpoint file to save
+        :return: None
+        """
+        checkpoint_prefix = '.'.join([checkpoint_prefix, 'filters'])
+        if self.name is not None:
+            checkpoint_prefix = '.'.join([checkpoint_prefix, self.name])
+        for filter_name, filter in self._reward_filters.items():
+            checkpoint_prefix = '.'.join([checkpoint_prefix, 'reward_filters', filter_name])
+            filter.save_state_to_checkpoint(checkpoint_dir, checkpoint_prefix)
+
+        for observation_name, filters_dict in self._observation_filters.items():
+            for filter_name, filter in filters_dict.items():
+                checkpoint_prefix = '.'.join([checkpoint_prefix, 'observation_filters', observation_name,
+                                                                 filter_name])
+                filter.save_state_to_checkpoint(checkpoint_dir, checkpoint_prefix)
+</clonepair7>
+
+<clonepair7>
+<source file="systems/coach-0.11.0/rl_coach/filters/filter.py" startline="477" endline="497" pcid="452"></source>
+    def restore_state_from_checkpoint(self, checkpoint_dir, checkpoint_prefix)->None:
+        """
+        Save the filter's internal state to a checkpoint to file, so that it can be later restored.
+        :param checkpoint_dir: the directory from which to restore
+        :param checkpoint_prefix: the checkpoint prefix to look for
+        :return: None
+        """
+        checkpoint_prefix = '.'.join([checkpoint_prefix, 'filters'])
+        if self.name is not None:
+            checkpoint_prefix = '.'.join([checkpoint_prefix, self.name])
+        for filter_name, filter in self._reward_filters.items():
+            checkpoint_prefix = '.'.join([checkpoint_prefix, 'reward_filters', filter_name])
+            filter.restore_state_from_checkpoint(checkpoint_dir, checkpoint_prefix)
+
+        for observation_name, filters_dict in self._observation_filters.items():
+            for filter_name, filter in filters_dict.items():
+                checkpoint_prefix = '.'.join([checkpoint_prefix, 'observation_filters', observation_name,
+                                                                 filter_name])
+                filter.restore_state_from_checkpoint(checkpoint_dir, checkpoint_prefix)
+
+</clonepair7>
+<clonepair8>
+<source file="systems/coach-0.11.0/rl_coach/tests/filters/action/test_linear_box_to_box_map.py" startline="12" endline="29" pcid="704"></source>
+def test_filter():
+    filter = LinearBoxToBoxMap(10, 20)
+
+    # passing an output space that is wrong
+    with pytest.raises(ValueError):
+        filter.validate_output_action_space(DiscreteActionSpace(10))
+
+    # 1 dimensional box
+    output_space = BoxActionSpace(1, 5, 35)
+    input_space = filter.get_unfiltered_action_space(output_space)
+
+    action = np.array([2])
+
+    action = np.array([12])
+    result = filter.filter(action)
+    assert result == np.array([11])
+    assert output_space.val_matches_space_definition(result)
+
+</clonepair8>
+
+<clonepair8>
+<source file="systems/coach-0.11.0/rl_coach/tests/filters/action/test_box_masking.py" startline="12" endline="27" pcid="701"></source>
+def test_filter():
+    filter = BoxMasking(10, 20)
+
+    # passing an output space that is wrong
+    with pytest.raises(ValueError):
+        filter.validate_output_action_space(DiscreteActionSpace(10))
+
+    # 1 dimensional box
+    output_space = BoxActionSpace(1, 5, 30)
+    input_space = filter.get_unfiltered_action_space(output_space)
+
+    action = np.array([2])
+    result = filter.filter(action)
+    assert result == np.array([12])
+    assert output_space.val_matches_space_definition(result)
+
+</clonepair8>

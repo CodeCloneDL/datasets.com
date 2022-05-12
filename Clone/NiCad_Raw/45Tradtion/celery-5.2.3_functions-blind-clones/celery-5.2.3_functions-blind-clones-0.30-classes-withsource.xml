@@ -1,0 +1,1950 @@
+<clones>
+<systeminfo processor="nicad6" system="celery-5.2.3" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="2666" npairs="81"/>
+<runinfo ncompares="92661" cputime="75020"/>
+<classinfo nclasses="34"/>
+
+<class classid="1" nclones="2" nlines="13" similarity="92">
+<source file="systems/celery-5.2.3/t/unit/tasks/test_trace.py" startline="164" endline="180" pcid="140">
+    def test_eager_task_does_not_store_result_even_if_not_ignore_result(self):
+        @self.app.task(shared=False)
+        def add(x, y):
+            return x + y
+
+        add.backend = Mock(name='backend')
+        add.ignore_result = False
+
+        self.trace(add, (2, 2), {}, eager=True)
+
+        add.backend.mark_as_done.assert_called_once_with(
+            'id-1',     # task_id
+            4,          # result
+            ANY,        # request
+            False       # store_result
+        )
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/tasks/test_trace.py" startline="195" endline="212" pcid="144">
+    def test_eager_task_will_store_result_if_proper_setting_is_set(self):
+        @self.app.task(shared=False)
+        def add(x, y):
+            return x + y
+
+        add.backend = Mock(name='backend')
+        add.store_eager_result = True
+        add.ignore_result = False
+
+        self.trace(add, (2, 2), {}, eager=True)
+
+        add.backend.mark_as_done.assert_called_once_with(
+            'id-1',     # task_id
+            4,          # result
+            ANY,        # request
+            True        # store_result
+        )
+
+</source>
+</class>
+
+<class classid="2" nclones="4" nlines="16" similarity="76">
+<source file="systems/celery-5.2.3/t/unit/tasks/test_trace.py" startline="482" endline="501" pcid="175">
+    def test_deduplicate_successful_tasks__deduplication(self):
+        @self.app.task(shared=False)
+        def add(x, y):
+            return x + y
+
+        backend = CacheBackend(app=self.app, backend='memory')
+        add.backend = backend
+        add.store_eager_result = True
+        add.ignore_result = False
+        add.acks_late = True
+
+        self.app.conf.worker_deduplicate_successful_tasks = True
+        task_id = str(uuid4())
+        request = {'id': task_id, 'delivery_info': {'redelivered': True}}
+
+        assert trace(self.app, add, (1, 1), task_id=task_id, request=request) == (2, None)
+        assert trace(self.app, add, (1, 1), task_id=task_id, request=request) == (None, None)
+
+        self.app.conf.worker_deduplicate_successful_tasks = False
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/tasks/test_trace.py" startline="502" endline="523" pcid="177">
+    def test_deduplicate_successful_tasks__no_deduplication(self):
+        @self.app.task(shared=False)
+        def add(x, y):
+            return x + y
+
+        backend = CacheBackend(app=self.app, backend='memory')
+        add.backend = backend
+        add.store_eager_result = True
+        add.ignore_result = False
+        add.acks_late = True
+
+        self.app.conf.worker_deduplicate_successful_tasks = True
+        task_id = str(uuid4())
+        request = {'id': task_id, 'delivery_info': {'redelivered': True}}
+
+        with patch('celery.app.trace.AsyncResult') as async_result_mock:
+            async_result_mock().state.return_value = PENDING
+            assert trace(self.app, add, (1, 1), task_id=task_id, request=request) == (2, None)
+            assert trace(self.app, add, (1, 1), task_id=task_id, request=request) == (2, None)
+
+        self.app.conf.worker_deduplicate_successful_tasks = False
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/tasks/test_trace.py" startline="547" endline="571" pcid="181">
+    def test_deduplicate_successful_tasks__cached_request(self):
+        @self.app.task(shared=False)
+        def add(x, y):
+            return x + y
+
+        backend = CacheBackend(app=self.app, backend='memory')
+        add.backend = backend
+        add.store_eager_result = True
+        add.ignore_result = False
+        add.acks_late = True
+
+        self.app.conf.worker_deduplicate_successful_tasks = True
+
+        task_id = str(uuid4())
+        request = {'id': task_id, 'delivery_info': {'redelivered': True}}
+
+        successful_requests.add(task_id)
+
+        assert trace(self.app, add, (1, 1), task_id=task_id,
+                     request=request) == (None, None)
+
+        successful_requests.clear()
+        self.app.conf.worker_deduplicate_successful_tasks = False
+
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/tasks/test_trace.py" startline="524" endline="546" pcid="179">
+    def test_deduplicate_successful_tasks__result_not_found(self):
+        @self.app.task(shared=False)
+        def add(x, y):
+            return x + y
+
+        backend = CacheBackend(app=self.app, backend='memory')
+        add.backend = backend
+        add.store_eager_result = True
+        add.ignore_result = False
+        add.acks_late = True
+
+        self.app.conf.worker_deduplicate_successful_tasks = True
+        task_id = str(uuid4())
+        request = {'id': task_id, 'delivery_info': {'redelivered': True}}
+
+        with patch('celery.app.trace.AsyncResult') as async_result_mock:
+            assert trace(self.app, add, (1, 1), task_id=task_id, request=request) == (2, None)
+            state_property = PropertyMock(side_effect=BackendGetMetaError)
+            type(async_result_mock()).state = state_property
+            assert trace(self.app, add, (1, 1), task_id=task_id, request=request) == (2, None)
+
+        self.app.conf.worker_deduplicate_successful_tasks = False
+
+</source>
+</class>
+
+<class classid="3" nclones="3" nlines="10" similarity="72">
+<source file="systems/celery-5.2.3/t/unit/tasks/test_trace.py" startline="576" endline="586" pcid="183">
+    def test_handle_error_state(self):
+        x = self.TI(states.FAILURE)
+        x.handle_failure = Mock()
+        x.handle_error_state(self.add_cast, self.add_cast.request)
+        x.handle_failure.assert_called_with(
+            self.add_cast,
+            self.add_cast.request,
+            store_errors=self.add_cast.store_errors_even_if_ignored,
+            call_errbacks=True,
+        )
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/tasks/test_trace.py" startline="587" endline="598" pcid="184">
+    def test_handle_error_state_for_eager_task(self):
+        x = self.TI(states.FAILURE)
+        x.handle_failure = Mock()
+
+        x.handle_error_state(self.add, self.add.request, eager=True)
+        x.handle_failure.assert_called_once_with(
+            self.add,
+            self.add.request,
+            store_errors=False,
+            call_errbacks=True,
+        )
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/tasks/test_trace.py" startline="599" endline="612" pcid="185">
+    def test_handle_error_for_eager_saved_to_backend(self):
+        x = self.TI(states.FAILURE)
+        x.handle_failure = Mock()
+
+        self.add.store_eager_result = True
+
+        x.handle_error_state(self.add, self.add.request, eager=True)
+        x.handle_failure.assert_called_with(
+            self.add,
+            self.add.request,
+            store_errors=True,
+            call_errbacks=True,
+        )
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="11" similarity="72">
+<source file="systems/celery-5.2.3/t/unit/tasks/test_result.py" startline="459" endline="470" pcid="272">
+    def test_get(self):
+        x = self.app.ResultSet([self.app.AsyncResult(t) for t in [1, 2, 3]])
+        b = x.results[0].backend = Mock()
+        b.supports_native_join = False
+        x.join_native = Mock()
+        x.join = Mock()
+        x.get()
+        x.join.assert_called()
+        b.supports_native_join = True
+        x.get()
+        x.join_native.assert_called()
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/utils/test_timer2.py" startline="34" endline="45" pcid="415">
+    def test_ensure_started_not_started(self):
+        t = timer2.Timer()
+        t.running = True
+        t.start = Mock()
+        t.ensure_started()
+        t.start.assert_not_called()
+        t.running = False
+        t.on_start = Mock()
+        t.ensure_started()
+        t.on_start.assert_called_with(t)
+        t.start.assert_called_with()
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="18" similarity="89">
+<source file="systems/celery-5.2.3/t/unit/utils/test_imports.py" startline="26" endline="47" pcid="565">
+def test_find_module_legacy_namespace_package(tmp_path, monkeypatch):
+    monkeypatch.chdir(str(tmp_path))
+    (tmp_path / 'pkg' / 'foo').mkdir(parents=True)
+    (tmp_path / 'pkg' / '__init__.py').write_text(
+        'from pkgutil import extend_path\n'
+        '__path__ = extend_path(__path__, __name__)\n')
+    (tmp_path / 'pkg' / 'foo' / '__init__.py').write_text('')
+    (tmp_path / 'pkg' / 'foo' / 'bar.py').write_text('')
+    with patch.dict(sys.modules):
+        for modname in list(sys.modules):
+            if modname == 'pkg' or modname.startswith('pkg.'):
+                del sys.modules[modname]
+        with pytest.raises(ImportError):
+            find_module('pkg.missing')
+        with pytest.raises(ImportError):
+            find_module('pkg.foo.missing')
+        assert find_module('pkg.foo.bar')
+        with pytest.raises(NotAPackage) as exc_info:
+            find_module('pkg.foo.bar.missing')
+        assert exc_info.value.args[0] == 'pkg.foo.bar'
+
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/utils/test_imports.py" startline="48" endline="66" pcid="566">
+def test_find_module_pep420_namespace_package(tmp_path, monkeypatch):
+    monkeypatch.chdir(str(tmp_path))
+    (tmp_path / 'pkg' / 'foo').mkdir(parents=True)
+    (tmp_path / 'pkg' / 'foo' / '__init__.py').write_text('')
+    (tmp_path / 'pkg' / 'foo' / 'bar.py').write_text('')
+    with patch.dict(sys.modules):
+        for modname in list(sys.modules):
+            if modname == 'pkg' or modname.startswith('pkg.'):
+                del sys.modules[modname]
+        with pytest.raises(ImportError):
+            find_module('pkg.missing')
+        with pytest.raises(ImportError):
+            find_module('pkg.foo.missing')
+        assert find_module('pkg.foo.bar')
+        with pytest.raises(NotAPackage) as exc_info:
+            find_module('pkg.foo.bar.missing')
+        assert exc_info.value.args[0] == 'pkg.foo.bar'
+
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="11" similarity="81">
+<source file="systems/celery-5.2.3/t/unit/backends/test_cache.py" startline="175" endline="185" pcid="638">
+    def mock_memcache(self):
+        memcache = types.ModuleType('memcache')
+        memcache.Client = MemcachedClient
+        memcache.Client.__module__ = memcache.__name__
+        prev, sys.modules['memcache'] = sys.modules.get('memcache'), memcache
+        try:
+            yield True
+        finally:
+            if prev is not None:
+                sys.modules['memcache'] = prev
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/backends/test_cache.py" startline="187" endline="199" pcid="639">
+    def mock_pylibmc(self):
+        pylibmc = types.ModuleType('pylibmc')
+        pylibmc.Client = MemcachedClient
+        pylibmc.Client.__module__ = pylibmc.__name__
+        prev = sys.modules.get('pylibmc')
+        sys.modules['pylibmc'] = pylibmc
+        try:
+            yield True
+        finally:
+            if prev is not None:
+                sys.modules['pylibmc'] = prev
+
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="11" similarity="72">
+<source file="systems/celery-5.2.3/t/unit/backends/test_mongodb.py" startline="256" endline="269" pcid="693">
+
+    def test_get_connection_no_connection_host(self):
+        with patch('pymongo.MongoClient') as mock_Connection:
+            self.backend._connection = None
+            self.backend.host = MONGODB_HOST
+            self.backend.port = MONGODB_PORT
+            mock_Connection.return_value = sentinel.connection
+
+            connection = self.backend._get_connection()
+            mock_Connection.assert_called_once_with(
+                host='mongodb://localhost:27017',
+                **self.backend._prepare_client_options()
+            )
+            assert sentinel.connection == connection
+</source>
+<source file="systems/celery-5.2.3/t/unit/backends/test_mongodb.py" startline="270" endline="283" pcid="694">
+
+    def test_get_connection_no_connection_mongodb_uri(self):
+        with patch('pymongo.MongoClient') as mock_Connection:
+            mongodb_uri = 'mongodb://%s:%d' % (MONGODB_HOST, MONGODB_PORT)
+            self.backend._connection = None
+            self.backend.host = mongodb_uri
+
+            mock_Connection.return_value = sentinel.connection
+
+            connection = self.backend._get_connection()
+            mock_Connection.assert_called_once_with(
+                host=mongodb_uri, **self.backend._prepare_client_options()
+            )
+            assert sentinel.connection == connection
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="10" similarity="100">
+<source file="systems/celery-5.2.3/t/unit/backends/test_mongodb.py" startline="321" endline="335" pcid="697">
+    @patch('celery.backends.mongodb.MongoBackend._get_connection')
+    def test_get_database_no_existing(self, mock_get_connection):
+        # Should really check for combinations of these two, to be complete.
+        self.backend.user = MONGODB_USER
+        self.backend.password = MONGODB_PASSWORD
+
+        mock_database = Mock()
+        mock_connection = MagicMock(spec=['__getitem__'])
+        mock_connection.__getitem__.return_value = mock_database
+        mock_get_connection.return_value = mock_connection
+
+        database = self.backend.database
+
+        assert database is mock_database
+        assert self.backend.__dict__['database'] is mock_database
+</source>
+<source file="systems/celery-5.2.3/t/unit/backends/test_mongodb.py" startline="337" endline="351" pcid="698">
+    @patch('celery.backends.mongodb.MongoBackend._get_connection')
+    def test_get_database_no_existing_no_auth(self, mock_get_connection):
+        # Should really check for combinations of these two, to be complete.
+        self.backend.user = None
+        self.backend.password = None
+
+        mock_database = Mock()
+        mock_connection = MagicMock(spec=['__getitem__'])
+        mock_connection.__getitem__.return_value = mock_database
+        mock_get_connection.return_value = mock_connection
+
+        database = self.backend.database
+
+        assert database is mock_database
+        assert self.backend.__dict__['database'] is mock_database
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="19" similarity="70">
+<source file="systems/celery-5.2.3/t/unit/backends/test_mongodb.py" startline="353" endline="375" pcid="699">
+    @patch('celery.backends.mongodb.MongoBackend._get_database')
+    def test_store_result(self, mock_get_database):
+        self.backend.taskmeta_collection = MONGODB_COLLECTION
+
+        mock_database = MagicMock(spec=['__getitem__', '__setitem__'])
+        mock_collection = Mock()
+
+        mock_get_database.return_value = mock_database
+        mock_database.__getitem__.return_value = mock_collection
+
+        ret_val = self.backend._store_result(
+            sentinel.task_id, sentinel.result, sentinel.status)
+
+        mock_get_database.assert_called_once_with()
+        mock_database.__getitem__.assert_called_once_with(MONGODB_COLLECTION)
+        mock_collection.replace_one.assert_called_once_with(ANY, ANY,
+                                                            upsert=True)
+        assert sentinel.result == ret_val
+
+        mock_collection.replace_one.side_effect = InvalidDocument()
+        with pytest.raises(EncodeError):
+            self.backend._store_result(
+                sentinel.task_id, sentinel.result, sentinel.status)
+</source>
+<source file="systems/celery-5.2.3/t/unit/backends/test_mongodb.py" startline="377" endline="402" pcid="700">
+    @patch('celery.backends.mongodb.MongoBackend._get_database')
+    def test_store_result_with_request(self, mock_get_database):
+        self.backend.taskmeta_collection = MONGODB_COLLECTION
+
+        mock_database = MagicMock(spec=['__getitem__', '__setitem__'])
+        mock_collection = Mock()
+        mock_request = MagicMock(spec=['parent_id'])
+
+        mock_get_database.return_value = mock_database
+        mock_database.__getitem__.return_value = mock_collection
+        mock_request.parent_id = sentinel.parent_id
+
+        ret_val = self.backend._store_result(
+            sentinel.task_id, sentinel.result, sentinel.status,
+            request=mock_request)
+
+        mock_get_database.assert_called_once_with()
+        mock_database.__getitem__.assert_called_once_with(MONGODB_COLLECTION)
+        parameters = mock_collection.replace_one.call_args[0][1]
+        assert parameters['parent_id'] == sentinel.parent_id
+        assert sentinel.result == ret_val
+
+        mock_collection.replace_one.side_effect = InvalidDocument()
+        with pytest.raises(EncodeError):
+            self.backend._store_result(
+                sentinel.task_id, sentinel.result, sentinel.status)
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="11" similarity="83">
+<source file="systems/celery-5.2.3/t/unit/backends/test_mongodb.py" startline="489" endline="503" pcid="705">
+    @patch('celery.backends.mongodb.MongoBackend._get_database')
+    def test_delete_group(self, mock_get_database):
+        self.backend.taskmeta_collection = MONGODB_COLLECTION
+
+        mock_database = MagicMock(spec=['__getitem__', '__setitem__'])
+        mock_collection = Mock()
+
+        mock_get_database.return_value = mock_database
+        mock_database.__getitem__.return_value = mock_collection
+
+        self.backend._delete_group(sentinel.taskset_id)
+
+        mock_get_database.assert_called_once_with()
+        mock_collection.delete_one.assert_called_once_with(
+            {'_id': sentinel.taskset_id})
+</source>
+<source file="systems/celery-5.2.3/t/unit/backends/test_mongodb.py" startline="505" endline="522" pcid="706">
+    @patch('celery.backends.mongodb.MongoBackend._get_database')
+    def test__forget(self, mock_get_database):
+        # note: here tested _forget method, not forget method
+        self.backend.taskmeta_collection = MONGODB_COLLECTION
+
+        mock_database = MagicMock(spec=['__getitem__', '__setitem__'])
+        mock_collection = Mock()
+
+        mock_get_database.return_value = mock_database
+        mock_database.__getitem__.return_value = mock_collection
+
+        self.backend._forget(sentinel.task_id)
+
+        mock_get_database.assert_called_once_with()
+        mock_database.__getitem__.assert_called_once_with(
+            MONGODB_COLLECTION)
+        mock_collection.delete_one.assert_called_once_with(
+            {'_id': sentinel.task_id})
+</source>
+</class>
+
+<class classid="11" nclones="3" nlines="12" similarity="76">
+<source file="systems/celery-5.2.3/t/unit/backends/test_elasticsearch.py" startline="45" endline="60" pcid="842">
+    def test_get(self):
+        x = ElasticsearchBackend(app=self.app)
+        x._server = Mock()
+        x._server.get = Mock()
+        # expected result
+        r = {'found': True, '_source': {'result': sentinel.result}}
+        x._server.get.return_value = r
+        dict_result = x.get(sentinel.task_id)
+
+        assert dict_result == sentinel.result
+        x._server.get.assert_called_once_with(
+            doc_type=x.doc_type,
+            id=sentinel.task_id,
+            index=x.index,
+        )
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/backends/test_elasticsearch.py" startline="61" endline="74" pcid="843">
+    def test_get_none(self):
+        x = ElasticsearchBackend(app=self.app)
+        x._server = Mock()
+        x._server.get = Mock()
+        x._server.get.return_value = sentinel.result
+        none_result = x.get(sentinel.task_id)
+
+        assert none_result is None
+        x._server.get.assert_called_once_with(
+            doc_type=x.doc_type,
+            id=sentinel.task_id,
+            index=x.index,
+        )
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/backends/test_elasticsearch.py" startline="96" endline="108" pcid="846">
+    def test_delete(self):
+        x = ElasticsearchBackend(app=self.app)
+        x._server = Mock()
+        x._server.delete = Mock()
+        x._server.delete.return_value = sentinel.result
+
+        assert x.delete(sentinel.task_id) is None
+        x._server.delete.assert_called_once_with(
+            doc_type=x.doc_type,
+            id=sentinel.task_id,
+            index=x.index,
+        )
+
+</source>
+</class>
+
+<class classid="12" nclones="5" nlines="28" similarity="75">
+<source file="systems/celery-5.2.3/t/unit/backends/test_elasticsearch.py" startline="116" endline="154" pcid="848">
+    def test_index_conflict(self, datetime_mock):
+        expected_dt = datetime.datetime(2020, 6, 1, 18, 43, 24, 123456, None)
+        datetime_mock.utcnow.return_value = expected_dt
+
+        x = ElasticsearchBackend(app=self.app)
+        x._server = Mock()
+        x._server.index.side_effect = [
+            exceptions.ConflictError(409, "concurrent update", {})
+        ]
+
+        x._server.get.return_value = {
+            'found': True,
+            '_source': {"result": _RESULT_RETRY},
+            '_seq_no': 2,
+            '_primary_term': 1,
+        }
+
+        x._server.update.return_value = {
+            'result': 'updated'
+        }
+
+        x._set_with_state(sentinel.task_id, sentinel.result, sentinel.state)
+
+        assert x._server.get.call_count == 1
+        x._server.index.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'},
+            params={'op_type': 'create'},
+        )
+        x._server.update.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'doc': {'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'}},
+            params={'if_seq_no': 2, 'if_primary_term': 1}
+        )
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/backends/test_elasticsearch.py" startline="277" endline="309" pcid="852">
+    def test_index_conflict_with_existing_ready_state(self, datetime_mock):
+        expected_dt = datetime.datetime(2020, 6, 1, 18, 43, 24, 123456, None)
+        datetime_mock.utcnow.return_value = expected_dt
+
+        x = ElasticsearchBackend(app=self.app)
+        x._server = Mock()
+        x._server.index.side_effect = [
+            exceptions.ConflictError(409, "concurrent update", {})
+        ]
+
+        x._server.get.return_value = {
+            'found': True,
+            '_source': {"result": _RESULT_FAILURE},
+            '_seq_no': 2,
+            '_primary_term': 1,
+        }
+
+        x._server.update.return_value = {
+            'result': 'updated'
+        }
+
+        x._set_with_state(sentinel.task_id, sentinel.result, states.RETRY)
+
+        assert x._server.get.call_count == 1
+        x._server.index.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'},
+            params={'op_type': 'create'},
+        )
+        x._server.update.assert_not_called()
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/backends/test_elasticsearch.py" startline="241" endline="275" pcid="851">
+    def test_index_conflict_with_existing_success(self, datetime_mock):
+        expected_dt = datetime.datetime(2020, 6, 1, 18, 43, 24, 123456, None)
+        datetime_mock.utcnow.return_value = expected_dt
+
+        x = ElasticsearchBackend(app=self.app)
+        x._server = Mock()
+        x._server.index.side_effect = [
+            exceptions.ConflictError(409, "concurrent update", {})
+        ]
+
+        x._server.get.return_value = {
+            'found': True,
+            '_source': {
+                'result': """{"status":"SUCCESS","result":42}"""
+            },
+            '_seq_no': 2,
+            '_primary_term': 1,
+        }
+
+        x._server.update.return_value = {
+            'result': 'updated'
+        }
+
+        x._set_with_state(sentinel.task_id, sentinel.result, sentinel.state)
+
+        assert x._server.get.call_count == 1
+        x._server.index.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'},
+            params={'op_type': 'create'},
+        )
+        x._server.update.assert_not_called()
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/backends/test_elasticsearch.py" startline="196" endline="239" pcid="850">
+    def test_index_conflict_with_ready_state_on_backend_without_state(self, datetime_mock):
+        """Even if the backend already have a ready state saved (FAILURE in this test case)
+        as we are calling ElasticsearchBackend.set directly, it does not have state,
+        so it cannot protect overriding a ready state by any other state.
+        As a result, server.update will be called no matter what.
+        """
+        expected_dt = datetime.datetime(2020, 6, 1, 18, 43, 24, 123456, None)
+        datetime_mock.utcnow.return_value = expected_dt
+
+        x = ElasticsearchBackend(app=self.app)
+        x._server = Mock()
+        x._server.index.side_effect = [
+            exceptions.ConflictError(409, "concurrent update", {})
+        ]
+
+        x._server.get.return_value = {
+            'found': True,
+            '_source': {"result": _RESULT_FAILURE},
+            '_seq_no': 2,
+            '_primary_term': 1,
+        }
+
+        x._server.update.return_value = {
+            'result': 'updated'
+        }
+
+        x.set(sentinel.task_id, sentinel.result)
+
+        assert x._server.get.call_count == 1
+        x._server.index.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'},
+            params={'op_type': 'create'},
+        )
+        x._server.update.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'doc': {'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'}},
+            params={'if_seq_no': 2, 'if_primary_term': 1}
+        )
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/backends/test_elasticsearch.py" startline="156" endline="194" pcid="849">
+    def test_index_conflict_without_state(self, datetime_mock):
+        expected_dt = datetime.datetime(2020, 6, 1, 18, 43, 24, 123456, None)
+        datetime_mock.utcnow.return_value = expected_dt
+
+        x = ElasticsearchBackend(app=self.app)
+        x._server = Mock()
+        x._server.index.side_effect = [
+            exceptions.ConflictError(409, "concurrent update", {})
+        ]
+
+        x._server.get.return_value = {
+            'found': True,
+            '_source': {"result": _RESULT_RETRY},
+            '_seq_no': 2,
+            '_primary_term': 1,
+        }
+
+        x._server.update.return_value = {
+            'result': 'updated'
+        }
+
+        x.set(sentinel.task_id, sentinel.result)
+
+        assert x._server.get.call_count == 1
+        x._server.index.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'},
+            params={'op_type': 'create'},
+        )
+        x._server.update.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'doc': {'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'}},
+            params={'if_seq_no': 2, 'if_primary_term': 1}
+        )
+
+</source>
+</class>
+
+<class classid="13" nclones="2" nlines="54" similarity="92">
+<source file="systems/celery-5.2.3/t/unit/backends/test_elasticsearch.py" startline="424" endline="492" pcid="854">
+    def test_backend_index_conflicting_document_removed(self, base_datetime_mock, es_datetime_mock):
+        expected_dt = datetime.datetime(2020, 6, 1, 18, 43, 24, 123456, None)
+        es_datetime_mock.utcnow.return_value = expected_dt
+
+        expected_done_dt = datetime.datetime(2020, 6, 1, 18, 45, 34, 654321, None)
+        base_datetime_mock.utcnow.return_value = expected_done_dt
+
+        self.app.conf.result_backend_always_retry, prev = True, self.app.conf.result_backend_always_retry
+        try:
+            x = ElasticsearchBackend(app=self.app)
+
+            task_id = str(sentinel.task_id)
+            encoded_task_id = bytes_to_str(x.get_key_for_task(task_id))
+            result = str(sentinel.result)
+
+            sleep_mock = Mock()
+            x._sleep = sleep_mock
+            x._server = Mock()
+            x._server.index.side_effect = [
+                exceptions.ConflictError(409, "concurrent update", {}),
+                {'result': 'created'}
+            ]
+
+            x._server.get.side_effect = [
+                {
+                    'found': True,
+                    '_source': {"result": _RESULT_RETRY},
+                    '_seq_no': 2,
+                    '_primary_term': 1,
+                },
+                exceptions.NotFoundError(404,
+                                         '{"_index":"celery","_type":"_doc","_id":"toto","found":false}',
+                                         {'_index': 'celery', '_type': '_doc',
+                                          '_id': 'toto', 'found': False}),
+            ]
+
+            result_meta = x._get_result_meta(result, states.SUCCESS, None, None)
+            result_meta['task_id'] = bytes_to_str(task_id)
+
+            expected_result = x.encode(result_meta)
+
+            x.store_result(task_id, result, states.SUCCESS)
+            x._server.index.assert_has_calls([
+                call(
+                    id=encoded_task_id,
+                    index=x.index,
+                    doc_type=x.doc_type,
+                    body={
+                        'result': expected_result,
+                        '@timestamp': expected_dt.isoformat()[:-3] + 'Z'
+                    },
+                    params={'op_type': 'create'}
+                ),
+                call(
+                    id=encoded_task_id,
+                    index=x.index,
+                    doc_type=x.doc_type,
+                    body={
+                        'result': expected_result,
+                        '@timestamp': expected_dt.isoformat()[:-3] + 'Z'
+                    },
+                    params={'op_type': 'create'}
+                ),
+            ])
+            x._server.update.assert_not_called()
+            sleep_mock.assert_not_called()
+        finally:
+            self.app.conf.result_backend_always_retry = prev
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/backends/test_elasticsearch.py" startline="495" endline="560" pcid="855">
+    def test_backend_index_conflicting_document_removed_not_throwing(self, base_datetime_mock, es_datetime_mock):
+        expected_dt = datetime.datetime(2020, 6, 1, 18, 43, 24, 123456, None)
+        es_datetime_mock.utcnow.return_value = expected_dt
+
+        expected_done_dt = datetime.datetime(2020, 6, 1, 18, 45, 34, 654321, None)
+        base_datetime_mock.utcnow.return_value = expected_done_dt
+
+        self.app.conf.result_backend_always_retry, prev = True, self.app.conf.result_backend_always_retry
+        try:
+            x = ElasticsearchBackend(app=self.app)
+
+            task_id = str(sentinel.task_id)
+            encoded_task_id = bytes_to_str(x.get_key_for_task(task_id))
+            result = str(sentinel.result)
+
+            sleep_mock = Mock()
+            x._sleep = sleep_mock
+            x._server = Mock()
+            x._server.index.side_effect = [
+                exceptions.ConflictError(409, "concurrent update", {}),
+                {'result': 'created'}
+            ]
+
+            x._server.get.side_effect = [
+                {
+                    'found': True,
+                    '_source': {'result': _RESULT_RETRY},
+                    '_seq_no': 2,
+                    '_primary_term': 1,
+                },
+                {'_index': 'celery', '_type': '_doc', '_id': 'toto', 'found': False},
+            ]
+
+            result_meta = x._get_result_meta(result, states.SUCCESS, None, None)
+            result_meta['task_id'] = bytes_to_str(task_id)
+
+            expected_result = x.encode(result_meta)
+
+            x.store_result(task_id, result, states.SUCCESS)
+            x._server.index.assert_has_calls([
+                call(
+                    id=encoded_task_id,
+                    index=x.index,
+                    doc_type=x.doc_type,
+                    body={
+                        'result': expected_result,
+                        '@timestamp': expected_dt.isoformat()[:-3] + 'Z'
+                    },
+                    params={'op_type': 'create'}
+                ),
+                call(
+                    id=encoded_task_id,
+                    index=x.index,
+                    doc_type=x.doc_type,
+                    body={
+                        'result': expected_result,
+                        '@timestamp': expected_dt.isoformat()[:-3] + 'Z'
+                    },
+                    params={'op_type': 'create'}
+                ),
+            ])
+            x._server.update.assert_not_called()
+            sleep_mock.assert_not_called()
+        finally:
+            self.app.conf.result_backend_always_retry = prev
+
+</source>
+</class>
+
+<class classid="14" nclones="2" nlines="15" similarity="75">
+<source file="systems/celery-5.2.3/t/unit/backends/test_elasticsearch.py" startline="649" endline="667" pcid="859">
+    def test_get_server_with_auth(self, mock_es_client):
+        url = 'elasticsearch+https://fake_user:fake_pass@localhost:9200/index/doc_type'
+        with self.Celery(backend=url) as app:
+            x = app.backend
+
+            assert x.username == 'fake_user'
+            assert x.password == 'fake_pass'
+            assert x.scheme == 'https'
+
+            x._get_server()
+            mock_es_client.assert_called_once_with(
+                'localhost:9200',
+                http_auth=('fake_user', 'fake_pass'),
+                max_retries=x.es_max_retries,
+                retry_on_timeout=x.es_retry_on_timeout,
+                scheme='https',
+                timeout=x.es_timeout,
+            )
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/backends/test_elasticsearch.py" startline="669" endline="682" pcid="860">
+    def test_get_server_without_auth(self, mock_es_client):
+        url = 'elasticsearch://localhost:9200/index/doc_type'
+        with self.Celery(backend=url) as app:
+            x = app.backend
+            x._get_server()
+            mock_es_client.assert_called_once_with(
+                'localhost:9200',
+                http_auth=None,
+                max_retries=x.es_max_retries,
+                retry_on_timeout=x.es_retry_on_timeout,
+                scheme='http',
+                timeout=x.es_timeout,
+            )
+
+</source>
+</class>
+
+<class classid="15" nclones="2" nlines="21" similarity="95">
+<source file="systems/celery-5.2.3/t/unit/backends/test_elasticsearch.py" startline="683" endline="708" pcid="861">
+    def test_index(self):
+        x = ElasticsearchBackend(app=self.app)
+        x.doc_type = 'test-doc-type'
+        x._server = Mock()
+        x._server.index = Mock()
+        expected_result = {
+            '_id': sentinel.task_id,
+            '_source': {'result': sentinel.result}
+        }
+        x._server.index.return_value = expected_result
+
+        body = {"field1": "value1"}
+        x._index(
+            id=str(sentinel.task_id).encode(),
+            body=body,
+            kwarg1='test1'
+        )
+        x._server.index.assert_called_once_with(
+            id=str(sentinel.task_id),
+            doc_type=x.doc_type,
+            index=x.index,
+            body=body,
+            params={'op_type': 'create'},
+            kwarg1='test1'
+        )
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/backends/test_elasticsearch.py" startline="709" endline="734" pcid="862">
+    def test_index_bytes_key(self):
+        x = ElasticsearchBackend(app=self.app)
+        x.doc_type = 'test-doc-type'
+        x._server = Mock()
+        x._server.index = Mock()
+        expected_result = {
+            '_id': sentinel.task_id,
+            '_source': {'result': sentinel.result}
+        }
+        x._server.index.return_value = expected_result
+
+        body = {b"field1": "value1"}
+        x._index(
+            id=str(sentinel.task_id).encode(),
+            body=body,
+            kwarg1='test1'
+        )
+        x._server.index.assert_called_once_with(
+            id=str(sentinel.task_id),
+            doc_type=x.doc_type,
+            index=x.index,
+            body={"field1": "value1"},
+            params={'op_type': 'create'},
+            kwarg1='test1'
+        )
+
+</source>
+</class>
+
+<class classid="16" nclones="2" nlines="17" similarity="94">
+<source file="systems/celery-5.2.3/t/unit/backends/test_elasticsearch.py" startline="753" endline="770" pcid="865">
+    def test_encode_exception_as_json(self):
+        self.app.conf.elasticsearch_save_meta_as_text, prev = False, self.app.conf.elasticsearch_save_meta_as_text
+        try:
+            x = ElasticsearchBackend(app=self.app)
+            try:
+                raise Exception("failed")
+            except Exception as exc:
+                einfo = ExceptionInfo()
+                result_meta = x._get_result_meta(
+                    x.encode_result(exc, states.FAILURE),
+                    states.FAILURE,
+                    einfo.traceback,
+                    None,
+                )
+                assert x.encode(result_meta) == result_meta
+        finally:
+            self.app.conf.elasticsearch_save_meta_as_text = prev
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/backends/test_elasticsearch.py" startline="800" endline="817" pcid="869">
+    def test_decode_encoded_exception_as_json(self):
+        self.app.conf.elasticsearch_save_meta_as_text, prev = False, self.app.conf.elasticsearch_save_meta_as_text
+        try:
+            x = ElasticsearchBackend(app=self.app)
+            try:
+                raise Exception("failed")
+            except Exception as exc:
+                einfo = ExceptionInfo()
+                result_meta = x._get_result_meta(
+                    x.encode_result(exc, states.FAILURE),
+                    states.FAILURE,
+                    einfo.traceback,
+                    None,
+                )
+                assert x.decode(x.encode(result_meta)) == result_meta
+        finally:
+            self.app.conf.elasticsearch_save_meta_as_text = prev
+
+</source>
+</class>
+
+<class classid="17" nclones="2" nlines="11" similarity="100">
+<source file="systems/celery-5.2.3/t/unit/security/test_key.py" startline="18" endline="29" pcid="876">
+    def test_invalid_private_key(self):
+        with pytest.raises((SecurityError, TypeError)):
+            PrivateKey(None)
+        with pytest.raises(SecurityError):
+            PrivateKey('')
+        with pytest.raises(SecurityError):
+            PrivateKey('foo')
+        with pytest.raises(SecurityError):
+            PrivateKey(KEY1[:20] + KEY1[21:])
+        with pytest.raises(SecurityError):
+            PrivateKey(CERT1)
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/security/test_certificate.py" startline="21" endline="32" pcid="889">
+    def test_invalid_certificate(self):
+        with pytest.raises((SecurityError, TypeError)):
+            Certificate(None)
+        with pytest.raises(SecurityError):
+            Certificate('')
+        with pytest.raises(SecurityError):
+            Certificate('foo')
+        with pytest.raises(SecurityError):
+            Certificate(CERT1[:20] + CERT1[21:])
+        with pytest.raises(SecurityError):
+            Certificate(KEY1)
+
+</source>
+</class>
+
+<class classid="18" nclones="2" nlines="12" similarity="83">
+<source file="systems/celery-5.2.3/t/unit/concurrency/test_concurrency.py" startline="162" endline="173" pcid="949">
+    def test_no_concurrent_futures__returns_no_threads_pool_name(self):
+        expected_pool_names = (
+            'prefork',
+            'eventlet',
+            'gevent',
+            'solo',
+            'processes',
+        )
+        with patch.dict(sys.modules, {'concurrent.futures': None}):
+            importlib.reload(concurrency)
+            assert concurrency.get_available_pool_names() == expected_pool_names
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/concurrency/test_concurrency.py" startline="174" endline="185" pcid="950">
+    def test_concurrent_futures__returns_threads_pool_name(self):
+        expected_pool_names = (
+            'prefork',
+            'eventlet',
+            'gevent',
+            'solo',
+            'processes',
+            'threads',
+        )
+        with patch.dict(sys.modules, {'concurrent.futures': Mock()}):
+            importlib.reload(concurrency)
+            assert concurrency.get_available_pool_names() == expected_pool_names
+</source>
+</class>
+
+<class classid="19" nclones="2" nlines="18" similarity="88">
+<source file="systems/celery-5.2.3/t/unit/events/test_state.py" startline="324" endline="342" pcid="1011">
+    def test_task_logical_clock_ordering(self):
+        state = State()
+        r = ev_logical_clock_ordering(state)
+        tA, tB, tC = r.uids
+        r.play()
+        now = list(state.tasks_by_time())
+        assert now[0][0] == tA
+        assert now[1][0] == tC
+        assert now[2][0] == tB
+        for _ in range(1000):
+            shuffle(r.uids)
+            tA, tB, tC = r.uids
+            r.rewind_with_offset(r.current_clock + 1, r.uids)
+            r.play()
+        now = list(state.tasks_by_time())
+        assert now[0][0] == tA
+        assert now[1][0] == tC
+        assert now[2][0] == tB
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/events/test_state.py" startline="344" endline="362" pcid="1012">
+    def test_task_descending_clock_ordering(self):
+        state = State()
+        r = ev_logical_clock_ordering(state)
+        tA, tB, tC = r.uids
+        r.play()
+        now = list(state.tasks_by_time(reverse=False))
+        assert now[0][0] == tA
+        assert now[1][0] == tB
+        assert now[2][0] == tC
+        for _ in range(1000):
+            shuffle(r.uids)
+            tA, tB, tC = r.uids
+            r.rewind_with_offset(r.current_clock + 1, r.uids)
+            r.play()
+        now = list(state.tasks_by_time(reverse=False))
+        assert now[0][0] == tB
+        assert now[1][0] == tC
+        assert now[2][0] == tA
+
+</source>
+</class>
+
+<class classid="20" nclones="2" nlines="11" similarity="72">
+<source file="systems/celery-5.2.3/t/unit/events/test_state.py" startline="578" endline="589" pcid="1032">
+    def test_survives_unknown_worker_event(self):
+        s = State()
+        s.event({
+            'type': 'worker-unknown-event-xxx',
+            'foo': 'bar',
+        })
+        s.event({
+            'type': 'worker-unknown-event-xxx',
+            'hostname': 'xxx',
+            'foo': 'bar',
+        })
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/events/test_state.py" startline="620" endline="631" pcid="1035">
+    def test_survives_unknown_task_event(self):
+        s = State()
+        s.event({
+            'type': 'task-unknown-event-xxx',
+            'foo': 'bar',
+            'uuid': 'x',
+            'hostname': 'y',
+            'timestamp': time(),
+            'local_received': time(),
+            'clock': 0,
+        })
+
+</source>
+</class>
+
+<class classid="21" nclones="2" nlines="14" similarity="78">
+<source file="systems/celery-5.2.3/t/unit/events/test_state.py" startline="590" endline="604" pcid="1033">
+    def test_survives_unknown_worker_leaving(self):
+        s = State(on_node_leave=Mock(name='on_node_leave'))
+        (worker, created), subject = s.event({
+            'type': 'worker-offline',
+            'hostname': 'unknown@vandelay.com',
+            'timestamp': time(),
+            'local_received': time(),
+            'clock': 301030134894833,
+        })
+        assert worker == Worker('unknown@vandelay.com')
+        assert not created
+        assert subject == 'offline'
+        assert 'unknown@vandelay.com' not in s.workers
+        s.on_node_leave.assert_called_with(worker)
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/events/test_state.py" startline="605" endline="619" pcid="1034">
+    def test_on_node_join_callback(self):
+        s = State(on_node_join=Mock(name='on_node_join'))
+        (worker, created), subject = s.event({
+            'type': 'worker-online',
+            'hostname': 'george@vandelay.com',
+            'timestamp': time(),
+            'local_received': time(),
+            'clock': 34314,
+        })
+        assert worker
+        assert created
+        assert subject == 'online'
+        assert 'george@vandelay.com' in s.workers
+        s.on_node_join.assert_called_with(worker)
+
+</source>
+</class>
+
+<class classid="22" nclones="2" nlines="10" similarity="80">
+<source file="systems/celery-5.2.3/t/unit/events/test_cursesmon.py" startline="31" endline="42" pcid="1043">
+    def test_format_row_with_truncated_uuid(self):
+        self.win.x, self.win.y = 80, 24
+        row = self.monitor.format_row(
+            '783da208-77d0-40ca-b3d6-37dd6dbb55d3',
+            'task.task.task.task.task.task.task.task.task.tas',
+            'workerworkerworkerworkerworkerworkerworkerworker',
+            '21:13:20',
+            'SUCCESS')
+        expected = ('783da208-77d0-40ca-b3d... workerworker... '
+                    'task.task.[.]tas 21:13:20 SUCCESS ')
+        assert row == expected
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/events/test_cursesmon.py" startline="50" endline="62" pcid="1045">
+    def test_format_row_for_wide_screen_with_short_uuid(self):
+        self.win.x, self.win.y = 140, 24
+        row = self.monitor.format_row(
+            '783da208-77d0-40ca-b3d6-37dd6dbb55d3',
+            'task.task.task.task.task.task.task.task.task.tas',
+            'workerworkerworkerworkerworkerworkerworkerworker',
+            '21:13:20',
+            'SUCCESS')
+        assert len(row) == 136
+        assert ('783da208-77d0-40ca-b3d6-37dd6dbb55d3 '
+                'workerworkerworkerworkerworkerworker... '
+                'task.task.task.task.task.task.task.[.]tas '
+                '21:13:20 SUCCESS ' == row)
+</source>
+</class>
+
+<class classid="23" nclones="7" nlines="11" similarity="72">
+<source file="systems/celery-5.2.3/t/unit/worker/test_loops.py" startline="279" endline="290" pcid="1155">
+    def test_poll_readable(self):
+        x = X(self.app)
+        reader = Mock(name='reader')
+        x.hub.add_reader(6, reader, 6)
+        x.hub.on_tick.add(x.close_then_error(Mock(name='tick'), mod=4))
+        poller = x.hub.poller
+        poller.poll.return_value = [(6, READ)]
+        with pytest.raises(socket.error):
+            asynloop(*x.args)
+        reader.assert_called_with(6)
+        poller.poll.assert_called()
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/worker/test_loops.py" startline="413" endline="424" pcid="1169">
+    def test_poll_err_readable(self):
+        x = X(self.app)
+        reader = Mock(name='reader')
+        x.hub.add_reader(6, reader, 6, 24)
+        x.hub.on_tick.add(x.close_then_error(Mock(), 2))
+        poller = x.hub.poller
+        poller.poll.return_value = [(6, ERR)]
+        with pytest.raises(socket.error):
+            asynloop(*x.args)
+        reader.assert_called_with(6, 24)
+        poller.poll.assert_called()
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/worker/test_loops.py" startline="327" endline="337" pcid="1159">
+    def test_poll_unknown_event(self):
+        x = X(self.app)
+        writer = Mock(name='reader')
+        x.hub.add_writer(6, writer, 6)
+        x.hub.on_tick.add(x.close_then_error(Mock(name='tick'), 2))
+        poller = x.hub.poller
+        poller.poll.return_value = [(6, 0)]
+        with pytest.raises(socket.error):
+            asynloop(*x.args)
+        poller.poll.assert_called()
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/worker/test_loops.py" startline="291" endline="303" pcid="1156">
+    def test_poll_readable_raises_Empty(self):
+        x = X(self.app)
+        reader = Mock(name='reader')
+        x.hub.add_reader(6, reader, 6)
+        x.hub.on_tick.add(x.close_then_error(Mock(name='tick'), 2))
+        poller = x.hub.poller
+        poller.poll.return_value = [(6, READ)]
+        reader.side_effect = Empty()
+        with pytest.raises(socket.error):
+            asynloop(*x.args)
+        reader.assert_called_with(6)
+        poller.poll.assert_called()
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/worker/test_loops.py" startline="304" endline="315" pcid="1157">
+    def test_poll_writable(self):
+        x = X(self.app)
+        writer = Mock(name='writer')
+        x.hub.add_writer(6, writer, 6)
+        x.hub.on_tick.add(x.close_then_error(Mock(name='tick'), 2))
+        poller = x.hub.poller
+        poller.poll.return_value = [(6, WRITE)]
+        with pytest.raises(socket.error):
+            asynloop(*x.args)
+        writer.assert_called_with(6)
+        poller.poll.assert_called()
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/worker/test_loops.py" startline="316" endline="326" pcid="1158">
+    def test_poll_writable_none_registered(self):
+        x = X(self.app)
+        writer = Mock(name='writer')
+        x.hub.add_writer(6, writer, 6)
+        x.hub.on_tick.add(x.close_then_error(Mock(name='tick'), 2))
+        poller = x.hub.poller
+        poller.poll.return_value = [(7, WRITE)]
+        with pytest.raises(socket.error):
+            asynloop(*x.args)
+        poller.poll.assert_called()
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/worker/test_loops.py" startline="353" endline="364" pcid="1162">
+    def test_poll_err_writable(self):
+        x = X(self.app)
+        writer = Mock(name='writer')
+        x.hub.add_writer(6, writer, 6, 48)
+        x.hub.on_tick.add(x.close_then_error(Mock(), 2))
+        poller = x.hub.poller
+        poller.poll.return_value = [(6, ERR)]
+        with pytest.raises(socket.error):
+            asynloop(*x.args)
+        writer.assert_called_with(6, 48)
+        poller.poll.assert_called()
+
+</source>
+</class>
+
+<class classid="24" nclones="2" nlines="14" similarity="71">
+<source file="systems/celery-5.2.3/t/unit/worker/test_loops.py" startline="382" endline="396" pcid="1165">
+    def test_poll_write_generator_stopped(self):
+        x = X(self.app)
+
+        def Gen():
+            if 0:
+                yield
+        gen = Gen()
+        x.hub.add_writer(6, gen)
+        x.hub.on_tick.add(x.close_then_error(Mock(name='tick'), 2))
+        x.hub.poller.poll.return_value = [(6, WRITE)]
+        x.hub.remove = Mock(name='hub.remove()')
+        with pytest.raises(socket.error):
+            asynloop(*x.args)
+        assert gen.gi_frame is None
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/worker/test_loops.py" startline="397" endline="412" pcid="1167">
+    def test_poll_write_generator_raises(self):
+        x = X(self.app)
+
+        def Gen():
+            raise ValueError('foo')
+            yield
+        gen = Gen()
+        x.hub.add_writer(6, gen)
+        x.hub.remove = Mock(name='hub.remove()')
+        x.hub.on_tick.add(x.close_then_error(Mock(name='tick'), 2))
+        x.hub.poller.poll.return_value = [(6, WRITE)]
+        with pytest.raises(ValueError):
+            asynloop(*x.args)
+        assert gen.gi_frame is None
+        x.hub.remove.assert_called_with(6)
+
+</source>
+</class>
+
+<class classid="25" nclones="2" nlines="14" similarity="85">
+<source file="systems/celery-5.2.3/t/unit/worker/test_consumer.py" startline="313" endline="329" pcid="1216">
+    def test_start(self):
+        c = Mock()
+        c.timer = Mock()
+        c.event_dispatcher = Mock()
+
+        with patch('celery.worker.heartbeat.Heart') as hcls:
+            h = Heart(c)
+            assert h.enabled
+            assert h.heartbeat_interval is None
+            assert c.heart is None
+
+            h.start(c)
+            assert c.heart
+            hcls.assert_called_with(c.timer, c.event_dispatcher,
+                                    h.heartbeat_interval)
+            c.heart.start.assert_called_with()
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/worker/test_consumer.py" startline="330" endline="347" pcid="1217">
+    def test_start_heartbeat_interval(self):
+        c = Mock()
+        c.timer = Mock()
+        c.event_dispatcher = Mock()
+
+        with patch('celery.worker.heartbeat.Heart') as hcls:
+            h = Heart(c, False, 20)
+            assert h.enabled
+            assert h.heartbeat_interval == 20
+            assert c.heart is None
+
+            h.start(c)
+            assert c.heart
+            hcls.assert_called_with(c.timer, c.event_dispatcher,
+                                    h.heartbeat_interval)
+            c.heart.start.assert_called_with()
+
+
+</source>
+</class>
+
+<class classid="26" nclones="2" nlines="13" similarity="73">
+<source file="systems/celery-5.2.3/t/unit/fixups/test_django.py" startline="162" endline="174" pcid="1267">
+    def test_on_task_prerun(self):
+        task = Mock()
+        with self.fixup_context(self.app) as (f, _, _):
+            task.request.is_eager = False
+            with patch.object(f, 'close_database'):
+                f.on_task_prerun(task)
+                f.close_database.assert_called_with()
+
+            task.request.is_eager = True
+            with patch.object(f, 'close_database'):
+                f.on_task_prerun(task)
+                f.close_database.assert_not_called()
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/fixups/test_django.py" startline="175" endline="192" pcid="1268">
+    def test_on_task_postrun(self):
+        task = Mock()
+        with self.fixup_context(self.app) as (f, _, _):
+            with patch.object(f, 'close_cache'):
+                task.request.is_eager = False
+                with patch.object(f, 'close_database'):
+                    f.on_task_postrun(task)
+                    f.close_database.assert_called()
+                    f.close_cache.assert_called()
+
+            # when a task is eager, don't close connections
+            with patch.object(f, 'close_cache'):
+                task.request.is_eager = True
+                with patch.object(f, 'close_database'):
+                    f.on_task_postrun(task)
+                    f.close_database.assert_not_called()
+                    f.close_cache.assert_not_called()
+
+</source>
+</class>
+
+<class classid="27" nclones="2" nlines="23" similarity="72">
+<source file="systems/celery-5.2.3/t/unit/app/test_log.py" startline="251" endline="278" pcid="1306">
+    def test_logging_proxy(self, restore_logging):
+        logger = self.setup_logger(loglevel=logging.ERROR, logfile=None,
+                                   root=False)
+
+        with conftest.wrap_logger(logger) as sio:
+            p = LoggingProxy(logger, loglevel=logging.ERROR)
+            p.close()
+            p.write('foo')
+            assert 'foo' not in sio.getvalue()
+            p.closed = False
+            p.write('\n')
+            assert sio.getvalue() == ''
+            write_res = p.write('foo ')
+            assert sio.getvalue() == 'foo \n'
+            assert write_res == 4
+            lines = ['baz', 'xuzzy']
+            p.writelines(lines)
+            for line in lines:
+                assert line in sio.getvalue()
+            p.flush()
+            p.close()
+            assert not p.isatty()
+
+            with conftest.stdouts() as (stdout, stderr):
+                with in_sighandler():
+                    p.write('foo')
+                    assert stderr.getvalue()
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/app/test_log.py" startline="279" endline="302" pcid="1307">
+    def test_logging_proxy_bytes(self, restore_logging):
+        logger = self.setup_logger(loglevel=logging.ERROR, logfile=None,
+                                   root=False)
+
+        with conftest.wrap_logger(logger) as sio:
+            p = LoggingProxy(logger, loglevel=logging.ERROR)
+            p.close()
+            p.write(b'foo')
+            assert 'foo' not in str(sio.getvalue())
+            p.closed = False
+            p.write(b'\n')
+            assert str(sio.getvalue()) == ''
+            write_res = p.write(b'foo ')
+            assert str(sio.getvalue()) == 'foo \n'
+            assert write_res == 4
+            p.flush()
+            p.close()
+            assert not p.isatty()
+
+            with conftest.stdouts() as (stdout, stderr):
+                with in_sighandler():
+                    p.write(b'foo')
+                    assert stderr.getvalue()
+
+</source>
+</class>
+
+<class classid="28" nclones="2" nlines="10" similarity="70">
+<source file="systems/celery-5.2.3/t/unit/app/test_control.py" startline="303" endline="313" pcid="1485">
+    def test_add_consumer(self):
+        self.app.control.add_consumer('foo')
+        self.assert_control_called_with_args(
+            'add_consumer',
+            destination=None,
+            queue='foo',
+            exchange=None,
+            exchange_type='direct',
+            routing_key=None,
+        )
+
+</source>
+<source file="systems/celery-5.2.3/t/unit/app/test_control.py" startline="444" endline="454" pcid="1503">
+    def test_election(self):
+        self.app.control.election('some_id', 'topic', 'action')
+        self.assert_control_called_with_args(
+            'election',
+            destination=None,
+            topic='topic',
+            action='action',
+            id='some_id',
+            _options={'connection': None},
+        )
+
+</source>
+</class>
+
+<class classid="29" nclones="2" nlines="29" similarity="82">
+<source file="systems/celery-5.2.3/celery/contrib/testing/mocks.py" startline="11" endline="44" pcid="1546">
+def TaskMessage(
+    name,  # type: str
+    id=None,  # type: str
+    args=(),  # type: Sequence
+    kwargs=None,  # type: Mapping
+    callbacks=None,  # type: Sequence[Signature]
+    errbacks=None,  # type: Sequence[Signature]
+    chain=None,  # type: Sequence[Signature]
+    shadow=None,  # type: str
+    utc=None,  # type: bool
+    **options  # type: Any
+):
+    # type: (...) -> Any
+    """Create task message in protocol 2 format."""
+    kwargs = {} if not kwargs else kwargs
+    from kombu.serialization import dumps
+
+    from celery import uuid
+    id = id or uuid()
+    message = Mock(name=f'TaskMessage-{id}')
+    message.headers = {
+        'id': id,
+        'task': name,
+        'shadow': shadow,
+    }
+    embed = {'callbacks': callbacks, 'errbacks': errbacks, 'chain': chain}
+    message.headers.update(options)
+    message.content_type, message.content_encoding, message.body = dumps(
+        (args, kwargs, embed), serializer='json',
+    )
+    message.payload = (args, kwargs, embed)
+    return message
+
+
+</source>
+<source file="systems/celery-5.2.3/celery/contrib/testing/mocks.py" startline="45" endline="78" pcid="1547">
+def TaskMessage1(
+    name,  # type: str
+    id=None,  # type: str
+    args=(),  # type: Sequence
+    kwargs=None,  # type: Mapping
+    callbacks=None,  # type: Sequence[Signature]
+    errbacks=None,  # type: Sequence[Signature]
+    chain=None,  # type: Sequence[Signature]
+    **options  # type: Any
+):
+    # type: (...) -> Any
+    """Create task message in protocol 1 format."""
+    kwargs = {} if not kwargs else kwargs
+    from kombu.serialization import dumps
+
+    from celery import uuid
+    id = id or uuid()
+    message = Mock(name=f'TaskMessage-{id}')
+    message.headers = {}
+    message.payload = {
+        'task': name,
+        'id': id,
+        'args': args,
+        'kwargs': kwargs,
+        'callbacks': callbacks,
+        'errbacks': errbacks,
+    }
+    message.payload.update(options)
+    message.content_type, message.content_encoding, message.body = dumps(
+        message.payload,
+    )
+    return message
+
+
+</source>
+</class>
+
+<class classid="30" nclones="2" nlines="14" similarity="80">
+<source file="systems/celery-5.2.3/celery/contrib/pytest.py" startline="65" endline="83" pcid="1585">
+def celery_session_app(request,
+                       celery_config,
+                       celery_parameters,
+                       celery_enable_logging,
+                       use_celery_app_trap):
+    # type: (Any, Any, Any, Any, Any) -> Celery
+    """Session Fixture: Return app for session fixtures."""
+    mark = request.node.get_closest_marker('celery')
+    config = dict(celery_config, **mark.kwargs if mark else {})
+    with _create_app(enable_logging=celery_enable_logging,
+                     use_trap=use_celery_app_trap,
+                     parameters=celery_parameters,
+                     **config) as app:
+        if not use_celery_app_trap:
+            app.set_default()
+            app.set_current()
+        yield app
+
+
+</source>
+<source file="systems/celery-5.2.3/celery/contrib/pytest.py" startline="173" endline="187" pcid="1593">
+def celery_app(request,
+               celery_config,
+               celery_parameters,
+               celery_enable_logging,
+               use_celery_app_trap):
+    """Fixture creating a Celery application instance."""
+    mark = request.node.get_closest_marker('celery')
+    config = dict(celery_config, **mark.kwargs if mark else {})
+    with _create_app(enable_logging=celery_enable_logging,
+                     use_trap=use_celery_app_trap,
+                     parameters=celery_parameters,
+                     **config) as app:
+        yield app
+
+
+</source>
+</class>
+
+<class classid="31" nclones="9" nlines="16" similarity="70">
+<source file="systems/celery-5.2.3/celery/bin/amqp.py" startline="89" endline="107" pcid="1610">
+def exchange_declare(amqp_context, exchange, type, passive, durable,
+                     auto_delete):
+    if amqp_context.channel is None:
+        amqp_context.echo_error('Not connected to broker. Please retry...')
+        amqp_context.reconnect()
+    else:
+        try:
+            amqp_context.channel.exchange_declare(exchange=exchange,
+                                                  type=type,
+                                                  passive=passive,
+                                                  durable=durable,
+                                                  auto_delete=auto_delete)
+        except Exception as e:
+            amqp_context.echo_error(e)
+            amqp_context.reconnect()
+        else:
+            amqp_context.echo_ok()
+
+
+</source>
+<source file="systems/celery-5.2.3/celery/bin/amqp.py" startline="166" endline="185" pcid="1613">
+def queue_declare(amqp_context, queue, passive, durable, auto_delete):
+    if amqp_context.channel is None:
+        amqp_context.echo_error('Not connected to broker. Please retry...')
+        amqp_context.reconnect()
+    else:
+        try:
+            retval = amqp_context.channel.queue_declare(queue=queue,
+                                                        passive=passive,
+                                                        durable=durable,
+                                                        auto_delete=auto_delete)
+        except Exception as e:
+            amqp_context.echo_error(e)
+            amqp_context.reconnect()
+        else:
+            amqp_context.cli_context.secho(
+                'queue:{} messages:{} consumers:{}'.format(*retval),
+                fg='cyan', bold=True)
+            amqp_context.echo_ok()
+
+
+</source>
+<source file="systems/celery-5.2.3/celery/bin/amqp.py" startline="272" endline="293" pcid="1617">
+def basic_publish(amqp_context, msg, exchange, routing_key, mandatory,
+                  immediate):
+    if amqp_context.channel is None:
+        amqp_context.echo_error('Not connected to broker. Please retry...')
+        amqp_context.reconnect()
+    else:
+        # XXX Hack to fix Issue #2013
+        if isinstance(amqp_context.connection.connection, Connection):
+            msg = Message(msg)
+        try:
+            amqp_context.channel.basic_publish(msg,
+                                               exchange=exchange,
+                                               routing_key=routing_key,
+                                               mandatory=mandatory,
+                                               immediate=immediate)
+        except Exception as e:
+            amqp_context.echo_error(e)
+            amqp_context.reconnect()
+        else:
+            amqp_context.echo_ok()
+
+
+</source>
+<source file="systems/celery-5.2.3/celery/bin/amqp.py" startline="137" endline="152" pcid="1612">
+def queue_bind(amqp_context, queue, exchange, routing_key):
+    if amqp_context.channel is None:
+        amqp_context.echo_error('Not connected to broker. Please retry...')
+        amqp_context.reconnect()
+    else:
+        try:
+            amqp_context.channel.queue_bind(queue=queue,
+                                            exchange=exchange,
+                                            routing_key=routing_key)
+        except Exception as e:
+            amqp_context.echo_error(e)
+            amqp_context.reconnect()
+        else:
+            amqp_context.echo_ok()
+
+
+</source>
+<source file="systems/celery-5.2.3/celery/bin/amqp.py" startline="114" endline="128" pcid="1611">
+def exchange_delete(amqp_context, exchange, if_unused):
+    if amqp_context.channel is None:
+        amqp_context.echo_error('Not connected to broker. Please retry...')
+        amqp_context.reconnect()
+    else:
+        try:
+            amqp_context.channel.exchange_delete(exchange=exchange,
+                                                 if_unused=if_unused)
+        except Exception as e:
+            amqp_context.echo_error(e)
+            amqp_context.reconnect()
+        else:
+            amqp_context.echo_ok()
+
+
+</source>
+<source file="systems/celery-5.2.3/celery/bin/amqp.py" startline="196" endline="214" pcid="1614">
+def queue_delete(amqp_context, queue, if_unused, if_empty):
+    if amqp_context.channel is None:
+        amqp_context.echo_error('Not connected to broker. Please retry...')
+        amqp_context.reconnect()
+    else:
+        try:
+            retval = amqp_context.channel.queue_delete(queue=queue,
+                                                       if_unused=if_unused,
+                                                       if_empty=if_empty)
+        except Exception as e:
+            amqp_context.echo_error(e)
+            amqp_context.reconnect()
+        else:
+            amqp_context.cli_context.secho(
+                f'{retval} messages deleted.',
+                fg='cyan', bold=True)
+            amqp_context.echo_ok()
+
+
+</source>
+<source file="systems/celery-5.2.3/celery/bin/amqp.py" startline="243" endline="257" pcid="1616">
+def basic_get(amqp_context, queue, no_ack):
+    if amqp_context.channel is None:
+        amqp_context.echo_error('Not connected to broker. Please retry...')
+        amqp_context.reconnect()
+    else:
+        try:
+            message = amqp_context.channel.basic_get(queue, no_ack=no_ack)
+        except Exception as e:
+            amqp_context.echo_error(e)
+            amqp_context.reconnect()
+        else:
+            amqp_context.respond(dump_message(message))
+            amqp_context.echo_ok()
+
+
+</source>
+<source file="systems/celery-5.2.3/celery/bin/amqp.py" startline="298" endline="311" pcid="1618">
+def basic_ack(amqp_context, delivery_tag):
+    if amqp_context.channel is None:
+        amqp_context.echo_error('Not connected to broker. Please retry...')
+        amqp_context.reconnect()
+    else:
+        try:
+            amqp_context.channel.basic_ack(delivery_tag)
+        except Exception as e:
+            amqp_context.echo_error(e)
+            amqp_context.reconnect()
+        else:
+            amqp_context.echo_ok()
+
+
+</source>
+<source file="systems/celery-5.2.3/celery/bin/amqp.py" startline="219" endline="235" pcid="1615">
+def queue_purge(amqp_context, queue):
+    if amqp_context.channel is None:
+        amqp_context.echo_error('Not connected to broker. Please retry...')
+        amqp_context.reconnect()
+    else:
+        try:
+            retval = amqp_context.channel.queue_purge(queue=queue)
+        except Exception as e:
+            amqp_context.echo_error(e)
+            amqp_context.reconnect()
+        else:
+            amqp_context.cli_context.secho(
+                f'{retval} messages deleted.',
+                fg='cyan', bold=True)
+            amqp_context.echo_ok()
+
+
+</source>
+</class>
+
+<class classid="32" nclones="2" nlines="10" similarity="80">
+<source file="systems/celery-5.2.3/celery/concurrency/gevent.py" startline="46" endline="56" pcid="2264">
+    def _enter(self, eta, priority, entry, **kwargs):
+        secs = max(eta - monotonic(), 0)
+        g = self._Greenlet.spawn_later(secs, entry)
+        self._queue.add(g)
+        g.link(self._entry_exit)
+        g.entry = entry
+        g.eta = eta
+        g.priority = priority
+        g.canceled = False
+        return g
+
+</source>
+<source file="systems/celery-5.2.3/celery/concurrency/eventlet.py" startline="48" endline="58" pcid="2285">
+    def _enter(self, eta, priority, entry, **kwargs):
+        secs = max(eta - monotonic(), 0)
+        g = self._spawn_after(secs, entry)
+        self._queue.add(g)
+        g.link(self._entry_exit, entry)
+        g.entry = entry
+        g.eta = eta
+        g.priority = priority
+        g.canceled = False
+        return g
+
+</source>
+</class>
+
+<class classid="33" nclones="2" nlines="20" similarity="71">
+<source file="systems/celery-5.2.3/celery/worker/request.py" startline="323" endline="355" pcid="2481">
+    def execute_using_pool(self, pool, **kwargs):
+        """Used by the worker to send this task to the pool.
+
+        Arguments:
+            pool (~celery.concurrency.base.TaskPool): The execution pool
+                used to execute this request.
+
+        Raises:
+            celery.exceptions.TaskRevokedError: if the task was revoked.
+        """
+        task_id = self.id
+        task = self._task
+        if self.revoked():
+            raise TaskRevokedError(task_id)
+
+        time_limit, soft_time_limit = self.time_limits
+        trace = fast_trace_task if self._app.use_fast_trace_task else trace_task_ret
+        result = pool.apply_async(
+            trace,
+            args=(self._type, task_id, self._request_dict, self._body,
+                  self._content_type, self._content_encoding),
+            accept_callback=self.on_accepted,
+            timeout_callback=self.on_timeout,
+            callback=self.on_success,
+            error_callback=self.on_failure,
+            soft_timeout=soft_time_limit or task.soft_time_limit,
+            timeout=time_limit or task.time_limit,
+            correlation_id=task_id,
+        )
+        # cannot create weakref to None
+        self._apply_result = maybe(ref, result)
+        return result
+
+</source>
+<source file="systems/celery-5.2.3/celery/worker/request.py" startline="701" endline="723" pcid="2508">
+        def execute_using_pool(self, pool, **kwargs):
+            task_id = self.task_id
+            if (self.expires or task_id in revoked_tasks) and self.revoked():
+                raise TaskRevokedError(task_id)
+
+            time_limit, soft_time_limit = self.time_limits
+            result = apply_async(
+                trace,
+                args=(self.type, task_id, self.request_dict, self.body,
+                      self.content_type, self.content_encoding),
+                accept_callback=self.on_accepted,
+                timeout_callback=self.on_timeout,
+                callback=self.on_success,
+                error_callback=self.on_failure,
+                soft_timeout=soft_time_limit or default_soft_time_limit,
+                timeout=time_limit or default_time_limit,
+                correlation_id=task_id,
+            )
+            # cannot create weakref to None
+            # pylint: disable=attribute-defined-outside-init
+            self._apply_result = maybe(ref, result)
+            return result
+
+</source>
+</class>
+
+<class classid="34" nclones="2" nlines="12" similarity="75">
+<source file="systems/celery-5.2.3/celery/app/annotations.py" startline="34" endline="49" pcid="2536">
+def prepare(annotations):
+    """Expand the :setting:`task_annotations` setting."""
+    def expand_annotation(annotation):
+        if isinstance(annotation, dict):
+            return MapAnnotation(annotation)
+        elif isinstance(annotation, str):
+            return mlazy(instantiate, annotation)
+        return annotation
+
+    if annotations is None:
+        return ()
+    elif not isinstance(annotations, (list, tuple)):
+        annotations = (annotations,)
+    return [expand_annotation(anno) for anno in annotations]
+
+
+</source>
+<source file="systems/celery-5.2.3/celery/app/routes.py" startline="122" endline="136" pcid="2565">
+def prepare(routes):
+    """Expand the :setting:`task_routes` setting."""
+
+    def expand_route(route):
+        if isinstance(route, (Mapping, list, tuple)):
+            return MapRoute(route)
+        if isinstance(route, str):
+            return mlazy(expand_router_string, route)
+        return route
+
+    if routes is None:
+        return ()
+    if not isinstance(routes, (list, tuple)):
+        routes = (routes,)
+    return [expand_route(route) for route in routes]
+</source>
+</class>
+
+</clones>

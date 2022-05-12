@@ -1,0 +1,1042 @@
+<clonepair1>
+<source file="systems/deepchem-2.6.1/deepchem/molnet/load_function/kinase_datasets.py" startline="32" endline="125" pcid="1744"></source>
+def gen_kinase(KINASE_tasks,
+               train_dir,
+               valid_dir,
+               test_dir,
+               data_dir,
+               shard_size=2000):
+
+  time1 = time.time()
+
+  train_files = os.path.join(data_dir, TRAIN_FILENAME)
+  valid_files = os.path.join(data_dir, VALID_FILENAME)
+  test_files = os.path.join(data_dir, TEST_FILENAME)
+
+  # Download files if they don't exist
+
+  if not os.path.exists(train_files):
+
+    logger.info("Downloading training file...")
+    deepchem.utils.data_utils.download_url(url=TRAIN_URL, dest_dir=data_dir)
+    logger.info("Training file download complete.")
+
+    logger.info("Downloading validation file...")
+    deepchem.utils.data_utils.download_url(url=VALID_URL, dest_dir=data_dir)
+    logger.info("Validation file download complete.")
+
+    logger.info("Downloading test file...")
+    deepchem.utils.data_utils.download_url(url=TEST_URL, dest_dir=data_dir)
+    logger.info("Test file download complete")
+
+  # Featurize the KINASE dataset
+  logger.info("About to featurize KINASE dataset.")
+  featurizer = deepchem.feat.UserDefinedFeaturizer(merck_descriptors)
+
+  loader = deepchem.data.UserCSVLoader(
+      tasks=KINASE_tasks, id_field="Molecule", featurizer=featurizer)
+
+  logger.info("Featurizing train datasets...")
+  train_dataset = loader.featurize(
+      input_files=train_files, shard_size=shard_size)
+
+  logger.info("Featurizing validation datasets...")
+  valid_dataset = loader.featurize(
+      input_files=valid_files, shard_size=shard_size)
+
+  logger.info("Featurizing test datasets....")
+  test_dataset = loader.featurize(input_files=test_files, shard_size=shard_size)
+
+  logger.info("Remove missing entries from dataset")
+  remove_missing_entries(train_dataset)
+  remove_missing_entries(valid_dataset)
+  remove_missing_entries(test_dataset)
+
+  # Shuffle the training data
+  logger.info("Shuffling the training dataset")
+  train_dataset.sparse_shuffle()
+
+  # Apply transformations
+  logger.info("Transformating datasets with transformers")
+  transformers = get_transformers(train_dataset)
+
+  for transformer in transformers:
+    logger.info("Performing transformations with {}".format(
+        transformer.__class__.__name__))
+
+    logger.info("Transforming the training dataset...")
+    train_dataset = transformer.transform(train_dataset)
+
+    logger.info("Transforming the validation dataset...")
+    valid_dataset = transformer.transform(valid_dataset)
+
+    logger.info("Transforming the test dataset...")
+    test_dataset = transformer.transform(test_dataset)
+
+  logger.info("Transformations complete.")
+  logger.info("Moving datasets to corresponding directories")
+
+  train_dataset.move(train_dir)
+  logger.info("Train dataset moved.")
+
+  valid_dataset.move(valid_dir)
+  logger.info("Validation dataset moved.")
+
+  test_dataset.move(test_dir)
+  logger.info("Test dataset moved.")
+
+  time2 = time.time()
+
+  # TIMING
+
+  logger.info("TIMING: KINASE fitting took %0.3f s" % (time2 - time1))
+
+  return train_dataset, valid_dataset, test_dataset
+
+
+</clonepair1>
+
+<clonepair1>
+<source file="systems/deepchem-2.6.1/deepchem/molnet/load_function/factors_datasets.py" startline="32" endline="119" pcid="1693"></source>
+def gen_factors(FACTORS_tasks,
+                data_dir,
+                train_dir,
+                valid_dir,
+                test_dir,
+                shard_size=2000):
+  """Loads the FACTORS dataset; does not do train/test split"""
+
+  time1 = time.time()
+
+  train_files = os.path.join(data_dir, TRAIN_FILENAME)
+  valid_files = os.path.join(data_dir, VALID_FILENAME)
+  test_files = os.path.join(data_dir, TEST_FILENAME)
+
+  if not os.path.exists(train_files):
+    logger.info("Downloading train file...")
+    deepchem.utils.data_utils.download_url(url=TRAIN_URL, dest_dir=data_dir)
+    logger.info("Training file download complete.")
+
+    logger.info("Downloading validation file...")
+    deepchem.utils.data_utils.download_url(url=VALID_URL, dest_dir=data_dir)
+    logger.info("Validation file download complete.")
+
+    logger.info("Downloading test file...")
+    deepchem.utils.data_utils.download_url(url=TEST_URL, dest_dir=data_dir)
+    logger.info("Test file download complete")
+
+  # Featurize the FACTORS dataset
+  logger.info("About to featurize the FACTORS dataset")
+  featurizer = deepchem.feat.UserDefinedFeaturizer(merck_descriptors)
+  loader = deepchem.data.UserCSVLoader(
+      tasks=FACTORS_tasks, id_field="Molecule", featurizer=featurizer)
+
+  logger.info("Featurizing the train dataset...")
+  train_dataset = loader.featurize(train_files, shard_size=shard_size)
+
+  logger.info("Featurizing the validation dataset...")
+  valid_dataset = loader.featurize(valid_files, shard_size=shard_size)
+
+  logger.info("Featurizing the test dataset...")
+  test_dataset = loader.featurize(test_files, shard_size=shard_size)
+
+  logger.info("Remove missing entries from dataset")
+  remove_missing_entries(train_dataset)
+  remove_missing_entries(valid_dataset)
+  remove_missing_entries(test_dataset)
+
+  # Shuffle the training data
+  logger.info("Shuffling the training dataset")
+  train_dataset.sparse_shuffle()
+
+  # Apply transformations
+  logger.info("Transforming datasets with transformers")
+  transformers = get_transformers(train_dataset)
+
+  for transformer in transformers:
+    logger.info("Performing transformations with {}".format(
+        transformer.__class__.__name__))
+
+    logger.info("Transforming the training dataset...")
+    train_dataset = transformer.transform(train_dataset)
+
+    logger.info("Transforming the validation dataset...")
+    valid_dataset = transformer.transform(valid_dataset)
+
+    logger.info("Transforming the test dataset...")
+    test_dataset = transformer.transform(test_dataset)
+
+  logger.info("Transformations complete.")
+  logger.info("Moving datasets to corresponding directories")
+
+  train_dataset.move(train_dir)
+  logger.info("Train dataset moved.")
+
+  valid_dataset.move(valid_dir)
+  logger.info("Validation dataset moved.")
+
+  test_dataset.move(test_dir)
+  logger.info("Test dataset moved.")
+
+  time2 = time.time()
+
+  # TIMING
+  logger.info("TIMING: FACTORS fitting took %0.3f s" % (time2 - time1))
+
+  return train_dataset, valid_dataset, test_dataset
+
+
+</clonepair1>
+<clonepair2>
+<source file="systems/deepchem-2.6.1/deepchem/molnet/load_function/kinase_datasets.py" startline="32" endline="125" pcid="1744"></source>
+def gen_kinase(KINASE_tasks,
+               train_dir,
+               valid_dir,
+               test_dir,
+               data_dir,
+               shard_size=2000):
+
+  time1 = time.time()
+
+  train_files = os.path.join(data_dir, TRAIN_FILENAME)
+  valid_files = os.path.join(data_dir, VALID_FILENAME)
+  test_files = os.path.join(data_dir, TEST_FILENAME)
+
+  # Download files if they don't exist
+
+  if not os.path.exists(train_files):
+
+    logger.info("Downloading training file...")
+    deepchem.utils.data_utils.download_url(url=TRAIN_URL, dest_dir=data_dir)
+    logger.info("Training file download complete.")
+
+    logger.info("Downloading validation file...")
+    deepchem.utils.data_utils.download_url(url=VALID_URL, dest_dir=data_dir)
+    logger.info("Validation file download complete.")
+
+    logger.info("Downloading test file...")
+    deepchem.utils.data_utils.download_url(url=TEST_URL, dest_dir=data_dir)
+    logger.info("Test file download complete")
+
+  # Featurize the KINASE dataset
+  logger.info("About to featurize KINASE dataset.")
+  featurizer = deepchem.feat.UserDefinedFeaturizer(merck_descriptors)
+
+  loader = deepchem.data.UserCSVLoader(
+      tasks=KINASE_tasks, id_field="Molecule", featurizer=featurizer)
+
+  logger.info("Featurizing train datasets...")
+  train_dataset = loader.featurize(
+      input_files=train_files, shard_size=shard_size)
+
+  logger.info("Featurizing validation datasets...")
+  valid_dataset = loader.featurize(
+      input_files=valid_files, shard_size=shard_size)
+
+  logger.info("Featurizing test datasets....")
+  test_dataset = loader.featurize(input_files=test_files, shard_size=shard_size)
+
+  logger.info("Remove missing entries from dataset")
+  remove_missing_entries(train_dataset)
+  remove_missing_entries(valid_dataset)
+  remove_missing_entries(test_dataset)
+
+  # Shuffle the training data
+  logger.info("Shuffling the training dataset")
+  train_dataset.sparse_shuffle()
+
+  # Apply transformations
+  logger.info("Transformating datasets with transformers")
+  transformers = get_transformers(train_dataset)
+
+  for transformer in transformers:
+    logger.info("Performing transformations with {}".format(
+        transformer.__class__.__name__))
+
+    logger.info("Transforming the training dataset...")
+    train_dataset = transformer.transform(train_dataset)
+
+    logger.info("Transforming the validation dataset...")
+    valid_dataset = transformer.transform(valid_dataset)
+
+    logger.info("Transforming the test dataset...")
+    test_dataset = transformer.transform(test_dataset)
+
+  logger.info("Transformations complete.")
+  logger.info("Moving datasets to corresponding directories")
+
+  train_dataset.move(train_dir)
+  logger.info("Train dataset moved.")
+
+  valid_dataset.move(valid_dir)
+  logger.info("Validation dataset moved.")
+
+  test_dataset.move(test_dir)
+  logger.info("Test dataset moved.")
+
+  time2 = time.time()
+
+  # TIMING
+
+  logger.info("TIMING: KINASE fitting took %0.3f s" % (time2 - time1))
+
+  return train_dataset, valid_dataset, test_dataset
+
+
+</clonepair2>
+
+<clonepair2>
+<source file="systems/deepchem-2.6.1/deepchem/molnet/load_function/uv_datasets.py" startline="33" endline="119" pcid="1737"></source>
+def gen_uv(UV_tasks, data_dir, train_dir, valid_dir, test_dir, shard_size=2000):
+  """Loading the UV dataset; does not do train/test split"""
+
+  time1 = time.time()
+
+  train_files = os.path.join(data_dir, TRAIN_FILENAME)
+  valid_files = os.path.join(data_dir, VALID_FILENAME)
+  test_files = os.path.join(data_dir, TEST_FILENAME)
+
+  # Download files if they don't exist
+
+  if not os.path.exists(train_files):
+
+    logger.info("Downloading training file...")
+    deepchem.utils.data_utils.download_url(url=TRAIN_URL, dest_dir=data_dir)
+    logger.info("Training file download complete.")
+
+    logger.info("Downloading validation file...")
+    deepchem.utils.data_utils.download_url(url=VALID_URL, dest_dir=data_dir)
+    logger.info("Validation file download complete.")
+
+    logger.info("Downloading test file...")
+    deepchem.utils.data_utils.download_url(url=TEST_URL, dest_dir=data_dir)
+    logger.info("Test file download complete")
+
+  # Featurizing datasets
+  logger.info("About to featurize UV dataset.")
+  featurizer = deepchem.feat.UserDefinedFeaturizer(merck_descriptors)
+  loader = deepchem.data.UserCSVLoader(
+      tasks=UV_tasks, id_field="Molecule", featurizer=featurizer)
+
+  logger.info("Featurizing train datasets...")
+  train_dataset = loader.featurize(train_files, shard_size=shard_size)
+
+  logger.info("Featurizing validation datasets...")
+  valid_dataset = loader.featurize(valid_files, shard_size=shard_size)
+
+  logger.info("Featurizing test datasets....")
+  test_dataset = loader.featurize(test_files, shard_size=shard_size)
+
+  # Missing entry removal
+  logger.info("Removing missing entries from dataset.")
+  remove_missing_entries(train_dataset)
+  remove_missing_entries(valid_dataset)
+  remove_missing_entries(test_dataset)
+
+  # Shuffle the training data
+  logger.info("Shuffling the training dataset")
+  train_dataset.sparse_shuffle()
+
+  # Apply transformations
+  logger.info("Starting transformations")
+  transformers = get_transformers(train_dataset)
+
+  for transformer in transformers:
+    logger.info("Performing transformations with {}".format(
+        transformer.__class__.__name__))
+
+    logger.info("Transforming the training dataset...")
+    train_dataset = transformer.transform(train_dataset)
+
+    logger.info("Transforming the validation dataset...")
+    valid_dataset = transformer.transform(valid_dataset)
+
+    logger.info("Transforming the test dataset...")
+    test_dataset = transformer.transform(test_dataset)
+
+  logger.info("Transformations complete.")
+  logger.info("Moving datasets to corresponding directories")
+
+  train_dataset.move(train_dir)
+  logger.info("Train dataset moved.")
+
+  valid_dataset.move(valid_dir)
+  logger.info("Validation dataset moved.")
+
+  test_dataset.move(test_dir)
+  logger.info("Test dataset moved.")
+
+  time2 = time.time()
+
+  # TIMING
+  logger.info("TIMING: UV fitting took %0.3f s" % (time2 - time1))
+
+  return train_dataset, valid_dataset, test_dataset
+
+
+</clonepair2>
+<clonepair3>
+<source file="systems/deepchem-2.6.1/deepchem/molnet/load_function/factors_datasets.py" startline="32" endline="119" pcid="1693"></source>
+def gen_factors(FACTORS_tasks,
+                data_dir,
+                train_dir,
+                valid_dir,
+                test_dir,
+                shard_size=2000):
+  """Loads the FACTORS dataset; does not do train/test split"""
+
+  time1 = time.time()
+
+  train_files = os.path.join(data_dir, TRAIN_FILENAME)
+  valid_files = os.path.join(data_dir, VALID_FILENAME)
+  test_files = os.path.join(data_dir, TEST_FILENAME)
+
+  if not os.path.exists(train_files):
+    logger.info("Downloading train file...")
+    deepchem.utils.data_utils.download_url(url=TRAIN_URL, dest_dir=data_dir)
+    logger.info("Training file download complete.")
+
+    logger.info("Downloading validation file...")
+    deepchem.utils.data_utils.download_url(url=VALID_URL, dest_dir=data_dir)
+    logger.info("Validation file download complete.")
+
+    logger.info("Downloading test file...")
+    deepchem.utils.data_utils.download_url(url=TEST_URL, dest_dir=data_dir)
+    logger.info("Test file download complete")
+
+  # Featurize the FACTORS dataset
+  logger.info("About to featurize the FACTORS dataset")
+  featurizer = deepchem.feat.UserDefinedFeaturizer(merck_descriptors)
+  loader = deepchem.data.UserCSVLoader(
+      tasks=FACTORS_tasks, id_field="Molecule", featurizer=featurizer)
+
+  logger.info("Featurizing the train dataset...")
+  train_dataset = loader.featurize(train_files, shard_size=shard_size)
+
+  logger.info("Featurizing the validation dataset...")
+  valid_dataset = loader.featurize(valid_files, shard_size=shard_size)
+
+  logger.info("Featurizing the test dataset...")
+  test_dataset = loader.featurize(test_files, shard_size=shard_size)
+
+  logger.info("Remove missing entries from dataset")
+  remove_missing_entries(train_dataset)
+  remove_missing_entries(valid_dataset)
+  remove_missing_entries(test_dataset)
+
+  # Shuffle the training data
+  logger.info("Shuffling the training dataset")
+  train_dataset.sparse_shuffle()
+
+  # Apply transformations
+  logger.info("Transforming datasets with transformers")
+  transformers = get_transformers(train_dataset)
+
+  for transformer in transformers:
+    logger.info("Performing transformations with {}".format(
+        transformer.__class__.__name__))
+
+    logger.info("Transforming the training dataset...")
+    train_dataset = transformer.transform(train_dataset)
+
+    logger.info("Transforming the validation dataset...")
+    valid_dataset = transformer.transform(valid_dataset)
+
+    logger.info("Transforming the test dataset...")
+    test_dataset = transformer.transform(test_dataset)
+
+  logger.info("Transformations complete.")
+  logger.info("Moving datasets to corresponding directories")
+
+  train_dataset.move(train_dir)
+  logger.info("Train dataset moved.")
+
+  valid_dataset.move(valid_dir)
+  logger.info("Validation dataset moved.")
+
+  test_dataset.move(test_dir)
+  logger.info("Test dataset moved.")
+
+  time2 = time.time()
+
+  # TIMING
+  logger.info("TIMING: FACTORS fitting took %0.3f s" % (time2 - time1))
+
+  return train_dataset, valid_dataset, test_dataset
+
+
+</clonepair3>
+
+<clonepair3>
+<source file="systems/deepchem-2.6.1/deepchem/molnet/load_function/uv_datasets.py" startline="33" endline="119" pcid="1737"></source>
+def gen_uv(UV_tasks, data_dir, train_dir, valid_dir, test_dir, shard_size=2000):
+  """Loading the UV dataset; does not do train/test split"""
+
+  time1 = time.time()
+
+  train_files = os.path.join(data_dir, TRAIN_FILENAME)
+  valid_files = os.path.join(data_dir, VALID_FILENAME)
+  test_files = os.path.join(data_dir, TEST_FILENAME)
+
+  # Download files if they don't exist
+
+  if not os.path.exists(train_files):
+
+    logger.info("Downloading training file...")
+    deepchem.utils.data_utils.download_url(url=TRAIN_URL, dest_dir=data_dir)
+    logger.info("Training file download complete.")
+
+    logger.info("Downloading validation file...")
+    deepchem.utils.data_utils.download_url(url=VALID_URL, dest_dir=data_dir)
+    logger.info("Validation file download complete.")
+
+    logger.info("Downloading test file...")
+    deepchem.utils.data_utils.download_url(url=TEST_URL, dest_dir=data_dir)
+    logger.info("Test file download complete")
+
+  # Featurizing datasets
+  logger.info("About to featurize UV dataset.")
+  featurizer = deepchem.feat.UserDefinedFeaturizer(merck_descriptors)
+  loader = deepchem.data.UserCSVLoader(
+      tasks=UV_tasks, id_field="Molecule", featurizer=featurizer)
+
+  logger.info("Featurizing train datasets...")
+  train_dataset = loader.featurize(train_files, shard_size=shard_size)
+
+  logger.info("Featurizing validation datasets...")
+  valid_dataset = loader.featurize(valid_files, shard_size=shard_size)
+
+  logger.info("Featurizing test datasets....")
+  test_dataset = loader.featurize(test_files, shard_size=shard_size)
+
+  # Missing entry removal
+  logger.info("Removing missing entries from dataset.")
+  remove_missing_entries(train_dataset)
+  remove_missing_entries(valid_dataset)
+  remove_missing_entries(test_dataset)
+
+  # Shuffle the training data
+  logger.info("Shuffling the training dataset")
+  train_dataset.sparse_shuffle()
+
+  # Apply transformations
+  logger.info("Starting transformations")
+  transformers = get_transformers(train_dataset)
+
+  for transformer in transformers:
+    logger.info("Performing transformations with {}".format(
+        transformer.__class__.__name__))
+
+    logger.info("Transforming the training dataset...")
+    train_dataset = transformer.transform(train_dataset)
+
+    logger.info("Transforming the validation dataset...")
+    valid_dataset = transformer.transform(valid_dataset)
+
+    logger.info("Transforming the test dataset...")
+    test_dataset = transformer.transform(test_dataset)
+
+  logger.info("Transformations complete.")
+  logger.info("Moving datasets to corresponding directories")
+
+  train_dataset.move(train_dir)
+  logger.info("Train dataset moved.")
+
+  valid_dataset.move(valid_dir)
+  logger.info("Validation dataset moved.")
+
+  test_dataset.move(test_dir)
+  logger.info("Test dataset moved.")
+
+  time2 = time.time()
+
+  # TIMING
+  logger.info("TIMING: UV fitting took %0.3f s" % (time2 - time1))
+
+  return train_dataset, valid_dataset, test_dataset
+
+
+</clonepair3>
+<clonepair4>
+<source file="systems/deepchem-2.6.1/deepchem/molnet/load_function/factors_datasets.py" startline="120" endline="189" pcid="1694"></source>
+def load_factors(shard_size=2000, featurizer=None, split=None, reload=True):
+  """Loads FACTOR dataset; does not do train/test split
+
+  The Factors dataset is an in-house dataset from Merck that was first introduced in the following paper:
+  Ramsundar, Bharath, et al. "Is multitask deep learning practical for pharma?." Journal of chemical information and modeling 57.8 (2017): 2068-2076.
+
+  It contains 1500 Merck in-house compounds that were measured
+  for IC50 of inhibition on 12 serine proteases. Unlike most of
+  the other datasets featured in MoleculeNet, the Factors
+  collection does not have structures for the compounds tested
+  since they were proprietary Merck compounds. However, the
+  collection does feature pre-computed descriptors for these
+  compounds.
+
+  Note that the original train/valid/test split from the source
+  data was preserved here, so this function doesn't allow for
+  alternate modes of splitting. Similarly, since the source data
+  came pre-featurized, it is not possible to apply alternative
+  featurizations.
+
+  Parameters
+  ----------
+  shard_size: int, optional
+    Size of the DiskDataset shards to write on disk
+  featurizer: optional
+    Ignored since featurization pre-computed
+  split: optional
+    Ignored since split pre-computed
+  reload: bool, optional
+    Whether to automatically re-load from disk
+
+  """
+
+  FACTORS_tasks = [
+      'T_00001', 'T_00002', 'T_00003', 'T_00004', 'T_00005', 'T_00006',
+      'T_00007', 'T_00008', 'T_00009', 'T_00010', 'T_00011', 'T_00012'
+  ]
+
+  data_dir = deepchem.utils.data_utils.get_data_dir()
+  data_dir = os.path.join(data_dir, "factors")
+
+  if not os.path.exists(data_dir):
+    os.mkdir(data_dir)
+
+  train_dir = os.path.join(data_dir, "train_dir")
+  valid_dir = os.path.join(data_dir, "valid_dir")
+  test_dir = os.path.join(data_dir, "test_dir")
+
+  if (os.path.exists(train_dir) and os.path.exists(valid_dir) and
+      os.path.exists(test_dir)):
+
+    logger.info("Reloading existing datasets")
+    train_dataset = deepchem.data.DiskDataset(train_dir)
+    valid_dataset = deepchem.data.DiskDataset(valid_dir)
+    test_dataset = deepchem.data.DiskDataset(test_dir)
+
+  else:
+    logger.info("Featurizing datasets")
+    train_dataset, valid_dataset, test_dataset = gen_factors(
+        FACTORS_tasks=FACTORS_tasks,
+        data_dir=data_dir,
+        train_dir=train_dir,
+        valid_dir=valid_dir,
+        test_dir=test_dir,
+        shard_size=shard_size)
+
+  transformers = get_transformers(train_dataset)
+
+  return FACTORS_tasks, (train_dataset, valid_dataset,
+                         test_dataset), transformers
+</clonepair4>
+
+<clonepair4>
+<source file="systems/deepchem-2.6.1/deepchem/molnet/load_function/uv_datasets.py" startline="120" endline="182" pcid="1738"></source>
+def load_uv(shard_size=2000, featurizer=None, split=None, reload=True):
+  """Load UV dataset; does not do train/test split
+
+  The UV dataset is an in-house dataset from Merck that was first introduced in the following paper:
+  Ramsundar, Bharath, et al. "Is multitask deep learning practical for pharma?." Journal of chemical information and modeling 57.8 (2017): 2068-2076.
+
+  The UV dataset tests 10,000 of Merck's internal compounds on
+  190 absorption wavelengths between 210 and 400 nm. Unlike
+  most of the other datasets featured in MoleculeNet, the UV
+  collection does not have structures for the compounds tested
+  since they were proprietary Merck compounds. However, the
+  collection does feature pre-computed descriptors for these
+  compounds.
+
+  Note that the original train/valid/test split from the source
+  data was preserved here, so this function doesn't allow for
+  alternate modes of splitting. Similarly, since the source data
+  came pre-featurized, it is not possible to apply alternative
+  featurizations.
+
+  Parameters
+  ----------
+  shard_size: int, optional
+    Size of the DiskDataset shards to write on disk
+  featurizer: optional
+    Ignored since featurization pre-computed
+  split: optional
+    Ignored since split pre-computed
+  reload: bool, optional
+    Whether to automatically re-load from disk
+  """
+
+  data_dir = deepchem.utils.data_utils.get_data_dir()
+  data_dir = os.path.join(data_dir, "UV")
+
+  if not os.path.exists(data_dir):
+    os.mkdir(data_dir)
+
+  train_dir = os.path.join(data_dir, "train_dir")
+  valid_dir = os.path.join(data_dir, "valid_dir")
+  test_dir = os.path.join(data_dir, "test_dir")
+
+  if (os.path.exists(train_dir) and os.path.exists(valid_dir) and
+      os.path.exists(test_dir)):
+
+    logger.info("Reloading existing datasets")
+    train_dataset = deepchem.data.DiskDataset(train_dir)
+    valid_dataset = deepchem.data.DiskDataset(valid_dir)
+    test_dataset = deepchem.data.DiskDataset(test_dir)
+
+  else:
+    logger.info("Featurizing datasets")
+    train_dataset, valid_dataset, test_dataset = gen_uv(
+        UV_tasks=UV_tasks,
+        data_dir=data_dir,
+        train_dir=train_dir,
+        valid_dir=valid_dir,
+        test_dir=test_dir,
+        shard_size=shard_size)
+
+  transformers = get_transformers(train_dataset)
+
+  return UV_tasks, (train_dataset, valid_dataset, test_dataset), transformers
+</clonepair4>
+<clonepair5>
+<source file="systems/deepchem-2.6.1/deepchem/models/tests/test_overfit.py" startline="108" endline="139" pcid="559"></source>
+def test_regression_overfit():
+  """Test that MultitaskRegressor can overfit simple regression datasets."""
+  n_samples = 10
+  n_features = 3
+  n_tasks = 1
+
+  # Generate dummy dataset
+  np.random.seed(123)
+  ids = np.arange(n_samples)
+  X = np.random.rand(n_samples, n_features)
+  y = np.zeros((n_samples, n_tasks))
+  w = np.ones((n_samples, n_tasks))
+  dataset = dc.data.NumpyDataset(X, y, w, ids)
+
+  regression_metric = dc.metrics.Metric(dc.metrics.mean_squared_error)
+  # TODO(rbharath): This breaks with optimizer="momentum". Why?
+  model = dc.models.MultitaskRegressor(
+      n_tasks,
+      n_features,
+      dropouts=[0.],
+      weight_init_stddevs=[np.sqrt(6) / np.sqrt(1000)],
+      batch_size=n_samples,
+      learning_rate=0.003)
+
+  # Fit trained model
+  model.fit(dataset, nb_epoch=100)
+
+  # Eval model on train
+  scores = model.evaluate(dataset, [regression_metric])
+  assert scores[regression_metric.name] < 0.007
+
+
+</clonepair5>
+
+<clonepair5>
+<source file="systems/deepchem-2.6.1/deepchem/models/tests/test_overfit.py" startline="242" endline="276" pcid="563"></source>
+def test_skewed_classification_overfit():
+  """Test MultitaskClassifier can overfit 0/1 datasets with few actives."""
+  # n_samples = 100
+  n_samples = 100
+  n_features = 3
+  n_tasks = 1
+  n_classes = 2
+
+  # Generate dummy dataset
+  np.random.seed(123)
+  p = .05
+  ids = np.arange(n_samples)
+  X = np.random.rand(n_samples, n_features)
+  y = np.random.binomial(1, p, size=(n_samples, n_tasks))
+  w = np.ones((n_samples, n_tasks))
+
+  dataset = dc.data.NumpyDataset(X, y, w, ids)
+
+  classification_metric = dc.metrics.Metric(dc.metrics.roc_auc_score)
+  model = dc.models.MultitaskClassifier(
+      n_tasks,
+      n_features,
+      dropouts=[0.],
+      weight_init_stddevs=[.1],
+      batch_size=n_samples,
+      learning_rate=0.003)
+
+  # Fit trained model
+  model.fit(dataset, nb_epoch=100)
+
+  # Eval model on train
+  scores = model.evaluate(dataset, [classification_metric])
+  assert scores[classification_metric.name] > .75
+
+
+</clonepair5>
+<clonepair6>
+<source file="systems/deepchem-2.6.1/deepchem/models/tests/test_overfit.py" startline="108" endline="139" pcid="559"></source>
+def test_regression_overfit():
+  """Test that MultitaskRegressor can overfit simple regression datasets."""
+  n_samples = 10
+  n_features = 3
+  n_tasks = 1
+
+  # Generate dummy dataset
+  np.random.seed(123)
+  ids = np.arange(n_samples)
+  X = np.random.rand(n_samples, n_features)
+  y = np.zeros((n_samples, n_tasks))
+  w = np.ones((n_samples, n_tasks))
+  dataset = dc.data.NumpyDataset(X, y, w, ids)
+
+  regression_metric = dc.metrics.Metric(dc.metrics.mean_squared_error)
+  # TODO(rbharath): This breaks with optimizer="momentum". Why?
+  model = dc.models.MultitaskRegressor(
+      n_tasks,
+      n_features,
+      dropouts=[0.],
+      weight_init_stddevs=[np.sqrt(6) / np.sqrt(1000)],
+      batch_size=n_samples,
+      learning_rate=0.003)
+
+  # Fit trained model
+  model.fit(dataset, nb_epoch=100)
+
+  # Eval model on train
+  scores = model.evaluate(dataset, [regression_metric])
+  assert scores[regression_metric.name] < 0.007
+
+
+</clonepair6>
+
+<clonepair6>
+<source file="systems/deepchem-2.6.1/deepchem/models/tests/test_overfit.py" startline="208" endline="240" pcid="562"></source>
+def test_fittransform_regression_overfit():
+  """Test that MultitaskFitTransformRegressor can overfit simple regression datasets."""
+  n_samples = 10
+  n_features = 3
+  n_tasks = 1
+
+  # Generate dummy dataset
+  np.random.seed(123)
+  ids = np.arange(n_samples)
+  X = np.random.rand(n_samples, n_features, n_features)
+  y = np.zeros((n_samples, n_tasks))
+  w = np.ones((n_samples, n_tasks))
+  dataset = dc.data.NumpyDataset(X, y, w, ids)
+
+  fit_transformers = [dc.trans.CoulombFitTransformer(dataset)]
+  regression_metric = dc.metrics.Metric(dc.metrics.mean_squared_error)
+  model = dc.models.MultitaskFitTransformRegressor(
+      n_tasks, [n_features, n_features],
+      dropouts=[0.01],
+      weight_init_stddevs=[np.sqrt(6) / np.sqrt(1000)],
+      batch_size=n_samples,
+      fit_transformers=fit_transformers,
+      n_evals=1,
+      optimizer=Adam(learning_rate=0.003, beta1=0.9, beta2=0.999))
+
+  # Fit trained model
+  model.fit(dataset, nb_epoch=100)
+
+  # Eval model on train
+  scores = model.evaluate(dataset, [regression_metric])
+  assert scores[regression_metric.name] < .1
+
+
+</clonepair6>
+<clonepair7>
+<source file="systems/deepchem-2.6.1/deepchem/molnet/load_function/material_datasets/load_perovskite.py" startline="32" endline="104" pcid="1687"></source>
+def load_perovskite(
+    featurizer: Union[dc.feat.Featurizer, str] = dc.feat.CGCNNFeaturizer(),
+    splitter: Union[dc.splits.Splitter, str, None] = 'random',
+    transformers: List[Union[TransformerGenerator, str]] = ['normalization'],
+    reload: bool = True,
+    data_dir: Optional[str] = None,
+    save_dir: Optional[str] = None,
+    **kwargs
+) -> Tuple[List[str], Tuple[Dataset, ...], List[dc.trans.Transformer]]:
+  """Load perovskite dataset.
+
+  Contains 18928 perovskite structures and their formation energies.
+  In benchmark studies, random forest models and crystal graph
+  neural networks achieved mean average error of 0.23 and 0.05 eV/atom,
+  respectively, during five-fold nested cross validation on this
+  dataset.
+
+  For more details on the dataset see [1]_. For more details
+  on previous benchmarks for this dataset, see [2]_.
+
+  Parameters
+  ----------
+  featurizer: Featurizer or str
+    the featurizer to use for processing the data.  Alternatively you can pass
+    one of the names from dc.molnet.featurizers as a shortcut.
+  splitter: Splitter or str
+    the splitter to use for splitting the data into training, validation, and
+    test sets.  Alternatively you can pass one of the names from
+    dc.molnet.splitters as a shortcut.  If this is None, all the data
+    will be included in a single dataset.
+  transformers: list of TransformerGenerators or strings
+    the Transformers to apply to the data.  Each one is specified by a
+    TransformerGenerator or, as a shortcut, one of the names from
+    dc.molnet.transformers.
+  reload: bool
+    if True, the first call for a particular featurizer and splitter will cache
+    the datasets to disk, and subsequent calls will reload the cached datasets.
+  data_dir: str
+    a directory to save the raw data in
+  save_dir: str
+    a directory to save the dataset in
+
+  Returns
+  -------
+  tasks, datasets, transformers : tuple
+    tasks : list
+      Column names corresponding to machine learning target variables.
+    datasets : tuple
+      train, validation, test splits of data as
+      ``deepchem.data.datasets.Dataset`` instances.
+    transformers : list
+      ``deepchem.trans.transformers.Transformer`` instances applied
+      to dataset.
+
+  References
+  ----------
+  .. [1] Castelli, I. et al. "New cubic perovskites for one- and two-photon water splitting
+     using the computational materials repository." Energy Environ. Sci., (2012), 5,
+     9034-9043 DOI: 10.1039/C2EE22341D.
+  .. [2] Dunn, A. et al. "Benchmarking Materials Property Prediction Methods:
+     The Matbench Test Set and Automatminer Reference Algorithm." https://arxiv.org/abs/2005.00707 (2020)
+
+  Examples
+  --------
+  >>> import deepchem as dc
+  >>> tasks, datasets, transformers = dc.molnet.load_perovskite()
+  >>> train_dataset, val_dataset, test_dataset = datasets
+  >>> model = dc.models.CGCNNModel(mode='regression', batch_size=32, learning_rate=0.001)
+
+  """
+  loader = _PerovskiteLoader(featurizer, splitter, transformers,
+                             PEROVSKITE_TASKS, data_dir, save_dir, **kwargs)
+  return loader.load_dataset('perovskite', reload)
+</clonepair7>
+
+<clonepair7>
+<source file="systems/deepchem-2.6.1/deepchem/molnet/load_function/clearance_datasets.py" startline="26" endline="62" pcid="1722"></source>
+def load_clearance(
+    featurizer: Union[dc.feat.Featurizer, str] = 'ECFP',
+    splitter: Union[dc.splits.Splitter, str, None] = 'scaffold',
+    transformers: List[Union[TransformerGenerator, str]] = ['log'],
+    reload: bool = True,
+    data_dir: Optional[str] = None,
+    save_dir: Optional[str] = None,
+    **kwargs
+) -> Tuple[List[str], Tuple[Dataset, ...], List[dc.trans.Transformer]]:
+  """
+  Load clearance datasets.
+
+  Parameters
+  ----------
+  featurizer: Featurizer or str
+    the featurizer to use for processing the data.  Alternatively you can pass
+    one of the names from dc.molnet.featurizers as a shortcut.
+  splitter: Splitter or str
+    the splitter to use for splitting the data into training, validation, and
+    test sets.  Alternatively you can pass one of the names from
+    dc.molnet.splitters as a shortcut.  If this is None, all the data
+    will be included in a single dataset.
+  transformers: list of TransformerGenerators or strings
+    the Transformers to apply to the data.  Each one is specified by a
+    TransformerGenerator or, as a shortcut, one of the names from
+    dc.molnet.transformers.
+  reload: bool
+    if True, the first call for a particular featurizer and splitter will cache
+    the datasets to disk, and subsequent calls will reload the cached datasets.
+  data_dir: str
+    a directory to save the raw data in
+  save_dir: str
+    a directory to save the dataset in
+  """
+  loader = _ClearanceLoader(featurizer, splitter, transformers, CLEARANCE_TASKS,
+                            data_dir, save_dir, **kwargs)
+  return loader.load_dataset('clearance', reload)
+</clonepair7>
+<clonepair8>
+<source file="systems/deepchem-2.6.1/deepchem/molnet/load_function/clearance_datasets.py" startline="26" endline="62" pcid="1722"></source>
+def load_clearance(
+    featurizer: Union[dc.feat.Featurizer, str] = 'ECFP',
+    splitter: Union[dc.splits.Splitter, str, None] = 'scaffold',
+    transformers: List[Union[TransformerGenerator, str]] = ['log'],
+    reload: bool = True,
+    data_dir: Optional[str] = None,
+    save_dir: Optional[str] = None,
+    **kwargs
+) -> Tuple[List[str], Tuple[Dataset, ...], List[dc.trans.Transformer]]:
+  """
+  Load clearance datasets.
+
+  Parameters
+  ----------
+  featurizer: Featurizer or str
+    the featurizer to use for processing the data.  Alternatively you can pass
+    one of the names from dc.molnet.featurizers as a shortcut.
+  splitter: Splitter or str
+    the splitter to use for splitting the data into training, validation, and
+    test sets.  Alternatively you can pass one of the names from
+    dc.molnet.splitters as a shortcut.  If this is None, all the data
+    will be included in a single dataset.
+  transformers: list of TransformerGenerators or strings
+    the Transformers to apply to the data.  Each one is specified by a
+    TransformerGenerator or, as a shortcut, one of the names from
+    dc.molnet.transformers.
+  reload: bool
+    if True, the first call for a particular featurizer and splitter will cache
+    the datasets to disk, and subsequent calls will reload the cached datasets.
+  data_dir: str
+    a directory to save the raw data in
+  save_dir: str
+    a directory to save the dataset in
+  """
+  loader = _ClearanceLoader(featurizer, splitter, transformers, CLEARANCE_TASKS,
+                            data_dir, save_dir, **kwargs)
+  return loader.load_dataset('clearance', reload)
+</clonepair8>
+
+<clonepair8>
+<source file="systems/deepchem-2.6.1/deepchem/molnet/load_function/hppb_datasets.py" startline="28" endline="63" pcid="1728"></source>
+def load_hppb(
+    featurizer: Union[dc.feat.Featurizer, str] = 'ECFP',
+    splitter: Union[dc.splits.Splitter, str, None] = 'scaffold',
+    transformers: List[Union[TransformerGenerator, str]] = ['log'],
+    reload: bool = True,
+    data_dir: Optional[str] = None,
+    save_dir: Optional[str] = None,
+    **kwargs
+) -> Tuple[List[str], Tuple[Dataset, ...], List[dc.trans.Transformer]]:
+  """Loads the thermodynamic solubility datasets.
+
+  Parameters
+  ----------
+  featurizer: Featurizer or str
+    the featurizer to use for processing the data.  Alternatively you can pass
+    one of the names from dc.molnet.featurizers as a shortcut.
+  splitter: Splitter or str
+    the splitter to use for splitting the data into training, validation, and
+    test sets.  Alternatively you can pass one of the names from
+    dc.molnet.splitters as a shortcut.  If this is None, all the data
+    will be included in a single dataset.
+  transformers: list of TransformerGenerators or strings
+    the Transformers to apply to the data.  Each one is specified by a
+    TransformerGenerator or, as a shortcut, one of the names from
+    dc.molnet.transformers.
+  reload: bool
+    if True, the first call for a particular featurizer and splitter will cache
+    the datasets to disk, and subsequent calls will reload the cached datasets.
+  data_dir: str
+    a directory to save the raw data in
+  save_dir: str
+    a directory to save the dataset in
+  """
+  loader = _HPPBLoader(featurizer, splitter, transformers, HPPB_TASKS, data_dir,
+                       save_dir, **kwargs)
+  return loader.load_dataset('hppb', reload)
+</clonepair8>

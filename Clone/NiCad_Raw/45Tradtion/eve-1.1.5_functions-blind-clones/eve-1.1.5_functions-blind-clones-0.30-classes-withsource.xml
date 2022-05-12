@@ -1,0 +1,2721 @@
+<clones>
+<systeminfo processor="nicad6" system="eve-1.1.5" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="1193" npairs="116"/>
+<runinfo ncompares="37737" cputime="58482"/>
+<classinfo nclasses="41"/>
+
+<class classid="1" nclones="2" nlines="16" similarity="70">
+<source file="systems/eve-1.1.5/eve/endpoints.py" startline="27" endline="67" pcid="49">
+def collections_endpoint(**lookup):
+    """Resource endpoint handler
+
+    :param url: the url that led here
+
+    .. versionchanged:: 0.3
+       Pass lookup query down to delete_resource, so it can properly process
+       sub-resources.
+
+    .. versionchanged:: 0.2
+       Relying on request.endpoint to retrieve the resource being consumed.
+
+    .. versionchanged:: 0.1.1
+       Relying on request.path for determining the current endpoint url.
+
+    .. versionchanged:: 0.0.7
+       Using 'utils.request_method' helper function now.
+
+    .. versionchanged:: 0.0.6
+       Support for HEAD requests
+
+    .. versionchanged:: 0.0.2
+        Support for DELETE resource method.
+    """
+
+    resource = _resource()
+    response = None
+    method = request.method
+    if method in ("GET", "HEAD"):
+        response = get(resource, lookup)
+    elif method == "POST":
+        response = post(resource)
+    elif method == "DELETE":
+        response = delete(resource, lookup)
+    elif method == "OPTIONS":
+        send_response(resource, response)
+    else:
+        abort(405)
+    return send_response(resource, response)
+
+
+</source>
+<source file="systems/eve-1.1.5/eve/endpoints.py" startline="68" endline="107" pcid="50">
+def item_endpoint(**lookup):
+    """Item endpoint handler
+
+    :param url: the url that led here
+    :param lookup: sub resource query
+
+    .. versionchanged:: 0.2
+       Support for sub-resources.
+       Relying on request.endpoint to retrieve the resource being consumed.
+
+    .. versionchanged:: 0.1.1
+       Relying on request.path for determining the current endpoint url.
+
+    .. versionchanged:: 0.1.0
+       Support for PUT method.
+
+    .. versionchanged:: 0.0.7
+       Using 'utils.request_method' helper function now.
+
+    .. versionchanged:: 0.0.6
+       Support for HEAD requests
+    """
+    resource = _resource()
+    response = None
+    method = request.method
+    if method in ("GET", "HEAD"):
+        response = getitem(resource, **lookup)
+    elif method == "PATCH":
+        response = patch(resource, **lookup)
+    elif method == "PUT":
+        response = put(resource, **lookup)
+    elif method == "DELETE":
+        response = deleteitem(resource, **lookup)
+    elif method == "OPTIONS":
+        send_response(resource, response)
+    else:
+        abort(405)
+    return send_response(resource, response)
+
+
+</source>
+</class>
+
+<class classid="2" nclones="3" nlines="14" similarity="85">
+<source file="systems/eve-1.1.5/eve/tests/endpoints.py" startline="186" endline="201" pcid="172">
+    def test_api_version(self):
+        settings_file = os.path.join(self.this_directory, "test_version.py")
+        self.app = Eve(settings=settings_file)
+        self.test_prefix = self.app.test_client()
+        r = self.test_prefix.get("/")
+        self.assert404(r.status_code)
+        r = self.test_prefix.get("/v1/")
+        self.assert200(r.status_code)
+
+        r = self.test_prefix.get("/contacts/")
+        self.assert404(r.status_code)
+        r = self.test_prefix.get("/v1/contacts")
+        self.assert200(r.status_code)
+        r = self.test_prefix.get("/v1/contacts/")
+        self.assert200(r.status_code)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/endpoints.py" startline="202" endline="220" pcid="173">
+    def test_api_prefix(self):
+        settings_file = os.path.join(self.this_directory, "test_prefix.py")
+        self.app = Eve(settings=settings_file)
+        self.test_prefix = self.app.test_client()
+        r = self.test_prefix.get("/")
+        self.assert404(r.status_code)
+        r = self.test_prefix.get("/prefix/")
+        self.assert200(r.status_code)
+
+        r = self.test_prefix.get("/prefix/contacts")
+        self.assert200(r.status_code)
+        r = self.test_prefix.get("/prefix/contacts/")
+        self.assert200(r.status_code)
+
+        r = self.test_prefix.post(
+            "/prefix/contacts/", data="{}", content_type="application/json"
+        )
+        self.assert201(r.status_code)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/endpoints.py" startline="239" endline="251" pcid="175">
+    def test_api_prefix_version(self):
+        settings_file = os.path.join(self.this_directory, "test_prefix_version.py")
+        self.app = Eve(settings=settings_file)
+        self.test_prefix = self.app.test_client()
+        r = self.test_prefix.get("/")
+        self.assert404(r.status_code)
+        r = self.test_prefix.get("/prefix/v1/")
+        self.assert200(r.status_code)
+        r = self.test_prefix.get("/prefix/v1/contacts")
+        self.assert200(r.status_code)
+        r = self.test_prefix.get("/prefix/v1/contacts/")
+        self.assert200(r.status_code)
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="18" similarity="83">
+<source file="systems/eve-1.1.5/eve/tests/utils.py" startline="63" endline="80" pcid="188">
+    def test_parse_request_max_results(self):
+        default = config.PAGINATION_DEFAULT
+        limit = config.PAGINATION_LIMIT
+        with self.app.test_request_context():
+            self.assertEqual(parse_request(self.known_resource).max_results, default)
+        with self.app.test_request_context("/?max_results=%d" % (limit + 1)):
+            self.assertEqual(parse_request(self.known_resource).max_results, limit)
+        with self.app.test_request_context("/?max_results=2"):
+            self.assertEqual(parse_request(self.known_resource).max_results, 2)
+        with self.app.test_request_context("/?max_results=-1"):
+            self.assertEqual(parse_request(self.known_resource).max_results, default)
+        with self.app.test_request_context("/?max_results=0"):
+            self.assertEqual(parse_request(self.known_resource).max_results, default)
+        with self.app.test_request_context("/?max_results=1.1"):
+            self.assertEqual(parse_request(self.known_resource).max_results, 1)
+        with self.app.test_request_context("/?max_results=string"):
+            self.assertEqual(parse_request(self.known_resource).max_results, default)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/utils.py" startline="81" endline="99" pcid="189">
+    def test_parse_request_max_results_disabled_pagination(self):
+        self.app.config["DOMAIN"][self.known_resource]["pagination"] = False
+        default = 0
+        limit = config.PAGINATION_LIMIT
+        with self.app.test_request_context():
+            self.assertEqual(parse_request(self.known_resource).max_results, default)
+        with self.app.test_request_context("/?max_results=%d" % (limit + 1)):
+            self.assertEqual(parse_request(self.known_resource).max_results, limit + 1)
+        with self.app.test_request_context("/?max_results=2"):
+            self.assertEqual(parse_request(self.known_resource).max_results, 2)
+        with self.app.test_request_context("/?max_results=-1"):
+            self.assertEqual(parse_request(self.known_resource).max_results, default)
+        with self.app.test_request_context("/?max_results=0"):
+            self.assertEqual(parse_request(self.known_resource).max_results, default)
+        with self.app.test_request_context("/?max_results=1.1"):
+            self.assertEqual(parse_request(self.known_resource).max_results, 1)
+        with self.app.test_request_context("/?max_results=string"):
+            self.assertEqual(parse_request(self.known_resource).max_results, default)
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="11" similarity="90">
+<source file="systems/eve-1.1.5/eve/tests/io/multi_mongo.py" startline="37" endline="49" pcid="255">
+    def setupDB2(self):
+        self.connection = MongoClient()
+        self.connection.drop_database(MONGO1_DBNAME)
+        db = self.connection[MONGO1_DBNAME]
+        try:
+            db.command("dropUser", MONGO1_USERNAME)
+        except OperationFailure:
+            pass
+        db.command(
+            "createUser", MONGO1_USERNAME, pwd=MONGO1_PASSWORD, roles=["dbAdmin"]
+        )
+        self.bulk_insert2()
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/io/flask_pymongo.py" startline="62" endline="73" pcid="275">
+    def _setupdb(self):
+        self.connection = MongoClient()
+        self.connection.drop_database(MONGO1_DBNAME)
+        db = self.connection[MONGO1_DBNAME]
+        try:
+            db.command("dropUser", MONGO1_USERNAME)
+        except OperationFailure:
+            pass
+        db.command(
+            "createUser", MONGO1_USERNAME, pwd=MONGO1_PASSWORD, roles=["dbAdmin"]
+        )
+
+</source>
+</class>
+
+<class classid="5" nclones="4" nlines="12" similarity="81">
+<source file="systems/eve-1.1.5/eve/tests/io/multi_mongo.py" startline="62" endline="75" pcid="258">
+    def random_works(self, num):
+        works = []
+        for i in range(num):
+            dt = datetime.now()
+            work = {
+                "author": self.random_string(20),
+                "title": self.random_string(30),
+                eve.LAST_UPDATED: dt,
+                eve.DATE_CREATED: dt,
+            }
+            works.append(work)
+        return works
+
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/__init__.py" startline="597" endline="609" pcid="1006">
+    def random_internal_transactions(self, num):
+        transactions = []
+        for i in range(num):
+            dt = datetime.utcnow().replace(microsecond=0)
+            transaction = {
+                "internal_string": self.random_string(10),
+                "internal_number": i,
+                eve.LAST_UPDATED: dt,
+                eve.DATE_CREATED: dt,
+            }
+            transactions.append(transaction)
+        return transactions
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/__init__.py" startline="532" endline="544" pcid="999">
+    def random_payments(self, num):
+        payments = []
+        for i in range(num):
+            dt = datetime.utcnow().replace(microsecond=0)
+            payment = {
+                "a_string": self.random_string(10),
+                "a_number": i,
+                eve.LAST_UPDATED: dt,
+                eve.DATE_CREATED: dt,
+            }
+            payments.append(payment)
+        return payments
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/__init__.py" startline="545" endline="556" pcid="1000">
+    def random_invoices(self, num):
+        invoices = []
+        for _ in range(num):
+            dt = datetime.utcnow().replace(microsecond=0)
+            invoice = {
+                "inv_number": self.random_string(10),
+                eve.LAST_UPDATED: dt,
+                eve.DATE_CREATED: dt,
+            }
+            invoices.append(invoice)
+        return invoices
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="24" similarity="95">
+<source file="systems/eve-1.1.5/eve/tests/io/multi_mongo.py" startline="109" endline="141" pcid="261">
+    def test_patch_multidb(self):
+        # test that a PATCH on 'works' udpates data on MONGO1
+        work = self._save_work()
+        id_field = self.domain["works"]["id_field"]
+        id, etag = work[id_field], work[eve.ETAG]
+        changes = {"author": "mike"}
+
+        headers = [("Content-Type", "application/json"), ("If-Match", etag)]
+        r = self.test_client.patch(
+            "works/%s" % id, data=json.dumps(changes), headers=headers
+        )
+        self.assert200(r.status_code)
+
+        db = self.connection[MONGO1_DBNAME]
+        updated = db.works.find_one({id_field: ObjectId(id)})
+        self.assertEqual(updated["author"], "mike")
+        self.connection.close()
+
+        # while 'contacts' endpoint updates data on MONGO
+        field, value = "ref", "1234567890123456789012345"
+        changes = {field: value}
+        headers = [("Content-Type", "application/json"), ("If-Match", self.item_etag)]
+        id_field = self.domain["contacts"]["id_field"]
+        r = self.test_client.patch(
+            self.item_id_url, data=json.dumps(changes), headers=headers
+        )
+        self.assert200(r.status_code)
+
+        db = self.connection[MONGO_DBNAME]
+        updated = db.contacts.find_one({id_field: ObjectId(self.item_id)})
+        self.assertEqual(updated[field], value)
+        self.connection.close()
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/io/multi_mongo.py" startline="142" endline="174" pcid="262">
+    def test_put_multidb(self):
+        # test that a PUT on 'works' udpates data on MONGO1
+        work = self._save_work()
+        id_field = self.domain["works"]["id_field"]
+        id, etag = work[id_field], work[eve.ETAG]
+        changes = {"author": "mike", "title": "Eve for dummies"}
+
+        headers = [("Content-Type", "application/json"), ("If-Match", etag)]
+        r = self.test_client.put(
+            "works/%s" % id, data=json.dumps(changes), headers=headers
+        )
+        self.assert200(r.status_code)
+
+        db = self.connection[MONGO1_DBNAME]
+        updated = db.works.find_one({id_field: ObjectId(id)})
+        self.assertEqual(updated["author"], "mike")
+        self.connection.close()
+
+        # while 'contacts' endpoint updates data on MONGO
+        field, value = "ref", "1234567890123456789012345"
+        changes = {field: value}
+        headers = [("Content-Type", "application/json"), ("If-Match", self.item_etag)]
+        id_field = self.domain["contacts"]["id_field"]
+        r = self.test_client.put(
+            self.item_id_url, data=json.dumps(changes), headers=headers
+        )
+        self.assert200(r.status_code)
+
+        db = self.connection[MONGO_DBNAME]
+        updated = db.contacts.find_one({id_field: ObjectId(self.item_id)})
+        self.assertEqual(updated[field], value)
+        self.connection.close()
+
+</source>
+</class>
+
+<class classid="7" nclones="4" nlines="11" similarity="90">
+<source file="systems/eve-1.1.5/eve/tests/io/mongo.py" startline="204" endline="216" pcid="308">
+    def test_linestring_fail(self):
+        schema = {"location": {"type": "linestring"}}
+        doc = {
+            "location": {
+                "type": "LineString",
+                "coordinates": [[12.0, 123.0], [12, "eve"]],
+            }
+        }
+        v = Validator(schema)
+        self.assertFalse(v.validate(doc))
+        self.assertTrue("location" in v.errors)
+        self.assertTrue("linestring" in v.errors["location"])
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/io/mongo.py" startline="236" endline="248" pcid="310">
+    def test_polygon_fail(self):
+        schema = {"location": {"type": "polygon"}}
+        doc = {
+            "location": {
+                "type": "Polygon",
+                "coordinates": [[[12.0, 23.0], [12.3, 12.5]], ["eve"]],
+            }
+        }
+        v = Validator(schema)
+        self.assertFalse(v.validate(doc))
+        self.assertTrue("location" in v.errors)
+        self.assertTrue("polygon" in v.errors["location"])
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/io/mongo.py" startline="325" endline="337" pcid="315">
+    def test_geometrycollection_fail(self):
+        schema = {"locations": {"type": "geometrycollection"}}
+        doc = {
+            "locations": {
+                "type": "GeometryCollection",
+                "geometries": [{"type": "GeoJSON", "badinput": "lolololololol"}],
+            }
+        }
+        v = Validator(schema)
+        self.assertFalse(v.validate(doc))
+        self.assertTrue("locations" in v.errors)
+        self.assertTrue("geometrycollection" in v.errors["locations"])
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/io/mongo.py" startline="396" endline="408" pcid="319">
+    def test_featurecollection_fail(self):
+        schema = {"locations": {"type": "featurecollection"}}
+        doc = {
+            "locations": {
+                "type": "FeatureCollection",
+                "geometry": {"type": "Point", "coordinates": [100.0, 0.0]},
+            }
+        }
+        v = Validator(schema)
+        self.assertFalse(v.validate(doc))
+        self.assertTrue("locations" in v.errors)
+        self.assertTrue("featurecollection" in v.errors["locations"])
+
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="18" similarity="84">
+<source file="systems/eve-1.1.5/eve/tests/io/mongo.py" startline="217" endline="235" pcid="309">
+    def test_polygon_success(self):
+        schema = {"location": {"type": "polygon"}}
+        doc = {
+            "location": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [100.0, 0.0],
+                        [101.0, 0.0],
+                        [101.0, 1.0],
+                        [100.0, 1.0],
+                        [100.0, 0.0],
+                    ]
+                ],
+            }
+        }
+        v = Validator(schema)
+        self.assertTrue(v.validate(doc))
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/io/mongo.py" startline="338" endline="359" pcid="316">
+    def test_feature_success(self):
+        schema = {"locations": {"type": "feature"}}
+        doc = {
+            "locations": {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [100.0, 0.0],
+                            [101.0, 0.0],
+                            [101.0, 1.0],
+                            [100.0, 1.0],
+                            [100.0, 0.0],
+                        ]
+                    ],
+                },
+            }
+        }
+        v = Validator(schema)
+        self.assertTrue(v.validate(doc))
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="12" similarity="83">
+<source file="systems/eve-1.1.5/eve/tests/io/mongo.py" startline="260" endline="273" pcid="312">
+    def test_multilinestring_success(self):
+        schema = {"location": {"type": "multilinestring"}}
+        doc = {
+            "location": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [[100.0, 0.0], [101.0, 1.0]],
+                    [[102.0, 2.0], [103.0, 3.0]],
+                ],
+            }
+        }
+        v = Validator(schema)
+        self.assertTrue(v.validate(doc))
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/io/mongo.py" startline="311" endline="324" pcid="314">
+    def test_geometrycollection_success(self):
+        schema = {"locations": {"type": "geometrycollection"}}
+        doc = {
+            "locations": {
+                "type": "GeometryCollection",
+                "geometries": [
+                    {"type": "Point", "coordinates": [100.0, 0.0]},
+                    {"type": "LineString", "coordinates": [[101.0, 0.0], [102.0, 1.0]]},
+                ],
+            }
+        }
+        v = Validator(schema)
+        self.assertTrue(v.validate(doc))
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="15" similarity="75">
+<source file="systems/eve-1.1.5/eve/tests/io/mongo.py" startline="360" endline="379" pcid="317">
+    def test_feature_fail(self):
+        schema = {"locations": {"type": "feature"}}
+        doc = {
+            "locations": {
+                "type": "Feature",
+                "geometries": [
+                    {
+                        "type": "Polygon",
+                        "coordinates": [
+                            [[100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 0.0]]
+                        ],
+                    }
+                ],
+            }
+        }
+        v = Validator(schema)
+        self.assertFalse(v.validate(doc))
+        self.assertTrue("locations" in v.errors)
+        self.assertTrue("feature" in v.errors["locations"])
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/io/mongo.py" startline="380" endline="395" pcid="318">
+    def test_featurecollection_success(self):
+        schema = {"locations": {"type": "featurecollection"}}
+        doc = {
+            "locations": {
+                "type": "FeatureCollection",
+                "features": [
+                    {
+                        "type": "Feature",
+                        "geometry": {"type": "Point", "coordinates": [102.0, 0.5]},
+                    }
+                ],
+            }
+        }
+        v = Validator(schema)
+        self.assertTrue(v.validate(doc))
+
+</source>
+</class>
+
+<class classid="11" nclones="2" nlines="17" similarity="82">
+<source file="systems/eve-1.1.5/eve/tests/io/media.py" startline="40" endline="71" pcid="329">
+    def test_gridfs_media_storage_post(self):
+        # send something different than a file and get an error back
+        data = {"media": "not a file"}
+        r, s = self.parse_response(
+            self.test_client.post(self.url, data=data, headers=self.headers)
+        )
+        self.assertEqual(STATUS_ERR, r[STATUS])
+
+        # validates media fields
+        self.assertTrue("must be of media type" in r[ISSUES]["media"])
+        # also validates ordinary fields
+        self.assertTrue("required" in r[ISSUES][self.test_field])
+
+        r, s = self._post()
+        self.assertEqual(STATUS_OK, r[STATUS])
+
+        # compare original and returned data
+        _id = r[self.id_field]
+        self.assertMediaField(_id, self.encoded, self.clean)
+
+        # GET the file at the resource endpoint
+        where = 'where={"%s": "%s"}' % (self.id_field, _id)
+        r, s = self.parse_response(self.test_client.get("%s?%s" % (self.url, where)))
+        self.assertEqual(len(r["_items"]), 1)
+        returned = r["_items"][0]["media"]
+
+        # returned value is a base64 encoded string
+        self.assertEqual(returned, self.encoded)
+
+        # which decodes to the original clean
+        self.assertEqual(base64.b64decode(returned.encode()), self.clean)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/io/media.py" startline="72" endline="100" pcid="330">
+    def test_gridfs_media_storage_post_excluded_file_in_result(self):
+        # send something different than a file and get an error back
+        data = {"media": "not a file"}
+        r, s = self.parse_response(
+            self.test_client.post(self.url, data=data, headers=self.headers)
+        )
+        self.assertEqual(STATUS_ERR, r[STATUS])
+
+        # validates media fields
+        self.assertTrue("must be of media type" in r[ISSUES]["media"])
+        # also validates ordinary fields
+        self.assertTrue("required" in r[ISSUES][self.test_field])
+
+        r, s = self._post()
+        self.assertEqual(STATUS_OK, r[STATUS])
+
+        self.app.config["RETURN_MEDIA_AS_BASE64_STRING"] = False
+        # compare original and returned data
+        _id = r[self.id_field]
+
+        # GET the file at the resource endpoint
+        where = 'where={"%s": "%s"}' % (self.id_field, _id)
+        r, s = self.parse_response(self.test_client.get("%s?%s" % (self.url, where)))
+        self.assertEqual(len(r["_items"]), 1)
+        returned = r["_items"][0]["media"]
+
+        # returned value is a base64 encoded string
+        self.assertEqual(returned, None)
+
+</source>
+</class>
+
+<class classid="12" nclones="2" nlines="14" similarity="78">
+<source file="systems/eve-1.1.5/eve/tests/io/media.py" startline="101" endline="127" pcid="331">
+    def test_gridfs_media_storage_post_extended(self):
+        r, s = self._post()
+        self.assertEqual(STATUS_OK, r[STATUS])
+
+        # request extended format file response
+        self.app.config["EXTENDED_MEDIA_INFO"] = ["content_type", "length"]
+
+        # compare original and returned data
+        _id = r[self.id_field]
+        self.assertMediaFieldExtended(_id, self.encoded, self.clean)
+
+        # GET the file at the resource endpoint
+        where = 'where={"%s": "%s"}' % (self.id_field, _id)
+        r, s = self.parse_response(self.test_client.get("%s?%s" % (self.url, where)))
+        self.assertEqual(len(r["_items"]), 1)
+        returned = r["_items"][0]["media"]
+
+        # returned value is a base64 encoded string
+        self.assertEqual(returned["file"], self.encoded)
+
+        # which decodes to the original clean
+        self.assertEqual(base64.b64decode(returned["file"].encode()), self.clean)
+
+        # also verify our extended fields
+        self.assertEqual(returned["content_type"], "text/plain")
+        self.assertEqual(returned["length"], 16)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/io/media.py" startline="128" endline="150" pcid="332">
+    def test_gridfs_media_storage_post_extended_excluded_file_in_result(self):
+        r, s = self._post()
+        self.assertEqual(STATUS_OK, r[STATUS])
+
+        # request extended format file response
+        self.app.config["EXTENDED_MEDIA_INFO"] = ["content_type", "length"]
+        self.app.config["RETURN_MEDIA_AS_BASE64_STRING"] = False
+        # compare original and returned data
+        _id = r[self.id_field]
+
+        # GET the file at the resource endpoint
+        where = 'where={"%s": "%s"}' % (self.id_field, _id)
+        r, s = self.parse_response(self.test_client.get("%s?%s" % (self.url, where)))
+        self.assertEqual(len(r["_items"]), 1)
+        returned = r["_items"][0]["media"]
+
+        # returned value is None
+        self.assertEqual(returned["file"], None)
+
+        # also verify our extended fields
+        self.assertEqual(returned["content_type"], "text/plain")
+        self.assertEqual(returned["length"], 16)
+
+</source>
+</class>
+
+<class classid="13" nclones="2" nlines="21" similarity="90">
+<source file="systems/eve-1.1.5/eve/tests/io/media.py" startline="151" endline="190" pcid="333">
+    def test_gridfs_media_storage_put(self):
+        r, s = self._post()
+        _id = r[self.id_field]
+        etag = r[ETAG]
+
+        # compare original and returned data
+        self.assertMediaField(_id, self.encoded, self.clean)
+
+        with self.app.test_request_context():
+            # retrieve media_id
+            media_id = self.assertMediaStored(_id)
+
+        # PUT replaces the file with new one
+        clean = b"my new file contents"
+        encoded = base64.b64encode(clean).decode()
+        test_field, test_value = "ref", "9234567890123456789054321"
+        data = {"media": (BytesIO(clean), "test.txt"), test_field: test_value}
+        headers = [("Content-Type", "multipart/form-data"), ("If-Match", etag)]
+
+        r, s = self.parse_response(
+            self.test_client.put(
+                ("%s/%s" % (self.url, _id)), data=data, headers=headers
+            )
+        )
+        self.assertEqual(STATUS_OK, r[STATUS])
+
+        with self.app.test_request_context():
+            # media has been properly stored
+            self.assertMediaStored(_id)
+
+        # compare original and returned data
+        r, s = self.assertMediaField(_id, encoded, clean)
+
+        # and of course, the ordinary field has been updated too
+        self.assertEqual(r[test_field], test_value)
+
+        with self.app.test_request_context():
+            # previous media doesn't exist anymore (it's been deleted)
+            self.assertFalse(self.app.media.exists(media_id, self.resource))
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/io/media.py" startline="191" endline="226" pcid="334">
+    def test_gridfs_media_storage_patch(self):
+        r, s = self._post()
+        _id = r[self.id_field]
+        etag = r[ETAG]
+
+        # compare original and returned data
+        self.assertMediaField(_id, self.encoded, self.clean)
+
+        with self.app.test_request_context():
+            # retrieve media_id
+            media_id = self.assertMediaStored(_id)
+
+        # PATCH replaces the file with new one
+        clean = b"my new file contents"
+        encoded = base64.b64encode(clean).decode()
+        test_field, test_value = "ref", "9234567890123456789054321"
+        data = {"media": (BytesIO(clean), "test.txt"), test_field: test_value}
+        headers = [("Content-Type", "multipart/form-data"), ("If-Match", etag)]
+
+        r, s = self.parse_response(
+            self.test_client.patch(
+                ("%s/%s" % (self.url, _id)), data=data, headers=headers
+            )
+        )
+        self.assertEqual(STATUS_OK, r[STATUS])
+
+        # compare original and returned data
+        r, s = self.assertMediaField(_id, encoded, clean)
+
+        # and of course, the ordinary field has been updated too
+        self.assertEqual(r[test_field], test_value)
+
+        with self.app.test_request_context():
+            # previous media doesn't exist anymore (it's been deleted)
+            self.assertFalse(self.app.media.exists(media_id, self.resource))
+
+</source>
+</class>
+
+<class classid="14" nclones="2" nlines="16" similarity="81">
+<source file="systems/eve-1.1.5/eve/tests/io/media.py" startline="249" endline="275" pcid="336">
+    def test_gridfs_media_storage_delete(self):
+        r, s = self._post()
+        _id = r[self.id_field]
+        etag = r[ETAG]
+
+        with self.app.test_request_context():
+            # retrieve media_id and compare original and returned data
+            self.assertMediaField(_id, self.encoded, self.clean)
+
+            media_id = self.assertMediaStored(_id)
+
+        # DELETE deletes both the document and the media file
+        headers = [("If-Match", etag)]
+
+        r, s = self.parse_response(
+            self.test_client.delete(("%s/%s" % (self.url, _id)), headers=headers)
+        )
+        self.assert204(s)
+
+        with self.app.test_request_context():
+            # media doesn't exist anymore (it's been deleted)
+            self.assertFalse(self.app.media.exists(media_id, self.resource))
+
+        # GET returns 404
+        r, s = self.parse_response(self.test_client.get("%s/%s" % (self.url, _id)))
+        self.assert404(s)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/io/media.py" startline="321" endline="353" pcid="338">
+    def test_gridfs_media_storage_delete_projection(self):
+        """test that #284 is fixed: If you have a media field, and set
+        datasource projection to 0 for that field, the media will not be
+        deleted
+        """
+        r, s = self._post()
+        _id = r[self.id_field]
+
+        with self.app.test_request_context():
+            # retrieve media_id and compare original and returned data
+            media_id = self.assertMediaStored(_id)
+
+        self.app.config["DOMAIN"]["contacts"]["datasource"]["projection"] = {"media": 0}
+
+        r, s = self.parse_response(self.test_client.get("%s/%s" % (self.url, _id)))
+        etag = r[ETAG]
+
+        # DELETE deletes both the document and the media file
+        headers = [("If-Match", etag)]
+
+        r, s = self.parse_response(
+            self.test_client.delete(("%s/%s" % (self.url, _id)), headers=headers)
+        )
+        self.assert204(s)
+
+        with self.app.test_request_context():
+            # media doesn't exist anymore (it's been deleted)
+            self.assertFalse(self.app.media.exists(media_id, self.resource))
+
+        # GET returns 404
+        r, s = self.parse_response(self.test_client.get("%s/%s" % (self.url, _id)))
+        self.assert404(s)
+
+</source>
+</class>
+
+<class classid="15" nclones="3" nlines="29" similarity="73">
+<source file="systems/eve-1.1.5/eve/tests/io/media.py" startline="276" endline="320" pcid="337">
+    def test_get_media_can_leverage_projection(self):
+        """Test that static projection expose fields other than media
+        and client projection on media will work.
+        """
+        # post a document with *hiding media*
+        r, s = self._post_hide_media()
+
+        _id = r[self.id_field]
+
+        projection = '{"media": 1}'
+        response, status = self.parse_response(
+            self.test_client.get(
+                "%s/%s?projection=%s"
+                % (self.resource_exclude_media_url, _id, projection)
+            )
+        )
+        self.assert200(status)
+
+        self.assertFalse("title" in response)
+        self.assertFalse("ref" in response)
+        # client-side projection should work
+        self.assertTrue("media" in response)
+        self.assertTrue(self.domain[self.known_resource]["id_field"] in response)
+        self.assertTrue(self.app.config["ETAG"] in response)
+        self.assertTrue(self.app.config["LAST_UPDATED"] in response)
+        self.assertTrue(self.app.config["DATE_CREATED"] in response)
+        self.assertTrue(r[self.app.config["LAST_UPDATED"]] != self.epoch)
+        self.assertTrue(r[self.app.config["DATE_CREATED"]] != self.epoch)
+
+        response, status = self.parse_response(
+            self.test_client.get("%s/%s" % (self.resource_exclude_media_url, _id))
+        )
+        self.assert200(status)
+
+        self.assertTrue("title" in response)
+        self.assertTrue("ref" in response)
+        # not shown without projection
+        self.assertFalse("media" in response)
+        self.assertTrue(self.domain[self.known_resource]["id_field"] in response)
+        self.assertTrue(self.app.config["ETAG"] in response)
+        self.assertTrue(self.app.config["LAST_UPDATED"] in response)
+        self.assertTrue(self.app.config["DATE_CREATED"] in response)
+        self.assertTrue(r[self.app.config["LAST_UPDATED"]] != self.epoch)
+        self.assertTrue(r[self.app.config["DATE_CREATED"]] != self.epoch)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/get.py" startline="2138" endline="2168" pcid="782">
+    def test_getitem_projection(self):
+        projection = '{"prog": 1}'
+        r, status = self.get(
+            self.known_resource, "?projection=%s" % projection, item=self.item_id
+        )
+        self.assert200(status)
+        self.assertFalse("location" in r)
+        self.assertFalse("role" in r)
+        self.assertTrue("prog" in r)
+        self.assertTrue(self.domain[self.known_resource]["id_field"] in r)
+        self.assertTrue(self.app.config["ETAG"] in r)
+        self.assertTrue(self.app.config["LAST_UPDATED"] in r)
+        self.assertTrue(self.app.config["DATE_CREATED"] in r)
+        self.assertTrue(r[self.app.config["LAST_UPDATED"]] != self.epoch)
+        self.assertTrue(r[self.app.config["DATE_CREATED"]] != self.epoch)
+
+        projection = '{"prog": 0}'
+        r, status = self.get(
+            self.known_resource, "?projection=%s" % projection, item=self.item_id
+        )
+        self.assert200(status)
+        self.assertFalse("prog" in r)
+        self.assertTrue("location" in r)
+        self.assertTrue("role" in r)
+        self.assertTrue(self.domain[self.known_resource]["id_field"] in r)
+        self.assertTrue(self.app.config["ETAG"] in r)
+        self.assertTrue(self.app.config["LAST_UPDATED"] in r)
+        self.assertTrue(self.app.config["DATE_CREATED"] in r)
+        self.assertTrue(r[self.app.config["LAST_UPDATED"]] != self.epoch)
+        self.assertTrue(r[self.app.config["DATE_CREATED"]] != self.epoch)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/get.py" startline="348" endline="382" pcid="700">
+    def test_get_projection(self):
+        projection = '{"prog": 1}'
+        response, status = self.get(self.known_resource, "?projection=%s" % projection)
+        self.assert200(status)
+
+        resource = response["_items"]
+
+        for r in resource:
+            self.assertFalse("location" in r)
+            self.assertFalse("role" in r)
+            self.assertTrue("prog" in r)
+            self.assertTrue(self.domain[self.known_resource]["id_field"] in r)
+            self.assertTrue(self.app.config["ETAG"] in r)
+            self.assertTrue(self.app.config["LAST_UPDATED"] in r)
+            self.assertTrue(self.app.config["DATE_CREATED"] in r)
+            self.assertTrue(r[self.app.config["LAST_UPDATED"]] != self.epoch)
+            self.assertTrue(r[self.app.config["DATE_CREATED"]] != self.epoch)
+
+        projection = '{"prog": 0}'
+        response, status = self.get(self.known_resource, "?projection=%s" % projection)
+        self.assert200(status)
+
+        resource = response["_items"]
+
+        for r in resource:
+            self.assertFalse("prog" in r)
+            self.assertTrue("location" in r)
+            self.assertTrue("role" in r)
+            self.assertTrue(self.domain[self.known_resource]["id_field"] in r)
+            self.assertTrue(self.app.config["ETAG"] in r)
+            self.assertTrue(self.app.config["LAST_UPDATED"] in r)
+            self.assertTrue(self.app.config["DATE_CREATED"] in r)
+            self.assertTrue(r[self.app.config["LAST_UPDATED"]] != self.epoch)
+            self.assertTrue(r[self.app.config["DATE_CREATED"]] != self.epoch)
+
+</source>
+</class>
+
+<class classid="16" nclones="2" nlines="10" similarity="70">
+<source file="systems/eve-1.1.5/eve/tests/renders.py" startline="109" endline="121" pcid="357">
+    def test_json_disabled(self):
+        self.app.config["RENDERERS"] = ("eve.render.XMLRenderer",)
+        r = self.test_client.get(
+            self.known_resource_url, headers=[("Accept", "application/json")]
+        )
+        self.assertTrue("application/xml" in r.content_type)
+        r = self.test_client.get(
+            self.known_resource_url, headers=[("Accept", "application/xml")]
+        )
+        self.assertTrue("application/xml" in r.content_type)
+        r = self.test_client.get(self.known_resource_url)
+        self.assertTrue("application/xml" in r.content_type)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/renders.py" startline="122" endline="134" pcid="358">
+    def test_xml_disabled(self):
+        self.app.config["RENDERERS"] = ("eve.render.JSONRenderer",)
+        r = self.test_client.get(
+            self.known_resource_url, headers=[("Accept", "application/xml")]
+        )
+        self.assertEqual(r.content_type, "application/json")
+        r = self.test_client.get(
+            self.known_resource_url, headers=[("Accept", "application/json")]
+        )
+        self.assertEqual(r.content_type, "application/json")
+        r = self.test_client.get(self.known_resource_url)
+        self.assertEqual(r.content_type, "application/json")
+
+</source>
+</class>
+
+<class classid="17" nclones="2" nlines="23" similarity="79">
+<source file="systems/eve-1.1.5/eve/tests/methods/delete.py" startline="424" endline="463" pcid="405">
+    def test_softdeleted_embedded_doc(self):
+        """Soft deleted documents embedded in other documents should not be
+        included. They will resolve to None as if the document was actually
+        deleted.
+        """
+        # Set up and confirm embedded document
+        _db = self.connection[MONGO_DBNAME]
+        fake_contact = self.random_contacts(1)[0]
+        fake_contact_id = _db.contacts.insert_one(fake_contact).inserted_id
+        fake_contact_url = self.known_resource_url + "/" + str(fake_contact_id)
+        _db.invoices.update_one(
+            {"_id": ObjectId(self.invoice_id)}, {"$set": {"person": fake_contact_id}}
+        )
+
+        invoices = self.domain["invoices"]
+        invoices["embedding"] = True
+        invoices["schema"]["person"]["data_relation"]["embeddable"] = True
+        embedded = '{"person": 1}'
+
+        r = self.test_client.get(self.invoice_id_url + "?embedded=%s" % embedded)
+        data, status = self.parse_response(r)
+        self.assert200(status)
+        self.assertTrue("location" in data["person"])
+
+        # Get embedded doc etag so we can delete it
+        r = self.test_client.get(fake_contact_url)
+        embedded_contact_etag = r.headers["ETag"]
+
+        # Delete embedded contact
+        data, status = self.delete(
+            fake_contact_url, headers=[("If-Match", embedded_contact_etag)]
+        )
+        self.assert204(status)
+
+        # embedded 'person' should now be empty
+        r = self.test_client.get(self.invoice_id_url + "?embedded=%s" % embedded)
+        data, status = self.parse_response(r)
+        self.assert200(status)
+        self.assertEqual(data["person"], None)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/delete.py" startline="464" endline="500" pcid="406">
+    def test_softdeleted_get_response_skips_embedded_expansion(self):
+        """Soft deleted documents should not expand their embedded documents when
+        returned in a 404 Not Found response. The deleted document data should
+        reflect the state of the document when it was deleted, not change if
+        still active embedded documents are updated
+        """
+        # Confirm embedded document works before delete
+        _db = self.connection[MONGO_DBNAME]
+        fake_contact = self.random_contacts(1)[0]
+        fake_contact_id = _db.contacts.insert_one(fake_contact).inserted_id
+        _db.invoices.update_one(
+            {"_id": ObjectId(self.invoice_id)}, {"$set": {"person": fake_contact_id}}
+        )
+
+        invoices = self.domain["invoices"]
+        invoices["embedding"] = True
+        invoices["schema"]["person"]["data_relation"]["embeddable"] = True
+        embedded = '{"person": 1}'
+
+        r = self.test_client.get(self.invoice_id_url + "?embedded=%s" % embedded)
+        invoice_etag = r.headers["ETag"]
+        data, status = self.parse_response(r)
+        self.assert200(status)
+        self.assertTrue("location" in data["person"])
+
+        # Soft delete document
+        data, status = self.delete(
+            self.invoice_id_url, headers=[("If-Match", invoice_etag)]
+        )
+        self.assert204(status)
+
+        # Document in 404 should not expand person
+        r = self.test_client.get(self.invoice_id_url + "?embedded=%s" % embedded)
+        data, status = self.parse_response(r)
+        self.assert404(status)
+        self.assertEqual(data["person"], str(fake_contact_id))
+
+</source>
+</class>
+
+<class classid="18" nclones="3" nlines="10" similarity="70">
+<source file="systems/eve-1.1.5/eve/tests/methods/post.py" startline="238" endline="249" pcid="459">
+    def test_post_x_www_form_urlencoded_number_serialization(self):
+        del self.domain["contacts"]["schema"]["ref"]["required"]
+        test_field = "anumber"
+        test_value = 34
+        data = {test_field: test_value}
+        r, status = self.parse_response(
+            self.test_client.post(self.known_resource_url, data=data)
+        )
+        self.assert201(status)
+        self.assertTrue("OK" in r[STATUS])
+        self.assertPostResponse(r)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/patch.py" startline="419" endline="430" pcid="579">
+    def test_patch_x_www_form_urlencoded_number_serialization(self):
+        del self.domain["contacts"]["schema"]["ref"]["required"]
+        field = "anumber"
+        test_value = 3.5
+        changes = {field: test_value}
+        headers = [("If-Match", self.item_etag)]
+        r, status = self.parse_response(
+            self.test_client.patch(self.item_id_url, data=changes, headers=headers)
+        )
+        self.assert200(status)
+        self.assertTrue("OK" in r[STATUS])
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/put.py" startline="108" endline="119" pcid="623">
+    def test_put_x_www_form_urlencoded_number_serialization(self):
+        del self.domain["contacts"]["schema"]["ref"]["required"]
+        field = "anumber"
+        test_value = 41
+        changes = {field: test_value}
+        headers = [("If-Match", self.item_etag)]
+        r, status = self.parse_response(
+            self.test_client.put(self.item_id_url, data=changes, headers=headers)
+        )
+        self.assert200(status)
+        self.assertTrue("OK" in r[STATUS])
+
+</source>
+</class>
+
+<class classid="19" nclones="7" nlines="14" similarity="73">
+<source file="systems/eve-1.1.5/eve/tests/methods/post.py" startline="350" endline="365" pcid="465">
+    def test_post_referential_integrity(self):
+        data = {"person": self.unknown_item_id}
+        r, status = self.post("/invoices/", data=data)
+        self.assertValidationErrorStatus(status)
+        expected = "value '%s' must exist in resource '%s', field '%s'" % (
+            self.unknown_item_id,
+            "contacts",
+            self.domain["contacts"]["id_field"],
+        )
+        self.assertValidationError(r, {"person": expected})
+
+        data = {"person": self.item_id}
+        r, status = self.post("/invoices/", data=data)
+        self.assert201(status)
+        self.assertPostResponse(r)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/versioning.py" startline="786" endline="803" pcid="911">
+    def test_referential_integrity(self):
+        """Make sure that Eve still correctly handles vanilla data_relations
+        when versioning is turned on. (Copied from tests/methods/post.py.)
+        """
+        data = {"person": self.unknown_item_id}
+        r, status = self.post("/invoices/", data=data)
+        self.assertValidationErrorStatus(status)
+        expected = "value '%s' must exist in resource '%s', field '%s'" % (
+            self.unknown_item_id,
+            "contacts",
+            self.id_field,
+        )
+        self.assertValidationError(r, {"person": expected})
+
+        data = {"person": self.item_id}
+        r, status = self.post("/invoices/", data=data)
+        self.assert201(status)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/put.py" startline="120" endline="136" pcid="624">
+    def test_put_referential_integrity(self):
+        data = {"person": self.unknown_item_id}
+        headers = [("If-Match", self.invoice_etag)]
+        r, status = self.put(self.invoice_id_url, data=data, headers=headers)
+        self.assertValidationErrorStatus(status)
+        expected = "value '%s' must exist in resource '%s', field '%s'" % (
+            self.unknown_item_id,
+            "contacts",
+            self.domain["contacts"]["id_field"],
+        )
+        self.assertValidationError(r, {"person": expected})
+
+        data = {"person": self.item_id}
+        r, status = self.put(self.invoice_id_url, data=data, headers=headers)
+        self.assert200(status)
+        self.assertPutResponse(r, self.invoice_id, "invoices")
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/post.py" startline="366" endline="382" pcid="466">
+    def test_dbref_post_referential_integrity(self):
+        data = {"persondbref": {"$col": "contacts", "$id": self.unknown_item_id}}
+        r, status = self.post("/invoices/", data=data)
+        self.assertValidationErrorStatus(status)
+        expected = "value '%s' must exist in resource '%s', field '%s'" % (
+            self.unknown_item_id,
+            "contacts",
+            self.domain["contacts"]["id_field"],
+        )
+
+        self.assertValidationError(r, {"persondbref": expected})
+
+        data = {"persondbref": {"$col": "contacts", "$id": self.item_id}}
+        r, status = self.post("/invoices/", data=data)
+        self.assert201(status)
+        self.assertPostResponse(r)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/patch.py" startline="431" endline="447" pcid="580">
+    def test_patch_referential_integrity(self):
+        data = {"person": self.unknown_item_id}
+        headers = [("If-Match", self.invoice_etag)]
+        r, status = self.patch(self.invoice_id_url, data=data, headers=headers)
+        self.assertValidationErrorStatus(status)
+        expected = "value '%s' must exist in resource '%s', field '%s'" % (
+            self.unknown_item_id,
+            "contacts",
+            self.domain["contacts"]["id_field"],
+        )
+        self.assertValidationError(r, {"person": expected})
+
+        data = {"person": self.item_id}
+        r, status = self.patch(self.invoice_id_url, data=data, headers=headers)
+        self.assert200(status)
+        self.assertPatchResponse(r, self.invoice_id)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/post.py" startline="383" endline="398" pcid="467">
+    def test_post_referential_integrity_list(self):
+        data = {"invoicing_contacts": [self.item_id, self.unknown_item_id]}
+        r, status = self.post("/invoices/", data=data)
+        self.assertValidationErrorStatus(status)
+        expected = "value '%s' must exist in resource '%s', field '%s'" % (
+            self.unknown_item_id,
+            "contacts",
+            self.domain["contacts"]["id_field"],
+        )
+        self.assertValidationError(r, {"invoicing_contacts": expected})
+
+        data = {"invoicing_contacts": [self.item_id, self.item_id]}
+        r, status = self.post("/invoices/", data=data)
+        self.assert201(status)
+        self.assertPostResponse(r)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/put.py" startline="137" endline="153" pcid="625">
+    def test_put_referential_integrity_list(self):
+        data = {"invoicing_contacts": [self.item_id, self.unknown_item_id]}
+        headers = [("If-Match", self.invoice_etag)]
+        r, status = self.put(self.invoice_id_url, data=data, headers=headers)
+        self.assertValidationErrorStatus(status)
+        expected = "value '%s' must exist in resource '%s', field '%s'" % (
+            self.unknown_item_id,
+            "contacts",
+            self.domain["contacts"]["id_field"],
+        )
+        self.assertValidationError(r, {"invoicing_contacts": expected})
+
+        data = {"invoicing_contacts": [self.item_id, self.item_id]}
+        r, status = self.put(self.invoice_id_url, data=data, headers=headers)
+        self.assert200(status)
+        self.assertPutResponse(r, self.invoice_id, "invoices")
+
+</source>
+</class>
+
+<class classid="20" nclones="2" nlines="12" similarity="83">
+<source file="systems/eve-1.1.5/eve/tests/methods/post.py" startline="472" endline="486" pcid="473">
+    def test_post_write_concern(self):
+        # should get a 500 since there's no replicaset on mongod test instance
+        self.domain["contacts"]["mongo_write_concern"] = {"w": 2}
+        test_field = "ref"
+        test_value = "1234567890123456789054321"
+        data = {test_field: test_value}
+        _, status = self.post(self.known_resource_url, data=data)
+        self.assert500(status)
+        # 0 and 1 are the only valid values for 'w' on our mongod instance
+        self.domain["contacts"]["mongo_write_concern"] = {"w": 0}
+        test_value = "1234567890123456789054329"
+        data = {test_field: test_value}
+        _, status = self.post(self.known_resource_url, data=data)
+        self.assert201(status)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/post.py" startline="794" endline="810" pcid="495">
+    def test_post_readonly_field_with_default(self):
+        # test that a read only field with a 'default' setting is correctly
+        # validated now that we resolve field values before validation.
+        del self.domain["contacts"]["schema"]["ref"]["required"]
+        test_field = "read_only_field"
+        # thou shalt not pass.
+        test_value = "a random value"
+        data = {test_field: test_value}
+        r, status = self.post(self.known_resource_url, data=data)
+        self.assertValidationErrorStatus(status)
+        # this will not pass even if value matches 'default' setting.
+        # (hey it's still a read-onlu field so you can't reset it)
+        test_value = "default"
+        data = {test_field: test_value}
+        r, status = self.post(self.known_resource_url, data=data)
+        self.assertValidationErrorStatus(status)
+
+</source>
+</class>
+
+<class classid="21" nclones="2" nlines="12" similarity="75">
+<source file="systems/eve-1.1.5/eve/tests/methods/post.py" startline="487" endline="499" pcid="474">
+    def test_post_with_get_override(self):
+        # a GET request with POST override turns into a POST request.
+        test_field = "ref"
+        test_value = "1234567890123456789054321"
+        data = json.dumps({test_field: test_value})
+        headers = [
+            ("X-HTTP-Method-Override", "POST"),
+            ("Content-Type", "application/json"),
+        ]
+        r = self.test_client.get(self.known_resource_url, data=data, headers=headers)
+        self.assert201(r.status_code)
+        self.assertPostResponse(json.loads(r.get_data()))
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/put.py" startline="185" endline="198" pcid="629">
+    def test_put_with_post_override(self):
+        # POST request with PUT override turns into a PUT
+        field = "ref"
+        test_value = "1234567890123456789012345"
+        changes = {field: test_value}
+        headers = [
+            ("X-HTTP-Method-Override", "PUT"),
+            ("If-Match", self.item_etag),
+            ("Content-Type", "application/x-www-form-urlencoded"),
+        ]
+        r = self.test_client.post(self.item_id_url, data=changes, headers=headers)
+        self.assert200(r.status_code)
+        self.assertPutResponse(json.loads(r.get_data()), self.item_id)
+
+</source>
+</class>
+
+<class classid="22" nclones="3" nlines="11" similarity="72">
+<source file="systems/eve-1.1.5/eve/tests/methods/post.py" startline="500" endline="512" pcid="475">
+    def test_post_list_of_objectid(self):
+        objectid = "50656e4538345b39dd0414f0"
+        del self.domain["contacts"]["schema"]["ref"]["required"]
+        data = {"id_list": ["%s" % objectid]}
+        r, status = self.post(self.known_resource_url, data=data)
+        self.assert201(status)
+        r, status = self.get(
+            self.known_resource, '?where={"id_list": ' '{"$in": ["%s"]}}' % objectid
+        )
+        self.assert200(status)
+        self.assertTrue(len(r), 1)
+        self.assertTrue("%s" % objectid in r["_items"][0]["id_list"])
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/post.py" startline="531" endline="544" pcid="478">
+    def test_post_list_fixed_len(self):
+        objectid = "50656e4538345b39dd0414f0"
+        del self.domain["contacts"]["schema"]["ref"]["required"]
+        data = {"id_list_fixed_len": ["%s" % objectid]}
+        r, status = self.post(self.known_resource_url, data=data)
+        self.assert201(status)
+        r, status = self.get(
+            self.known_resource,
+            '?where={"id_list_fixed_len": ' '{"$in": ["%s"]}}' % objectid,
+        )
+        self.assert200(status)
+        self.assertTrue(len(r), 1)
+        self.assertTrue("%s" % objectid in r["_items"][0]["id_list_fixed_len"])
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/post.py" startline="513" endline="524" pcid="476">
+    def test_post_nested_dict_objectid(self):
+        objectid = "50656e4538345b39dd0414f0"
+        del self.domain["contacts"]["schema"]["ref"]["required"]
+        data = {"id_list_of_dict": [{"id": "%s" % objectid}]}
+        r, status = self.post(self.known_resource_url, data=data)
+        self.assert201(status)
+        r, status = self.get(
+            self.known_resource, '?where={"id_list_of_dict.id": ' '"%s"}' % objectid
+        )
+        self.assertTrue(len(r), 1)
+        self.assertTrue("%s" % objectid in r["_items"][0]["id_list_of_dict"][0]["id"])
+
+</source>
+</class>
+
+<class classid="23" nclones="2" nlines="11" similarity="75">
+<source file="systems/eve-1.1.5/eve/tests/methods/post.py" startline="811" endline="828" pcid="496">
+    def test_post_with_nested_default(self):
+        """Test that in post of a field that has nested fields with default values
+        those default values are set
+        """
+        del self.domain["contacts"]["schema"]["ref"]["required"]
+        test_field = "dict_with_nested_default"
+        test_value = {}
+        data = {test_field: test_value}
+        r, status = self.post(self.known_resource_url, data=data)
+        self.assert201(status)
+
+        item_id = r[self.domain[self.known_resource]["id_field"]]
+        raw_r = self.test_client.get("%s/%s" % (self.known_resource_url, item_id))
+        item, status = self.parse_response(raw_r)
+        self.assertEqual(
+            item["dict_with_nested_default"], {"nested_field_with_default": "nested"}
+        )
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/patch.py" startline="259" endline="275" pcid="566">
+    def test_patch_missing_nested_default(self):
+        """PATCH an object which is missing a field with a default value.
+
+        This should result in setting the field to its default value, even if
+        the field is not provided in the PATCH's payload."""
+        field = "dict_with_nested_default"
+        test_value = {}
+        changes = {field: test_value}
+        r = self.perform_patch(changes)
+
+        item_id = r[self.domain[self.known_resource]["id_field"]]
+        raw_r = self.test_client.get("%s/%s" % (self.known_resource_url, item_id))
+        item, status = self.parse_response(raw_r)
+        self.assertEqual(
+            item["dict_with_nested_default"], {"nested_field_with_default": "nested"}
+        )
+
+</source>
+</class>
+
+<class classid="24" nclones="2" nlines="11" similarity="90">
+<source file="systems/eve-1.1.5/eve/tests/methods/post.py" startline="1066" endline="1080" pcid="521">
+    def test_unique_in_deep_dict_attribute(self):
+        def make_payload(unique_value):
+            return {
+                "unique_in_deep_dict_attribute": {
+                    "dict_attribute": {"unique_attribute": unique_value}
+                }
+            }
+
+        r, status = self.post("test_unique", data=make_payload("unique_value"))
+        self.assert201(status)
+        r, status = self.post("test_unique", data=make_payload("unique_value"))
+        self.assert422(status)
+        r, status = self.post("test_unique", data=make_payload("unique_value_2"))
+        self.assert201(status)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/post.py" startline="1081" endline="1095" pcid="523">
+    def test_unique_in_deep_list_attribute(self):
+        def make_payload(unique_value):
+            return {
+                "unique_in_deep_list_attribute": {
+                    "list_attribute": [{"unique_attribute": unique_value}]
+                }
+            }
+
+        r, status = self.post("test_unique", data=make_payload("unique_value"))
+        self.assert201(status)
+        r, status = self.post("test_unique", data=make_payload("unique_value"))
+        self.assert422(status)
+        r, status = self.post("test_unique", data=make_payload("unique_value_2"))
+        self.assert201(status)
+
+</source>
+</class>
+
+<class classid="25" nclones="4" nlines="13" similarity="86">
+<source file="systems/eve-1.1.5/eve/tests/methods/patch.py" startline="294" endline="309" pcid="569">
+    def test_patch_internal(self):
+        # test that patch_internal is available and working properly.
+        test_field = "ref"
+        test_value = "9876543210987654321098765"
+        data = {test_field: test_value}
+        with self.app.test_request_context(self.item_id_url):
+            r, _, _, status = patch_internal(
+                self.known_resource,
+                data,
+                concurrency_check=False,
+                **{"_id": self.item_id}
+            )
+        db_value = self.compare_patch_with_get(test_field, r)
+        self.assertEqual(db_value, test_value)
+        self.assert200(status)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/put.py" startline="440" endline="455" pcid="642">
+    def test_put_internal(self):
+        # test that put_internal is available and working properly.
+        test_field = "ref"
+        test_value = "9876543210987654321098765"
+        data = {test_field: test_value}
+        with self.app.test_request_context(self.item_id_url):
+            r, _, _, status = put_internal(
+                self.known_resource,
+                data,
+                concurrency_check=False,
+                **{"_id": self.item_id}
+            )
+        db_value = self.compare_put_with_get(test_field, r)
+        self.assertEqual(db_value, test_value)
+        self.assert200(status)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/patch.py" startline="310" endline="327" pcid="570">
+    def test_patch_internal_with_options(self):
+        # test that patch_internal is available and working properly.
+        test_field = "ref"
+        test_value = "9876543210987654321098765"
+        data = {test_field: test_value}
+        mongo_options = {"read_preference": ReadPreference.PRIMARY}
+        with self.app.test_request_context(self.item_id_url):
+            r, _, _, status = patch_internal(
+                self.known_resource,
+                data,
+                concurrency_check=False,
+                mongo_options=mongo_options,
+                **{"_id": self.item_id}
+            )
+        db_value = self.compare_patch_with_get(test_field, r)
+        self.assertEqual(db_value, test_value)
+        self.assert200(status)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/put.py" startline="456" endline="472" pcid="643">
+    def test_put_internal_skip_validation(self):
+        # test that put_internal is available and working properly.
+        test_field = "ref"
+        test_value = "9876543210987654321098765"
+        data = {test_field: test_value}
+        with self.app.test_request_context(self.item_id_url):
+            r, _, _, status = put_internal(
+                self.known_resource,
+                data,
+                concurrency_check=False,
+                skip_validation=True,
+                **{"_id": self.item_id}
+            )
+        db_value = self.compare_put_with_get(test_field, r)
+        self.assertEqual(db_value, test_value)
+        self.assert200(status)
+
+</source>
+</class>
+
+<class classid="26" nclones="2" nlines="12" similarity="91">
+<source file="systems/eve-1.1.5/eve/tests/methods/patch.py" startline="394" endline="407" pcid="577">
+    def test_patch_allow_unknown(self):
+        changes = {"unknown": "unknown"}
+        r, status = self.patch(
+            self.item_id_url, data=changes, headers=[("If-Match", self.item_etag)]
+        )
+        self.assertValidationErrorStatus(status)
+        self.assertValidationError(r, {"unknown": "unknown field"})
+        self.app.config["DOMAIN"][self.known_resource]["allow_unknown"] = True
+        r, status = self.patch(
+            self.item_id_url, data=changes, headers=[("If-Match", self.item_etag)]
+        )
+        self.assert200(status)
+        self.assertPatchResponse(r, self.item_id)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/put.py" startline="82" endline="96" pcid="621">
+    def test_allow_unknown(self):
+        changes = {"unknown": "unknown"}
+        r, status = self.put(
+            self.item_id_url, data=changes, headers=[("If-Match", self.item_etag)]
+        )
+        self.assertValidationErrorStatus(status)
+        self.assertValidationError(r, {"unknown": "unknown field"})
+        self.app.config["DOMAIN"][self.known_resource]["allow_unknown"] = True
+        changes = {"unknown": "unknown", "ref": "1234567890123456789012345"}
+        r, status = self.put(
+            self.item_id_url, data=changes, headers=[("If-Match", self.item_etag)]
+        )
+        self.assert200(status)
+        self.assertPutResponse(r, self.item_id)
+
+</source>
+</class>
+
+<class classid="27" nclones="2" nlines="19" similarity="90">
+<source file="systems/eve-1.1.5/eve/tests/methods/patch.py" startline="501" endline="528" pcid="584">
+    def test_patch_subresource(self):
+        _db = self.connection[MONGO_DBNAME]
+
+        # create random contact
+        fake_contact = self.random_contacts(1)[0]
+        fake_contact_id = _db.contacts.insert_one(fake_contact).inserted_id
+
+        # update first invoice to reference the new contact
+        _db.invoices.update_one(
+            {"_id": ObjectId(self.invoice_id)}, {"$set": {"person": fake_contact_id}}
+        )
+
+        # GET all invoices by new contact
+        response, status = self.get(
+            "users/%s/invoices/%s" % (fake_contact_id, self.invoice_id)
+        )
+        etag = response[ETAG]
+
+        data = {"inv_number": "new_number"}
+        headers = [("If-Match", etag)]
+        response, status = self.patch(
+            "users/%s/invoices/%s" % (fake_contact_id, self.invoice_id),
+            data=data,
+            headers=headers,
+        )
+        self.assert200(status)
+        self.assertPatchResponse(response, self.invoice_id, "peopleinvoices")
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/put.py" startline="278" endline="307" pcid="635">
+    def test_put_subresource(self):
+        _db = self.connection[MONGO_DBNAME]
+        self.app.config["BANDWIDTH_SAVER"] = False
+
+        # create random contact
+        fake_contact = self.random_contacts(1)[0]
+        fake_contact_id = _db.contacts.insert_one(fake_contact).inserted_id
+
+        # update first invoice to reference the new contact
+        _db.invoices.update_one(
+            {"_id": ObjectId(self.invoice_id)}, {"$set": {"person": fake_contact_id}}
+        )
+
+        # GET all invoices by new contact
+        response, status = self.get(
+            "users/%s/invoices/%s" % (fake_contact_id, self.invoice_id)
+        )
+        etag = response[ETAG]
+
+        data = {"inv_number": "new_number"}
+        headers = [("If-Match", etag)]
+        response, status = self.put(
+            "users/%s/invoices/%s" % (fake_contact_id, self.invoice_id),
+            data=data,
+            headers=headers,
+        )
+        self.assert200(status)
+        self.assertPutResponse(response, self.invoice_id, "peopleinvoices")
+        self.assertEqual(response.get("person"), str(fake_contact_id))
+
+</source>
+</class>
+
+<class classid="28" nclones="2" nlines="13" similarity="100">
+<source file="systems/eve-1.1.5/eve/tests/methods/patch.py" startline="529" endline="546" pcid="585">
+    def test_patch_bandwidth_saver(self):
+        changes = {"ref": "1234567890123456789012345"}
+
+        # bandwidth_saver is on by default
+        self.assertTrue(self.app.config["BANDWIDTH_SAVER"])
+        r = self.perform_patch(changes)
+        self.assertFalse("ref" in r)
+        db_value = self.compare_patch_with_get(self.app.config["ETAG"], r)
+        self.assertEqual(db_value, r[self.app.config["ETAG"]])
+        self.item_etag = r[self.app.config["ETAG"]]
+
+        # test return all fields (bandwidth_saver off)
+        self.app.config["BANDWIDTH_SAVER"] = False
+        r = self.perform_patch(changes)
+        self.assertTrue("ref" in r)
+        db_value = self.compare_patch_with_get(self.app.config["ETAG"], r)
+        self.assertEqual(db_value, r[self.app.config["ETAG"]])
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/put.py" startline="347" endline="364" pcid="637">
+    def test_put_bandwidth_saver(self):
+        changes = {"ref": "1234567890123456789012345"}
+
+        # bandwidth_saver is on by default
+        self.assertTrue(self.app.config["BANDWIDTH_SAVER"])
+        r = self.perform_put(changes)
+        self.assertFalse("ref" in r)
+        db_value = self.compare_put_with_get(self.app.config["ETAG"], r)
+        self.assertEqual(db_value, r[self.app.config["ETAG"]])
+        self.item_etag = r[self.app.config["ETAG"]]
+
+        # test return all fields (bandwidth_saver off)
+        self.app.config["BANDWIDTH_SAVER"] = False
+        r = self.perform_put(changes)
+        self.assertTrue("ref" in r)
+        db_value = self.compare_put_with_get(self.app.config["ETAG"], r)
+        self.assertEqual(db_value, r[self.app.config["ETAG"]])
+
+</source>
+</class>
+
+<class classid="29" nclones="2" nlines="39" similarity="100">
+<source file="systems/eve-1.1.5/eve/tests/methods/patch.py" startline="547" endline="589" pcid="586">
+    def test_patch_bandwidth_saver_credit_rule_broken(self):
+        _db = self.connection[MONGO_DBNAME]
+        rule = {
+            "amount": 300.0,
+            "duration": "months",
+            "name": "Testing BANDWIDTH_SAVER=False",
+            "start": "2020-03-28T06:00:00 UTC",
+        }
+        rule_id = _db.credit_rules.insert_one(rule).inserted_id
+        rule_url = "credit_rules/%s/" % (rule_id)
+        changes = {
+            "amount": 120.0,
+            "duration": "months",
+            "start": "2020-04-01T00:00:00 UTC",
+        }
+        response, _ = self.get("credit_rules/%s/" % (rule_id))
+        etag = response[ETAG]
+        # bandwidth_saver is on by default
+        self.assertTrue(self.app.config["BANDWIDTH_SAVER"])
+        self.assertTrue(self.app.config["PROJECTION"])
+        r, status = self.patch(rule_url, data=changes, headers=[("If-Match", etag)])
+        self.assert200(status)
+        self.assertPatchResponse(r, "%s" % (rule_id))
+        self.assertFalse("amount" in r)
+        etag = r[self.app.config["ETAG"]]
+        r, _ = self.get(rule_url, "")
+        self.assertEqual(etag, r[self.app.config["ETAG"]])
+
+        # test return all fields (bandwidth_saver off)
+        self.app.config["BANDWIDTH_SAVER"] = False
+        changes["name"] = "Give it all to me!"
+        r, status = self.patch(rule_url, data=changes, headers=[("If-Match", etag)])
+        self.assert200(status)
+        self.assertPatchResponse(r, "%s" % (rule_id))
+        self.assertTrue(
+            all(["amount" in r, "duration" in r, "name" in r, "start" in r]),
+            'One or more of "amount", "duration", "name", "start" is missing.',
+        )
+        self.assertTrue(r["name"] == "Give it all to me!")
+        etag = r[self.app.config["ETAG"]]
+        r, status = self.get(rule_url, "")
+        self.assertEqual(etag, r[self.app.config["ETAG"]])
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/put.py" startline="365" endline="407" pcid="638">
+    def test_put_bandwidth_saver_credit_rule_broken(self):
+        _db = self.connection[MONGO_DBNAME]
+        rule = {
+            "amount": 300.0,
+            "duration": "months",
+            "name": "Testing BANDWIDTH_SAVER=False",
+            "start": "2020-03-28T06:00:00 UTC",
+        }
+        rule_id = _db.credit_rules.insert_one(rule).inserted_id
+        rule_url = "credit_rules/%s/" % (rule_id)
+        changes = {
+            "amount": 120.0,
+            "duration": "months",
+            "start": "2020-04-01T00:00:00 UTC",
+        }
+        response, _ = self.get("credit_rules/%s/" % (rule_id))
+        etag = response[ETAG]
+        # bandwidth_saver is on by default
+        self.assertTrue(self.app.config["BANDWIDTH_SAVER"])
+        self.assertTrue(self.app.config["PROJECTION"])
+        r, status = self.put(rule_url, data=changes, headers=[("If-Match", etag)])
+        self.assert200(status)
+        self.assertPutResponse(r, "%s" % (rule_id))
+        self.assertFalse("amount" in r)
+        etag = r[self.app.config["ETAG"]]
+        r, _ = self.get(rule_url, "")
+        self.assertEqual(etag, r[self.app.config["ETAG"]])
+
+        # test return all fields (bandwidth_saver off)
+        self.app.config["BANDWIDTH_SAVER"] = False
+        changes["name"] = "Give it all to me!"
+        r, status = self.put(rule_url, data=changes, headers=[("If-Match", etag)])
+        self.assert200(status)
+        self.assertPutResponse(r, "%s" % (rule_id))
+        self.assertTrue(
+            all(["amount" in r, "duration" in r, "name" in r, "start" in r]),
+            'One or more of "amount", "duration", "name", "start" is missing.',
+        )
+        self.assertTrue(r["name"] == "Give it all to me!")
+        etag = r[self.app.config["ETAG"]]
+        r, status = self.get(rule_url, "")
+        self.assertEqual(etag, r[self.app.config["ETAG"]])
+
+</source>
+</class>
+
+<class classid="30" nclones="2" nlines="11" similarity="100">
+<source file="systems/eve-1.1.5/eve/tests/methods/patch.py" startline="851" endline="862" pcid="596">
+    def assertPatchResponse(self, response, item_id, resource=None):
+        id_field = self.domain[resource or self.known_resource]["id_field"]
+        self.assertTrue(STATUS in response)
+        self.assertTrue(STATUS_OK in response[STATUS])
+        self.assertFalse(ISSUES in response)
+        self.assertTrue(id_field in response)
+        self.assertEqual(response[id_field], item_id)
+        self.assertTrue(LAST_UPDATED in response)
+        self.assertTrue(ETAG in response)
+        self.assertTrue("_links" in response)
+        self.assertItemLink(response["_links"], item_id)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/put.py" startline="569" endline="580" pcid="653">
+    def assertPutResponse(self, response, item_id, resource=None):
+        id_field = self.domain[resource or self.known_resource]["id_field"]
+        self.assertTrue(STATUS in response)
+        self.assertTrue(STATUS_OK in response[STATUS])
+        self.assertFalse(ISSUES in response)
+        self.assertTrue(id_field in response)
+        self.assertEqual(response[id_field], item_id)
+        self.assertTrue(LAST_UPDATED in response)
+        self.assertTrue(ETAG in response)
+        self.assertTrue("_links" in response)
+        self.assertItemLink(response["_links"], item_id)
+
+</source>
+</class>
+
+<class classid="31" nclones="3" nlines="11" similarity="83">
+<source file="systems/eve-1.1.5/eve/tests/methods/get.py" startline="249" endline="261" pcid="693">
+    def test_get_where_mongo_objectid_as_string(self):
+        where = '{"tid": "%s"}' % self.item_tid
+        response, status = self.get(self.known_resource, "?where=%s" % where)
+        self.assert200(status)
+        resource = response["_items"]
+        self.assertEqual(len(resource), 1)
+
+        self.app.config["DOMAIN"]["contacts"]["query_objectid_as_string"] = True
+        response, status = self.get(self.known_resource, "?where=%s" % where)
+        self.assert200(status)
+        resource = response["_items"]
+        self.assertEqual(len(resource), 1)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/get.py" startline="262" endline="274" pcid="694">
+    def test_get_where_mongo_objectid_as_string_with_nested_documents(self):
+        where = '{"tid": { "$in": ["%s"]}}' % self.item_tid
+        response, status = self.get(self.known_resource, "?where=%s" % where)
+        self.assert200(status)
+        resource = response["_items"]
+        self.assertEqual(len(resource), 1)
+
+        self.app.config["DOMAIN"]["contacts"]["query_objectid_as_string"] = True
+        response, status = self.get(self.known_resource, "?where=%s" % where)
+        self.assert200(status)
+        resource = response["_items"]
+        self.assertEqual(len(resource), 1)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/get.py" startline="275" endline="288" pcid="695">
+    def test_get_where_mongo_objectid_as_string_but_field_is_id(self):
+        skus = self.to_list_string([item["sku"] for item in self.item_rows])
+        where_in = '{"tid": "%s", "rows.sku": { "$in": %s} }' % (self.item_tid, skus)
+        response, status = self.get(self.known_resource, "?where=%s" % where_in)
+        self.assert200(status)
+        resource = response["_items"]
+        self.assertEqual(len(resource), 0)
+
+        self.app.config["DOMAIN"]["contacts"]["query_objectid_as_string"] = True
+        response, status = self.get(self.known_resource, "?where=%s" % where_in)
+        self.assert200(status)
+        resource = response["_items"]
+        self.assertEqual(len(resource), 1)
+
+</source>
+</class>
+
+<class classid="32" nclones="6" nlines="17" similarity="76">
+<source file="systems/eve-1.1.5/eve/tests/methods/get.py" startline="383" endline="404" pcid="701">
+    def test_get_static_projection(self):
+        """ Test that static projections are honoured """
+        response, status = self.get(self.different_resource)
+        self.assert200(status)
+
+        resource = response["_items"]
+
+        # 'users' has a static inclusive projection with 'username' and 'ref'
+        # fields, so other document fields should be excluded.
+        for r in resource:
+            self.assertFalse("location" in r)
+            self.assertFalse("role" in r)
+            self.assertFalse("prog" in r)
+            self.assertTrue("username" in r)
+            self.assertTrue("ref" in r)
+            self.assertTrue(self.domain[self.known_resource]["id_field"] in r)
+            self.assertTrue(self.app.config["ETAG"] in r)
+            self.assertTrue(self.app.config["LAST_UPDATED"] in r)
+            self.assertTrue(self.app.config["DATE_CREATED"] in r)
+            self.assertTrue(r[self.app.config["LAST_UPDATED"]] != self.epoch)
+            self.assertTrue(r[self.app.config["DATE_CREATED"]] != self.epoch)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/get.py" startline="405" endline="433" pcid="702">
+    def test_get_server_include_projection_can_exclude(self):
+        """Test that static projection only expose fields included
+        and support client projection on these fields.
+        """
+        # exclude `ref` by client side
+        projection = '{"ref": 0}'
+        response, status = self.get(
+            self.different_resource, "?projection=%s" % projection
+        )
+        self.assert200(status)
+
+        resource = response["_items"]
+
+        # 'users' has a static inclusive projection with 'username' and 'ref'
+        # fields, so other document fields should be excluded.
+        # and client can further exclude 'ref' or 'username'.
+        for r in resource:
+            self.assertFalse("location" in r)
+            self.assertFalse("role" in r)
+            self.assertFalse("prog" in r)
+            self.assertTrue("username" in r)
+            self.assertFalse("ref" in r)
+            self.assertTrue(self.domain[self.known_resource]["id_field"] in r)
+            self.assertTrue(self.app.config["ETAG"] in r)
+            self.assertTrue(self.app.config["LAST_UPDATED"] in r)
+            self.assertTrue(self.app.config["DATE_CREATED"] in r)
+            self.assertTrue(r[self.app.config["LAST_UPDATED"]] != self.epoch)
+            self.assertTrue(r[self.app.config["DATE_CREATED"]] != self.epoch)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/get.py" startline="487" endline="510" pcid="705">
+    def test_get_server_exlcude_projection_can_sniff(self):
+        """Test that static projection expose fields other than excluded
+        and client projection on excluded **will work**.
+        """
+        projection = '{"born": 1}'
+        response, status = self.get(
+            self.different_resource_exclude, "?projection=%s" % projection
+        )
+        self.assert200(status)
+
+        resource = response["_items"]
+        for r in resource:
+            self.assertFalse("location" in r)
+            self.assertFalse("role" in r)
+            self.assertFalse("prog" in r)
+            # should work
+            self.assertTrue("born" in r)
+            self.assertTrue(self.domain[self.known_resource]["id_field"] in r)
+            self.assertTrue(self.app.config["ETAG"] in r)
+            self.assertTrue(self.app.config["LAST_UPDATED"] in r)
+            self.assertTrue(self.app.config["DATE_CREATED"] in r)
+            self.assertTrue(r[self.app.config["LAST_UPDATED"]] != self.epoch)
+            self.assertTrue(r[self.app.config["DATE_CREATED"]] != self.epoch)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/get.py" startline="460" endline="486" pcid="704">
+    def test_get_server_exclude_projection_can_project_others(self):
+        """Test that static projection expose fields other than excluded
+        and support client projection on exposed fields.
+        """
+        projection = '{"prog": 1, "location":1}'
+        response, status = self.get(
+            self.different_resource_exclude, "?projection=%s" % projection
+        )
+        self.assert200(status)
+
+        resource = response["_items"]
+
+        # 'users' has a static inclusive projection with 'username' and 'ref'
+        # fields, so other document fields should be excluded.
+        # and client can further exclude 'ref' or 'username'.
+        for r in resource:
+            self.assertTrue("location" in r)
+            self.assertFalse("role" in r)
+            self.assertTrue("prog" in r)
+            self.assertFalse("born" in r)
+            self.assertTrue(self.domain[self.known_resource]["id_field"] in r)
+            self.assertTrue(self.app.config["ETAG"] in r)
+            self.assertTrue(self.app.config["LAST_UPDATED"] in r)
+            self.assertTrue(self.app.config["DATE_CREATED"] in r)
+            self.assertTrue(r[self.app.config["LAST_UPDATED"]] != self.epoch)
+            self.assertTrue(r[self.app.config["DATE_CREATED"]] != self.epoch)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/get.py" startline="524" endline="543" pcid="707">
+    def test_get_projection_subdocument(self):
+        projection = '{"location.address": 1}'
+        response, status = self.get(self.known_resource, "?projection=%s" % projection)
+        self.assert200(status)
+
+        resource = response["_items"]
+
+        for r in resource:
+            self.assertTrue("location" in r)
+            self.assertTrue("address" in r["location"])
+            self.assertFalse("city" in r["location"])
+            self.assertFalse("role" in r)
+            self.assertFalse("prog" in r)
+            self.assertTrue(self.domain[self.known_resource]["id_field"] in r)
+            self.assertTrue(self.app.config["ETAG"] in r)
+            self.assertTrue(self.app.config["LAST_UPDATED"] in r)
+            self.assertTrue(self.app.config["DATE_CREATED"] in r)
+            self.assertTrue(r[self.app.config["LAST_UPDATED"]] != self.epoch)
+            self.assertTrue(r[self.app.config["DATE_CREATED"]] != self.epoch)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/get.py" startline="434" endline="459" pcid="703">
+    def test_get_server_include_projection_block_sniff(self):
+        """Test that static projection only expose fields included
+        and client projection on other fields will fail.
+        """
+        # shouldn't work when including `prog` (excluded) by client side
+        projection = '{"prog": 1}'
+        response, status = self.get(
+            self.different_resource, "?projection=%s" % projection
+        )
+        self.assert200(status)
+
+        resource = response["_items"]
+        for r in resource:
+            self.assertFalse("location" in r)
+            self.assertFalse("role" in r)
+            # shouldn't work
+            self.assertFalse("prog" in r)
+            self.assertFalse("username" in r)
+            self.assertFalse("ref" in r)
+            self.assertTrue(self.domain[self.known_resource]["id_field"] in r)
+            self.assertTrue(self.app.config["ETAG"] in r)
+            self.assertTrue(self.app.config["LAST_UPDATED"] in r)
+            self.assertTrue(self.app.config["DATE_CREATED"] in r)
+            self.assertTrue(r[self.app.config["LAST_UPDATED"]] != self.epoch)
+            self.assertTrue(r[self.app.config["DATE_CREATED"]] != self.epoch)
+
+</source>
+</class>
+
+<class classid="33" nclones="2" nlines="26" similarity="100">
+<source file="systems/eve-1.1.5/eve/tests/methods/get.py" startline="2330" endline="2364" pcid="809">
+    def test_get_before_aggregation_hook(self):
+        _db = self.connection[MONGO_DBNAME]
+        _db.aggregate_test.insert_many(
+            [
+                {"x": 1, "tags": ["dog", "cat"]},
+                {"x": 2, "tags": ["cat"]},
+                {"x": 2, "tags": ["mouse", "cat", "dog"]},
+                {"x": 3, "tags": []},
+            ]
+        )
+
+        self.app.before_aggregation += self.devent
+
+        self.app.register_resource(
+            "aggregate_test",
+            {
+                "datasource": {
+                    "aggregation": {
+                        "pipeline": [
+                            {"$unwind": "$tags"},
+                            {"$group": {"_id": "$tags", "count": {"$sum": "$field1"}}},
+                        ]
+                    }
+                }
+            },
+        )
+
+        response, status = self.get("aggregate_test?aggregate=ciao")
+        self.assert400(status)
+        self.assertTrue(self.devent.called is None)
+
+        response, status = self.get('aggregate_test?aggregate={"$field1":1}')
+        self.assert200(status)
+        self.assertEqual("aggregate_test", self.devent.called[0])
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/get.py" startline="2365" endline="2399" pcid="810">
+    def test_get_after_aggregation_hook(self):
+        _db = self.connection[MONGO_DBNAME]
+        _db.aggregate_test.insert_many(
+            [
+                {"x": 1, "tags": ["dog", "cat"]},
+                {"x": 2, "tags": ["cat"]},
+                {"x": 2, "tags": ["mouse", "cat", "dog"]},
+                {"x": 3, "tags": []},
+            ]
+        )
+
+        self.app.after_aggregation += self.devent
+
+        self.app.register_resource(
+            "aggregate_test",
+            {
+                "datasource": {
+                    "aggregation": {
+                        "pipeline": [
+                            {"$unwind": "$tags"},
+                            {"$group": {"_id": "$tags", "count": {"$sum": "$field1"}}},
+                        ]
+                    }
+                }
+            },
+        )
+
+        response, status = self.get("aggregate_test?aggregate=ciao")
+        self.assert400(status)
+        self.assertTrue(self.devent.called is None)
+
+        response, status = self.get('aggregate_test?aggregate={"$field1":1}')
+        self.assert200(status)
+        self.assertEqual("aggregate_test", self.devent.called[0])
+
+</source>
+</class>
+
+<class classid="34" nclones="2" nlines="13" similarity="84">
+<source file="systems/eve-1.1.5/eve/tests/methods/common.py" startline="395" endline="408" pcid="835">
+    def test_serialize_inside_list_of_x_of_rules(self):
+        for x_of in ["allof", "anyof", "oneof", "noneof"]:
+            schema = {
+                "list-field": {
+                    "type": "list",
+                    "schema": {x_of: [{"type": "objectid", "required": True}]},
+                }
+            }
+            doc = {"list-field": ["50656e4538345b39dd0414f0"]}
+            with self.app.app_context():
+                serialized = serialize(doc, schema=schema)
+                serialized_oid = serialized["list-field"][0]
+                self.assertTrue(isinstance(serialized_oid, ObjectId))
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/common.py" startline="432" endline="448" pcid="837">
+    def test_serialize_inside_list_of_x_of_typesavers(self):
+        for x_of in ["allof", "anyof", "oneof", "noneof"]:
+            schema = {
+                "list-field": {
+                    "type": "list",
+                    "schema": {
+                        "{0}_type".format(x_of): ["objectid", "float", "boolean"]
+                    },
+                }
+            }
+            doc = {"list-field": ["50656e4538345b39dd0414f0"]}
+            with self.app.app_context():
+                serialized = serialize(doc, schema=schema)
+                serialized_oid = serialized["list-field"][0]
+                self.assertTrue(isinstance(serialized_oid, ObjectId))
+
+
+</source>
+</class>
+
+<class classid="35" nclones="8" nlines="13" similarity="70">
+<source file="systems/eve-1.1.5/eve/tests/methods/common.py" startline="591" endline="605" pcid="849">
+    def test_post_oplog(self):
+        r = self.test_client.post(
+            self.different_resource_url,
+            data=json.dumps({"username": "test", "ref": "1234567890123456789012345"}),
+            headers=self.headers,
+            environ_base={"REMOTE_ADDR": "127.0.0.1"},
+        )
+
+        r, status = self.oplog_get()
+        self.assert200(status)
+        self.assertEqual(len(r["_items"]), 1)
+        oplog_entry = r["_items"][0]
+        self.assertOpLogEntry(oplog_entry, "POST")
+        self.assertTrue("extra" not in oplog_entry)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/common.py" startline="637" endline="650" pcid="852">
+    def test_put_oplog(self):
+        self.headers.append(("If-Match", self.item_etag))
+        r = self.test_client.put(
+            self.item_id_url,
+            data=json.dumps(self.data),
+            headers=self.headers,
+            environ_base={"REMOTE_ADDR": "127.0.0.1"},
+        )
+        r, status = self.oplog_get()
+        self.assert200(status)
+        self.assertEqual(len(r["_items"]), 1)
+        oplog_entry = r["_items"][0]
+        self.assertOpLogEntry(oplog_entry, "PUT")
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/common.py" startline="714" endline="728" pcid="857">
+    def test_post_oplog_with_token_auth(self):
+        self.domain["contacts"]["authentication"] = ValidTokenAuth
+        self.headers.append(("Authorization", "Basic dGVzdF90b2tlbjo="))
+        r = self.test_client.post(
+            self.known_resource_url,
+            data=json.dumps(self.data),
+            headers=self.headers,
+            environ_base={"REMOTE_ADDR": "127.0.0.1"},
+        )
+        r, status = self.oplog_get()
+        self.assert200(status)
+        self.assertEqual(len(r["_items"]), 1)
+        oplog_entry = r["_items"][0]
+        self.assertOpLogEntry(oplog_entry, "POST", "test_token")
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/common.py" startline="729" endline="743" pcid="858">
+    def test_post_oplog_with_hmac_auth(self):
+        self.domain["contacts"]["authentication"] = ValidHMACAuth
+        self.headers.append(("Authorization", "admin:secret"))
+        r = self.test_client.post(
+            self.known_resource_url,
+            data=json.dumps(self.data),
+            headers=self.headers,
+            environ_base={"REMOTE_ADDR": "127.0.0.1"},
+        )
+        r, status = self.oplog_get()
+        self.assert200(status)
+        self.assertEqual(len(r["_items"]), 1)
+        oplog_entry = r["_items"][0]
+        self.assertOpLogEntry(oplog_entry, "POST", "admin")
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/common.py" startline="699" endline="713" pcid="856">
+    def test_post_oplog_with_basic_auth(self):
+        self.domain["contacts"]["authentication"] = ValidBasicAuth
+        self.headers.append(("Authorization", "Basic YWRtaW46c2VjcmV0"))
+        r = self.test_client.post(
+            self.known_resource_url,
+            data=json.dumps(self.data),
+            headers=self.headers,
+            environ_base={"REMOTE_ADDR": "127.0.0.1"},
+        )
+        r, status = self.oplog_get()
+        self.assert200(status)
+        self.assertEqual(len(r["_items"]), 1)
+        oplog_entry = r["_items"][0]
+        self.assertOpLogEntry(oplog_entry, "POST", "admin")
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/common.py" startline="623" endline="636" pcid="851">
+    def test_patch_oplog(self):
+        self.headers.append(("If-Match", self.item_etag))
+        r = self.test_client.patch(
+            self.item_id_url,
+            data=json.dumps(self.data),
+            headers=self.headers,
+            environ_base={"REMOTE_ADDR": "127.0.0.1"},
+        )
+        r, status = self.oplog_get()
+        self.assert200(status)
+        self.assertEqual(len(r["_items"]), 1)
+        oplog_entry = r["_items"][0]
+        self.assertOpLogEntry(oplog_entry, "PATCH")
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/common.py" startline="666" endline="678" pcid="854">
+    def test_delete_oplog(self):
+        self.headers.append(("If-Match", self.item_etag))
+        r = self.test_client.delete(
+            self.item_id_url,
+            headers=self.headers,
+            environ_base={"REMOTE_ADDR": "127.0.0.1"},
+        )
+        r, status = self.oplog_get()
+        self.assert200(status)
+        self.assertEqual(len(r["_items"]), 1)
+        oplog_entry = r["_items"][0]
+        self.assertOpLogEntry(oplog_entry, "DELETE")
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/common.py" startline="679" endline="698" pcid="855">
+    def test_soft_delete_oplog(self):
+        r, s = self.parse_response(self.test_client.get(self.item_id_url))
+        doc_date = r[config.LAST_UPDATED]
+        time.sleep(1)
+
+        self.domain[self.known_resource]["soft_delete"] = True
+
+        self.headers.append(("If-Match", self.item_etag))
+        r = self.test_client.delete(
+            self.item_id_url,
+            headers=self.headers,
+            environ_base={"REMOTE_ADDR": "127.0.0.1"},
+        )
+        r, status = self.oplog_get()
+        self.assert200(status)
+        self.assertEqual(len(r["_items"]), 1)
+        oplog_entry = r["_items"][0]
+        self.assertOpLogEntry(oplog_entry, "DELETE")
+        self.assertTrue(doc_date != oplog_entry[config.LAST_UPDATED])
+
+</source>
+</class>
+
+<class classid="36" nclones="2" nlines="11" similarity="100">
+<source file="systems/eve-1.1.5/eve/tests/versioning.py" startline="270" endline="283" pcid="886">
+    def do_test_put(self, partial):
+        response, status = self.put(
+            self.item_id_url,
+            data=self.item_change,
+            headers=[("If-Match", self.item_etag)],
+        )
+        self.assertGoodPutPatch(response, status)
+        self.assertPrimaryAndShadowDocuments(self.item_id, 2, partial=partial)
+
+        document = self.directGetDocument(self.item_id)
+        self.assertEqualFields(self.item_change, document, self.fields)
+
+        self.assertTrue(self.countShadowDocuments(self.item_id) == 2)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/versioning.py" startline="284" endline="297" pcid="887">
+    def do_test_patch(self, partial):
+        response, status = self.patch(
+            self.item_id_url,
+            data=self.item_change,
+            headers=[("If-Match", self.item_etag)],
+        )
+        self.assertGoodPutPatch(response, status)
+        self.assertPrimaryAndShadowDocuments(self.item_id, 2, partial=partial)
+
+        document = self.directGetDocument(self.item_id)
+        self.assertEqualFields(self.item_change, document, self.fields)
+
+        self.assertTrue(self.countShadowDocuments(self.item_id) == 2)
+
+</source>
+</class>
+
+<class classid="37" nclones="2" nlines="39" similarity="75">
+<source file="systems/eve-1.1.5/eve/tests/versioning.py" startline="361" endline="415" pcid="899">
+    def test_getitem_version_all(self):
+        """Verify that all documents are returned which each appearing exactly
+        as it would if it were accessed explicitly.
+        """
+        meta_fields = self.fields + [
+            self.id_field,
+            self.app.config["LAST_UPDATED"],
+            self.app.config["ETAG"],
+            self.app.config["DATE_CREATED"],
+            self.app.config["LINKS"],
+            self.version_field,
+            self.latest_version_field,
+        ]
+
+        # put a second version
+        response, status = self.put(
+            self.item_id_url,
+            data=self.item_change,
+            headers=[("If-Match", self.item_etag)],
+        )
+        self.assertGoodPutPatch(response, status)
+        etag2 = response[self.app.config["ETAG"]]
+
+        # get query
+        response, status = self.get(
+            self.known_resource, item=self.item_id, query="?version=all"
+        )
+        self.assert200(status)
+        items = response[self.app.config["ITEMS"]]
+        self.assertEqual(len(items), 2)
+
+        # check the get of the first version
+        self.assertDocumentVersionFields(items[0], 1, 2)
+        self.assertEqualFields(self.item, items[0], self.fields)
+        self.assertTrue(field in items[0] for field in meta_fields)
+        self.assertEqual(len(items[0].keys()), len(meta_fields))
+        self.assertEqual(items[0][self.app.config["ETAG"]], self.item_etag)
+
+        # # check the get of the second version
+        self.assertDocumentVersionFields(items[1], 2)
+        self.assertEqualFields(self.item_change, items[1], self.fields)
+        self.assertTrue(field in items[1] for field in meta_fields)
+        self.assertEqual(len(items[1].keys()), len(meta_fields))
+        self.assertEqual(items[1][self.app.config["ETAG"]], etag2)
+
+        # check the `self` links for both versions
+        self_href = items[0]["_links"]["self"]["href"]
+        self.assertEqual(
+            int(self_href.split("?version=")[1]), items[0][self.version_field]
+        )
+        self_href = items[1]["_links"]["self"]["href"]
+        self.assertEqual(
+            int(self_href.split("?version=")[1]), items[1][self.version_field]
+        )
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/versioning.py" startline="566" endline="626" pcid="905">
+    def test_getitem_version_diffs(self):
+        """Verify that the first document is returned in its entirety and that
+        subsequent documents are simply diff to the previous version.
+        """
+        meta_fields = self.fields + [
+            self.id_field,
+            self.app.config["LAST_UPDATED"],
+            self.app.config["ETAG"],
+            self.app.config["DATE_CREATED"],
+            self.app.config["LINKS"],
+            self.version_field,
+            self.latest_version_field,
+        ]
+
+        # put a second version
+        response, status = self.put(
+            self.item_id_url,
+            data=self.item_change,
+            headers=[("If-Match", self.item_etag)],
+        )
+        self.assertGoodPutPatch(response, status)
+        etag2 = response[self.app.config["ETAG"]]
+
+        # get query
+        response, status = self.get(
+            self.known_resource, item=self.item_id, query="?version=diffs"
+        )
+        self.assert200(status)
+        items = response[self.app.config["ITEMS"]]
+        self.assertEqual(len(items), 2)
+
+        # check the get of the first version
+        self.assertDocumentVersionFields(items[0], 1, 2)
+        self.assertEqualFields(self.item, items[0], self.fields)
+        self.assertTrue(field in items[0] for field in meta_fields)
+        self.assertEqual(len(items[0].keys()), len(meta_fields))
+        self.assertEqual(items[0][self.app.config["ETAG"]], self.item_etag)
+
+        # # check the get of the second version
+        self.assertVersion(items[1], 2)
+        self.assertEqualFields(self.item_change, items[1], self.fields)
+        changed_fields = self.fields + [
+            self.version_field,
+            self.app.config["ETAG"],
+            self.app.config["LINKS"],
+        ]
+        for field in changed_fields:
+            self.assertTrue(field in items[1], "%s not in diffs" % field)
+        # since the test routine happens so fast, `LAST_UPDATED` may or may not
+        # be in the diff (the date output only has a one second resolution)
+        self.assertTrue(
+            len(items[1].keys()) == len(changed_fields)
+            or len(items[1].keys()) == len(changed_fields) + 1
+        )
+        self.assertEqual(items[1][self.app.config["ETAG"]], etag2)
+
+        # TODO: could also verify that a 3rd iteration is a diff of the 2nd
+        # iteration and not a diff of the 1st iteration by mistake...
+
+        # TODO: also test with HATEOS off
+
+</source>
+</class>
+
+<class classid="38" nclones="4" nlines="18" similarity="72">
+<source file="systems/eve-1.1.5/eve/tests/versioning.py" startline="445" endline="475" pcid="901">
+    def test_on_fetched_item(self):
+        """Verify that on_fetched_item events are fired for versioned
+        requests.
+        """
+        devent = DummyEvent(lambda: True)
+        self.app.on_fetched_item += devent
+        response, status = self.get(
+            self.known_resource, item=self.item_id, query="?version=1"
+        )
+        self.assertEqual(self.known_resource, devent.called[0])
+        self.assertEqual(self.item_id, str(devent.called[1][self.id_field]))
+        self.assertEqual(2, len(devent.called))
+
+        # check for ?version=all requests
+        devent = DummyEvent(lambda: True)
+        self.app.on_fetched_item += devent
+        response, status = self.get(
+            self.known_resource, item=self.item_id, query="?version=all"
+        )
+        self.assertEqual(self.known_resource, devent.called[0])
+        self.assertEqual(self.item_id, str(devent.called[1][self.id_field]))
+        self.assertEqual(2, len(devent.called))
+
+        # check for ?version=diffs requests
+        devent = DummyEvent(lambda: True)
+        self.app.on_fetched_item += devent
+        response, status = self.get(
+            self.known_resource, item=self.item_id, query="?version=diffs"
+        )
+        self.assertEqual(None, devent.called)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/versioning.py" startline="476" endline="506" pcid="902">
+    def test_on_fetched_item_contacts(self):
+        """Verify that on_fetched_item_contacts events are fired for versioned
+        requests.
+        """
+        devent = DummyEvent(lambda: True)
+        self.app.on_fetched_item_contacts += devent
+        response, status = self.get(
+            self.known_resource, item=self.item_id, query="?version=1"
+        )
+        self.assertEqual(self.item_id, str(devent.called[0][self.id_field]))
+        self.assertEqual(1, len(devent.called))
+
+        # check for ?version=all requests
+        devent = DummyEvent(lambda: True)
+        self.app.on_fetched_item_contacts += devent
+        response, status = self.get(
+            self.known_resource, item=self.item_id, query="?version=all"
+        )
+        self.assertEqual(self.item_id, str(devent.called[0][self.id_field]))
+        self.assertEqual(1, len(devent.called))
+
+        # check for ?version=diffs requests
+        devent = DummyEvent(lambda: True)
+        self.app.on_fetched_item_contacts += devent
+        response, status = self.get(
+            self.known_resource, item=self.item_id, query="?version=diffs"
+        )
+        self.assertEqual(None, devent.called)
+
+        # TODO: also test with HATEOS off
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/versioning.py" startline="535" endline="565" pcid="904">
+    def test_on_fetched_diffs_contacts(self):
+        """Verify that on_fetched_diffs_contacts events are fired for
+        version=diffs requests.
+        """
+        devent = DummyEvent(lambda: True)
+        self.app.on_fetched_diffs_contacts += devent
+        response, status = self.get(
+            self.known_resource, item=self.item_id, query="?version=1"
+        )
+        self.assertEqual(None, devent.called)
+
+        # check for ?version=all requests
+        devent = DummyEvent(lambda: True)
+        self.app.on_fetched_diffs_contacts += devent
+        response, status = self.get(
+            self.known_resource, item=self.item_id, query="?version=all"
+        )
+        self.assertEqual(None, devent.called)
+
+        # check for ?version=diffs requests
+        devent = DummyEvent(lambda: True)
+        self.app.on_fetched_diffs_contacts += devent
+        response, status = self.get(
+            self.known_resource, item=self.item_id, query="?version=diffs"
+        )
+        # Verify first document has id_field
+        self.assertEqual(self.item_id, str(devent.called[0][0][self.id_field]))
+        self.assertEqual(1, len(devent.called))
+
+        # TODO: also test with HATEOS off
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/versioning.py" startline="507" endline="534" pcid="903">
+    def test_on_fetched_diffs(self):
+        """Verify that on_fetched_item events are fired for
+        version=diffs requests.
+        """
+        devent = DummyEvent(lambda: True)
+        self.app.on_fetched_diffs += devent
+        response, status = self.get(
+            self.known_resource, item=self.item_id, query="?version=1"
+        )
+        self.assertEqual(None, devent.called)
+
+        # check for ?version=all requests
+        devent = DummyEvent(lambda: True)
+        self.app.on_fetched_diffs += devent
+        response, status = self.get(
+            self.known_resource, item=self.item_id, query="?version=all"
+        )
+        self.assertEqual(None, devent.called)
+
+        # check for ?version=diffs requests
+        devent = DummyEvent(lambda: True)
+        self.app.on_fetched_diffs += devent
+        response, status = self.get(
+            self.known_resource, item=self.item_id, query="?version=diffs"
+        )
+        self.assertEqual(self.known_resource, devent.called[0])
+        self.assertEqual(2, len(devent.called))
+
+</source>
+</class>
+
+<class classid="39" nclones="2" nlines="19" similarity="80">
+<source file="systems/eve-1.1.5/eve/tests/versioning.py" startline="704" endline="735" pcid="908">
+    def test_getitem_version_new_latest_version_invalidates_if_modified_since(self):
+        """Verify that a cached document version is invalidated via
+        an 'If-Modified-Since' header when the _latest_version field has
+        changed due to creation of a new version
+        """
+        # get first version and record Last-Modified
+        r = self.test_client.get(self.item_id_url + "?version=1")
+        document, status = self.parse_response(r)
+        self.assert200(status)
+        self.assertEqual(document[self.latest_version_field], 1)
+        last_modified = r.headers.get("Last-Modified")
+
+        # put a second version (after enough time has passed to expect a new
+        # Last-Modified header)
+        time.sleep(2)
+        response, status = self.put(
+            self.item_id_url,
+            data=self.item_change,
+            headers=[("If-Match", self.item_etag)],
+        )
+        self.assertGoodPutPatch(response, status)
+
+        # get first version again and confirm Last-Modified and latest version
+        # have been updated
+        r = self.test_client.get(
+            self.item_id_url + "?version=1",
+            headers=[("If-Modified-Since", last_modified)],
+        )
+        document, status = self.parse_response(r)
+        self.assert200(status)
+        self.assertEqual(document[self.latest_version_field], 2)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/versioning.py" startline="736" endline="763" pcid="909">
+    def test_getitem_version_new_latest_version_invalidates_if_none_match(self):
+        """Verify that a cached document version is invalidated via
+        an 'If-None-Match' header when the _latest_version field has changed
+        due to creation of a new version
+        """
+        # get first version and record ETag
+        r = self.test_client.get(self.item_id_url + "?version=1")
+        document, status = self.parse_response(r)
+        self.assert200(status)
+        self.assertEqual(document[self.latest_version_field], 1)
+        version1_etag = r.headers.get("ETag")
+
+        # put a second version
+        response, status = self.put(
+            self.item_id_url,
+            data=self.item_change,
+            headers=[("If-Match", self.item_etag)],
+        )
+        self.assertGoodPutPatch(response, status)
+
+        # get first version again and confirm latest version has been updated
+        r = self.test_client.get(
+            self.item_id_url + "?version=1", headers=[("If-None-Match", version1_etag)]
+        )
+        document, status = self.parse_response(r)
+        self.assert200(status)
+        self.assertEqual(document[self.latest_version_field], 2)
+
+</source>
+</class>
+
+<class classid="40" nclones="2" nlines="15" similarity="86">
+<source file="systems/eve-1.1.5/eve/tests/versioning.py" startline="1057" endline="1078" pcid="918">
+    def test_embedded(self):
+        """Perform a quick check to make sure that Eve can embedded with a
+        version in the data relation.
+        """
+        data_relation = self.domain["invoices"]["schema"]["person"]["data_relation"]
+        value_field = data_relation["field"]
+
+        # add embeddable data relation
+        data = {"person": {value_field: self.item_id, self.version_field: 1}}
+        response, status = self.post("/invoices/", data=data)
+        self.assert201(status)
+        invoice_id = response[value_field]
+
+        # test that it works
+        response, status = self.get(
+            self.domain["invoices"]["url"],
+            item=invoice_id,
+            query='?embedded={"person": 1}',
+        )
+        self.assert200(status)
+        self.assertTrue("ref" in response["person"])
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/versioning.py" startline="1469" endline="1492" pcid="943">
+    def test_embedded(self):
+        """Perform a quick check to make sure that Eve can embedded with a
+        version in the data relation.
+        """
+        data_relation = self.domain["invoices"]["schema"]["person"]["data_relation"]
+        value_field = data_relation["field"]
+        version_field = self.app.config["VERSION"]
+
+        # verify that Eve will take version = 1 if no shadow docs exist
+        data = {"person": {value_field: self.item_id, version_field: 1}}
+        response, status = self.post("/invoices/", data=data)
+        self.assert201(status)
+        invoice_id = response[value_field]
+
+        # verify that we can embed across the data_relation w/o shadow copy
+        response, status = self.get(
+            self.domain["invoices"]["url"],
+            item=invoice_id,
+            query='?embedded={"person": 1}',
+        )
+        self.assert200(status)
+        self.assertTrue("ref" in response["person"])
+
+
+</source>
+</class>
+
+<class classid="41" nclones="2" nlines="12" similarity="100">
+<source file="systems/eve-1.1.5/eve/tests/versioning.py" startline="1324" endline="1346" pcid="936">
+    def test_put(self):
+        """Make sure that Eve jumps to version = 2 and saves two shadow copies
+        (version 1 and version 2) for documents that where already in the
+        database before version control was turned on.
+        """
+        # make sure there are no shadow documents
+        self.assertTrue(self.countShadowDocuments() == 0)
+
+        # put a change
+        changes = {"ref": "this is a different value"}
+        response, status = self.put(
+            self.item_id_url, data=changes, headers=[("If-Match", self.item_etag)]
+        )
+        self.assertGoodPutPatch(response, status)
+        self.assertDocumentVersionFields(response, 2)
+
+        # make sure that this saved to the db (if it didn't, version == 1)
+        self.assertTrue(self.countShadowDocuments() == 2)
+        response2, status = self.get(self.known_resource, item=self.item_id)
+        self.assert200(status)
+        self.assertDocumentVersionFields(response2, 2)
+        self.assertEqual(response[ETAG], response2[ETAG])
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/versioning.py" startline="1347" endline="1369" pcid="937">
+    def test_patch(self):
+        """Make sure that Eve jumps to version = 2 and saves two shadow copies
+        (version 1 and version 2) for documents that where already in the
+        database before version control was turned on.
+        """
+        # make sure there are no shadow documents
+        self.assertTrue(self.countShadowDocuments() == 0)
+
+        # patch a change
+        changes = {"ref": "this is a different value"}
+        response, status = self.patch(
+            self.item_id_url, data=changes, headers=[("If-Match", self.item_etag)]
+        )
+        self.assertGoodPutPatch(response, status)
+        self.assertDocumentVersionFields(response, 2)
+
+        # make sure that this saved to the db (if it didn't, version == 1)
+        self.assertTrue(self.countShadowDocuments() == 2)
+        response2, status = self.get(self.known_resource, item=self.item_id)
+        self.assert200(status)
+        self.assertDocumentVersionFields(response2, 2)
+        self.assertEqual(response[ETAG], response2[ETAG])
+
+</source>
+</class>
+
+</clones>

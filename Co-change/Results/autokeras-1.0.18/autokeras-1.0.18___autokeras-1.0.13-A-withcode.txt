@@ -1,0 +1,1221 @@
+<clonepair1>
+<source file="systems/autokeras-1.0.18/autokeras/tasks/image.py" startline="207" endline="238" pcid="204"></source>
+    def __init__(
+        self,
+        output_dim: Optional[int] = None,
+        loss: types.LossType = "mean_squared_error",
+        metrics: Optional[types.MetricsType] = None,
+        project_name: str = "image_regressor",
+        max_trials: int = 100,
+        directory: Union[str, Path, None] = None,
+        objective: str = "val_loss",
+        tuner: Union[str, Type[tuner.AutoTuner]] = None,
+        overwrite: bool = False,
+        seed: Optional[int] = None,
+        max_model_size: Optional[int] = None,
+        **kwargs
+    ):
+        if tuner is None:
+            tuner = greedy.Greedy
+        super().__init__(
+            outputs=blocks.RegressionHead(
+                output_dim=output_dim, loss=loss, metrics=metrics
+            ),
+            max_trials=max_trials,
+            directory=directory,
+            project_name=project_name,
+            objective=objective,
+            tuner=tuner,
+            overwrite=overwrite,
+            seed=seed,
+            max_model_size=max_model_size,
+            **kwargs
+        )
+
+</clonepair1>
+
+<clonepair1>
+<source file="systems/autokeras-1.0.18/autokeras/tasks/text.py" startline="67" endline="102" pcid="197"></source>
+    def __init__(
+        self,
+        num_classes: Optional[int] = None,
+        multi_label: bool = False,
+        loss: types.LossType = None,
+        metrics: Optional[types.MetricsType] = None,
+        project_name: str = "text_classifier",
+        max_trials: int = 100,
+        directory: Union[str, Path, None] = None,
+        objective: str = "val_loss",
+        tuner: Union[str, Type[tuner.AutoTuner]] = None,
+        overwrite: bool = False,
+        seed: Optional[int] = None,
+        max_model_size: Optional[int] = None,
+        **kwargs
+    ):
+        if tuner is None:
+            tuner = task_specific.TextClassifierTuner
+        super().__init__(
+            outputs=blocks.ClassificationHead(
+                num_classes=num_classes,
+                multi_label=multi_label,
+                loss=loss,
+                metrics=metrics,
+            ),
+            max_trials=max_trials,
+            directory=directory,
+            project_name=project_name,
+            objective=objective,
+            tuner=tuner,
+            overwrite=overwrite,
+            seed=seed,
+            max_model_size=max_model_size,
+            **kwargs
+        )
+
+</clonepair1>
+<clonepair2>
+<source file="systems/autokeras-1.0.18/autokeras/tasks/structured_data.py" startline="77" endline="149" pcid="174"></source>
+    def fit(
+        self,
+        x=None,
+        y=None,
+        epochs=None,
+        callbacks=None,
+        validation_split=0.2,
+        validation_data=None,
+        **kwargs
+    ):
+        """Search for the best model and hyperparameters for the AutoModel.
+
+        # Arguments
+            x: String, numpy.ndarray, pandas.DataFrame or tensorflow.Dataset.
+                Training data x. If the data is from a csv file, it should be a
+                string specifying the path of the csv file of the training data.
+            y: String, numpy.ndarray, or tensorflow.Dataset. Training data y.
+                If the data is from a csv file, it should be a string, which is the
+                name of the target column. Otherwise, it can be single-column or
+                multi-column. The values should all be numerical.
+            epochs: Int. The number of epochs to train each model during the search.
+                If unspecified, we would use epochs equal to 1000 and early stopping
+                with patience equal to 30.
+            callbacks: List of Keras callbacks to apply during training and
+                validation.
+            validation_split: Float between 0 and 1. Defaults to 0.2.
+                Fraction of the training data to be used as validation data.
+                The model will set apart this fraction of the training data,
+                will not train on it, and will evaluate
+                the loss and any model metrics
+                on this data at the end of each epoch.
+                The validation data is selected from the last samples
+                in the `x` and `y` data provided, before shuffling. This argument is
+                not supported when `x` is a dataset.
+                The best model found would be fit on the entire dataset including the
+                validation data.
+            validation_data: Data on which to evaluate the loss and any model metrics
+                at the end of each epoch. The model will not be trained on this data.
+                `validation_data` will override `validation_split`. The type of the
+                validation data should be the same as the training data.
+                The best model found would be fit on the training dataset without the
+                validation data.
+            **kwargs: Any arguments supported by
+                [keras.Model.fit](https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit).
+        # Returns
+            history: A Keras History object corresponding to the best model.
+                Its History.history attribute is a record of training
+                loss values and metrics values at successive epochs, as well as
+                validation loss values and validation metrics values (if applicable).
+        """
+        # x is file path of training data
+        if isinstance(x, str):
+            self._target_col_name = y
+            x, y = self._read_from_csv(x, y)
+
+        if validation_data and not isinstance(validation_data, tf.data.Dataset):
+            x_val, y_val = validation_data
+            if isinstance(x_val, str):
+                validation_data = self._read_from_csv(x_val, y_val)
+
+        self.check_in_fit(x)
+
+        history = super().fit(
+            x=x,
+            y=y,
+            epochs=epochs,
+            callbacks=callbacks,
+            validation_split=validation_split,
+            validation_data=validation_data,
+            **kwargs
+        )
+        return history
+
+</clonepair2>
+
+<clonepair2>
+<source file="systems/autokeras-1.0.18/autokeras/tasks/text.py" startline="103" endline="171" pcid="198"></source>
+    def fit(
+        self,
+        x=None,
+        y=None,
+        epochs=None,
+        callbacks=None,
+        validation_split=0.2,
+        validation_data=None,
+        **kwargs
+    ):
+        """Search for the best model and hyperparameters for the AutoModel.
+
+        It will search for the best model based on the performances on
+        validation data.
+
+        # Arguments
+            x: numpy.ndarray or tensorflow.Dataset. Training data x. The input data
+                should be numpy.ndarray or tf.data.Dataset. The data should be one
+                dimensional. Each element in the data should be a string which is a
+                full sentence.
+            y: numpy.ndarray or tensorflow.Dataset. Training data y. It can be raw
+                labels, one-hot encoded if more than two classes, or binary encoded
+                for binary classification.
+            epochs: Int. The number of epochs to train each model during the search.
+                If unspecified, by default we train for a maximum of 1000 epochs,
+                but we stop training if the validation loss stops improving for 10
+                epochs (unless you specified an EarlyStopping callback as part of
+                the callbacks argument, in which case the EarlyStopping callback you
+                specified will determine early stopping).
+            callbacks: List of Keras callbacks to apply during training and
+                validation.
+            validation_split: Float between 0 and 1. Defaults to 0.2.
+                Fraction of the training data to be used as validation data.
+                The model will set apart this fraction of the training data,
+                will not train on it, and will evaluate
+                the loss and any model metrics
+                on this data at the end of each epoch.
+                The validation data is selected from the last samples
+                in the `x` and `y` data provided, before shuffling. This argument is
+                not supported when `x` is a dataset.
+                The best model found would be fit on the entire dataset including the
+                validation data.
+            validation_data: Data on which to evaluate the loss and any model metrics
+                at the end of each epoch. The model will not be trained on this data.
+                `validation_data` will override `validation_split`. The type of the
+                validation data should be the same as the training data.
+                The best model found would be fit on the training dataset without the
+                validation data.
+            **kwargs: Any arguments supported by
+                [keras.Model.fit](https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit).
+
+        # Returns
+            history: A Keras History object corresponding to the best model.
+                Its History.history attribute is a record of training
+                loss values and metrics values at successive epochs, as well as
+                validation loss values and validation metrics values (if applicable).
+        """
+        history = super().fit(
+            x=x,
+            y=y,
+            epochs=epochs,
+            callbacks=callbacks,
+            validation_split=validation_split,
+            validation_data=validation_data,
+            **kwargs
+        )
+        return history
+
+
+</clonepair2>
+<clonepair3>
+<source file="systems/autokeras-1.0.18/autokeras/tasks/structured_data.py" startline="77" endline="149" pcid="174"></source>
+    def fit(
+        self,
+        x=None,
+        y=None,
+        epochs=None,
+        callbacks=None,
+        validation_split=0.2,
+        validation_data=None,
+        **kwargs
+    ):
+        """Search for the best model and hyperparameters for the AutoModel.
+
+        # Arguments
+            x: String, numpy.ndarray, pandas.DataFrame or tensorflow.Dataset.
+                Training data x. If the data is from a csv file, it should be a
+                string specifying the path of the csv file of the training data.
+            y: String, numpy.ndarray, or tensorflow.Dataset. Training data y.
+                If the data is from a csv file, it should be a string, which is the
+                name of the target column. Otherwise, it can be single-column or
+                multi-column. The values should all be numerical.
+            epochs: Int. The number of epochs to train each model during the search.
+                If unspecified, we would use epochs equal to 1000 and early stopping
+                with patience equal to 30.
+            callbacks: List of Keras callbacks to apply during training and
+                validation.
+            validation_split: Float between 0 and 1. Defaults to 0.2.
+                Fraction of the training data to be used as validation data.
+                The model will set apart this fraction of the training data,
+                will not train on it, and will evaluate
+                the loss and any model metrics
+                on this data at the end of each epoch.
+                The validation data is selected from the last samples
+                in the `x` and `y` data provided, before shuffling. This argument is
+                not supported when `x` is a dataset.
+                The best model found would be fit on the entire dataset including the
+                validation data.
+            validation_data: Data on which to evaluate the loss and any model metrics
+                at the end of each epoch. The model will not be trained on this data.
+                `validation_data` will override `validation_split`. The type of the
+                validation data should be the same as the training data.
+                The best model found would be fit on the training dataset without the
+                validation data.
+            **kwargs: Any arguments supported by
+                [keras.Model.fit](https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit).
+        # Returns
+            history: A Keras History object corresponding to the best model.
+                Its History.history attribute is a record of training
+                loss values and metrics values at successive epochs, as well as
+                validation loss values and validation metrics values (if applicable).
+        """
+        # x is file path of training data
+        if isinstance(x, str):
+            self._target_col_name = y
+            x, y = self._read_from_csv(x, y)
+
+        if validation_data and not isinstance(validation_data, tf.data.Dataset):
+            x_val, y_val = validation_data
+            if isinstance(x_val, str):
+                validation_data = self._read_from_csv(x_val, y_val)
+
+        self.check_in_fit(x)
+
+        history = super().fit(
+            x=x,
+            y=y,
+            epochs=epochs,
+            callbacks=callbacks,
+            validation_split=validation_split,
+            validation_data=validation_data,
+            **kwargs
+        )
+        return history
+
+</clonepair3>
+
+<clonepair3>
+<source file="systems/autokeras-1.0.18/autokeras/tasks/text.py" startline="235" endline="301" pcid="200"></source>
+    def fit(
+        self,
+        x=None,
+        y=None,
+        epochs=None,
+        callbacks=None,
+        validation_split=0.2,
+        validation_data=None,
+        **kwargs
+    ):
+        """Search for the best model and hyperparameters for the AutoModel.
+
+        It will search for the best model based on the performances on
+        validation data.
+
+        # Arguments
+            x: numpy.ndarray or tensorflow.Dataset. Training data x. The input data
+                should be numpy.ndarray or tf.data.Dataset. The data should be one
+                dimensional. Each element in the data should be a string which is a
+                full sentence.
+            y: numpy.ndarray or tensorflow.Dataset. Training data y. The targets
+                passing to the head would have to be tf.data.Dataset, np.ndarray,
+                pd.DataFrame or pd.Series. It can be single-column or multi-column.
+                The values should all be numerical.
+            epochs: Int. The number of epochs to train each model during the search.
+                If unspecified, by default we train for a maximum of 1000 epochs,
+                but we stop training if the validation loss stops improving for 10
+                epochs (unless you specified an EarlyStopping callback as part of
+                the callbacks argument, in which case the EarlyStopping callback you
+                specified will determine early stopping).
+            callbacks: List of Keras callbacks to apply during training and
+                validation.
+            validation_split: Float between 0 and 1. Defaults to 0.2.
+                Fraction of the training data to be used as validation data.
+                The model will set apart this fraction of the training data,
+                will not train on it, and will evaluate
+                the loss and any model metrics
+                on this data at the end of each epoch.
+                The validation data is selected from the last samples
+                in the `x` and `y` data provided, before shuffling. This argument is
+                not supported when `x` is a dataset.
+                The best model found would be fit on the entire dataset including the
+                validation data.
+            validation_data: Data on which to evaluate the loss and any model metrics
+                at the end of each epoch. The model will not be trained on this data.
+                `validation_data` will override `validation_split`. The type of the
+                validation data should be the same as the training data.
+                The best model found would be fit on the training dataset without the
+                validation data.
+            **kwargs: Any arguments supported by
+                [keras.Model.fit](https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit).
+        # Returns
+            history: A Keras History object corresponding to the best model.
+                Its History.history attribute is a record of training
+                loss values and metrics values at successive epochs, as well as
+                validation loss values and validation metrics values (if applicable).
+        """
+        history = super().fit(
+            x=x,
+            y=y,
+            epochs=epochs,
+            callbacks=callbacks,
+            validation_split=validation_split,
+            validation_data=validation_data,
+            **kwargs
+        )
+        return history
+</clonepair3>
+<clonepair4>
+<source file="systems/autokeras-1.0.18/autokeras/tasks/image.py" startline="239" endline="308" pcid="205"></source>
+    def fit(
+        self,
+        x: Optional[types.DatasetType] = None,
+        y: Optional[types.DatasetType] = None,
+        epochs: Optional[int] = None,
+        callbacks: Optional[List[tf.keras.callbacks.Callback]] = None,
+        validation_split: Optional[float] = 0.2,
+        validation_data: Union[
+            types.DatasetType, Tuple[types.DatasetType], None
+        ] = None,
+        **kwargs
+    ):
+        """Search for the best model and hyperparameters for the AutoModel.
+
+        It will search for the best model based on the performances on
+        validation data.
+
+        # Arguments
+            x: numpy.ndarray or tensorflow.Dataset. Training data x. The shape of
+                the data should be (samples, width, height) or
+                (samples, width, height, channels).
+            y: numpy.ndarray or tensorflow.Dataset. Training data y. The targets
+                passing to the head would have to be tf.data.Dataset, np.ndarray,
+                pd.DataFrame or pd.Series. It can be single-column or multi-column.
+                The values should all be numerical.
+            epochs: Int. The number of epochs to train each model during the search.
+                If unspecified, by default we train for a maximum of 1000 epochs,
+                but we stop training if the validation loss stops improving for 10
+                epochs (unless you specified an EarlyStopping callback as part of
+                the callbacks argument, in which case the EarlyStopping callback you
+                specified will determine early stopping).
+            callbacks: List of Keras callbacks to apply during training and
+                validation.
+            validation_split: Float between 0 and 1. Defaults to 0.2.
+                Fraction of the training data to be used as validation data.
+                The model will set apart this fraction of the training data,
+                will not train on it, and will evaluate
+                the loss and any model metrics
+                on this data at the end of each epoch.
+                The validation data is selected from the last samples
+                in the `x` and `y` data provided, before shuffling. This argument is
+                not supported when `x` is a dataset.
+                The best model found would be fit on the entire dataset including the
+                validation data.
+            validation_data: Data on which to evaluate the loss and any model metrics
+                at the end of each epoch. The model will not be trained on this data.
+                `validation_data` will override `validation_split`. The type of the
+                validation data should be the same as the training data.
+                The best model found would be fit on the training dataset without the
+                validation data.
+            **kwargs: Any arguments supported by
+                [keras.Model.fit](https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit).
+        # Returns
+            history: A Keras History object corresponding to the best model.
+                Its History.history attribute is a record of training
+                loss values and metrics values at successive epochs, as well as
+                validation loss values and validation metrics values (if applicable).
+        """
+        history = super().fit(
+            x=x,
+            y=y,
+            epochs=epochs,
+            callbacks=callbacks,
+            validation_split=validation_split,
+            validation_data=validation_data,
+            **kwargs
+        )
+        return history
+
+
+</clonepair4>
+
+<clonepair4>
+<source file="systems/autokeras-1.0.18/autokeras/tasks/image.py" startline="369" endline="438" pcid="207"></source>
+    def fit(
+        self,
+        x: Optional[types.DatasetType] = None,
+        y: Optional[types.DatasetType] = None,
+        epochs: Optional[int] = None,
+        callbacks: Optional[List[tf.keras.callbacks.Callback]] = None,
+        validation_split: Optional[float] = 0.2,
+        validation_data: Union[
+            types.DatasetType, Tuple[types.DatasetType], None
+        ] = None,
+        **kwargs
+    ):
+        """Search for the best model and hyperparameters for the AutoModel.
+
+        It will search for the best model based on the performances on
+        validation data.
+
+        # Arguments
+            x: numpy.ndarray or tensorflow.Dataset. Training image dataset x.
+                The shape of the data should be (samples, width, height) or
+                (samples, width, height, channels).
+            y: numpy.ndarray or tensorflow.Dataset. Training image data set y.
+                It should be a tensor and the height and width should be the same
+                as x. Each element in the tensor is the label of the corresponding
+                pixel.
+            epochs: Int. The number of epochs to train each model during the search.
+                If unspecified, by default we train for a maximum of 1000 epochs,
+                but we stop training if the validation loss stops improving for 10
+                epochs (unless you specified an EarlyStopping callback as part of
+                the callbacks argument, in which case the EarlyStopping callback you
+                specified will determine early stopping).
+            callbacks: List of Keras callbacks to apply during training and
+                validation.
+            validation_split: Float between 0 and 1. Defaults to 0.2.
+                Fraction of the training data to be used as validation data.
+                The model will set apart this fraction of the training data,
+                will not train on it, and will evaluate
+                the loss and any model metrics
+                on this data at the end of each epoch.
+                The validation data is selected from the last samples
+                in the `x` and `y` data provided, before shuffling. This argument is
+                not supported when `x` is a dataset.
+                The best model found would be fit on the entire dataset including the
+                validation data.
+            validation_data: Data on which to evaluate the loss and any model metrics
+                at the end of each epoch. The model will not be trained on this data.
+                `validation_data` will override `validation_split`. The type of the
+                validation data should be the same as the training data.
+                The best model found would be fit on the training dataset without the
+                validation data.
+            **kwargs: Any arguments supported by
+                [keras.Model.fit](https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit).
+        # Returns
+            history: A Keras History object corresponding to the best model.
+                Its History.history attribute is a record of training
+                loss values and metrics values at successive epochs, as well as
+                validation loss values and validation metrics values (if applicable).
+        """
+        history = super().fit(
+            x=x,
+            y=y,
+            epochs=epochs,
+            callbacks=callbacks,
+            validation_split=validation_split,
+            validation_data=validation_data,
+            **kwargs
+        )
+        return history
+
+
+</clonepair4>
+<clonepair5>
+<source file="systems/autokeras-1.0.18/autokeras/tasks/image.py" startline="107" endline="175" pcid="203"></source>
+    def fit(
+        self,
+        x: Optional[types.DatasetType] = None,
+        y: Optional[types.DatasetType] = None,
+        epochs: Optional[int] = None,
+        callbacks: Optional[List[tf.keras.callbacks.Callback]] = None,
+        validation_split: Optional[float] = 0.2,
+        validation_data: Union[
+            tf.data.Dataset, Tuple[types.DatasetType, types.DatasetType], None
+        ] = None,
+        **kwargs
+    ):
+        """Search for the best model and hyperparameters for the AutoModel.
+
+        It will search for the best model based on the performances on
+        validation data.
+
+        # Arguments
+            x: numpy.ndarray or tensorflow.Dataset. Training data x. The shape of
+                the data should be (samples, width, height)
+                or (samples, width, height, channels).
+            y: numpy.ndarray or tensorflow.Dataset. Training data y. It can be raw
+                labels, one-hot encoded if more than two classes, or binary encoded
+                for binary classification.
+            epochs: Int. The number of epochs to train each model during the search.
+                If unspecified, by default we train for a maximum of 1000 epochs,
+                but we stop training if the validation loss stops improving for 10
+                epochs (unless you specified an EarlyStopping callback as part of
+                the callbacks argument, in which case the EarlyStopping callback you
+                specified will determine early stopping).
+            callbacks: List of Keras callbacks to apply during training and
+                validation.
+            validation_split: Float between 0 and 1. Defaults to 0.2.
+                Fraction of the training data to be used as validation data.
+                The model will set apart this fraction of the training data,
+                will not train on it, and will evaluate
+                the loss and any model metrics
+                on this data at the end of each epoch.
+                The validation data is selected from the last samples
+                in the `x` and `y` data provided, before shuffling. This argument is
+                not supported when `x` is a dataset.
+                The best model found would be fit on the entire dataset including the
+                validation data.
+            validation_data: Data on which to evaluate the loss and any model metrics
+                at the end of each epoch. The model will not be trained on this data.
+                `validation_data` will override `validation_split`. The type of the
+                validation data should be the same as the training data.
+                The best model found would be fit on the training dataset without the
+                validation data.
+            **kwargs: Any arguments supported by
+                [keras.Model.fit](https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit).
+        # Returns
+            history: A Keras History object corresponding to the best model.
+                Its History.history attribute is a record of training
+                loss values and metrics values at successive epochs, as well as
+                validation loss values and validation metrics values (if applicable).
+        """
+        history = super().fit(
+            x=x,
+            y=y,
+            epochs=epochs,
+            callbacks=callbacks,
+            validation_split=validation_split,
+            validation_data=validation_data,
+            **kwargs
+        )
+        return history
+
+
+</clonepair5>
+
+<clonepair5>
+<source file="systems/autokeras-1.0.18/autokeras/tasks/image.py" startline="239" endline="308" pcid="205"></source>
+    def fit(
+        self,
+        x: Optional[types.DatasetType] = None,
+        y: Optional[types.DatasetType] = None,
+        epochs: Optional[int] = None,
+        callbacks: Optional[List[tf.keras.callbacks.Callback]] = None,
+        validation_split: Optional[float] = 0.2,
+        validation_data: Union[
+            types.DatasetType, Tuple[types.DatasetType], None
+        ] = None,
+        **kwargs
+    ):
+        """Search for the best model and hyperparameters for the AutoModel.
+
+        It will search for the best model based on the performances on
+        validation data.
+
+        # Arguments
+            x: numpy.ndarray or tensorflow.Dataset. Training data x. The shape of
+                the data should be (samples, width, height) or
+                (samples, width, height, channels).
+            y: numpy.ndarray or tensorflow.Dataset. Training data y. The targets
+                passing to the head would have to be tf.data.Dataset, np.ndarray,
+                pd.DataFrame or pd.Series. It can be single-column or multi-column.
+                The values should all be numerical.
+            epochs: Int. The number of epochs to train each model during the search.
+                If unspecified, by default we train for a maximum of 1000 epochs,
+                but we stop training if the validation loss stops improving for 10
+                epochs (unless you specified an EarlyStopping callback as part of
+                the callbacks argument, in which case the EarlyStopping callback you
+                specified will determine early stopping).
+            callbacks: List of Keras callbacks to apply during training and
+                validation.
+            validation_split: Float between 0 and 1. Defaults to 0.2.
+                Fraction of the training data to be used as validation data.
+                The model will set apart this fraction of the training data,
+                will not train on it, and will evaluate
+                the loss and any model metrics
+                on this data at the end of each epoch.
+                The validation data is selected from the last samples
+                in the `x` and `y` data provided, before shuffling. This argument is
+                not supported when `x` is a dataset.
+                The best model found would be fit on the entire dataset including the
+                validation data.
+            validation_data: Data on which to evaluate the loss and any model metrics
+                at the end of each epoch. The model will not be trained on this data.
+                `validation_data` will override `validation_split`. The type of the
+                validation data should be the same as the training data.
+                The best model found would be fit on the training dataset without the
+                validation data.
+            **kwargs: Any arguments supported by
+                [keras.Model.fit](https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit).
+        # Returns
+            history: A Keras History object corresponding to the best model.
+                Its History.history attribute is a record of training
+                loss values and metrics values at successive epochs, as well as
+                validation loss values and validation metrics values (if applicable).
+        """
+        history = super().fit(
+            x=x,
+            y=y,
+            epochs=epochs,
+            callbacks=callbacks,
+            validation_split=validation_split,
+            validation_data=validation_data,
+            **kwargs
+        )
+        return history
+
+
+</clonepair5>
+<clonepair6>
+<source file="systems/autokeras-1.0.18/autokeras/tasks/image.py" startline="107" endline="175" pcid="203"></source>
+    def fit(
+        self,
+        x: Optional[types.DatasetType] = None,
+        y: Optional[types.DatasetType] = None,
+        epochs: Optional[int] = None,
+        callbacks: Optional[List[tf.keras.callbacks.Callback]] = None,
+        validation_split: Optional[float] = 0.2,
+        validation_data: Union[
+            tf.data.Dataset, Tuple[types.DatasetType, types.DatasetType], None
+        ] = None,
+        **kwargs
+    ):
+        """Search for the best model and hyperparameters for the AutoModel.
+
+        It will search for the best model based on the performances on
+        validation data.
+
+        # Arguments
+            x: numpy.ndarray or tensorflow.Dataset. Training data x. The shape of
+                the data should be (samples, width, height)
+                or (samples, width, height, channels).
+            y: numpy.ndarray or tensorflow.Dataset. Training data y. It can be raw
+                labels, one-hot encoded if more than two classes, or binary encoded
+                for binary classification.
+            epochs: Int. The number of epochs to train each model during the search.
+                If unspecified, by default we train for a maximum of 1000 epochs,
+                but we stop training if the validation loss stops improving for 10
+                epochs (unless you specified an EarlyStopping callback as part of
+                the callbacks argument, in which case the EarlyStopping callback you
+                specified will determine early stopping).
+            callbacks: List of Keras callbacks to apply during training and
+                validation.
+            validation_split: Float between 0 and 1. Defaults to 0.2.
+                Fraction of the training data to be used as validation data.
+                The model will set apart this fraction of the training data,
+                will not train on it, and will evaluate
+                the loss and any model metrics
+                on this data at the end of each epoch.
+                The validation data is selected from the last samples
+                in the `x` and `y` data provided, before shuffling. This argument is
+                not supported when `x` is a dataset.
+                The best model found would be fit on the entire dataset including the
+                validation data.
+            validation_data: Data on which to evaluate the loss and any model metrics
+                at the end of each epoch. The model will not be trained on this data.
+                `validation_data` will override `validation_split`. The type of the
+                validation data should be the same as the training data.
+                The best model found would be fit on the training dataset without the
+                validation data.
+            **kwargs: Any arguments supported by
+                [keras.Model.fit](https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit).
+        # Returns
+            history: A Keras History object corresponding to the best model.
+                Its History.history attribute is a record of training
+                loss values and metrics values at successive epochs, as well as
+                validation loss values and validation metrics values (if applicable).
+        """
+        history = super().fit(
+            x=x,
+            y=y,
+            epochs=epochs,
+            callbacks=callbacks,
+            validation_split=validation_split,
+            validation_data=validation_data,
+            **kwargs
+        )
+        return history
+
+
+</clonepair6>
+
+<clonepair6>
+<source file="systems/autokeras-1.0.18/autokeras/tasks/image.py" startline="369" endline="438" pcid="207"></source>
+    def fit(
+        self,
+        x: Optional[types.DatasetType] = None,
+        y: Optional[types.DatasetType] = None,
+        epochs: Optional[int] = None,
+        callbacks: Optional[List[tf.keras.callbacks.Callback]] = None,
+        validation_split: Optional[float] = 0.2,
+        validation_data: Union[
+            types.DatasetType, Tuple[types.DatasetType], None
+        ] = None,
+        **kwargs
+    ):
+        """Search for the best model and hyperparameters for the AutoModel.
+
+        It will search for the best model based on the performances on
+        validation data.
+
+        # Arguments
+            x: numpy.ndarray or tensorflow.Dataset. Training image dataset x.
+                The shape of the data should be (samples, width, height) or
+                (samples, width, height, channels).
+            y: numpy.ndarray or tensorflow.Dataset. Training image data set y.
+                It should be a tensor and the height and width should be the same
+                as x. Each element in the tensor is the label of the corresponding
+                pixel.
+            epochs: Int. The number of epochs to train each model during the search.
+                If unspecified, by default we train for a maximum of 1000 epochs,
+                but we stop training if the validation loss stops improving for 10
+                epochs (unless you specified an EarlyStopping callback as part of
+                the callbacks argument, in which case the EarlyStopping callback you
+                specified will determine early stopping).
+            callbacks: List of Keras callbacks to apply during training and
+                validation.
+            validation_split: Float between 0 and 1. Defaults to 0.2.
+                Fraction of the training data to be used as validation data.
+                The model will set apart this fraction of the training data,
+                will not train on it, and will evaluate
+                the loss and any model metrics
+                on this data at the end of each epoch.
+                The validation data is selected from the last samples
+                in the `x` and `y` data provided, before shuffling. This argument is
+                not supported when `x` is a dataset.
+                The best model found would be fit on the entire dataset including the
+                validation data.
+            validation_data: Data on which to evaluate the loss and any model metrics
+                at the end of each epoch. The model will not be trained on this data.
+                `validation_data` will override `validation_split`. The type of the
+                validation data should be the same as the training data.
+                The best model found would be fit on the training dataset without the
+                validation data.
+            **kwargs: Any arguments supported by
+                [keras.Model.fit](https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit).
+        # Returns
+            history: A Keras History object corresponding to the best model.
+                Its History.history attribute is a record of training
+                loss values and metrics values at successive epochs, as well as
+                validation loss values and validation metrics values (if applicable).
+        """
+        history = super().fit(
+            x=x,
+            y=y,
+            epochs=epochs,
+            callbacks=callbacks,
+            validation_split=validation_split,
+            validation_data=validation_data,
+            **kwargs
+        )
+        return history
+
+
+</clonepair6>
+<clonepair7>
+<source file="systems/autokeras-1.0.18/autokeras/tasks/structured_data.py" startline="279" endline="337" pcid="179"></source>
+    def fit(
+        self,
+        x=None,
+        y=None,
+        epochs=None,
+        callbacks=None,
+        validation_split=0.2,
+        validation_data=None,
+        **kwargs
+    ):
+        """Search for the best model and hyperparameters for the AutoModel.
+
+        # Arguments
+            x: String, numpy.ndarray, pandas.DataFrame or tensorflow.Dataset.
+                Training data x. If the data is from a csv file, it should be a
+                string specifying the path of the csv file of the training data.
+            y: String, numpy.ndarray, or tensorflow.Dataset. Training data y.
+                If the data is from a csv file, it should be a string, which is the
+                name of the target column. Otherwise, It can be raw labels, one-hot
+                encoded if more than two classes, or binary encoded for binary
+                classification.
+            epochs: Int. The number of epochs to train each model during the search.
+                If unspecified, we would use epochs equal to 1000 and early stopping
+                with patience equal to 30.
+            callbacks: List of Keras callbacks to apply during training and
+                validation.
+            validation_split: Float between 0 and 1. Defaults to 0.2.
+                Fraction of the training data to be used as validation data.
+                The model will set apart this fraction of the training data,
+                will not train on it, and will evaluate
+                the loss and any model metrics
+                on this data at the end of each epoch.
+                The validation data is selected from the last samples
+                in the `x` and `y` data provided, before shuffling. This argument is
+                not supported when `x` is a dataset.
+            validation_data: Data on which to evaluate the loss and any model metrics
+                at the end of each epoch. The model will not be trained on this data.
+                `validation_data` will override `validation_split`. The type of the
+                validation data should be the same as the training data.
+            **kwargs: Any arguments supported by
+                [keras.Model.fit](https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit).
+        # Returns
+            history: A Keras History object corresponding to the best model.
+                Its History.history attribute is a record of training
+                loss values and metrics values at successive epochs, as well as
+                validation loss values and validation metrics values (if applicable).
+        """
+        history = super().fit(
+            x=x,
+            y=y,
+            epochs=epochs,
+            callbacks=callbacks,
+            validation_split=validation_split,
+            validation_data=validation_data,
+            **kwargs
+        )
+        return history
+
+
+</clonepair7>
+
+<clonepair7>
+<source file="systems/autokeras-1.0.18/autokeras/tasks/text.py" startline="103" endline="171" pcid="198"></source>
+    def fit(
+        self,
+        x=None,
+        y=None,
+        epochs=None,
+        callbacks=None,
+        validation_split=0.2,
+        validation_data=None,
+        **kwargs
+    ):
+        """Search for the best model and hyperparameters for the AutoModel.
+
+        It will search for the best model based on the performances on
+        validation data.
+
+        # Arguments
+            x: numpy.ndarray or tensorflow.Dataset. Training data x. The input data
+                should be numpy.ndarray or tf.data.Dataset. The data should be one
+                dimensional. Each element in the data should be a string which is a
+                full sentence.
+            y: numpy.ndarray or tensorflow.Dataset. Training data y. It can be raw
+                labels, one-hot encoded if more than two classes, or binary encoded
+                for binary classification.
+            epochs: Int. The number of epochs to train each model during the search.
+                If unspecified, by default we train for a maximum of 1000 epochs,
+                but we stop training if the validation loss stops improving for 10
+                epochs (unless you specified an EarlyStopping callback as part of
+                the callbacks argument, in which case the EarlyStopping callback you
+                specified will determine early stopping).
+            callbacks: List of Keras callbacks to apply during training and
+                validation.
+            validation_split: Float between 0 and 1. Defaults to 0.2.
+                Fraction of the training data to be used as validation data.
+                The model will set apart this fraction of the training data,
+                will not train on it, and will evaluate
+                the loss and any model metrics
+                on this data at the end of each epoch.
+                The validation data is selected from the last samples
+                in the `x` and `y` data provided, before shuffling. This argument is
+                not supported when `x` is a dataset.
+                The best model found would be fit on the entire dataset including the
+                validation data.
+            validation_data: Data on which to evaluate the loss and any model metrics
+                at the end of each epoch. The model will not be trained on this data.
+                `validation_data` will override `validation_split`. The type of the
+                validation data should be the same as the training data.
+                The best model found would be fit on the training dataset without the
+                validation data.
+            **kwargs: Any arguments supported by
+                [keras.Model.fit](https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit).
+
+        # Returns
+            history: A Keras History object corresponding to the best model.
+                Its History.history attribute is a record of training
+                loss values and metrics values at successive epochs, as well as
+                validation loss values and validation metrics values (if applicable).
+        """
+        history = super().fit(
+            x=x,
+            y=y,
+            epochs=epochs,
+            callbacks=callbacks,
+            validation_split=validation_split,
+            validation_data=validation_data,
+            **kwargs
+        )
+        return history
+
+
+</clonepair7>
+<clonepair8>
+<source file="systems/autokeras-1.0.18/autokeras/tasks/text.py" startline="103" endline="171" pcid="198"></source>
+    def fit(
+        self,
+        x=None,
+        y=None,
+        epochs=None,
+        callbacks=None,
+        validation_split=0.2,
+        validation_data=None,
+        **kwargs
+    ):
+        """Search for the best model and hyperparameters for the AutoModel.
+
+        It will search for the best model based on the performances on
+        validation data.
+
+        # Arguments
+            x: numpy.ndarray or tensorflow.Dataset. Training data x. The input data
+                should be numpy.ndarray or tf.data.Dataset. The data should be one
+                dimensional. Each element in the data should be a string which is a
+                full sentence.
+            y: numpy.ndarray or tensorflow.Dataset. Training data y. It can be raw
+                labels, one-hot encoded if more than two classes, or binary encoded
+                for binary classification.
+            epochs: Int. The number of epochs to train each model during the search.
+                If unspecified, by default we train for a maximum of 1000 epochs,
+                but we stop training if the validation loss stops improving for 10
+                epochs (unless you specified an EarlyStopping callback as part of
+                the callbacks argument, in which case the EarlyStopping callback you
+                specified will determine early stopping).
+            callbacks: List of Keras callbacks to apply during training and
+                validation.
+            validation_split: Float between 0 and 1. Defaults to 0.2.
+                Fraction of the training data to be used as validation data.
+                The model will set apart this fraction of the training data,
+                will not train on it, and will evaluate
+                the loss and any model metrics
+                on this data at the end of each epoch.
+                The validation data is selected from the last samples
+                in the `x` and `y` data provided, before shuffling. This argument is
+                not supported when `x` is a dataset.
+                The best model found would be fit on the entire dataset including the
+                validation data.
+            validation_data: Data on which to evaluate the loss and any model metrics
+                at the end of each epoch. The model will not be trained on this data.
+                `validation_data` will override `validation_split`. The type of the
+                validation data should be the same as the training data.
+                The best model found would be fit on the training dataset without the
+                validation data.
+            **kwargs: Any arguments supported by
+                [keras.Model.fit](https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit).
+
+        # Returns
+            history: A Keras History object corresponding to the best model.
+                Its History.history attribute is a record of training
+                loss values and metrics values at successive epochs, as well as
+                validation loss values and validation metrics values (if applicable).
+        """
+        history = super().fit(
+            x=x,
+            y=y,
+            epochs=epochs,
+            callbacks=callbacks,
+            validation_split=validation_split,
+            validation_data=validation_data,
+            **kwargs
+        )
+        return history
+
+
+</clonepair8>
+
+<clonepair8>
+<source file="systems/autokeras-1.0.18/autokeras/tasks/text.py" startline="235" endline="301" pcid="200"></source>
+    def fit(
+        self,
+        x=None,
+        y=None,
+        epochs=None,
+        callbacks=None,
+        validation_split=0.2,
+        validation_data=None,
+        **kwargs
+    ):
+        """Search for the best model and hyperparameters for the AutoModel.
+
+        It will search for the best model based on the performances on
+        validation data.
+
+        # Arguments
+            x: numpy.ndarray or tensorflow.Dataset. Training data x. The input data
+                should be numpy.ndarray or tf.data.Dataset. The data should be one
+                dimensional. Each element in the data should be a string which is a
+                full sentence.
+            y: numpy.ndarray or tensorflow.Dataset. Training data y. The targets
+                passing to the head would have to be tf.data.Dataset, np.ndarray,
+                pd.DataFrame or pd.Series. It can be single-column or multi-column.
+                The values should all be numerical.
+            epochs: Int. The number of epochs to train each model during the search.
+                If unspecified, by default we train for a maximum of 1000 epochs,
+                but we stop training if the validation loss stops improving for 10
+                epochs (unless you specified an EarlyStopping callback as part of
+                the callbacks argument, in which case the EarlyStopping callback you
+                specified will determine early stopping).
+            callbacks: List of Keras callbacks to apply during training and
+                validation.
+            validation_split: Float between 0 and 1. Defaults to 0.2.
+                Fraction of the training data to be used as validation data.
+                The model will set apart this fraction of the training data,
+                will not train on it, and will evaluate
+                the loss and any model metrics
+                on this data at the end of each epoch.
+                The validation data is selected from the last samples
+                in the `x` and `y` data provided, before shuffling. This argument is
+                not supported when `x` is a dataset.
+                The best model found would be fit on the entire dataset including the
+                validation data.
+            validation_data: Data on which to evaluate the loss and any model metrics
+                at the end of each epoch. The model will not be trained on this data.
+                `validation_data` will override `validation_split`. The type of the
+                validation data should be the same as the training data.
+                The best model found would be fit on the training dataset without the
+                validation data.
+            **kwargs: Any arguments supported by
+                [keras.Model.fit](https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit).
+        # Returns
+            history: A Keras History object corresponding to the best model.
+                Its History.history attribute is a record of training
+                loss values and metrics values at successive epochs, as well as
+                validation loss values and validation metrics values (if applicable).
+        """
+        history = super().fit(
+            x=x,
+            y=y,
+            epochs=epochs,
+            callbacks=callbacks,
+            validation_split=validation_split,
+            validation_data=validation_data,
+            **kwargs
+        )
+        return history
+</clonepair8>
+<clonepair9>
+<source file="systems/autokeras-1.0.18/autokeras/tasks/structured_data.py" startline="279" endline="337" pcid="179"></source>
+    def fit(
+        self,
+        x=None,
+        y=None,
+        epochs=None,
+        callbacks=None,
+        validation_split=0.2,
+        validation_data=None,
+        **kwargs
+    ):
+        """Search for the best model and hyperparameters for the AutoModel.
+
+        # Arguments
+            x: String, numpy.ndarray, pandas.DataFrame or tensorflow.Dataset.
+                Training data x. If the data is from a csv file, it should be a
+                string specifying the path of the csv file of the training data.
+            y: String, numpy.ndarray, or tensorflow.Dataset. Training data y.
+                If the data is from a csv file, it should be a string, which is the
+                name of the target column. Otherwise, It can be raw labels, one-hot
+                encoded if more than two classes, or binary encoded for binary
+                classification.
+            epochs: Int. The number of epochs to train each model during the search.
+                If unspecified, we would use epochs equal to 1000 and early stopping
+                with patience equal to 30.
+            callbacks: List of Keras callbacks to apply during training and
+                validation.
+            validation_split: Float between 0 and 1. Defaults to 0.2.
+                Fraction of the training data to be used as validation data.
+                The model will set apart this fraction of the training data,
+                will not train on it, and will evaluate
+                the loss and any model metrics
+                on this data at the end of each epoch.
+                The validation data is selected from the last samples
+                in the `x` and `y` data provided, before shuffling. This argument is
+                not supported when `x` is a dataset.
+            validation_data: Data on which to evaluate the loss and any model metrics
+                at the end of each epoch. The model will not be trained on this data.
+                `validation_data` will override `validation_split`. The type of the
+                validation data should be the same as the training data.
+            **kwargs: Any arguments supported by
+                [keras.Model.fit](https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit).
+        # Returns
+            history: A Keras History object corresponding to the best model.
+                Its History.history attribute is a record of training
+                loss values and metrics values at successive epochs, as well as
+                validation loss values and validation metrics values (if applicable).
+        """
+        history = super().fit(
+            x=x,
+            y=y,
+            epochs=epochs,
+            callbacks=callbacks,
+            validation_split=validation_split,
+            validation_data=validation_data,
+            **kwargs
+        )
+        return history
+
+
+</clonepair9>
+
+<clonepair9>
+<source file="systems/autokeras-1.0.18/autokeras/tasks/text.py" startline="235" endline="301" pcid="200"></source>
+    def fit(
+        self,
+        x=None,
+        y=None,
+        epochs=None,
+        callbacks=None,
+        validation_split=0.2,
+        validation_data=None,
+        **kwargs
+    ):
+        """Search for the best model and hyperparameters for the AutoModel.
+
+        It will search for the best model based on the performances on
+        validation data.
+
+        # Arguments
+            x: numpy.ndarray or tensorflow.Dataset. Training data x. The input data
+                should be numpy.ndarray or tf.data.Dataset. The data should be one
+                dimensional. Each element in the data should be a string which is a
+                full sentence.
+            y: numpy.ndarray or tensorflow.Dataset. Training data y. The targets
+                passing to the head would have to be tf.data.Dataset, np.ndarray,
+                pd.DataFrame or pd.Series. It can be single-column or multi-column.
+                The values should all be numerical.
+            epochs: Int. The number of epochs to train each model during the search.
+                If unspecified, by default we train for a maximum of 1000 epochs,
+                but we stop training if the validation loss stops improving for 10
+                epochs (unless you specified an EarlyStopping callback as part of
+                the callbacks argument, in which case the EarlyStopping callback you
+                specified will determine early stopping).
+            callbacks: List of Keras callbacks to apply during training and
+                validation.
+            validation_split: Float between 0 and 1. Defaults to 0.2.
+                Fraction of the training data to be used as validation data.
+                The model will set apart this fraction of the training data,
+                will not train on it, and will evaluate
+                the loss and any model metrics
+                on this data at the end of each epoch.
+                The validation data is selected from the last samples
+                in the `x` and `y` data provided, before shuffling. This argument is
+                not supported when `x` is a dataset.
+                The best model found would be fit on the entire dataset including the
+                validation data.
+            validation_data: Data on which to evaluate the loss and any model metrics
+                at the end of each epoch. The model will not be trained on this data.
+                `validation_data` will override `validation_split`. The type of the
+                validation data should be the same as the training data.
+                The best model found would be fit on the training dataset without the
+                validation data.
+            **kwargs: Any arguments supported by
+                [keras.Model.fit](https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit).
+        # Returns
+            history: A Keras History object corresponding to the best model.
+                Its History.history attribute is a record of training
+                loss values and metrics values at successive epochs, as well as
+                validation loss values and validation metrics values (if applicable).
+        """
+        history = super().fit(
+            x=x,
+            y=y,
+            epochs=epochs,
+            callbacks=callbacks,
+            validation_split=validation_split,
+            validation_data=validation_data,
+            **kwargs
+        )
+        return history
+</clonepair9>

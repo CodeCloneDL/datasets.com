@@ -1,0 +1,368 @@
+<clones>
+<systeminfo processor="nicad6" system="httpie-3.1.0" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="390" npairs="18"/>
+<runinfo ncompares="1725" cputime="36978"/>
+<classinfo nclasses="6"/>
+
+<class classid="1" nclones="2" nlines="12" similarity="71">
+<source file="systems/httpie-3.1.0/tests/test_xml.py" startline="36" endline="56" pcid="5">
+def test_valid_xml(file):
+    """Test XML formatter limits with data containing comments, doctypes
+    and other XML-specific subtles.
+    """
+    if 'standalone' in file.stem and sys.version_info < (3, 9):
+        pytest.skip('Standalone XML requires Python 3.9+')
+
+    xml_data = file.read_text(encoding=UTF8)
+    expected_xml_file = file.with_name(file.name.replace('_raw', '_formatted'))
+    expected_xml_output = expected_xml_file.read_text(encoding=UTF8)
+    responses.add(
+        responses.GET,
+        DUMMY_URL,
+        body=xml_data,
+        content_type='application/xml',
+    )
+
+    r = http(DUMMY_URL)
+    assert expected_xml_output in r
+
+
+</source>
+<source file="systems/httpie-3.1.0/tests/test_xml.py" startline="85" endline="99" pcid="7">
+def test_invalid_xml(file):
+    """Testing several problematic XML files, none should be formatted
+    and none should make HTTPie to crash.
+    """
+    xml_data = file.read_text(encoding=UTF8)
+    responses.add(
+        responses.GET,
+        DUMMY_URL,
+        body=xml_data,
+        content_type='application/xml',
+    )
+
+    # No formatting done, data is simply printed as-is.
+    r = http(DUMMY_URL)
+    assert xml_data in r
+</source>
+</class>
+
+<class classid="2" nclones="4" nlines="13" similarity="71">
+<source file="systems/httpie-3.1.0/tests/test_auth.py" startline="120" endline="133" pcid="21">
+def test_ignore_netrc_with_auth_type_resulting_in_missing_auth(httpbin):
+    with mock.patch('httpie.cli.argparser.get_netrc_auth') as get_netrc_auth:
+        get_netrc_auth.return_value = ('httpie', 'password')
+        r = http(
+            '--ignore-netrc',
+            '--auth-type=basic',
+            httpbin + '/basic-auth/httpie/password',
+            tolerate_error_exit_status=True,
+        )
+    assert get_netrc_auth.call_count == 0
+    assert r.exit_status == ExitStatus.ERROR
+    assert '--auth required' in r.stderr
+
+
+</source>
+<source file="systems/httpie-3.1.0/tests/test_httpie.py" startline="146" endline="158" pcid="50">
+def test_raw_POST_key_values_supplied(httpbin):
+    r = http(
+        '--raw',
+        'foo bar',
+        'POST',
+        httpbin + '/post',
+        'foo=bar',
+        tolerate_error_exit_status=True,
+    )
+    assert r.exit_status == ExitStatus.ERROR
+    assert 'cannot be mixed' in r.stderr
+
+
+</source>
+<source file="systems/httpie-3.1.0/tests/test_httpie.py" startline="159" endline="174" pcid="51">
+def test_raw_POST_redirected_stdin(httpbin):
+    r = http(
+        '--raw',
+        'foo bar',
+        'POST',
+        httpbin + '/post',
+        tolerate_error_exit_status=True,
+        env=MockEnvironment(
+            stdin='some=value',
+            stdin_isatty=False,
+        ),
+    )
+    assert r.exit_status == ExitStatus.ERROR
+    assert 'cannot be mixed' in r.stderr
+
+
+</source>
+<source file="systems/httpie-3.1.0/tests/test_httpie.py" startline="125" endline="145" pcid="49">
+def test_form_POST_file_redirected_stdin(httpbin):
+    """
+    <https://github.com/httpie/httpie/issues/840>
+
+    """
+    with open(FILE_PATH, encoding=UTF8):
+        r = http(
+            '--form',
+            'POST',
+            httpbin + '/post',
+            f'file@{FILE_PATH}',
+            tolerate_error_exit_status=True,
+            env=MockEnvironment(
+                stdin=StdinBytesIO(FILE_PATH.read_bytes()),
+                stdin_isatty=False,
+            ),
+        )
+    assert r.exit_status == ExitStatus.ERROR
+    assert 'cannot be mixed' in r.stderr
+
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="10" similarity="90">
+<source file="systems/httpie-3.1.0/tests/test_httpie.py" startline="281" endline="293" pcid="66">
+def test_headers_multiple_headers_representation(httpbin_both, pretty):
+    r = http('--offline', '--pretty', pretty, 'example.org',
+             'A:A', 'A:B', 'A:C', 'B:A', 'B:B', 'C:C', 'c:c')
+
+    assert 'A: A' in r
+    assert 'A: B' in r
+    assert 'A: C' in r
+    assert 'B: A' in r
+    assert 'B: B' in r
+    assert 'C: C' in r
+    assert 'c: c' in r
+
+
+</source>
+<source file="systems/httpie-3.1.0/tests/test_httpie.py" startline="308" endline="320" pcid="69">
+def test_response_headers_multiple_representation(http_server, pretty):
+    r = http('--pretty', pretty, http_server + '/headers',
+             'A:A', 'A:B', 'A:C', 'B:A', 'B:B', 'C:C', 'C:c')
+
+    assert 'A: A' in r
+    assert 'A: B' in r
+    assert 'A: C' in r
+    assert 'B: A' in r
+    assert 'B: B' in r
+    assert 'C: C' in r
+    assert 'C: c' in r
+
+
+</source>
+</class>
+
+<class classid="4" nclones="4" nlines="11" similarity="72">
+<source file="systems/httpie-3.1.0/tests/test_compress.py" startline="56" endline="67" pcid="135">
+def test_compress_force_with_negative_ratio(httpbin_both):
+    r = http(
+        '--compress',
+        '--compress',
+        httpbin_both + '/post',
+        'foo=bar',
+    )
+    assert HTTP_OK in r
+    assert r.json['headers']['Content-Encoding'] == 'deflate'
+    assert_decompressed_equal(r.json['data'], '{"foo": "bar"}')
+
+
+</source>
+<source file="systems/httpie-3.1.0/tests/test_compress.py" startline="95" endline="107" pcid="138">
+def test_compress_raw(httpbin_both):
+    r = http(
+        '--raw',
+        FILE_CONTENT,
+        '--compress',
+        '--compress',
+        httpbin_both + '/post',
+    )
+    assert HTTP_OK in r
+    assert r.json['headers']['Content-Encoding'] == 'deflate'
+    assert_decompressed_equal(r.json['data'], FILE_CONTENT.strip())
+
+
+</source>
+<source file="systems/httpie-3.1.0/tests/test_compress.py" startline="81" endline="94" pcid="137">
+def test_compress_form(httpbin_both):
+    r = http(
+        '--form',
+        '--compress',
+        '--compress',
+        httpbin_both + '/post',
+        'foo=bar',
+    )
+    assert HTTP_OK in r
+    assert r.json['headers']['Content-Encoding'] == 'deflate'
+    assert r.json['data'] == ""
+    assert '"foo": "bar"' not in r
+
+
+</source>
+<source file="systems/httpie-3.1.0/tests/test_compress.py" startline="68" endline="80" pcid="136">
+def test_compress_json(httpbin_both):
+    r = http(
+        '--compress',
+        '--compress',
+        httpbin_both + '/post',
+        'foo=bar',
+    )
+    assert HTTP_OK in r
+    assert r.json['headers']['Content-Encoding'] == 'deflate'
+    assert_decompressed_equal(r.json['data'], '{"foo": "bar"}')
+    assert r.json['json'] is None
+
+
+</source>
+</class>
+
+<class classid="5" nclones="4" nlines="21" similarity="77">
+<source file="systems/httpie-3.1.0/tests/test_auth_plugins.py" startline="29" endline="55" pcid="180">
+def test_auth_plugin_parse_auth_false(httpbin):
+
+    class Plugin(AuthPlugin):
+        auth_type = 'test-parse-false'
+        auth_parse = False
+
+        def get_auth(self, username=None, password=None):
+            assert username is None
+            assert password is None
+            assert self.raw_auth == BASIC_AUTH_HEADER_VALUE
+            return basic_auth(self.raw_auth)
+
+    plugin_manager.register(Plugin)
+    try:
+        r = http(
+            httpbin + BASIC_AUTH_URL,
+            '--auth-type',
+            Plugin.auth_type,
+            '--auth',
+            BASIC_AUTH_HEADER_VALUE,
+        )
+        assert HTTP_OK in r
+        assert r.json == AUTH_OK
+    finally:
+        plugin_manager.unregister(Plugin)
+
+
+</source>
+<source file="systems/httpie-3.1.0/tests/test_auth_plugins.py" startline="81" endline="107" pcid="184">
+def test_auth_plugin_require_auth_false_and_auth_provided(httpbin):
+
+    class Plugin(AuthPlugin):
+        auth_type = 'test-require-false-yet-provided'
+        auth_require = False
+
+        def get_auth(self, username=None, password=None):
+            assert self.raw_auth == USERNAME + SEPARATOR_CREDENTIALS + PASSWORD
+            assert username == USERNAME
+            assert password == PASSWORD
+            return basic_auth()
+
+    plugin_manager.register(Plugin)
+    try:
+        r = http(
+            httpbin + BASIC_AUTH_URL,
+            '--auth-type',
+            Plugin.auth_type,
+            '--auth',
+            USERNAME + SEPARATOR_CREDENTIALS + PASSWORD,
+        )
+        assert HTTP_OK in r
+        assert r.json == AUTH_OK
+    finally:
+        plugin_manager.unregister(Plugin)
+
+
+</source>
+<source file="systems/httpie-3.1.0/tests/test_auth_plugins.py" startline="56" endline="80" pcid="182">
+def test_auth_plugin_require_auth_false(httpbin):
+
+    class Plugin(AuthPlugin):
+        auth_type = 'test-require-false'
+        auth_require = False
+
+        def get_auth(self, username=None, password=None):
+            assert self.raw_auth is None
+            assert username is None
+            assert password is None
+            return basic_auth()
+
+    plugin_manager.register(Plugin)
+    try:
+        r = http(
+            httpbin + BASIC_AUTH_URL,
+            '--auth-type',
+            Plugin.auth_type,
+        )
+        assert HTTP_OK in r
+        assert r.json == AUTH_OK
+    finally:
+        plugin_manager.unregister(Plugin)
+
+
+</source>
+<source file="systems/httpie-3.1.0/tests/test_auth_plugins.py" startline="110" endline="135" pcid="186">
+def test_auth_plugin_prompt_password_false(httpbin):
+
+    class Plugin(AuthPlugin):
+        auth_type = 'test-prompt-false'
+        prompt_password = False
+
+        def get_auth(self, username=None, password=None):
+            assert self.raw_auth == USERNAME
+            assert username == USERNAME
+            assert password is None
+            return basic_auth()
+
+    plugin_manager.register(Plugin)
+
+    try:
+        r = http(
+            httpbin + BASIC_AUTH_URL,
+            '--auth-type',
+            Plugin.auth_type,
+            '--auth',
+            USERNAME,
+        )
+        assert HTTP_OK in r
+        assert r.json == AUTH_OK
+    finally:
+        plugin_manager.unregister(Plugin)
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="11" similarity="100">
+<source file="systems/httpie-3.1.0/tests/test_encoding.py" startline="198" endline="210" pcid="285">
+def test_terminal_output_request_content_type_charset(charset, text):
+    r = http(
+        '--offline',
+        DUMMY_URL,
+        f'Content-Type: text/plain; charset={charset.upper()}',
+        env=MockEnvironment(
+            stdin=text.encode(charset),
+            stdin_isatty=False,
+        ),
+    )
+    assert text in r
+
+
+</source>
+<source file="systems/httpie-3.1.0/tests/test_encoding.py" startline="212" endline="222" pcid="286">
+def test_terminal_output_request_charset_detection(charset, text):
+    r = http(
+        '--offline',
+        DUMMY_URL,
+        'Content-Type: text/plain',
+        env=MockEnvironment(
+            stdin=text.encode(charset),
+            stdin_isatty=False,
+        ),
+    )
+    assert text in r
+</source>
+</class>
+
+</clones>

@@ -1,0 +1,654 @@
+<clones>
+<systeminfo processor="nicad6" system="tornado-6.1.0" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="888" npairs="25"/>
+<runinfo ncompares="13697" cputime="45287"/>
+<classinfo nclasses="12"/>
+
+<class classid="1" nclones="2" nlines="12" similarity="76">
+<source file="systems/tornado-6.1.0/tornado/test/template_test.py" startline="272" endline="289" pcid="268">
+    def test_error_line_number_extends_sub_error(self):
+        loader = DictLoader(
+            {
+                "base.html": "{% block 'block' %}{% end %}",
+                "sub.html": """
+{% extends 'base.html' %}
+{% block 'block' %}
+{{1/0}}
+{% end %}
+            """,
+            }
+        )
+        try:
+            loader.load("sub.html").generate()
+            self.fail("did not get expected exception")
+        except ZeroDivisionError:
+            self.assertTrue("# sub.html:4 (via base.html:1)" in traceback.format_exc())
+
+</source>
+<source file="systems/tornado-6.1.0/tornado/test/template_test.py" startline="290" endline="306" pcid="269">
+    def test_multi_includes(self):
+        loader = DictLoader(
+            {
+                "a.html": "{% include 'b.html' %}",
+                "b.html": "{% include 'c.html' %}",
+                "c.html": "{{1/0}}",
+            }
+        )
+        try:
+            loader.load("a.html").generate()
+            self.fail("did not get expected exception")
+        except ZeroDivisionError:
+            self.assertTrue(
+                "# c.html:1 (via b.html:1, a.html:1)" in traceback.format_exc()
+            )
+
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="13" similarity="92">
+<source file="systems/tornado-6.1.0/tornado/test/template_test.py" startline="361" endline="380" pcid="273">
+    def test_default_off(self):
+        loader = DictLoader(self.templates, autoescape=None)
+        name = "Bobby <table>s"
+        self.assertEqual(
+            loader.load("escaped.html").generate(name=name), b"Bobby &lt;table&gt;s"
+        )
+        self.assertEqual(
+            loader.load("unescaped.html").generate(name=name), b"Bobby <table>s"
+        )
+        self.assertEqual(
+            loader.load("default.html").generate(name=name), b"Bobby <table>s"
+        )
+
+        self.assertEqual(
+            loader.load("include.html").generate(name=name),
+            b"escaped: Bobby &lt;table&gt;s\n"
+            b"unescaped: Bobby <table>s\n"
+            b"default: Bobby <table>s\n",
+        )
+
+</source>
+<source file="systems/tornado-6.1.0/tornado/test/template_test.py" startline="381" endline="400" pcid="274">
+    def test_default_on(self):
+        loader = DictLoader(self.templates, autoescape="xhtml_escape")
+        name = "Bobby <table>s"
+        self.assertEqual(
+            loader.load("escaped.html").generate(name=name), b"Bobby &lt;table&gt;s"
+        )
+        self.assertEqual(
+            loader.load("unescaped.html").generate(name=name), b"Bobby <table>s"
+        )
+        self.assertEqual(
+            loader.load("default.html").generate(name=name), b"Bobby &lt;table&gt;s"
+        )
+
+        self.assertEqual(
+            loader.load("include.html").generate(name=name),
+            b"escaped: Bobby &lt;table&gt;s\n"
+            b"unescaped: Bobby <table>s\n"
+            b"default: Bobby &lt;table&gt;s\n",
+        )
+
+</source>
+</class>
+
+<class classid="3" nclones="3" nlines="14" similarity="81">
+<source file="systems/tornado-6.1.0/tornado/test/locks_test.py" startline="319" endline="343" pcid="315">
+    def test_garbage_collection(self):
+        # Test that timed-out waiters are occasionally cleaned from the queue.
+        sem = locks.Semaphore(value=0)
+        futures = [
+            asyncio.ensure_future(sem.acquire(timedelta(seconds=0.01)))
+            for _ in range(101)
+        ]
+
+        future = asyncio.ensure_future(sem.acquire())
+        self.assertEqual(102, len(sem._waiters))
+
+        # Let first 101 waiters time out, triggering a collection.
+        yield gen.sleep(0.02)
+        self.assertEqual(1, len(sem._waiters))
+
+        # Final waiter is still active.
+        self.assertFalse(future.done())
+        sem.release()
+        self.assertTrue(future.done())
+
+        # Prevent "Future exception was never retrieved" messages.
+        for future in futures:
+            self.assertRaises(TimeoutError, future.result)
+
+
+</source>
+<source file="systems/tornado-6.1.0/tornado/test/queues_test.py" startline="145" endline="159" pcid="625">
+    def test_get_clears_timed_out_getters(self):
+        q = queues.Queue()  # type: queues.Queue[int]
+        getters = [
+            asyncio.ensure_future(q.get(timedelta(seconds=0.01))) for _ in range(10)
+        ]
+        get = asyncio.ensure_future(q.get())
+        self.assertEqual(11, len(q._getters))
+        yield gen.sleep(0.02)
+        self.assertEqual(11, len(q._getters))
+        self.assertFalse(get.done())  # Final waiter is still active.
+        q.get()  # get() clears the waiters.
+        self.assertEqual(2, len(q._getters))
+        for getter in getters:
+            self.assertRaises(TimeoutError, getter.result)
+
+</source>
+<source file="systems/tornado-6.1.0/tornado/test/queues_test.py" startline="267" endline="283" pcid="637">
+    def test_put_clears_timed_out_getters(self):
+        q = queues.Queue()  # type: queues.Queue[int]
+        getters = [
+            asyncio.ensure_future(q.get(timedelta(seconds=0.01))) for _ in range(10)
+        ]
+        get = asyncio.ensure_future(q.get())
+        q.get()
+        self.assertEqual(12, len(q._getters))
+        yield gen.sleep(0.02)
+        self.assertEqual(12, len(q._getters))
+        self.assertFalse(get.done())  # Final waiters still active.
+        q.put(0)  # put() clears the waiters.
+        self.assertEqual(1, len(q._getters))
+        self.assertEqual(0, (yield get))
+        for getter in getters:
+            self.assertRaises(TimeoutError, getter.result)
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="13" similarity="71">
+<source file="systems/tornado-6.1.0/tornado/test/locks_test.py" startline="466" endline="482" pcid="329">
+    def test_acquire_fifo(self):
+        lock = locks.Lock()
+        self.assertTrue(asyncio.ensure_future(lock.acquire()).done())
+        N = 5
+        history = []
+
+        @gen.coroutine
+        def f(idx):
+            with (yield lock.acquire()):
+                history.append(idx)
+
+        futures = [f(i) for i in range(N)]
+        self.assertFalse(any(future.done() for future in futures))
+        lock.release()
+        yield futures
+        self.assertEqual(list(range(N)), history)
+
+</source>
+<source file="systems/tornado-6.1.0/tornado/test/locks_test.py" startline="484" endline="500" pcid="331">
+    def test_acquire_fifo_async_with(self):
+        # Repeat the above test using `async with lock:`
+        # instead of `with (yield lock.acquire()):`.
+        lock = locks.Lock()
+        self.assertTrue(asyncio.ensure_future(lock.acquire()).done())
+        N = 5
+        history = []
+
+        async def f(idx):
+            async with lock:
+                history.append(idx)
+
+        futures = [f(i) for i in range(N)]
+        lock.release()
+        yield futures
+        self.assertEqual(list(range(N)), history)
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="12" similarity="100">
+<source file="systems/tornado-6.1.0/tornado/test/util_test.py" startline="149" endline="164" pcid="356">
+    def test_config_args(self):
+        TestConfigurable.configure(None, a=3)
+        obj = cast(TestConfig1, TestConfigurable())
+        self.assertIsInstance(obj, TestConfig1)
+        self.assertEqual(obj.a, 3)
+
+        obj = cast(TestConfig1, TestConfigurable(42, a=4))
+        self.assertIsInstance(obj, TestConfig1)
+        self.assertEqual(obj.a, 4)
+        self.assertEqual(obj.pos_arg, 42)
+
+        self.checkSubclasses()
+        # args bound in configure don't apply when using the subclass directly
+        obj = TestConfig1()
+        self.assertIs(obj.a, None)
+
+</source>
+<source file="systems/tornado-6.1.0/tornado/test/util_test.py" startline="165" endline="180" pcid="357">
+    def test_config_class_args(self):
+        TestConfigurable.configure(TestConfig2, b=5)
+        obj = cast(TestConfig2, TestConfigurable())
+        self.assertIsInstance(obj, TestConfig2)
+        self.assertEqual(obj.b, 5)
+
+        obj = cast(TestConfig2, TestConfigurable(42, b=6))
+        self.assertIsInstance(obj, TestConfig2)
+        self.assertEqual(obj.b, 6)
+        self.assertEqual(obj.pos_arg, 42)
+
+        self.checkSubclasses()
+        # args bound in configure don't apply when using the subclass directly
+        obj = TestConfig2()
+        self.assertIs(obj.b, None)
+
+</source>
+</class>
+
+<class classid="6" nclones="4" nlines="11" similarity="76">
+<source file="systems/tornado-6.1.0/tornado/test/auth_test.py" startline="357" endline="371" pcid="425">
+    def test_oauth10_redirect(self):
+        response = self.fetch("/oauth10/client/login", follow_redirects=False)
+        self.assertEqual(response.code, 302)
+        self.assertTrue(
+            response.headers["Location"].endswith(
+                "/oauth1/server/authorize?oauth_token=zxcv"
+            )
+        )
+        # the cookie is base64('zxcv')|base64('1234')
+        self.assertTrue(
+            '_oauth_request_token="enhjdg==|MTIzNA=="'
+            in response.headers["Set-Cookie"],
+            response.headers["Set-Cookie"],
+        )
+
+</source>
+<source file="systems/tornado-6.1.0/tornado/test/auth_test.py" startline="391" endline="405" pcid="428">
+    def test_oauth10a_redirect(self):
+        response = self.fetch("/oauth10a/client/login", follow_redirects=False)
+        self.assertEqual(response.code, 302)
+        self.assertTrue(
+            response.headers["Location"].endswith(
+                "/oauth1/server/authorize?oauth_token=zxcv"
+            )
+        )
+        # the cookie is base64('zxcv')|base64('1234')
+        self.assertTrue(
+            '_oauth_request_token="enhjdg==|MTIzNA=="'
+            in response.headers["Set-Cookie"],
+            response.headers["Set-Cookie"],
+        )
+
+</source>
+<source file="systems/tornado-6.1.0/tornado/test/auth_test.py" startline="457" endline="472" pcid="435">
+    def base_twitter_redirect(self, url):
+        # Same as test_oauth10a_redirect
+        response = self.fetch(url, follow_redirects=False)
+        self.assertEqual(response.code, 302)
+        self.assertTrue(
+            response.headers["Location"].endswith(
+                "/oauth1/server/authorize?oauth_token=zxcv"
+            )
+        )
+        # the cookie is base64('zxcv')|base64('1234')
+        self.assertTrue(
+            '_oauth_request_token="enhjdg==|MTIzNA=="'
+            in response.headers["Set-Cookie"],
+            response.headers["Set-Cookie"],
+        )
+
+</source>
+<source file="systems/tornado-6.1.0/tornado/test/auth_test.py" startline="479" endline="494" pcid="438">
+    def test_twitter_authenticate_redirect(self):
+        response = self.fetch("/twitter/client/authenticate", follow_redirects=False)
+        self.assertEqual(response.code, 302)
+        self.assertTrue(
+            response.headers["Location"].endswith(
+                "/twitter/server/authenticate?oauth_token=zxcv"
+            ),
+            response.headers["Location"],
+        )
+        # the cookie is base64('zxcv')|base64('1234')
+        self.assertTrue(
+            '_oauth_request_token="enhjdg==|MTIzNA=="'
+            in response.headers["Set-Cookie"],
+            response.headers["Set-Cookie"],
+        )
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="19" similarity="94">
+<source file="systems/tornado-6.1.0/tornado/test/log_test.py" startline="140" endline="159" pcid="461">
+    def test_log_file(self):
+        tmpdir = tempfile.mkdtemp()
+        try:
+            self.options.log_file_prefix = tmpdir + "/test_log"
+            enable_pretty_logging(options=self.options, logger=self.logger)
+            self.assertEqual(1, len(self.logger.handlers))
+            self.logger.error("hello")
+            self.logger.handlers[0].flush()
+            filenames = glob.glob(tmpdir + "/test_log*")
+            self.assertEqual(1, len(filenames))
+            with open(filenames[0]) as f:
+                self.assertRegexpMatches(f.read(), r"^\[E [^]]*\] hello$")
+        finally:
+            for handler in self.logger.handlers:
+                handler.flush()
+                handler.close()
+            for filename in glob.glob(tmpdir + "/test_log*"):
+                os.unlink(filename)
+            os.rmdir(tmpdir)
+
+</source>
+<source file="systems/tornado-6.1.0/tornado/test/log_test.py" startline="160" endline="179" pcid="462">
+    def test_log_file_with_timed_rotating(self):
+        tmpdir = tempfile.mkdtemp()
+        try:
+            self.options.log_file_prefix = tmpdir + "/test_log"
+            self.options.log_rotate_mode = "time"
+            enable_pretty_logging(options=self.options, logger=self.logger)
+            self.logger.error("hello")
+            self.logger.handlers[0].flush()
+            filenames = glob.glob(tmpdir + "/test_log*")
+            self.assertEqual(1, len(filenames))
+            with open(filenames[0]) as f:
+                self.assertRegexpMatches(f.read(), r"^\[E [^]]*\] hello$")
+        finally:
+            for handler in self.logger.handlers:
+                handler.flush()
+                handler.close()
+            for filename in glob.glob(tmpdir + "/test_log*"):
+                os.unlink(filename)
+            os.rmdir(tmpdir)
+
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="13" similarity="84">
+<source file="systems/tornado-6.1.0/tornado/test/escape_test.py" startline="218" endline="231" pcid="604">
+    def test_xhtml_escape(self):
+        tests = [
+            ("<foo>", "&lt;foo&gt;"),
+            (u"<foo>", u"&lt;foo&gt;"),
+            (b"<foo>", b"&lt;foo&gt;"),
+            ("<>&\"'", "&lt;&gt;&amp;&quot;&#39;"),
+            ("&amp;", "&amp;amp;"),
+            (u"<\u00e9>", u"&lt;\u00e9&gt;"),
+            (b"<\xc3\xa9>", b"&lt;\xc3\xa9&gt;"),
+        ]  # type: List[Tuple[Union[str, bytes], Union[str, bytes]]]
+        for unescaped, escaped in tests:
+            self.assertEqual(utf8(xhtml_escape(unescaped)), utf8(escaped))
+            self.assertEqual(utf8(unescaped), utf8(xhtml_unescape(escaped)))
+
+</source>
+<source file="systems/tornado-6.1.0/tornado/test/escape_test.py" startline="232" endline="244" pcid="605">
+    def test_xhtml_unescape_numeric(self):
+        tests = [
+            ("foo&#32;bar", "foo bar"),
+            ("foo&#x20;bar", "foo bar"),
+            ("foo&#X20;bar", "foo bar"),
+            ("foo&#xabc;bar", u"foo\u0abcbar"),
+            ("foo&#xyz;bar", "foo&#xyz;bar"),  # invalid encoding
+            ("foo&#;bar", "foo&#;bar"),  # invalid encoding
+            ("foo&#x;bar", "foo&#x;bar"),  # invalid encoding
+        ]
+        for escaped, unescaped in tests:
+            self.assertEqual(unescaped, xhtml_unescape(escaped))
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="13" similarity="92">
+<source file="systems/tornado-6.1.0/tornado/test/queues_test.py" startline="129" endline="143" pcid="624">
+    def test_get_clears_timed_out_putters(self):
+        q = queues.Queue(1)  # type: queues.Queue[int]
+        # First putter succeeds, remainder block.
+        putters = [q.put(i, timedelta(seconds=0.01)) for i in range(10)]
+        put = q.put(10)
+        self.assertEqual(10, len(q._putters))
+        yield gen.sleep(0.02)
+        self.assertEqual(10, len(q._putters))
+        self.assertFalse(put.done())  # Final waiter is still active.
+        q.put(11)
+        self.assertEqual(0, (yield q.get()))  # get() clears the waiters.
+        self.assertEqual(1, len(q._putters))
+        for putter in putters[1:]:
+            self.assertRaises(TimeoutError, putter.result)
+
+</source>
+<source file="systems/tornado-6.1.0/tornado/test/queues_test.py" startline="252" endline="265" pcid="636">
+    def test_put_clears_timed_out_putters(self):
+        q = queues.Queue(1)  # type: queues.Queue[int]
+        # First putter succeeds, remainder block.
+        putters = [q.put(i, timedelta(seconds=0.01)) for i in range(10)]
+        put = q.put(10)
+        self.assertEqual(10, len(q._putters))
+        yield gen.sleep(0.02)
+        self.assertEqual(10, len(q._putters))
+        self.assertFalse(put.done())  # Final waiter is still active.
+        q.put(11)  # put() clears the waiters.
+        self.assertEqual(2, len(q._putters))
+        for putter in putters[1:]:
+            self.assertRaises(TimeoutError, putter.result)
+
+</source>
+</class>
+
+<class classid="10" nclones="7" nlines="11" similarity="71">
+<source file="systems/tornado-6.1.0/tornado/test/tcpclient_test.py" startline="342" endline="357" pcid="711">
+    def test_one_family_timeout_after_connect_timeout(self):
+        conn, future = self.start_connect([(AF1, "a"), (AF1, "b")])
+        self.assert_pending((AF1, "a"))
+        conn.on_connect_timeout()
+        # the connector will close all streams on connect timeout, we
+        # should explicitly pop the connect_future.
+        self.connect_futures.pop((AF1, "a"))
+        self.assertTrue(self.streams.pop("a").closed)
+        conn.on_timeout()
+        # if the future is set with TimeoutError, we will not iterate next
+        # possible address.
+        self.assert_pending()
+        self.assertEqual(len(conn.streams), 1)
+        self.assert_connector_streams_closed(conn)
+        self.assertRaises(TimeoutError, future.result)
+
+</source>
+<source file="systems/tornado-6.1.0/tornado/test/tcpclient_test.py" startline="371" endline="383" pcid="713">
+    def test_one_family_second_try_after_connect_timeout(self):
+        conn, future = self.start_connect([(AF1, "a"), (AF1, "b")])
+        self.assert_pending((AF1, "a"))
+        self.resolve_connect(AF1, "a", False)
+        self.assert_pending((AF1, "b"))
+        conn.on_connect_timeout()
+        self.connect_futures.pop((AF1, "b"))
+        self.assertTrue(self.streams.pop("b").closed)
+        self.assert_pending()
+        self.assertEqual(len(conn.streams), 2)
+        self.assert_connector_streams_closed(conn)
+        self.assertRaises(TimeoutError, future.result)
+
+</source>
+<source file="systems/tornado-6.1.0/tornado/test/tcpclient_test.py" startline="384" endline="395" pcid="714">
+    def test_one_family_second_try_failure_before_connect_timeout(self):
+        conn, future = self.start_connect([(AF1, "a"), (AF1, "b")])
+        self.assert_pending((AF1, "a"))
+        self.resolve_connect(AF1, "a", False)
+        self.assert_pending((AF1, "b"))
+        self.resolve_connect(AF1, "b", False)
+        conn.on_connect_timeout()
+        self.assert_pending()
+        self.assertEqual(len(conn.streams), 2)
+        self.assert_connector_streams_closed(conn)
+        self.assertRaises(IOError, future.result)
+
+</source>
+<source file="systems/tornado-6.1.0/tornado/test/tcpclient_test.py" startline="425" endline="438" pcid="717">
+    def test_two_family_timeout_after_connect_timeout(self):
+        conn, future = self.start_connect(self.addrinfo)
+        self.assert_pending((AF1, "a"))
+        conn.on_connect_timeout()
+        self.connect_futures.pop((AF1, "a"))
+        self.assertTrue(self.streams.pop("a").closed)
+        self.assert_pending()
+        conn.on_timeout()
+        # if the future is set with TimeoutError, connector will not
+        # trigger secondary address.
+        self.assert_pending()
+        self.assertEqual(len(conn.streams), 1)
+        self.assert_connector_streams_closed(conn)
+        self.assertRaises(TimeoutError, future.result)
+</source>
+<source file="systems/tornado-6.1.0/tornado/test/tcpclient_test.py" startline="358" endline="370" pcid="712">
+    def test_one_family_success_before_connect_timeout(self):
+        conn, future = self.start_connect([(AF1, "a"), (AF1, "b")])
+        self.assert_pending((AF1, "a"))
+        self.resolve_connect(AF1, "a", True)
+        conn.on_connect_timeout()
+        self.assert_pending()
+        self.assertEqual(self.streams["a"].closed, False)
+        # success stream will be pop
+        self.assertEqual(len(conn.streams), 0)
+        # streams in connector should be closed after connect timeout
+        self.assert_connector_streams_closed(conn)
+        self.assertEqual(future.result(), (AF1, "a", self.streams["a"]))
+
+</source>
+<source file="systems/tornado-6.1.0/tornado/test/tcpclient_test.py" startline="411" endline="424" pcid="716">
+    def test_two_family_success_after_timeout(self):
+        conn, future = self.start_connect(self.addrinfo)
+        self.assert_pending((AF1, "a"))
+        conn.on_timeout()
+        self.assert_pending((AF1, "a"), (AF2, "c"))
+        self.resolve_connect(AF1, "a", True)
+        # if one of streams succeed, connector will close all other streams
+        self.connect_futures.pop((AF2, "c"))
+        self.assertTrue(self.streams.pop("c").closed)
+        self.assert_pending()
+        self.assertEqual(len(conn.streams), 1)
+        self.assert_connector_streams_closed(conn)
+        self.assertEqual(future.result(), (AF1, "a", self.streams["a"]))
+
+</source>
+<source file="systems/tornado-6.1.0/tornado/test/tcpclient_test.py" startline="396" endline="410" pcid="715">
+    def test_two_family_timeout_before_connect_timeout(self):
+        conn, future = self.start_connect(self.addrinfo)
+        self.assert_pending((AF1, "a"))
+        conn.on_timeout()
+        self.assert_pending((AF1, "a"), (AF2, "c"))
+        conn.on_connect_timeout()
+        self.connect_futures.pop((AF1, "a"))
+        self.assertTrue(self.streams.pop("a").closed)
+        self.connect_futures.pop((AF2, "c"))
+        self.assertTrue(self.streams.pop("c").closed)
+        self.assert_pending()
+        self.assertEqual(len(conn.streams), 2)
+        self.assert_connector_streams_closed(conn)
+        self.assertRaises(TimeoutError, future.result)
+
+</source>
+</class>
+
+<class classid="11" nclones="2" nlines="19" similarity="85">
+<source file="systems/tornado-6.1.0/tornado/test/httpclient_test.py" startline="222" endline="258" pcid="740">
+    def test_chunked_close(self):
+        # test case in which chunks spread read-callback processing
+        # over several ioloop iterations, but the connection is already closed.
+        sock, port = bind_unused_port()
+        with closing(sock):
+
+            @gen.coroutine
+            def accept_callback(conn, address):
+                # fake an HTTP server using chunked encoding where the final chunks
+                # and connection close all happen at once
+                stream = IOStream(conn)
+                request_data = yield stream.read_until(b"\r\n\r\n")
+                if b"HTTP/1." not in request_data:
+                    self.skipTest("requires HTTP/1.x")
+                yield stream.write(
+                    b"""\
+HTTP/1.1 200 OK
+Transfer-Encoding: chunked
+
+1
+1
+1
+2
+0
+
+""".replace(
+                        b"\n", b"\r\n"
+                    )
+                )
+                stream.close()
+
+            netutil.add_accept_handler(sock, accept_callback)  # type: ignore
+            resp = self.fetch("http://127.0.0.1:%d/" % port)
+            resp.rethrow()
+            self.assertEqual(resp.body, b"12")
+            self.io_loop.remove_handler(sock.fileno())
+
+</source>
+<source file="systems/tornado-6.1.0/tornado/test/httpclient_test.py" startline="508" endline="539" pcid="761">
+    def test_multi_line_headers(self):
+        # Multi-line http headers are rare but rfc-allowed
+        # http://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html#sec4.2
+        sock, port = bind_unused_port()
+        with closing(sock):
+
+            @gen.coroutine
+            def accept_callback(conn, address):
+                stream = IOStream(conn)
+                request_data = yield stream.read_until(b"\r\n\r\n")
+                if b"HTTP/1." not in request_data:
+                    self.skipTest("requires HTTP/1.x")
+                yield stream.write(
+                    b"""\
+HTTP/1.1 200 OK
+X-XSS-Protection: 1;
+\tmode=block
+
+""".replace(
+                        b"\n", b"\r\n"
+                    )
+                )
+                stream.close()
+
+            netutil.add_accept_handler(sock, accept_callback)  # type: ignore
+            try:
+                resp = self.fetch("http://127.0.0.1:%d/" % port)
+                resp.rethrow()
+                self.assertEqual(resp.headers["X-XSS-Protection"], "1; mode=block")
+            finally:
+                self.io_loop.remove_handler(sock.fileno())
+
+</source>
+</class>
+
+<class classid="12" nclones="2" nlines="10" similarity="70">
+<source file="systems/tornado-6.1.0/tornado/test/httpclient_test.py" startline="268" endline="278" pcid="743">
+    def test_basic_auth_explicit_mode(self):
+        self.assertEqual(
+            self.fetch(
+                "/auth",
+                auth_username="Aladdin",
+                auth_password="open sesame",
+                auth_mode="basic",
+            ).body,
+            b"Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==",
+        )
+
+</source>
+<source file="systems/tornado-6.1.0/tornado/test/httpclient_test.py" startline="294" endline="307" pcid="745">
+    def test_unsupported_auth_mode(self):
+        # curl and simple clients handle errors a bit differently; the
+        # important thing is that they don't fall back to basic auth
+        # on an unknown mode.
+        with ExpectLog(gen_log, "uncaught exception", required=False):
+            with self.assertRaises((ValueError, HTTPError)):  # type: ignore
+                self.fetch(
+                    "/auth",
+                    auth_username="Aladdin",
+                    auth_password="open sesame",
+                    auth_mode="asdf",
+                    raise_error=True,
+                )
+
+</source>
+</class>
+
+</clones>

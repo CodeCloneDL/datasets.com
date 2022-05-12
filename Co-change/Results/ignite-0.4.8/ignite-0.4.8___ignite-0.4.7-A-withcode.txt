@@ -1,0 +1,3052 @@
+<clonepair1>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/handlers/test_visdom_logger.py" startline="626" endline="700" pcid="415"></source>
+def test_weights_scalar_handler():
+    class DummyModel(torch.nn.Module):
+        def __init__(self):
+            super(DummyModel, self).__init__()
+            self.fc1 = torch.nn.Linear(10, 10)
+            self.fc2 = torch.nn.Linear(12, 12)
+            self.fc1.weight.data.zero_()
+            self.fc1.bias.data.zero_()
+            self.fc2.weight.data.fill_(1.0)
+            self.fc2.bias.data.fill_(1.0)
+
+    model = DummyModel()
+
+    # define test wrapper to test with and without optional tag
+    def _test(tag=None):
+        wrapper = WeightsScalarHandler(model, tag=tag)
+        mock_logger = MagicMock(spec=VisdomLogger)
+        mock_logger.vis = MagicMock()
+        mock_logger.executor = _DummyExecutor()
+
+        mock_engine = MagicMock()
+        mock_engine.state = State()
+        mock_engine.state.epoch = 5
+
+        wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+        tag_prefix = f"{tag}/" if tag else ""
+
+        assert mock_logger.vis.line.call_count == 4
+        mock_logger.vis.line.assert_has_calls(
+            [
+                call(
+                    X=[5],
+                    Y=[0.0],
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "weights_norm/fc1/weight"]["opts"],
+                    name=tag_prefix + "weights_norm/fc1/weight",
+                ),
+                call(
+                    X=[5],
+                    Y=[0.0],
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "weights_norm/fc1/bias"]["opts"],
+                    name=tag_prefix + "weights_norm/fc1/bias",
+                ),
+                call(
+                    X=[5],
+                    Y=[12.0],
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "weights_norm/fc2/weight"]["opts"],
+                    name=tag_prefix + "weights_norm/fc2/weight",
+                ),
+                call(
+                    X=[5],
+                    Y=ANY,
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "weights_norm/fc2/bias"]["opts"],
+                    name=tag_prefix + "weights_norm/fc2/bias",
+                ),
+            ],
+            any_order=True,
+        )
+
+    _test()
+    _test(tag="tag")
+
+
+</clonepair1>
+
+<clonepair1>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/handlers/test_visdom_logger.py" startline="788" endline="865" pcid="422"></source>
+def test_grads_scalar_handler():
+    class DummyModel(torch.nn.Module):
+        def __init__(self):
+            super(DummyModel, self).__init__()
+            self.fc1 = torch.nn.Linear(10, 10)
+            self.fc2 = torch.nn.Linear(12, 12)
+            self.fc1.weight.data.zero_()
+            self.fc1.bias.data.zero_()
+            self.fc2.weight.data.fill_(1.0)
+            self.fc2.bias.data.fill_(1.0)
+
+    model = DummyModel()
+
+    def norm(x):
+        return 0.0
+
+    # define test wrapper to test with and without optional tag
+    def _test(tag=None):
+        wrapper = GradsScalarHandler(model, reduction=norm, tag=tag)
+        mock_logger = MagicMock(spec=VisdomLogger)
+        mock_logger.vis = MagicMock()
+        mock_logger.executor = _DummyExecutor()
+
+        mock_engine = MagicMock()
+        mock_engine.state = State()
+        mock_engine.state.epoch = 5
+
+        wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+        tag_prefix = f"{tag}/" if tag else ""
+
+        assert mock_logger.vis.line.call_count == 4
+        mock_logger.vis.line.assert_has_calls(
+            [
+                call(
+                    X=[5],
+                    Y=ANY,
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "grads_norm/fc1/weight"]["opts"],
+                    name=tag_prefix + "grads_norm/fc1/weight",
+                ),
+                call(
+                    X=[5],
+                    Y=ANY,
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "grads_norm/fc1/bias"]["opts"],
+                    name=tag_prefix + "grads_norm/fc1/bias",
+                ),
+                call(
+                    X=[5],
+                    Y=ANY,
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "grads_norm/fc2/weight"]["opts"],
+                    name=tag_prefix + "grads_norm/fc2/weight",
+                ),
+                call(
+                    X=[5],
+                    Y=ANY,
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "grads_norm/fc2/bias"]["opts"],
+                    name=tag_prefix + "grads_norm/fc2/bias",
+                ),
+            ],
+            any_order=True,
+        )
+
+    _test()
+    _test(tag="tag")
+
+
+</clonepair1>
+<clonepair2>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/handlers/test_visdom_logger.py" startline="701" endline="771" pcid="418"></source>
+def test_weights_scalar_handler_custom_reduction():
+    class DummyModel(torch.nn.Module):
+        def __init__(self):
+            super(DummyModel, self).__init__()
+            self.fc1 = torch.nn.Linear(10, 10)
+            self.fc2 = torch.nn.Linear(12, 12)
+            self.fc1.weight.data.zero_()
+            self.fc1.bias.data.zero_()
+            self.fc2.weight.data.fill_(1.0)
+            self.fc2.bias.data.fill_(1.0)
+
+    model = DummyModel()
+
+    def norm(x):
+        return 12.34
+
+    wrapper = WeightsScalarHandler(model, reduction=norm, show_legend=True)
+    mock_logger = MagicMock(spec=VisdomLogger)
+    mock_logger.vis = MagicMock()
+    mock_logger.executor = _DummyExecutor()
+
+    mock_engine = MagicMock()
+    mock_engine.state = State()
+    mock_engine.state.epoch = 5
+
+    wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+    assert mock_logger.vis.line.call_count == 4
+    mock_logger.vis.line.assert_has_calls(
+        [
+            call(
+                X=[5],
+                Y=[12.34],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["weights_norm/fc1/weight"]["opts"],
+                name="weights_norm/fc1/weight",
+            ),
+            call(
+                X=[5],
+                Y=[12.34],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["weights_norm/fc1/bias"]["opts"],
+                name="weights_norm/fc1/bias",
+            ),
+            call(
+                X=[5],
+                Y=[12.34],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["weights_norm/fc2/weight"]["opts"],
+                name="weights_norm/fc2/weight",
+            ),
+            call(
+                X=[5],
+                Y=[12.34],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["weights_norm/fc2/bias"]["opts"],
+                name="weights_norm/fc2/bias",
+            ),
+        ],
+        any_order=True,
+    )
+
+
+</clonepair2>
+
+<clonepair2>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/handlers/test_visdom_logger.py" startline="788" endline="865" pcid="422"></source>
+def test_grads_scalar_handler():
+    class DummyModel(torch.nn.Module):
+        def __init__(self):
+            super(DummyModel, self).__init__()
+            self.fc1 = torch.nn.Linear(10, 10)
+            self.fc2 = torch.nn.Linear(12, 12)
+            self.fc1.weight.data.zero_()
+            self.fc1.bias.data.zero_()
+            self.fc2.weight.data.fill_(1.0)
+            self.fc2.bias.data.fill_(1.0)
+
+    model = DummyModel()
+
+    def norm(x):
+        return 0.0
+
+    # define test wrapper to test with and without optional tag
+    def _test(tag=None):
+        wrapper = GradsScalarHandler(model, reduction=norm, tag=tag)
+        mock_logger = MagicMock(spec=VisdomLogger)
+        mock_logger.vis = MagicMock()
+        mock_logger.executor = _DummyExecutor()
+
+        mock_engine = MagicMock()
+        mock_engine.state = State()
+        mock_engine.state.epoch = 5
+
+        wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+        tag_prefix = f"{tag}/" if tag else ""
+
+        assert mock_logger.vis.line.call_count == 4
+        mock_logger.vis.line.assert_has_calls(
+            [
+                call(
+                    X=[5],
+                    Y=ANY,
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "grads_norm/fc1/weight"]["opts"],
+                    name=tag_prefix + "grads_norm/fc1/weight",
+                ),
+                call(
+                    X=[5],
+                    Y=ANY,
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "grads_norm/fc1/bias"]["opts"],
+                    name=tag_prefix + "grads_norm/fc1/bias",
+                ),
+                call(
+                    X=[5],
+                    Y=ANY,
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "grads_norm/fc2/weight"]["opts"],
+                    name=tag_prefix + "grads_norm/fc2/weight",
+                ),
+                call(
+                    X=[5],
+                    Y=ANY,
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "grads_norm/fc2/bias"]["opts"],
+                    name=tag_prefix + "grads_norm/fc2/bias",
+                ),
+            ],
+            any_order=True,
+        )
+
+    _test()
+    _test(tag="tag")
+
+
+</clonepair2>
+<clonepair3>
+<source file="systems/ignite-0.4.8/tests/ignite/engine/test_deterministic.py" startline="245" endline="330" pcid="1496"></source>
+def _test_resume_random_dataloader_from_epoch(device, _setup_sampler, sampler_type=None):
+    def _test(epoch_length=None):
+
+        max_epochs = 5
+        total_batch_size = 4
+        num_iters = 21
+        torch.manual_seed(0)
+        data = torch.randint(0, 1000, size=(num_iters * total_batch_size,))
+
+        if epoch_length is None:
+            epoch_length = num_iters
+
+        for resume_epoch in range(1, max_epochs, 2):
+
+            for num_workers in [0, 2]:
+                sampler, batch_size = _setup_sampler(sampler_type, num_iters, total_batch_size)
+
+                orig_dataloader = DataLoader(
+                    data,
+                    batch_size=batch_size,
+                    num_workers=num_workers,
+                    pin_memory="cuda" in torch.device(device).type,
+                    sampler=sampler,
+                    drop_last=True,
+                    shuffle=sampler is None,
+                )
+
+                seen_batchs = []
+
+                def update_fn(_, batch):
+                    batch_to_device = batch.to(device)
+                    seen_batchs.append(batch)
+
+                engine = DeterministicEngine(update_fn)
+
+                if sampler_type == "distributed":
+
+                    @engine.on(Events.EPOCH_STARTED)
+                    def _(engine):
+                        sampler.set_epoch(engine.state.epoch - 1)
+
+                torch.manual_seed(87)
+                engine.run(orig_dataloader, max_epochs=max_epochs, epoch_length=epoch_length)
+
+                batch_checker = BatchChecker(seen_batchs, init_counter=resume_epoch * epoch_length)
+
+                sampler, batch_size = _setup_sampler(sampler_type, num_iters, total_batch_size)
+                resume_dataloader = DataLoader(
+                    data,
+                    batch_size=batch_size,
+                    num_workers=num_workers,
+                    pin_memory="cuda" in torch.device(device).type,
+                    sampler=sampler,
+                    drop_last=True,
+                    shuffle=sampler is None,
+                )
+
+                def update_fn(_, batch):
+                    batch_to_device = batch.to(device)
+                    assert batch_checker.check(
+                        batch
+                    ), f"{num_workers} {resume_epoch} | {batch_checker.counter}: {batch_checker.true_batch} vs {batch}"
+
+                engine = DeterministicEngine(update_fn)
+
+                if sampler_type == "distributed":
+
+                    @engine.on(Events.EPOCH_STARTED)
+                    def _(engine):
+                        sampler.set_epoch(engine.state.epoch - 1)
+
+                resume_state_dict = dict(
+                    epoch=resume_epoch, max_epochs=max_epochs, epoch_length=epoch_length, rng_states=None
+                )
+                engine.load_state_dict(resume_state_dict)
+                torch.manual_seed(87)
+                engine.run(resume_dataloader)
+                assert engine.state.epoch == max_epochs
+                assert engine.state.iteration == epoch_length * max_epochs
+
+    _test()
+    if sampler_type != "distributed":
+        _test(60)
+        _test(15)
+
+
+</clonepair3>
+
+<clonepair3>
+<source file="systems/ignite-0.4.8/tests/ignite/engine/test_deterministic.py" startline="352" endline="438" pcid="1506"></source>
+def _test_resume_random_dataloader_from_iter(device, _setup_sampler, sampler_type=None):
+    def _test(epoch_length=None):
+        max_epochs = 3
+        total_batch_size = 4
+        num_iters = 17
+        torch.manual_seed(0)
+        data = torch.randint(0, 1000, size=(num_iters * total_batch_size,))
+
+        if epoch_length is None:
+            epoch_length = num_iters
+
+        for resume_iteration in range(2, min(num_iters * max_epochs, epoch_length * max_epochs), 13):
+
+            for num_workers in [0, 2]:
+
+                sampler, batch_size = _setup_sampler(sampler_type, num_iters, total_batch_size)
+                orig_dataloader = DataLoader(
+                    data,
+                    batch_size=batch_size,
+                    num_workers=num_workers,
+                    pin_memory="cuda" in torch.device(device).type,
+                    sampler=sampler,
+                    drop_last=True,
+                    shuffle=sampler is None,
+                )
+                seen_batchs = []
+
+                def update_fn(_, batch):
+                    batch_to_device = batch.to(device)
+                    seen_batchs.append(batch)
+
+                engine = DeterministicEngine(update_fn)
+
+                if sampler_type == "distributed":
+
+                    @engine.on(Events.EPOCH_STARTED)
+                    def _(engine):
+                        sampler.set_epoch(engine.state.epoch)
+
+                torch.manual_seed(12)
+                engine.run(orig_dataloader, max_epochs=max_epochs, epoch_length=epoch_length)
+
+                batch_checker = BatchChecker(seen_batchs, init_counter=resume_iteration)
+
+                sampler, batch_size = _setup_sampler(sampler_type, num_iters, total_batch_size)
+                resume_dataloader = DataLoader(
+                    data,
+                    batch_size=batch_size,
+                    num_workers=num_workers,
+                    pin_memory="cuda" in torch.device(device).type,
+                    sampler=sampler,
+                    drop_last=True,
+                    shuffle=sampler is None,
+                )
+
+                def update_fn(_, batch):
+                    batch_to_device = batch.to(device)
+                    cfg_msg = f"{num_workers} {resume_iteration}"
+                    assert batch_checker.check(
+                        batch
+                    ), f"{cfg_msg} | {batch_checker.counter}: {batch_checker.true_batch} vs {batch}"
+
+                engine = DeterministicEngine(update_fn)
+
+                if sampler_type == "distributed":
+
+                    @engine.on(Events.EPOCH_STARTED)
+                    def _(engine):
+                        sampler.set_epoch(engine.state.epoch)
+
+                resume_state_dict = dict(
+                    iteration=resume_iteration, max_epochs=max_epochs, epoch_length=epoch_length, rng_states=None
+                )
+                engine.load_state_dict(resume_state_dict)
+                torch.manual_seed(12)
+                engine.run(resume_dataloader)
+                assert engine.state.epoch == max_epochs
+                assert (
+                    engine.state.iteration == epoch_length * max_epochs
+                ), f"{num_workers}, {resume_iteration} | {engine.state.iteration} vs {epoch_length * max_epochs}"
+
+    _test()
+    if sampler_type != "distributed":
+        _test(40)
+        _test(11)
+
+
+</clonepair3>
+<clonepair4>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/handlers/test_visdom_logger.py" startline="626" endline="700" pcid="415"></source>
+def test_weights_scalar_handler():
+    class DummyModel(torch.nn.Module):
+        def __init__(self):
+            super(DummyModel, self).__init__()
+            self.fc1 = torch.nn.Linear(10, 10)
+            self.fc2 = torch.nn.Linear(12, 12)
+            self.fc1.weight.data.zero_()
+            self.fc1.bias.data.zero_()
+            self.fc2.weight.data.fill_(1.0)
+            self.fc2.bias.data.fill_(1.0)
+
+    model = DummyModel()
+
+    # define test wrapper to test with and without optional tag
+    def _test(tag=None):
+        wrapper = WeightsScalarHandler(model, tag=tag)
+        mock_logger = MagicMock(spec=VisdomLogger)
+        mock_logger.vis = MagicMock()
+        mock_logger.executor = _DummyExecutor()
+
+        mock_engine = MagicMock()
+        mock_engine.state = State()
+        mock_engine.state.epoch = 5
+
+        wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+        tag_prefix = f"{tag}/" if tag else ""
+
+        assert mock_logger.vis.line.call_count == 4
+        mock_logger.vis.line.assert_has_calls(
+            [
+                call(
+                    X=[5],
+                    Y=[0.0],
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "weights_norm/fc1/weight"]["opts"],
+                    name=tag_prefix + "weights_norm/fc1/weight",
+                ),
+                call(
+                    X=[5],
+                    Y=[0.0],
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "weights_norm/fc1/bias"]["opts"],
+                    name=tag_prefix + "weights_norm/fc1/bias",
+                ),
+                call(
+                    X=[5],
+                    Y=[12.0],
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "weights_norm/fc2/weight"]["opts"],
+                    name=tag_prefix + "weights_norm/fc2/weight",
+                ),
+                call(
+                    X=[5],
+                    Y=ANY,
+                    env=mock_logger.vis.env,
+                    win=None,
+                    update=None,
+                    opts=wrapper.windows[tag_prefix + "weights_norm/fc2/bias"]["opts"],
+                    name=tag_prefix + "weights_norm/fc2/bias",
+                ),
+            ],
+            any_order=True,
+        )
+
+    _test()
+    _test(tag="tag")
+
+
+</clonepair4>
+
+<clonepair4>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/handlers/test_visdom_logger.py" startline="701" endline="771" pcid="418"></source>
+def test_weights_scalar_handler_custom_reduction():
+    class DummyModel(torch.nn.Module):
+        def __init__(self):
+            super(DummyModel, self).__init__()
+            self.fc1 = torch.nn.Linear(10, 10)
+            self.fc2 = torch.nn.Linear(12, 12)
+            self.fc1.weight.data.zero_()
+            self.fc1.bias.data.zero_()
+            self.fc2.weight.data.fill_(1.0)
+            self.fc2.bias.data.fill_(1.0)
+
+    model = DummyModel()
+
+    def norm(x):
+        return 12.34
+
+    wrapper = WeightsScalarHandler(model, reduction=norm, show_legend=True)
+    mock_logger = MagicMock(spec=VisdomLogger)
+    mock_logger.vis = MagicMock()
+    mock_logger.executor = _DummyExecutor()
+
+    mock_engine = MagicMock()
+    mock_engine.state = State()
+    mock_engine.state.epoch = 5
+
+    wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+    assert mock_logger.vis.line.call_count == 4
+    mock_logger.vis.line.assert_has_calls(
+        [
+            call(
+                X=[5],
+                Y=[12.34],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["weights_norm/fc1/weight"]["opts"],
+                name="weights_norm/fc1/weight",
+            ),
+            call(
+                X=[5],
+                Y=[12.34],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["weights_norm/fc1/bias"]["opts"],
+                name="weights_norm/fc1/bias",
+            ),
+            call(
+                X=[5],
+                Y=[12.34],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["weights_norm/fc2/weight"]["opts"],
+                name="weights_norm/fc2/weight",
+            ),
+            call(
+                X=[5],
+                Y=[12.34],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["weights_norm/fc2/bias"]["opts"],
+                name="weights_norm/fc2/bias",
+            ),
+        ],
+        any_order=True,
+    )
+
+
+</clonepair4>
+<clonepair5>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/handlers/test_visdom_logger.py" startline="422" endline="492" pcid="408"></source>
+def test_output_handler_state_attrs():
+    wrapper = OutputHandler("tag", state_attributes=["alpha", "beta", "gamma"])
+    mock_logger = MagicMock(spec=VisdomLogger)
+    mock_logger.vis = MagicMock()
+    mock_logger.executor = _DummyExecutor()
+
+    mock_engine = MagicMock()
+    mock_engine.state = State()
+    mock_engine.state.iteration = 5
+    mock_engine.state.alpha = 3.899
+    mock_engine.state.beta = torch.tensor(12.0)
+    mock_engine.state.gamma = torch.tensor([21.0, 6.0])
+
+    wrapper(mock_engine, mock_logger, Events.ITERATION_STARTED)
+
+    assert mock_logger.vis.line.call_count == 4
+    assert (
+        len(wrapper.windows) == 4
+        and "tag/alpha" in wrapper.windows
+        and "tag/beta" in wrapper.windows
+        and "tag/gamma/0" in wrapper.windows
+        and "tag/gamma/1" in wrapper.windows
+    )
+    assert wrapper.windows["tag/alpha"]["win"] is not None
+    assert wrapper.windows["tag/beta"]["win"] is not None
+    assert wrapper.windows["tag/gamma/0"]["win"] is not None
+    assert wrapper.windows["tag/gamma/1"]["win"] is not None
+
+    mock_logger.vis.line.assert_has_calls(
+        [
+            call(
+                X=[5],
+                Y=[3.899],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["tag/alpha"]["opts"],
+                name="tag/alpha",
+            ),
+            call(
+                X=[5],
+                Y=[12.0],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["tag/beta"]["opts"],
+                name="tag/beta",
+            ),
+            call(
+                X=[5],
+                Y=[21.0],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["tag/gamma/0"]["opts"],
+                name="tag/gamma/0",
+            ),
+            call(
+                X=[5],
+                Y=[6.0],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["tag/gamma/1"]["opts"],
+                name="tag/gamma/1",
+            ),
+        ],
+        any_order=True,
+    )
+
+
+</clonepair5>
+
+<clonepair5>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/handlers/test_visdom_logger.py" startline="701" endline="771" pcid="418"></source>
+def test_weights_scalar_handler_custom_reduction():
+    class DummyModel(torch.nn.Module):
+        def __init__(self):
+            super(DummyModel, self).__init__()
+            self.fc1 = torch.nn.Linear(10, 10)
+            self.fc2 = torch.nn.Linear(12, 12)
+            self.fc1.weight.data.zero_()
+            self.fc1.bias.data.zero_()
+            self.fc2.weight.data.fill_(1.0)
+            self.fc2.bias.data.fill_(1.0)
+
+    model = DummyModel()
+
+    def norm(x):
+        return 12.34
+
+    wrapper = WeightsScalarHandler(model, reduction=norm, show_legend=True)
+    mock_logger = MagicMock(spec=VisdomLogger)
+    mock_logger.vis = MagicMock()
+    mock_logger.executor = _DummyExecutor()
+
+    mock_engine = MagicMock()
+    mock_engine.state = State()
+    mock_engine.state.epoch = 5
+
+    wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+    assert mock_logger.vis.line.call_count == 4
+    mock_logger.vis.line.assert_has_calls(
+        [
+            call(
+                X=[5],
+                Y=[12.34],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["weights_norm/fc1/weight"]["opts"],
+                name="weights_norm/fc1/weight",
+            ),
+            call(
+                X=[5],
+                Y=[12.34],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["weights_norm/fc1/bias"]["opts"],
+                name="weights_norm/fc1/bias",
+            ),
+            call(
+                X=[5],
+                Y=[12.34],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["weights_norm/fc2/weight"]["opts"],
+                name="weights_norm/fc2/weight",
+            ),
+            call(
+                X=[5],
+                Y=[12.34],
+                env=mock_logger.vis.env,
+                win=None,
+                update=None,
+                opts=wrapper.windows["weights_norm/fc2/bias"]["opts"],
+                name="weights_norm/fc2/bias",
+            ),
+        ],
+        any_order=True,
+    )
+
+
+</clonepair5>
+<clonepair6>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/test_average_precision.py" startline="213" endline="277" pcid="827"></source>
+def _test_distrib_integration_binary_input(device):
+
+    rank = idist.get_rank()
+    torch.manual_seed(12)
+    n_iters = 80
+    s = 16
+    n_classes = 2
+    offset = n_iters * s
+
+    def _test(y_preds, y_true, n_epochs, metric_device, update_fn):
+        metric_device = torch.device(metric_device)
+
+        engine = Engine(update_fn)
+
+        ap = AveragePrecision(device=metric_device)
+        ap.attach(engine, "ap")
+
+        data = list(range(n_iters))
+        engine.run(data=data, max_epochs=n_epochs)
+
+        assert "ap" in engine.state.metrics
+
+        res = engine.state.metrics["ap"]
+
+        true_res = average_precision_score(y_true.cpu().numpy(), y_preds.cpu().numpy())
+        assert pytest.approx(res) == true_res
+
+    def get_tests(is_N):
+        if is_N:
+            y_true = torch.randint(0, n_classes, size=(offset * idist.get_world_size(),)).to(device)
+            y_preds = torch.rand(offset * idist.get_world_size()).to(device)
+
+            def update_fn(engine, i):
+                return (
+                    y_preds[i * s + rank * offset : (i + 1) * s + rank * offset],
+                    y_true[i * s + rank * offset : (i + 1) * s + rank * offset],
+                )
+
+        else:
+            y_true = torch.randint(0, n_classes, size=(offset * idist.get_world_size(), 10)).to(device)
+            y_preds = torch.randint(0, n_classes, size=(offset * idist.get_world_size(), 10)).to(device)
+
+            def update_fn(engine, i):
+                return (
+                    y_preds[i * s + rank * offset : (i + 1) * s + rank * offset, :],
+                    y_true[i * s + rank * offset : (i + 1) * s + rank * offset, :],
+                )
+
+        return y_preds, y_true, update_fn
+
+    metric_devices = ["cpu"]
+    if device.type != "xla":
+        metric_devices.append(idist.device())
+    for metric_device in metric_devices:
+        for _ in range(2):
+            # Binary input data of shape (N,)
+            y_preds, y_true, update_fn = get_tests(is_N=True)
+            _test(y_preds, y_true, n_epochs=1, metric_device=metric_device, update_fn=update_fn)
+            _test(y_preds, y_true, n_epochs=2, metric_device=metric_device, update_fn=update_fn)
+            # Binary input data of shape (N, L)
+            y_preds, y_true, update_fn = get_tests(is_N=False)
+            _test(y_preds, y_true, n_epochs=1, metric_device=metric_device, update_fn=update_fn)
+            _test(y_preds, y_true, n_epochs=2, metric_device=metric_device, update_fn=update_fn)
+
+
+</clonepair6>
+
+<clonepair6>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/test_roc_auc.py" startline="226" endline="290" pcid="904"></source>
+def _test_distrib_integration_binary_input(device):
+
+    rank = idist.get_rank()
+    torch.manual_seed(12)
+    n_iters = 80
+    s = 16
+    n_classes = 2
+    offset = n_iters * s
+
+    def _test(y_preds, y_true, n_epochs, metric_device, update_fn):
+        metric_device = torch.device(metric_device)
+
+        engine = Engine(update_fn)
+
+        roc_auc = ROC_AUC(device=metric_device)
+        roc_auc.attach(engine, "roc_auc")
+
+        data = list(range(n_iters))
+        engine.run(data=data, max_epochs=n_epochs)
+
+        assert "roc_auc" in engine.state.metrics
+
+        res = engine.state.metrics["roc_auc"]
+
+        true_res = roc_auc_score(y_true.cpu().numpy(), y_preds.cpu().numpy())
+        assert pytest.approx(res) == true_res
+
+    def get_tests(is_N):
+        if is_N:
+            y_true = torch.randint(0, n_classes, size=(offset * idist.get_world_size(),)).to(device)
+            y_preds = torch.rand(offset * idist.get_world_size()).to(device)
+
+            def update_fn(engine, i):
+                return (
+                    y_preds[i * s + rank * offset : (i + 1) * s + rank * offset],
+                    y_true[i * s + rank * offset : (i + 1) * s + rank * offset],
+                )
+
+        else:
+            y_true = torch.randint(0, n_classes, size=(offset * idist.get_world_size(), 10)).to(device)
+            y_preds = torch.rand(offset * idist.get_world_size(), 10).to(device)
+
+            def update_fn(engine, i):
+                return (
+                    y_preds[i * s + rank * offset : (i + 1) * s + rank * offset, :],
+                    y_true[i * s + rank * offset : (i + 1) * s + rank * offset, :],
+                )
+
+        return y_preds, y_true, update_fn
+
+    metric_devices = ["cpu"]
+    if device.type != "xla":
+        metric_devices.append(idist.device())
+    for metric_device in metric_devices:
+        for _ in range(2):
+            # Binary input data of shape (N,)
+            y_preds, y_true, update_fn = get_tests(is_N=True)
+            _test(y_preds, y_true, n_epochs=1, metric_device=metric_device, update_fn=update_fn)
+            _test(y_preds, y_true, n_epochs=2, metric_device=metric_device, update_fn=update_fn)
+            # Binary input data of shape (N, L)
+            y_preds, y_true, update_fn = get_tests(is_N=False)
+            _test(y_preds, y_true, n_epochs=1, metric_device=metric_device, update_fn=update_fn)
+            _test(y_preds, y_true, n_epochs=2, metric_device=metric_device, update_fn=update_fn)
+
+
+</clonepair6>
+<clonepair7>
+<source file="systems/ignite-0.4.8/ignite/engine/__init__.py" startline="113" endline="198" pcid="104"></source>
+def supervised_training_step_amp(
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    loss_fn: Union[Callable, torch.nn.Module],
+    device: Optional[Union[str, torch.device]] = None,
+    non_blocking: bool = False,
+    prepare_batch: Callable = _prepare_batch,
+    output_transform: Callable[[Any, Any, Any, torch.Tensor], Any] = lambda x, y, y_pred, loss: loss.item(),
+    scaler: Optional["torch.cuda.amp.GradScaler"] = None,
+    gradient_accumulation_steps: int = 1,
+) -> Callable:
+    """Factory function for supervised training using ``torch.cuda.amp``.
+
+    Args:
+        model: the model to train.
+        optimizer: the optimizer to use.
+        loss_fn: the loss function to use.
+        device: device type specification (default: None).
+            Applies to batches after starting the engine. Model *will not* be moved.
+            Device can be CPU, GPU.
+        non_blocking: if True and this copy is between CPU and GPU, the copy may occur asynchronously
+            with respect to the host. For other cases, this argument has no effect.
+        prepare_batch: function that receives `batch`, `device`, `non_blocking` and outputs
+            tuple of tensors `(batch_x, batch_y)`.
+        output_transform: function that receives 'x', 'y', 'y_pred', 'loss' and returns value
+            to be assigned to engine's state.output after each iteration. Default is returning `loss.item()`.
+        scaler: GradScaler instance for gradient scaling. (default: None)
+        gradient_accumulation_steps: Number of steps the gradients should be accumulated across.
+            (default: 1 (means no gradient accumulation))
+
+    Returns:
+        Callable: update function
+
+    Examples:
+        .. code-block:: python
+
+            from ignite.engine import Engine, supervised_training_step_amp
+
+            model = ...
+            optimizer = ...
+            loss_fn = ...
+            scaler = torch.cuda.amp.GradScaler(2**10)
+
+            update_fn = supervised_training_step_amp(model, optimizer, loss_fn, 'cuda', scaler=scaler)
+            trainer = Engine(update_fn)
+
+    .. versionadded:: 0.4.5
+    .. versionchanged:: 0.4.7
+        Added Gradient Accumulation.
+    """
+
+    try:
+        from torch.cuda.amp import autocast
+    except ImportError:
+        raise ImportError("Please install torch>=1.6.0 to use amp_mode='amp'.")
+
+    if gradient_accumulation_steps <= 0:
+        raise ValueError(
+            "Gradient_accumulation_steps must be strictly positive. "
+            "No gradient accumulation if the value set to one (default)."
+        )
+
+    def update(engine: Engine, batch: Sequence[torch.Tensor]) -> Union[Any, Tuple[torch.Tensor]]:
+        model.train()
+        x, y = prepare_batch(batch, device=device, non_blocking=non_blocking)
+        with autocast(enabled=True):
+            y_pred = model(x)
+            loss = loss_fn(y_pred, y)
+            if gradient_accumulation_steps > 1:
+                loss = loss / gradient_accumulation_steps
+        if scaler:
+            scaler.scale(loss).backward()
+            if engine.state.iteration % gradient_accumulation_steps == 0:
+                scaler.step(optimizer)
+                scaler.update()
+                optimizer.zero_grad()
+        else:
+            loss.backward()
+            if engine.state.iteration % gradient_accumulation_steps == 0:
+                optimizer.step()
+                optimizer.zero_grad()
+        return output_transform(x, y, y_pred, loss)
+
+    return update
+
+
+</clonepair7>
+
+<clonepair7>
+<source file="systems/ignite-0.4.8/ignite/engine/__init__.py" startline="199" endline="274" pcid="106"></source>
+def supervised_training_step_apex(
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    loss_fn: Union[Callable, torch.nn.Module],
+    device: Optional[Union[str, torch.device]] = None,
+    non_blocking: bool = False,
+    prepare_batch: Callable = _prepare_batch,
+    output_transform: Callable[[Any, Any, Any, torch.Tensor], Any] = lambda x, y, y_pred, loss: loss.item(),
+    gradient_accumulation_steps: int = 1,
+) -> Callable:
+    """Factory function for supervised training using apex.
+
+    Args:
+        model: the model to train.
+        optimizer: the optimizer to use.
+        loss_fn: the loss function to use.
+        device: device type specification (default: None).
+            Applies to batches after starting the engine. Model *will not* be moved.
+            Device can be CPU, GPU.
+        non_blocking: if True and this copy is between CPU and GPU, the copy may occur asynchronously
+            with respect to the host. For other cases, this argument has no effect.
+        prepare_batch: function that receives `batch`, `device`, `non_blocking` and outputs
+            tuple of tensors `(batch_x, batch_y)`.
+        output_transform: function that receives 'x', 'y', 'y_pred', 'loss' and returns value
+            to be assigned to engine's state.output after each iteration. Default is returning `loss.item()`.
+        gradient_accumulation_steps: Number of steps the gradients should be accumulated across.
+            (default: 1 (means no gradient accumulation))
+
+    Returns:
+        Callable: update function.
+
+    Examples:
+        .. code-block:: python
+
+            from ignite.engine import Engine, supervised_training_step_apex
+
+            model = ...
+            optimizer = ...
+            loss_fn = ...
+
+            update_fn = supervised_training_step_apex(model, optimizer, loss_fn, 'cuda')
+            trainer = Engine(update_fn)
+
+    .. versionadded:: 0.4.5
+    .. versionchanged:: 0.4.7
+        Added Gradient Accumulation.
+    """
+
+    try:
+        from apex import amp as apex_amp
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError("Please install apex from https://github.com/nvidia/apex to use amp_mode='apex'.")
+
+    if gradient_accumulation_steps <= 0:
+        raise ValueError(
+            "Gradient_accumulation_steps must be strictly positive. "
+            "No gradient accumulation if the value set to one (default)."
+        )
+
+    def update(engine: Engine, batch: Sequence[torch.Tensor]) -> Union[Any, Tuple[torch.Tensor]]:
+        model.train()
+        x, y = prepare_batch(batch, device=device, non_blocking=non_blocking)
+        y_pred = model(x)
+        loss = loss_fn(y_pred, y)
+        if gradient_accumulation_steps > 1:
+            loss = loss / gradient_accumulation_steps
+        with apex_amp.scale_loss(loss, optimizer) as scaled_loss:
+            scaled_loss.backward()
+        if engine.state.iteration % gradient_accumulation_steps == 0:
+            optimizer.step()
+            optimizer.zero_grad()
+        return output_transform(x, y, y_pred, loss)
+
+    return update
+
+
+</clonepair7>
+<clonepair8>
+<source file="systems/ignite-0.4.8/ignite/engine/__init__.py" startline="113" endline="198" pcid="104"></source>
+def supervised_training_step_amp(
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    loss_fn: Union[Callable, torch.nn.Module],
+    device: Optional[Union[str, torch.device]] = None,
+    non_blocking: bool = False,
+    prepare_batch: Callable = _prepare_batch,
+    output_transform: Callable[[Any, Any, Any, torch.Tensor], Any] = lambda x, y, y_pred, loss: loss.item(),
+    scaler: Optional["torch.cuda.amp.GradScaler"] = None,
+    gradient_accumulation_steps: int = 1,
+) -> Callable:
+    """Factory function for supervised training using ``torch.cuda.amp``.
+
+    Args:
+        model: the model to train.
+        optimizer: the optimizer to use.
+        loss_fn: the loss function to use.
+        device: device type specification (default: None).
+            Applies to batches after starting the engine. Model *will not* be moved.
+            Device can be CPU, GPU.
+        non_blocking: if True and this copy is between CPU and GPU, the copy may occur asynchronously
+            with respect to the host. For other cases, this argument has no effect.
+        prepare_batch: function that receives `batch`, `device`, `non_blocking` and outputs
+            tuple of tensors `(batch_x, batch_y)`.
+        output_transform: function that receives 'x', 'y', 'y_pred', 'loss' and returns value
+            to be assigned to engine's state.output after each iteration. Default is returning `loss.item()`.
+        scaler: GradScaler instance for gradient scaling. (default: None)
+        gradient_accumulation_steps: Number of steps the gradients should be accumulated across.
+            (default: 1 (means no gradient accumulation))
+
+    Returns:
+        Callable: update function
+
+    Examples:
+        .. code-block:: python
+
+            from ignite.engine import Engine, supervised_training_step_amp
+
+            model = ...
+            optimizer = ...
+            loss_fn = ...
+            scaler = torch.cuda.amp.GradScaler(2**10)
+
+            update_fn = supervised_training_step_amp(model, optimizer, loss_fn, 'cuda', scaler=scaler)
+            trainer = Engine(update_fn)
+
+    .. versionadded:: 0.4.5
+    .. versionchanged:: 0.4.7
+        Added Gradient Accumulation.
+    """
+
+    try:
+        from torch.cuda.amp import autocast
+    except ImportError:
+        raise ImportError("Please install torch>=1.6.0 to use amp_mode='amp'.")
+
+    if gradient_accumulation_steps <= 0:
+        raise ValueError(
+            "Gradient_accumulation_steps must be strictly positive. "
+            "No gradient accumulation if the value set to one (default)."
+        )
+
+    def update(engine: Engine, batch: Sequence[torch.Tensor]) -> Union[Any, Tuple[torch.Tensor]]:
+        model.train()
+        x, y = prepare_batch(batch, device=device, non_blocking=non_blocking)
+        with autocast(enabled=True):
+            y_pred = model(x)
+            loss = loss_fn(y_pred, y)
+            if gradient_accumulation_steps > 1:
+                loss = loss / gradient_accumulation_steps
+        if scaler:
+            scaler.scale(loss).backward()
+            if engine.state.iteration % gradient_accumulation_steps == 0:
+                scaler.step(optimizer)
+                scaler.update()
+                optimizer.zero_grad()
+        else:
+            loss.backward()
+            if engine.state.iteration % gradient_accumulation_steps == 0:
+                optimizer.step()
+                optimizer.zero_grad()
+        return output_transform(x, y, y_pred, loss)
+
+    return update
+
+
+</clonepair8>
+
+<clonepair8>
+<source file="systems/ignite-0.4.8/ignite/engine/__init__.py" startline="275" endline="348" pcid="108"></source>
+def supervised_training_step_tpu(
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    loss_fn: Union[Callable, torch.nn.Module],
+    device: Optional[Union[str, torch.device]] = None,
+    non_blocking: bool = False,
+    prepare_batch: Callable = _prepare_batch,
+    output_transform: Callable[[Any, Any, Any, torch.Tensor], Any] = lambda x, y, y_pred, loss: loss.item(),
+    gradient_accumulation_steps: int = 1,
+) -> Callable:
+    """Factory function for supervised training using ``torch_xla``.
+
+    Args:
+        model: the model to train.
+        optimizer: the optimizer to use.
+        loss_fn: the loss function to use.
+        device: device type specification (default: None).
+            Applies to batches after starting the engine. Model *will not* be moved.
+            Device can be CPU, TPU.
+        non_blocking: if True and this copy is between CPU and GPU, the copy may occur asynchronously
+            with respect to the host. For other cases, this argument has no effect.
+        prepare_batch: function that receives `batch`, `device`, `non_blocking` and outputs
+            tuple of tensors `(batch_x, batch_y)`.
+        output_transform: function that receives 'x', 'y', 'y_pred', 'loss' and returns value
+            to be assigned to engine's state.output after each iteration. Default is returning `loss.item()`.
+        gradient_accumulation_steps: Number of steps the gradients should be accumulated across.
+            (default: 1 (means no gradient accumulation))
+
+    Returns:
+        Callable: update function.
+
+    Examples:
+        .. code-block:: python
+
+            from ignite.engine import Engine, supervised_training_step_tpu
+
+            model = ...
+            optimizer = ...
+            loss_fn = ...
+
+            update_fn = supervised_training_step_tpu(model, optimizer, loss_fn, 'xla')
+            trainer = Engine(update_fn)
+
+    .. versionadded:: 0.4.5
+    .. versionchanged:: 0.4.7
+       Added Gradient Accumulation argument for all supervised training methods.
+    """
+    try:
+        import torch_xla.core.xla_model as xm
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError("torch_xla cannot be imported, please install PyTorch XLA.")
+
+    if gradient_accumulation_steps <= 0:
+        raise ValueError(
+            "Gradient_accumulation_steps must be strictly positive. "
+            "No gradient accumulation if the value set to one (default)."
+        )
+
+    def update(engine: Engine, batch: Sequence[torch.Tensor]) -> Union[Any, Tuple[torch.Tensor]]:
+        model.train()
+        x, y = prepare_batch(batch, device=device, non_blocking=non_blocking)
+        y_pred = model(x)
+        loss = loss_fn(y_pred, y)
+        if gradient_accumulation_steps > 1:
+            loss = loss / gradient_accumulation_steps
+        loss.backward()
+        if engine.state.iteration % gradient_accumulation_steps == 0:
+            xm.optimizer_step(optimizer, barrier=True)
+            optimizer.zero_grad()
+        return output_transform(x, y, y_pred, loss)
+
+    return update
+
+
+</clonepair8>
+<clonepair9>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/handlers/test_visdom_logger.py" startline="33" endline="80" pcid="403"></source>
+def test_optimizer_params():
+
+    optimizer = torch.optim.SGD([torch.Tensor(0)], lr=0.01)
+    wrapper = OptimizerParamsHandler(optimizer=optimizer, param_name="lr")
+    mock_logger = MagicMock(spec=VisdomLogger)
+    mock_logger.vis = MagicMock()
+    mock_logger.executor = _DummyExecutor()
+    mock_engine = MagicMock()
+    mock_engine.state = State()
+    mock_engine.state.iteration = 123
+
+    wrapper(mock_engine, mock_logger, Events.ITERATION_STARTED)
+
+    # mock_logger.vis.line.assert_called_once_with("lr/group_0", 0.01, 123)
+    assert len(wrapper.windows) == 1 and "lr/group_0" in wrapper.windows
+    assert wrapper.windows["lr/group_0"]["win"] is not None
+
+    mock_logger.vis.line.assert_called_once_with(
+        X=[123],
+        Y=[0.01],
+        env=mock_logger.vis.env,
+        win=None,
+        update=None,
+        opts=wrapper.windows["lr/group_0"]["opts"],
+        name="lr/group_0",
+    )
+
+    wrapper = OptimizerParamsHandler(optimizer=optimizer, param_name="lr", tag="generator")
+    mock_logger = MagicMock(spec=VisdomLogger)
+    mock_logger.vis = MagicMock()
+    mock_logger.executor = _DummyExecutor()
+
+    wrapper(mock_engine, mock_logger, Events.ITERATION_STARTED)
+
+    assert len(wrapper.windows) == 1 and "generator/lr/group_0" in wrapper.windows
+    assert wrapper.windows["generator/lr/group_0"]["win"] is not None
+
+    mock_logger.vis.line.assert_called_once_with(
+        X=[123],
+        Y=[0.01],
+        env=mock_logger.vis.env,
+        win=None,
+        update=None,
+        opts=wrapper.windows["generator/lr/group_0"]["opts"],
+        name="generator/lr/group_0",
+    )
+
+
+</clonepair9>
+
+<clonepair9>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/handlers/test_visdom_logger.py" startline="91" endline="138" pcid="405"></source>
+def test_output_handler_output_transform(dirname):
+
+    wrapper = OutputHandler("tag", output_transform=lambda x: x)
+    mock_logger = MagicMock(spec=VisdomLogger)
+    mock_logger.vis = MagicMock()
+    mock_logger.executor = _DummyExecutor()
+
+    mock_engine = MagicMock()
+    mock_engine.state = State()
+    mock_engine.state.output = 12345
+    mock_engine.state.iteration = 123
+
+    wrapper(mock_engine, mock_logger, Events.ITERATION_STARTED)
+
+    assert len(wrapper.windows) == 1 and "tag/output" in wrapper.windows
+    assert wrapper.windows["tag/output"]["win"] is not None
+
+    mock_logger.vis.line.assert_called_once_with(
+        X=[123],
+        Y=[12345],
+        env=mock_logger.vis.env,
+        win=None,
+        update=None,
+        opts=wrapper.windows["tag/output"]["opts"],
+        name="tag/output",
+    )
+
+    wrapper = OutputHandler("another_tag", output_transform=lambda x: {"loss": x})
+    mock_logger = MagicMock(spec=VisdomLogger)
+    mock_logger.vis = MagicMock()
+    mock_logger.executor = _DummyExecutor()
+
+    wrapper(mock_engine, mock_logger, Events.ITERATION_STARTED)
+
+    assert len(wrapper.windows) == 1 and "another_tag/loss" in wrapper.windows
+    assert wrapper.windows["another_tag/loss"]["win"] is not None
+
+    mock_logger.vis.line.assert_called_once_with(
+        X=[123],
+        Y=[12345],
+        env=mock_logger.vis.env,
+        win=None,
+        update=None,
+        opts=wrapper.windows["another_tag/loss"]["opts"],
+        name="another_tag/loss",
+    )
+
+
+</clonepair9>
+<clonepair10>
+<source file="systems/ignite-0.4.8/tests/ignite/engine/test_deterministic.py" startline="446" endline="495" pcid="1513"></source>
+def _test_resume_random_data_iterator_from_epoch(device):
+    def _test(epoch_length=None):
+        max_epochs = 5
+        batch_size = 4
+        num_iters = 21
+
+        def infinite_data_iterator():
+            while True:
+                for _ in range(num_iters):
+                    data = torch.randint(0, 1000, size=(batch_size,), device=device)
+                    yield data
+
+        if epoch_length is None:
+            epoch_length = num_iters
+
+        for resume_epoch in range(1, max_epochs):
+            seen_batchs = []
+
+            def update_fn(_, batch):
+                # if there is a random op when using data batch etc, we can not resume correctly
+                # torch.rand(1)
+                seen_batchs.append(batch)
+
+            engine = DeterministicEngine(update_fn)
+            torch.manual_seed(121)
+            engine.run(infinite_data_iterator(), max_epochs=max_epochs, epoch_length=epoch_length)
+
+            batch_checker = BatchChecker(seen_batchs, init_counter=resume_epoch * epoch_length)
+
+            def update_fn(_, batch):
+                assert batch_checker.check(
+                    batch
+                ), f"{resume_epoch} | {batch_checker.counter}: {batch_checker.true_batch} vs {batch}"
+
+            engine = DeterministicEngine(update_fn)
+
+            resume_state_dict = dict(
+                epoch=resume_epoch, max_epochs=max_epochs, epoch_length=epoch_length, rng_states=None
+            )
+            engine.load_state_dict(resume_state_dict)
+            torch.manual_seed(121)
+            engine.run(infinite_data_iterator())
+            assert engine.state.epoch == max_epochs
+            assert engine.state.iteration == epoch_length * max_epochs
+
+    _test()
+    _test(60)
+    _test(15)
+
+
+</clonepair10>
+
+<clonepair10>
+<source file="systems/ignite-0.4.8/tests/ignite/engine/test_deterministic.py" startline="500" endline="551" pcid="1519"></source>
+def _test_resume_random_data_iterator_from_iter(device):
+    def _test(epoch_length=None):
+        max_epochs = 3
+        batch_size = 4
+        num_iters = 17
+
+        def infinite_data_iterator():
+            while True:
+                for _ in range(num_iters):
+                    data = torch.randint(0, 1000, size=(batch_size,), device=device)
+                    yield data
+
+        if epoch_length is None:
+            epoch_length = num_iters
+
+        for resume_iteration in range(1, min(num_iters * max_epochs, epoch_length * max_epochs), 7):
+
+            seen_batchs = []
+
+            def update_fn(_, batch):
+                seen_batchs.append(batch)
+
+            engine = DeterministicEngine(update_fn)
+
+            torch.manual_seed(24)
+            engine.run(infinite_data_iterator(), max_epochs=max_epochs, epoch_length=epoch_length)
+
+            batch_checker = BatchChecker(seen_batchs, init_counter=resume_iteration)
+
+            def update_fn(_, batch):
+                assert batch_checker.check(
+                    batch
+                ), f"{resume_iteration} | {batch_checker.counter}: {batch_checker.true_batch} vs {batch}"
+
+            engine = DeterministicEngine(update_fn)
+
+            resume_state_dict = dict(
+                iteration=resume_iteration, max_epochs=max_epochs, epoch_length=epoch_length, rng_states=None
+            )
+            engine.load_state_dict(resume_state_dict)
+            torch.manual_seed(24)
+            engine.run(infinite_data_iterator())
+            assert engine.state.epoch == max_epochs
+            assert (
+                engine.state.iteration == epoch_length * max_epochs
+            ), f"{resume_iteration} | {engine.state.iteration} vs {epoch_length * max_epochs}"
+
+    _test()
+    _test(50)
+    _test(11)
+
+
+</clonepair10>
+<clonepair11>
+<source file="systems/ignite-0.4.8/ignite/engine/__init__.py" startline="199" endline="274" pcid="106"></source>
+def supervised_training_step_apex(
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    loss_fn: Union[Callable, torch.nn.Module],
+    device: Optional[Union[str, torch.device]] = None,
+    non_blocking: bool = False,
+    prepare_batch: Callable = _prepare_batch,
+    output_transform: Callable[[Any, Any, Any, torch.Tensor], Any] = lambda x, y, y_pred, loss: loss.item(),
+    gradient_accumulation_steps: int = 1,
+) -> Callable:
+    """Factory function for supervised training using apex.
+
+    Args:
+        model: the model to train.
+        optimizer: the optimizer to use.
+        loss_fn: the loss function to use.
+        device: device type specification (default: None).
+            Applies to batches after starting the engine. Model *will not* be moved.
+            Device can be CPU, GPU.
+        non_blocking: if True and this copy is between CPU and GPU, the copy may occur asynchronously
+            with respect to the host. For other cases, this argument has no effect.
+        prepare_batch: function that receives `batch`, `device`, `non_blocking` and outputs
+            tuple of tensors `(batch_x, batch_y)`.
+        output_transform: function that receives 'x', 'y', 'y_pred', 'loss' and returns value
+            to be assigned to engine's state.output after each iteration. Default is returning `loss.item()`.
+        gradient_accumulation_steps: Number of steps the gradients should be accumulated across.
+            (default: 1 (means no gradient accumulation))
+
+    Returns:
+        Callable: update function.
+
+    Examples:
+        .. code-block:: python
+
+            from ignite.engine import Engine, supervised_training_step_apex
+
+            model = ...
+            optimizer = ...
+            loss_fn = ...
+
+            update_fn = supervised_training_step_apex(model, optimizer, loss_fn, 'cuda')
+            trainer = Engine(update_fn)
+
+    .. versionadded:: 0.4.5
+    .. versionchanged:: 0.4.7
+        Added Gradient Accumulation.
+    """
+
+    try:
+        from apex import amp as apex_amp
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError("Please install apex from https://github.com/nvidia/apex to use amp_mode='apex'.")
+
+    if gradient_accumulation_steps <= 0:
+        raise ValueError(
+            "Gradient_accumulation_steps must be strictly positive. "
+            "No gradient accumulation if the value set to one (default)."
+        )
+
+    def update(engine: Engine, batch: Sequence[torch.Tensor]) -> Union[Any, Tuple[torch.Tensor]]:
+        model.train()
+        x, y = prepare_batch(batch, device=device, non_blocking=non_blocking)
+        y_pred = model(x)
+        loss = loss_fn(y_pred, y)
+        if gradient_accumulation_steps > 1:
+            loss = loss / gradient_accumulation_steps
+        with apex_amp.scale_loss(loss, optimizer) as scaled_loss:
+            scaled_loss.backward()
+        if engine.state.iteration % gradient_accumulation_steps == 0:
+            optimizer.step()
+            optimizer.zero_grad()
+        return output_transform(x, y, y_pred, loss)
+
+    return update
+
+
+</clonepair11>
+
+<clonepair11>
+<source file="systems/ignite-0.4.8/ignite/engine/__init__.py" startline="275" endline="348" pcid="108"></source>
+def supervised_training_step_tpu(
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    loss_fn: Union[Callable, torch.nn.Module],
+    device: Optional[Union[str, torch.device]] = None,
+    non_blocking: bool = False,
+    prepare_batch: Callable = _prepare_batch,
+    output_transform: Callable[[Any, Any, Any, torch.Tensor], Any] = lambda x, y, y_pred, loss: loss.item(),
+    gradient_accumulation_steps: int = 1,
+) -> Callable:
+    """Factory function for supervised training using ``torch_xla``.
+
+    Args:
+        model: the model to train.
+        optimizer: the optimizer to use.
+        loss_fn: the loss function to use.
+        device: device type specification (default: None).
+            Applies to batches after starting the engine. Model *will not* be moved.
+            Device can be CPU, TPU.
+        non_blocking: if True and this copy is between CPU and GPU, the copy may occur asynchronously
+            with respect to the host. For other cases, this argument has no effect.
+        prepare_batch: function that receives `batch`, `device`, `non_blocking` and outputs
+            tuple of tensors `(batch_x, batch_y)`.
+        output_transform: function that receives 'x', 'y', 'y_pred', 'loss' and returns value
+            to be assigned to engine's state.output after each iteration. Default is returning `loss.item()`.
+        gradient_accumulation_steps: Number of steps the gradients should be accumulated across.
+            (default: 1 (means no gradient accumulation))
+
+    Returns:
+        Callable: update function.
+
+    Examples:
+        .. code-block:: python
+
+            from ignite.engine import Engine, supervised_training_step_tpu
+
+            model = ...
+            optimizer = ...
+            loss_fn = ...
+
+            update_fn = supervised_training_step_tpu(model, optimizer, loss_fn, 'xla')
+            trainer = Engine(update_fn)
+
+    .. versionadded:: 0.4.5
+    .. versionchanged:: 0.4.7
+       Added Gradient Accumulation argument for all supervised training methods.
+    """
+    try:
+        import torch_xla.core.xla_model as xm
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError("torch_xla cannot be imported, please install PyTorch XLA.")
+
+    if gradient_accumulation_steps <= 0:
+        raise ValueError(
+            "Gradient_accumulation_steps must be strictly positive. "
+            "No gradient accumulation if the value set to one (default)."
+        )
+
+    def update(engine: Engine, batch: Sequence[torch.Tensor]) -> Union[Any, Tuple[torch.Tensor]]:
+        model.train()
+        x, y = prepare_batch(batch, device=device, non_blocking=non_blocking)
+        y_pred = model(x)
+        loss = loss_fn(y_pred, y)
+        if gradient_accumulation_steps > 1:
+            loss = loss / gradient_accumulation_steps
+        loss.backward()
+        if engine.state.iteration % gradient_accumulation_steps == 0:
+            xm.optimizer_step(optimizer, barrier=True)
+            optimizer.zero_grad()
+        return output_transform(x, y, y_pred, loss)
+
+    return update
+
+
+</clonepair11>
+<clonepair12>
+<source file="systems/ignite-0.4.8/ignite/engine/__init__.py" startline="44" endline="112" pcid="102"></source>
+def supervised_training_step(
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    loss_fn: Union[Callable, torch.nn.Module],
+    device: Optional[Union[str, torch.device]] = None,
+    non_blocking: bool = False,
+    prepare_batch: Callable = _prepare_batch,
+    output_transform: Callable[[Any, Any, Any, torch.Tensor], Any] = lambda x, y, y_pred, loss: loss.item(),
+    gradient_accumulation_steps: int = 1,
+) -> Callable:
+    """Factory function for supervised training.
+
+    Args:
+        model: the model to train.
+        optimizer: the optimizer to use.
+        loss_fn: the loss function to use.
+        device: device type specification (default: None).
+            Applies to batches after starting the engine. Model *will not* be moved.
+            Device can be CPU, GPU.
+        non_blocking: if True and this copy is between CPU and GPU, the copy may occur asynchronously
+            with respect to the host. For other cases, this argument has no effect.
+        prepare_batch: function that receives `batch`, `device`, `non_blocking` and outputs
+            tuple of tensors `(batch_x, batch_y)`.
+        output_transform: function that receives 'x', 'y', 'y_pred', 'loss' and returns value
+            to be assigned to engine's state.output after each iteration. Default is returning `loss.item()`.
+        gradient_accumulation_steps: Number of steps the gradients should be accumulated across.
+            (default: 1 (means no gradient accumulation))
+    Returns:
+        Callable: update function.
+
+    Examples:
+        .. code-block:: python
+
+            from ignite.engine import Engine, supervised_training_step
+
+            model = ...
+            optimizer = ...
+            loss_fn = ...
+
+            update_fn = supervised_training_step(model, optimizer, loss_fn, 'cuda')
+            trainer = Engine(update_fn)
+
+    .. versionadded:: 0.4.5
+    .. versionchanged:: 0.4.7
+        Added Gradient Accumulation.
+    """
+
+    if gradient_accumulation_steps <= 0:
+        raise ValueError(
+            "Gradient_accumulation_steps must be strictly positive. "
+            "No gradient accumulation if the value set to one (default)."
+        )
+
+    def update(engine: Engine, batch: Sequence[torch.Tensor]) -> Union[Any, Tuple[torch.Tensor]]:
+        model.train()
+        x, y = prepare_batch(batch, device=device, non_blocking=non_blocking)
+        y_pred = model(x)
+        loss = loss_fn(y_pred, y)
+        if gradient_accumulation_steps > 1:
+            loss = loss / gradient_accumulation_steps
+        loss.backward()
+        if engine.state.iteration % gradient_accumulation_steps == 0:
+            optimizer.step()
+            optimizer.zero_grad()
+        return output_transform(x, y, y_pred, loss)
+
+    return update
+
+
+</clonepair12>
+
+<clonepair12>
+<source file="systems/ignite-0.4.8/ignite/engine/__init__.py" startline="199" endline="274" pcid="106"></source>
+def supervised_training_step_apex(
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    loss_fn: Union[Callable, torch.nn.Module],
+    device: Optional[Union[str, torch.device]] = None,
+    non_blocking: bool = False,
+    prepare_batch: Callable = _prepare_batch,
+    output_transform: Callable[[Any, Any, Any, torch.Tensor], Any] = lambda x, y, y_pred, loss: loss.item(),
+    gradient_accumulation_steps: int = 1,
+) -> Callable:
+    """Factory function for supervised training using apex.
+
+    Args:
+        model: the model to train.
+        optimizer: the optimizer to use.
+        loss_fn: the loss function to use.
+        device: device type specification (default: None).
+            Applies to batches after starting the engine. Model *will not* be moved.
+            Device can be CPU, GPU.
+        non_blocking: if True and this copy is between CPU and GPU, the copy may occur asynchronously
+            with respect to the host. For other cases, this argument has no effect.
+        prepare_batch: function that receives `batch`, `device`, `non_blocking` and outputs
+            tuple of tensors `(batch_x, batch_y)`.
+        output_transform: function that receives 'x', 'y', 'y_pred', 'loss' and returns value
+            to be assigned to engine's state.output after each iteration. Default is returning `loss.item()`.
+        gradient_accumulation_steps: Number of steps the gradients should be accumulated across.
+            (default: 1 (means no gradient accumulation))
+
+    Returns:
+        Callable: update function.
+
+    Examples:
+        .. code-block:: python
+
+            from ignite.engine import Engine, supervised_training_step_apex
+
+            model = ...
+            optimizer = ...
+            loss_fn = ...
+
+            update_fn = supervised_training_step_apex(model, optimizer, loss_fn, 'cuda')
+            trainer = Engine(update_fn)
+
+    .. versionadded:: 0.4.5
+    .. versionchanged:: 0.4.7
+        Added Gradient Accumulation.
+    """
+
+    try:
+        from apex import amp as apex_amp
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError("Please install apex from https://github.com/nvidia/apex to use amp_mode='apex'.")
+
+    if gradient_accumulation_steps <= 0:
+        raise ValueError(
+            "Gradient_accumulation_steps must be strictly positive. "
+            "No gradient accumulation if the value set to one (default)."
+        )
+
+    def update(engine: Engine, batch: Sequence[torch.Tensor]) -> Union[Any, Tuple[torch.Tensor]]:
+        model.train()
+        x, y = prepare_batch(batch, device=device, non_blocking=non_blocking)
+        y_pred = model(x)
+        loss = loss_fn(y_pred, y)
+        if gradient_accumulation_steps > 1:
+            loss = loss / gradient_accumulation_steps
+        with apex_amp.scale_loss(loss, optimizer) as scaled_loss:
+            scaled_loss.backward()
+        if engine.state.iteration % gradient_accumulation_steps == 0:
+            optimizer.step()
+            optimizer.zero_grad()
+        return output_transform(x, y, y_pred, loss)
+
+    return update
+
+
+</clonepair12>
+<clonepair13>
+<source file="systems/ignite-0.4.8/ignite/engine/__init__.py" startline="44" endline="112" pcid="102"></source>
+def supervised_training_step(
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    loss_fn: Union[Callable, torch.nn.Module],
+    device: Optional[Union[str, torch.device]] = None,
+    non_blocking: bool = False,
+    prepare_batch: Callable = _prepare_batch,
+    output_transform: Callable[[Any, Any, Any, torch.Tensor], Any] = lambda x, y, y_pred, loss: loss.item(),
+    gradient_accumulation_steps: int = 1,
+) -> Callable:
+    """Factory function for supervised training.
+
+    Args:
+        model: the model to train.
+        optimizer: the optimizer to use.
+        loss_fn: the loss function to use.
+        device: device type specification (default: None).
+            Applies to batches after starting the engine. Model *will not* be moved.
+            Device can be CPU, GPU.
+        non_blocking: if True and this copy is between CPU and GPU, the copy may occur asynchronously
+            with respect to the host. For other cases, this argument has no effect.
+        prepare_batch: function that receives `batch`, `device`, `non_blocking` and outputs
+            tuple of tensors `(batch_x, batch_y)`.
+        output_transform: function that receives 'x', 'y', 'y_pred', 'loss' and returns value
+            to be assigned to engine's state.output after each iteration. Default is returning `loss.item()`.
+        gradient_accumulation_steps: Number of steps the gradients should be accumulated across.
+            (default: 1 (means no gradient accumulation))
+    Returns:
+        Callable: update function.
+
+    Examples:
+        .. code-block:: python
+
+            from ignite.engine import Engine, supervised_training_step
+
+            model = ...
+            optimizer = ...
+            loss_fn = ...
+
+            update_fn = supervised_training_step(model, optimizer, loss_fn, 'cuda')
+            trainer = Engine(update_fn)
+
+    .. versionadded:: 0.4.5
+    .. versionchanged:: 0.4.7
+        Added Gradient Accumulation.
+    """
+
+    if gradient_accumulation_steps <= 0:
+        raise ValueError(
+            "Gradient_accumulation_steps must be strictly positive. "
+            "No gradient accumulation if the value set to one (default)."
+        )
+
+    def update(engine: Engine, batch: Sequence[torch.Tensor]) -> Union[Any, Tuple[torch.Tensor]]:
+        model.train()
+        x, y = prepare_batch(batch, device=device, non_blocking=non_blocking)
+        y_pred = model(x)
+        loss = loss_fn(y_pred, y)
+        if gradient_accumulation_steps > 1:
+            loss = loss / gradient_accumulation_steps
+        loss.backward()
+        if engine.state.iteration % gradient_accumulation_steps == 0:
+            optimizer.step()
+            optimizer.zero_grad()
+        return output_transform(x, y, y_pred, loss)
+
+    return update
+
+
+</clonepair13>
+
+<clonepair13>
+<source file="systems/ignite-0.4.8/ignite/engine/__init__.py" startline="275" endline="348" pcid="108"></source>
+def supervised_training_step_tpu(
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    loss_fn: Union[Callable, torch.nn.Module],
+    device: Optional[Union[str, torch.device]] = None,
+    non_blocking: bool = False,
+    prepare_batch: Callable = _prepare_batch,
+    output_transform: Callable[[Any, Any, Any, torch.Tensor], Any] = lambda x, y, y_pred, loss: loss.item(),
+    gradient_accumulation_steps: int = 1,
+) -> Callable:
+    """Factory function for supervised training using ``torch_xla``.
+
+    Args:
+        model: the model to train.
+        optimizer: the optimizer to use.
+        loss_fn: the loss function to use.
+        device: device type specification (default: None).
+            Applies to batches after starting the engine. Model *will not* be moved.
+            Device can be CPU, TPU.
+        non_blocking: if True and this copy is between CPU and GPU, the copy may occur asynchronously
+            with respect to the host. For other cases, this argument has no effect.
+        prepare_batch: function that receives `batch`, `device`, `non_blocking` and outputs
+            tuple of tensors `(batch_x, batch_y)`.
+        output_transform: function that receives 'x', 'y', 'y_pred', 'loss' and returns value
+            to be assigned to engine's state.output after each iteration. Default is returning `loss.item()`.
+        gradient_accumulation_steps: Number of steps the gradients should be accumulated across.
+            (default: 1 (means no gradient accumulation))
+
+    Returns:
+        Callable: update function.
+
+    Examples:
+        .. code-block:: python
+
+            from ignite.engine import Engine, supervised_training_step_tpu
+
+            model = ...
+            optimizer = ...
+            loss_fn = ...
+
+            update_fn = supervised_training_step_tpu(model, optimizer, loss_fn, 'xla')
+            trainer = Engine(update_fn)
+
+    .. versionadded:: 0.4.5
+    .. versionchanged:: 0.4.7
+       Added Gradient Accumulation argument for all supervised training methods.
+    """
+    try:
+        import torch_xla.core.xla_model as xm
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError("torch_xla cannot be imported, please install PyTorch XLA.")
+
+    if gradient_accumulation_steps <= 0:
+        raise ValueError(
+            "Gradient_accumulation_steps must be strictly positive. "
+            "No gradient accumulation if the value set to one (default)."
+        )
+
+    def update(engine: Engine, batch: Sequence[torch.Tensor]) -> Union[Any, Tuple[torch.Tensor]]:
+        model.train()
+        x, y = prepare_batch(batch, device=device, non_blocking=non_blocking)
+        y_pred = model(x)
+        loss = loss_fn(y_pred, y)
+        if gradient_accumulation_steps > 1:
+            loss = loss / gradient_accumulation_steps
+        loss.backward()
+        if engine.state.iteration % gradient_accumulation_steps == 0:
+            xm.optimizer_step(optimizer, barrier=True)
+            optimizer.zero_grad()
+        return output_transform(x, y, y_pred, loss)
+
+    return update
+
+
+</clonepair13>
+<clonepair14>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/handlers/test_tqdm_logger.py" startline="145" endline="175" pcid="288"></source>
+def test_pbar_with_metric(capsys):
+
+    n_iters = 2
+    data = list(range(n_iters))
+    loss_values = iter(range(n_iters))
+
+    def step(engine, batch):
+        loss_value = next(loss_values)
+        return loss_value
+
+    trainer = Engine(step)
+
+    RunningAverage(alpha=0.5, output_transform=lambda x: x).attach(trainer, "batchloss")
+
+    pbar = ProgressBar()
+    pbar.attach(trainer, metric_names=["batchloss"])
+
+    trainer.run(data=data, max_epochs=1)
+
+    captured = capsys.readouterr()
+    err = captured.err.split("\r")
+    err = list(map(lambda x: x.strip(), err))
+    err = list(filter(None, err))
+    actual = err[-1]
+    if get_tqdm_version() < LooseVersion("4.49.0"):
+        expected = "Iteration: [1/2]  50%|█████     , batchloss=0.5 [00:00<00:00]"
+    else:
+        expected = "Iteration: [1/2]  50%|█████     , batchloss=0.5 [00:00<?]"
+    assert actual == expected
+
+
+</clonepair14>
+
+<clonepair14>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/handlers/test_tqdm_logger.py" startline="210" endline="247" pcid="292"></source>
+def test_pbar_with_state_attrs(capsys):
+
+    n_iters = 2
+    data = list(range(n_iters))
+    loss_values = iter(range(n_iters))
+
+    def step(engine, batch):
+        loss_value = next(loss_values)
+        return loss_value
+
+    trainer = Engine(step)
+    trainer.state.alpha = 3.899
+    trainer.state.beta = torch.tensor(12.21)
+    trainer.state.gamma = torch.tensor([21.0, 6.0])
+
+    RunningAverage(alpha=0.5, output_transform=lambda x: x).attach(trainer, "batchloss")
+
+    pbar = ProgressBar()
+    pbar.attach(trainer, metric_names=["batchloss"], state_attributes=["alpha", "beta", "gamma"])
+
+    trainer.run(data=data, max_epochs=1)
+
+    captured = capsys.readouterr()
+    err = captured.err.split("\r")
+    err = list(map(lambda x: x.strip(), err))
+    err = list(filter(None, err))
+    actual = err[-1]
+    if get_tqdm_version() < LooseVersion("4.49.0"):
+        expected = (
+            "Iteration: [1/2]  50%|█████     , batchloss=0.5, alpha=3.9, beta=12.2, gamma_0=21, gamma_1=6 [00:00<00:00]"
+        )
+    else:
+        expected = (
+            "Iteration: [1/2]  50%|█████     , batchloss=0.5, alpha=3.9, beta=12.2, gamma_0=21, gamma_1=6 [00:00<?]"
+        )
+    assert actual == expected
+
+
+</clonepair14>
+<clonepair15>
+<source file="systems/ignite-0.4.8/ignite/metrics/confusion_matrix.py" startline="190" endline="251" pcid="215"></source>
+def IoU(cm: ConfusionMatrix, ignore_index: Optional[int] = None) -> MetricsLambda:
+    r"""Calculates Intersection over Union using :class:`~ignite.metrics.confusion_matrix.ConfusionMatrix` metric.
+
+    .. math:: \text{J}(A, B) = \frac{ \lvert A \cap B \rvert }{ \lvert A \cup B \rvert }
+
+    Args:
+        cm: instance of confusion matrix metric
+        ignore_index: index to ignore, e.g. background index
+
+    Returns:
+        MetricsLambda
+
+    Examples:
+
+        .. testcode::
+
+            cm = ConfusionMatrix(num_classes=3)
+            metric = IoU(cm)
+            metric.attach(default_evaluator, 'iou')
+            y_true = torch.Tensor([0, 1, 0, 1, 2]).long()
+            y_pred = torch.Tensor([
+                [0.0, 1.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 1.0, 0.0],
+            ])
+            state = default_evaluator.run([[y_pred, y_true]])
+            print(state.metrics['iou'])
+
+        .. testoutput::
+
+            tensor([0.5000, 0.5000, 0.0000], dtype=torch.float64)
+    """
+    if not isinstance(cm, ConfusionMatrix):
+        raise TypeError(f"Argument cm should be instance of ConfusionMatrix, but given {type(cm)}")
+
+    if not (cm.average in (None, "samples")):
+        raise ValueError("ConfusionMatrix should have average attribute either None or 'samples'")
+
+    if ignore_index is not None:
+        if not (isinstance(ignore_index, numbers.Integral) and 0 <= ignore_index < cm.num_classes):
+            raise ValueError(f"ignore_index should be non-negative integer, but given {ignore_index}")
+
+    # Increase floating point precision and pass to CPU
+    cm = cm.to(torch.double)
+    iou = cm.diag() / (cm.sum(dim=1) + cm.sum(dim=0) - cm.diag() + 1e-15)  # type: MetricsLambda
+    if ignore_index is not None:
+        ignore_idx = ignore_index  # type: int  # used due to typing issues with mympy
+
+        def ignore_index_fn(iou_vector: torch.Tensor) -> torch.Tensor:
+            if ignore_idx >= len(iou_vector):
+                raise ValueError(f"ignore_index {ignore_idx} is larger than the length of IoU vector {len(iou_vector)}")
+            indices = list(range(len(iou_vector)))
+            indices.remove(ignore_idx)
+            return iou_vector[indices]
+
+        return MetricsLambda(ignore_index_fn, iou)
+    else:
+        return iou
+
+
+</clonepair15>
+
+<clonepair15>
+<source file="systems/ignite-0.4.8/ignite/metrics/confusion_matrix.py" startline="341" endline="398" pcid="221"></source>
+def DiceCoefficient(cm: ConfusionMatrix, ignore_index: Optional[int] = None) -> MetricsLambda:
+    """Calculates Dice Coefficient for a given :class:`~ignite.metrics.confusion_matrix.ConfusionMatrix` metric.
+
+    Args:
+        cm: instance of confusion matrix metric
+        ignore_index: index to ignore, e.g. background index
+
+    Examples:
+
+        .. testcode::
+
+            cm = ConfusionMatrix(num_classes=3)
+            metric = DiceCoefficient(cm, ignore_index=0)
+            metric.attach(default_evaluator, 'dice')
+            y_true = torch.Tensor([0, 1, 0, 1, 2]).long()
+            y_pred = torch.Tensor([
+                [0.0, 1.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 1.0, 0.0],
+            ])
+            state = default_evaluator.run([[y_pred, y_true]])
+            print(state.metrics['dice'])
+
+        .. testoutput::
+
+            tensor([0.6667, 0.0000], dtype=torch.float64)
+    """
+
+    if not isinstance(cm, ConfusionMatrix):
+        raise TypeError(f"Argument cm should be instance of ConfusionMatrix, but given {type(cm)}")
+
+    if ignore_index is not None:
+        if not (isinstance(ignore_index, numbers.Integral) and 0 <= ignore_index < cm.num_classes):
+            raise ValueError(f"ignore_index should be non-negative integer, but given {ignore_index}")
+
+    # Increase floating point precision and pass to CPU
+    cm = cm.to(torch.double)
+    dice = 2.0 * cm.diag() / (cm.sum(dim=1) + cm.sum(dim=0) + 1e-15)  # type: MetricsLambda
+
+    if ignore_index is not None:
+        ignore_idx = ignore_index  # type: int  # used due to typing issues with mympy
+
+        def ignore_index_fn(dice_vector: torch.Tensor) -> torch.Tensor:
+            if ignore_idx >= len(dice_vector):
+                raise ValueError(
+                    f"ignore_index {ignore_idx} is larger than the length of Dice vector {len(dice_vector)}"
+                )
+            indices = list(range(len(dice_vector)))
+            indices.remove(ignore_idx)
+            return dice_vector[indices]
+
+        return MetricsLambda(ignore_index_fn, dice)
+    else:
+        return dice
+
+
+</clonepair15>
+<clonepair16>
+<source file="systems/ignite-0.4.8/tests/ignite/metrics/test_metric.py" startline="415" endline="444" pcid="2297"></source>
+    def _test(composed_metric, metric_name, compute_true_value_fn):
+
+        metrics = {
+            metric_name: composed_metric,
+        }
+
+        y_pred = torch.rand(15, 10, 5).float()
+        y = torch.randint(0, 5, size=(15, 10)).long()
+
+        def update_fn(engine, batch):
+            y_pred, y = batch
+            return y_pred, y
+
+        validator = Engine(update_fn)
+
+        for name, metric in metrics.items():
+            metric.attach(validator, name)
+
+        def data(y_pred, y):
+            for i in range(y_pred.shape[0]):
+                yield (y_pred[i], y[i])
+
+        d = data(y_pred, y)
+        state = validator.run(d, max_epochs=1, epoch_length=y_pred.shape[0])
+
+        assert set(state.metrics.keys()) == set([metric_name])
+        np_y_pred = np.argmax(y_pred.numpy(), axis=-1).ravel()
+        np_y = y.numpy().ravel()
+        assert state.metrics[metric_name] == approx(compute_true_value_fn(np_y_pred, np_y))
+
+</clonepair16>
+
+<clonepair16>
+<source file="systems/ignite-0.4.8/tests/ignite/metrics/test_metrics_lambda.py" startline="373" endline="402" pcid="2084"></source>
+    def _test(composed_metric, metric_name, compute_true_value_fn):
+
+        metrics = {
+            metric_name: composed_metric,
+        }
+
+        y_pred = torch.randint(0, 2, size=(15, 10, 4)).float()
+        y = torch.randint(0, 2, size=(15, 10, 4)).long()
+
+        def update_fn(engine, batch):
+            y_pred, y = batch
+            return y_pred, y
+
+        validator = Engine(update_fn)
+
+        for name, metric in metrics.items():
+            metric.attach(validator, name)
+
+        def data(y_pred, y):
+            for i in range(y_pred.shape[0]):
+                yield (y_pred[i], y[i])
+
+        d = data(y_pred, y)
+        state = validator.run(d, max_epochs=1, epoch_length=y_pred.shape[0])
+
+        assert set(state.metrics.keys()) == set([metric_name])
+        np_y_pred = y_pred.numpy().ravel()
+        np_y = y.numpy().ravel()
+        assert state.metrics[metric_name] == approx(compute_true_value_fn(np_y_pred, np_y))
+
+</clonepair16>
+<clonepair17>
+<source file="systems/ignite-0.4.8/ignite/engine/__init__.py" startline="555" endline="602" pcid="112"></source>
+def supervised_evaluation_step(
+    model: torch.nn.Module,
+    device: Optional[Union[str, torch.device]] = None,
+    non_blocking: bool = False,
+    prepare_batch: Callable = _prepare_batch,
+    output_transform: Callable[[Any, Any, Any], Any] = lambda x, y, y_pred: (y_pred, y),
+) -> Callable:
+    """
+    Factory function for supervised evaluation.
+
+    Args:
+        model: the model to train.
+        device: device type specification (default: None).
+            Applies to batches after starting the engine. Model *will not* be moved.
+        non_blocking: if True and this copy is between CPU and GPU, the copy may occur asynchronously
+            with respect to the host. For other cases, this argument has no effect.
+        prepare_batch: function that receives `batch`, `device`, `non_blocking` and outputs
+            tuple of tensors `(batch_x, batch_y)`.
+        output_transform: function that receives 'x', 'y', 'y_pred' and returns value
+            to be assigned to engine's state.output after each iteration. Default is returning `(y_pred, y,)` which fits
+            output expected by metrics. If you change it you should use `output_transform` in metrics.
+
+    Returns:
+        Inference function.
+
+    Note:
+        `engine.state.output` for this engine is defined by `output_transform` parameter and is
+        a tuple of `(batch_pred, batch_y)` by default.
+
+    .. warning::
+
+        The internal use of `device` has changed.
+        `device` will now *only* be used to move the input data to the correct device.
+        The `model` should be moved by the user before creating an optimizer.
+
+    .. versionadded:: 0.4.5
+    """
+
+    def evaluate_step(engine: Engine, batch: Sequence[torch.Tensor]) -> Union[Any, Tuple[torch.Tensor]]:
+        model.eval()
+        with torch.no_grad():
+            x, y = prepare_batch(batch, device=device, non_blocking=non_blocking)
+            y_pred = model(x)
+            return output_transform(x, y, y_pred)
+
+    return evaluate_step
+
+
+</clonepair17>
+
+<clonepair17>
+<source file="systems/ignite-0.4.8/ignite/engine/__init__.py" startline="603" endline="655" pcid="114"></source>
+def supervised_evaluation_step_amp(
+    model: torch.nn.Module,
+    device: Optional[Union[str, torch.device]] = None,
+    non_blocking: bool = False,
+    prepare_batch: Callable = _prepare_batch,
+    output_transform: Callable[[Any, Any, Any], Any] = lambda x, y, y_pred: (y_pred, y),
+) -> Callable:
+    """
+    Factory function for supervised evaluation using ``torch.cuda.amp``.
+
+    Args:
+        model: the model to train.
+        device: device type specification (default: None).
+            Applies to batches after starting the engine. Model *will not* be moved.
+        non_blocking: if True and this copy is between CPU and GPU, the copy may occur asynchronously
+            with respect to the host. For other cases, this argument has no effect.
+        prepare_batch: function that receives `batch`, `device`, `non_blocking` and outputs
+            tuple of tensors `(batch_x, batch_y)`.
+        output_transform: function that receives 'x', 'y', 'y_pred' and returns value
+            to be assigned to engine's state.output after each iteration. Default is returning `(y_pred, y,)` which fits
+            output expected by metrics. If you change it you should use `output_transform` in metrics.
+
+    Returns:
+        Inference function.
+
+    Note:
+        `engine.state.output` for this engine is defined by `output_transform` parameter and is
+        a tuple of `(batch_pred, batch_y)` by default.
+
+    .. warning::
+
+        The internal use of `device` has changed.
+        `device` will now *only* be used to move the input data to the correct device.
+        The `model` should be moved by the user before creating an optimizer.
+
+    .. versionadded:: 0.4.5
+    """
+    try:
+        from torch.cuda.amp import autocast
+    except ImportError:
+        raise ImportError("Please install torch>=1.6.0 to use amp_mode='amp'.")
+
+    def evaluate_step(engine: Engine, batch: Sequence[torch.Tensor]) -> Union[Any, Tuple[torch.Tensor]]:
+        model.eval()
+        with torch.no_grad():
+            x, y = prepare_batch(batch, device=device, non_blocking=non_blocking)
+            with autocast(enabled=True):
+                y_pred = model(x)
+            return output_transform(x, y, y_pred)
+
+    return evaluate_step
+
+
+</clonepair17>
+<clonepair18>
+<source file="systems/ignite-0.4.8/examples/mnist/mnist_save_resume_engine.py" startline="72" endline="91" pcid="2583"></source>
+def log_model_weights(engine, model=None, fp=None, **kwargs):
+    """Helper method to log norms of model weights: print and dump into a file"""
+    assert model and fp
+    output = {"total": 0.0}
+    max_counter = 5
+    for name, p in model.named_parameters():
+        name = name.replace(".", "/")
+        n = torch.norm(p)
+        if max_counter > 0:
+            output[name] = n
+        output["total"] += n
+        max_counter -= 1
+    output_items = " - ".join([f"{m}:{v:.4f}" for m, v in output.items()])
+    msg = f"{engine.state.epoch} | {engine.state.iteration}: {output_items}"
+
+    with open(fp, "a") as h:
+        h.write(msg)
+        h.write("\n")
+
+
+</clonepair18>
+
+<clonepair18>
+<source file="systems/ignite-0.4.8/examples/mnist/mnist_save_resume_engine.py" startline="92" endline="114" pcid="2584"></source>
+def log_model_grads(engine, model=None, fp=None, **kwargs):
+    """Helper method to log norms of model gradients: print and dump into a file"""
+    assert model and fp
+    output = {"grads/total": 0.0}
+    max_counter = 5
+    for name, p in model.named_parameters():
+        if p.grad is None:
+            continue
+        name = name.replace(".", "/")
+        n = torch.norm(p.grad)
+        if max_counter > 0:
+            output[f"grads/{name}"] = n
+        output["grads/total"] += n
+        max_counter -= 1
+
+    output_items = " - ".join([f"{m}:{v:.4f}" for m, v in output.items()])
+    msg = f"{engine.state.epoch} | {engine.state.iteration}: {output_items}"
+
+    with open(fp, "a") as h:
+        h.write(msg)
+        h.write("\n")
+
+
+</clonepair18>
+<clonepair19>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/handlers/test_neptune_logger.py" startline="400" endline="424" pcid="263"></source>
+def test_grads_scalar_handler_frozen_layers(dummy_model_factory, norm_mock):
+    model = dummy_model_factory(with_grads=True, with_frozen_layer=True)
+
+    wrapper = GradsScalarHandler(model, reduction=norm_mock)
+    mock_logger = MagicMock(spec=NeptuneLogger)
+    mock_logger.log_metric = MagicMock()
+    mock_engine = MagicMock()
+    mock_engine.state = State()
+    mock_engine.state.epoch = 5
+    norm_mock.reset_mock()
+
+    wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+    mock_logger.log_metric.assert_has_calls(
+        [call("grads_norm/fc2/weight", y=ANY, x=5), call("grads_norm/fc2/bias", y=ANY, x=5)], any_order=True
+    )
+
+    with pytest.raises(AssertionError):
+        mock_logger.log_metric.assert_has_calls(
+            [call("grads_norm/fc1/weight", y=ANY, x=5), call("grads_norm/fc1/bias", y=ANY, x=5)], any_order=True
+        )
+    assert mock_logger.log_metric.call_count == 2
+    assert norm_mock.call_count == 2
+
+
+</clonepair19>
+
+<clonepair19>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/handlers/test_tensorboard_logger.py" startline="466" endline="491" pcid="388"></source>
+def test_grads_scalar_handler_frozen_layers(dummy_model_factory, norm_mock):
+    model = dummy_model_factory(with_grads=True, with_frozen_layer=True)
+
+    wrapper = GradsScalarHandler(model, reduction=norm_mock)
+    mock_logger = MagicMock(spec=TensorboardLogger)
+    mock_logger.writer = MagicMock()
+
+    mock_engine = MagicMock()
+    mock_engine.state = State()
+    mock_engine.state.epoch = 5
+    norm_mock.reset_mock()
+
+    wrapper(mock_engine, mock_logger, Events.EPOCH_STARTED)
+
+    mock_logger.writer.add_scalar.assert_has_calls(
+        [call("grads_norm/fc2/weight", ANY, 5), call("grads_norm/fc2/bias", ANY, 5)], any_order=True
+    )
+
+    with pytest.raises(AssertionError):
+        mock_logger.writer.add_scalar.assert_has_calls(
+            [call("grads_norm/fc1/weight", ANY, 5), call("grads_norm/fc1/bias", ANY, 5)], any_order=True
+        )
+    assert mock_logger.writer.add_scalar.call_count == 2
+    assert norm_mock.call_count == 2
+
+
+</clonepair19>
+<clonepair20>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/handlers/test_polyaxon_logger.py" startline="200" endline="218" pcid="453"></source>
+def test_output_handler_state_attrs():
+    wrapper = OutputHandler("tag", state_attributes=["alpha", "beta", "gamma"])
+    mock_logger = MagicMock(spec=PolyaxonLogger)
+    mock_logger.log_metrics = MagicMock()
+
+    mock_engine = MagicMock()
+    mock_engine.state = State()
+    mock_engine.state.iteration = 5
+    mock_engine.state.alpha = 3.899
+    mock_engine.state.beta = torch.tensor(12.21)
+    mock_engine.state.gamma = torch.tensor([21.0, 6.0])
+
+    wrapper(mock_engine, mock_logger, Events.ITERATION_STARTED)
+
+    mock_logger.log_metrics.assert_called_once_with(
+        **{"tag/alpha": 3.899, "tag/beta": torch.tensor(12.21).item(), "tag/gamma/0": 21.0, "tag/gamma/1": 6.0}, step=5
+    )
+
+
+</clonepair20>
+
+<clonepair20>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/handlers/test_mlflow_logger.py" startline="185" endline="203" pcid="485"></source>
+def test_output_handler_state_attrs():
+    wrapper = OutputHandler("tag", state_attributes=["alpha", "beta", "gamma"])
+    mock_logger = MagicMock(spec=MLflowLogger)
+    mock_logger.log_metrics = MagicMock()
+
+    mock_engine = MagicMock()
+    mock_engine.state = State()
+    mock_engine.state.iteration = 5
+    mock_engine.state.alpha = 3.899
+    mock_engine.state.beta = torch.tensor(12.21)
+    mock_engine.state.gamma = torch.tensor([21.0, 6.0])
+
+    wrapper(mock_engine, mock_logger, Events.ITERATION_STARTED)
+
+    mock_logger.log_metrics.assert_called_once_with(
+        {"tag alpha": 3.899, "tag beta": torch.tensor(12.21).item(), "tag gamma 0": 21.0, "tag gamma 1": 6.0}, step=5
+    )
+
+
+</clonepair20>
+<clonepair21>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_median_relative_absolute_error.py" startline="37" endline="58" pcid="747"></source>
+def test_median_relative_absolute_error():
+
+    # See https://github.com/torch/torch7/pull/182
+    # For even number of elements, PyTorch returns middle element
+    # NumPy returns average of middle elements
+    # Size of dataset will be odd for these tests
+
+    size = 51
+    np_y_pred = np.random.rand(size)
+    np_y = np.random.rand(size)
+    np_median_absolute_relative_error = np.median(np.abs(np_y - np_y_pred) / np.abs(np_y - np_y.mean()))
+
+    m = MedianRelativeAbsoluteError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_median_absolute_relative_error == pytest.approx(m.compute())
+
+
+</clonepair21>
+
+<clonepair21>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_median_absolute_error.py" startline="37" endline="58" pcid="728"></source>
+def test_median_absolute_error():
+
+    # See https://github.com/torch/torch7/pull/182
+    # For even number of elements, PyTorch returns middle element
+    # NumPy returns average of middle elements
+    # Size of dataset will be odd for these tests
+
+    size = 51
+    np_y_pred = np.random.rand(size)
+    np_y = np.random.rand(size)
+    np_median_absolute_error = np.median(np.abs(np_y - np_y_pred))
+
+    m = MedianAbsoluteError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_median_absolute_error == pytest.approx(m.compute())
+
+
+</clonepair21>
+<clonepair22>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_geometric_mean_relative_absolute_error.py" startline="32" endline="47" pcid="650"></source>
+def test_compute():
+    size = 51
+    np_y_pred = np.random.rand(size)
+    np_y = np.random.rand(size)
+    np_gmrae = np.exp(np.log(np.abs(np_y - np_y_pred) / np.abs(np_y - np_y.mean())).mean())
+
+    m = GeometricMeanRelativeAbsoluteError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_gmrae == pytest.approx(m.compute())
+
+
+</clonepair22>
+
+<clonepair22>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_median_absolute_error.py" startline="37" endline="58" pcid="728"></source>
+def test_median_absolute_error():
+
+    # See https://github.com/torch/torch7/pull/182
+    # For even number of elements, PyTorch returns middle element
+    # NumPy returns average of middle elements
+    # Size of dataset will be odd for these tests
+
+    size = 51
+    np_y_pred = np.random.rand(size)
+    np_y = np.random.rand(size)
+    np_median_absolute_error = np.median(np.abs(np_y - np_y_pred))
+
+    m = MedianAbsoluteError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_median_absolute_error == pytest.approx(m.compute())
+
+
+</clonepair22>
+<clonepair23>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_median_absolute_error.py" startline="37" endline="58" pcid="728"></source>
+def test_median_absolute_error():
+
+    # See https://github.com/torch/torch7/pull/182
+    # For even number of elements, PyTorch returns middle element
+    # NumPy returns average of middle elements
+    # Size of dataset will be odd for these tests
+
+    size = 51
+    np_y_pred = np.random.rand(size)
+    np_y = np.random.rand(size)
+    np_median_absolute_error = np.median(np.abs(np_y - np_y_pred))
+
+    m = MedianAbsoluteError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_median_absolute_error == pytest.approx(m.compute())
+
+
+</clonepair23>
+
+<clonepair23>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_median_absolute_percentage_error.py" startline="37" endline="58" pcid="545"></source>
+def test_median_absolute_percentage_error():
+
+    # See https://github.com/torch/torch7/pull/182
+    # For even number of elements, PyTorch returns middle element
+    # NumPy returns average of middle elements
+    # Size of dataset will be odd for these tests
+
+    size = 51
+    np_y_pred = np.random.rand(size)
+    np_y = np.random.rand(size)
+    np_median_absolute_percentage_error = 100.0 * np.median(np.abs(np_y - np_y_pred) / np.abs(np_y))
+
+    m = MedianAbsolutePercentageError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_median_absolute_percentage_error == pytest.approx(m.compute())
+
+
+</clonepair23>
+<clonepair24>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_r2_score.py" startline="30" endline="45" pcid="668"></source>
+def test_r2_score():
+
+    size = 51
+    np_y_pred = np.random.rand(size)
+    np_y = np.random.rand(size)
+
+    m = R2Score()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert r2_score(np_y, np_y_pred) == pytest.approx(m.compute())
+
+
+</clonepair24>
+
+<clonepair24>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_median_absolute_error.py" startline="37" endline="58" pcid="728"></source>
+def test_median_absolute_error():
+
+    # See https://github.com/torch/torch7/pull/182
+    # For even number of elements, PyTorch returns middle element
+    # NumPy returns average of middle elements
+    # Size of dataset will be odd for these tests
+
+    size = 51
+    np_y_pred = np.random.rand(size)
+    np_y = np.random.rand(size)
+    np_median_absolute_error = np.median(np.abs(np_y - np_y_pred))
+
+    m = MedianAbsoluteError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_median_absolute_error == pytest.approx(m.compute())
+
+
+</clonepair24>
+<clonepair25>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_median_relative_absolute_error.py" startline="37" endline="58" pcid="747"></source>
+def test_median_relative_absolute_error():
+
+    # See https://github.com/torch/torch7/pull/182
+    # For even number of elements, PyTorch returns middle element
+    # NumPy returns average of middle elements
+    # Size of dataset will be odd for these tests
+
+    size = 51
+    np_y_pred = np.random.rand(size)
+    np_y = np.random.rand(size)
+    np_median_absolute_relative_error = np.median(np.abs(np_y - np_y_pred) / np.abs(np_y - np_y.mean()))
+
+    m = MedianRelativeAbsoluteError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_median_absolute_relative_error == pytest.approx(m.compute())
+
+
+</clonepair25>
+
+<clonepair25>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_geometric_mean_relative_absolute_error.py" startline="32" endline="47" pcid="650"></source>
+def test_compute():
+    size = 51
+    np_y_pred = np.random.rand(size)
+    np_y = np.random.rand(size)
+    np_gmrae = np.exp(np.log(np.abs(np_y - np_y_pred) / np.abs(np_y - np_y.mean())).mean())
+
+    m = GeometricMeanRelativeAbsoluteError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_gmrae == pytest.approx(m.compute())
+
+
+</clonepair25>
+<clonepair26>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_median_relative_absolute_error.py" startline="37" endline="58" pcid="747"></source>
+def test_median_relative_absolute_error():
+
+    # See https://github.com/torch/torch7/pull/182
+    # For even number of elements, PyTorch returns middle element
+    # NumPy returns average of middle elements
+    # Size of dataset will be odd for these tests
+
+    size = 51
+    np_y_pred = np.random.rand(size)
+    np_y = np.random.rand(size)
+    np_median_absolute_relative_error = np.median(np.abs(np_y - np_y_pred) / np.abs(np_y - np_y.mean()))
+
+    m = MedianRelativeAbsoluteError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_median_absolute_relative_error == pytest.approx(m.compute())
+
+
+</clonepair26>
+
+<clonepair26>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_median_absolute_percentage_error.py" startline="37" endline="58" pcid="545"></source>
+def test_median_absolute_percentage_error():
+
+    # See https://github.com/torch/torch7/pull/182
+    # For even number of elements, PyTorch returns middle element
+    # NumPy returns average of middle elements
+    # Size of dataset will be odd for these tests
+
+    size = 51
+    np_y_pred = np.random.rand(size)
+    np_y = np.random.rand(size)
+    np_median_absolute_percentage_error = 100.0 * np.median(np.abs(np_y - np_y_pred) / np.abs(np_y))
+
+    m = MedianAbsolutePercentageError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_median_absolute_percentage_error == pytest.approx(m.compute())
+
+
+</clonepair26>
+<clonepair27>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_median_relative_absolute_error.py" startline="37" endline="58" pcid="747"></source>
+def test_median_relative_absolute_error():
+
+    # See https://github.com/torch/torch7/pull/182
+    # For even number of elements, PyTorch returns middle element
+    # NumPy returns average of middle elements
+    # Size of dataset will be odd for these tests
+
+    size = 51
+    np_y_pred = np.random.rand(size)
+    np_y = np.random.rand(size)
+    np_median_absolute_relative_error = np.median(np.abs(np_y - np_y_pred) / np.abs(np_y - np_y.mean()))
+
+    m = MedianRelativeAbsoluteError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_median_absolute_relative_error == pytest.approx(m.compute())
+
+
+</clonepair27>
+
+<clonepair27>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_r2_score.py" startline="30" endline="45" pcid="668"></source>
+def test_r2_score():
+
+    size = 51
+    np_y_pred = np.random.rand(size)
+    np_y = np.random.rand(size)
+
+    m = R2Score()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert r2_score(np_y, np_y_pred) == pytest.approx(m.compute())
+
+
+</clonepair27>
+<clonepair28>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_geometric_mean_relative_absolute_error.py" startline="32" endline="47" pcid="650"></source>
+def test_compute():
+    size = 51
+    np_y_pred = np.random.rand(size)
+    np_y = np.random.rand(size)
+    np_gmrae = np.exp(np.log(np.abs(np_y - np_y_pred) / np.abs(np_y - np_y.mean())).mean())
+
+    m = GeometricMeanRelativeAbsoluteError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_gmrae == pytest.approx(m.compute())
+
+
+</clonepair28>
+
+<clonepair28>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_median_absolute_percentage_error.py" startline="37" endline="58" pcid="545"></source>
+def test_median_absolute_percentage_error():
+
+    # See https://github.com/torch/torch7/pull/182
+    # For even number of elements, PyTorch returns middle element
+    # NumPy returns average of middle elements
+    # Size of dataset will be odd for these tests
+
+    size = 51
+    np_y_pred = np.random.rand(size)
+    np_y = np.random.rand(size)
+    np_median_absolute_percentage_error = 100.0 * np.median(np.abs(np_y - np_y_pred) / np.abs(np_y))
+
+    m = MedianAbsolutePercentageError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_median_absolute_percentage_error == pytest.approx(m.compute())
+
+
+</clonepair28>
+<clonepair29>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_geometric_mean_relative_absolute_error.py" startline="32" endline="47" pcid="650"></source>
+def test_compute():
+    size = 51
+    np_y_pred = np.random.rand(size)
+    np_y = np.random.rand(size)
+    np_gmrae = np.exp(np.log(np.abs(np_y - np_y_pred) / np.abs(np_y - np_y.mean())).mean())
+
+    m = GeometricMeanRelativeAbsoluteError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_gmrae == pytest.approx(m.compute())
+
+
+</clonepair29>
+
+<clonepair29>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_r2_score.py" startline="30" endline="45" pcid="668"></source>
+def test_r2_score():
+
+    size = 51
+    np_y_pred = np.random.rand(size)
+    np_y = np.random.rand(size)
+
+    m = R2Score()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert r2_score(np_y, np_y_pred) == pytest.approx(m.compute())
+
+
+</clonepair29>
+<clonepair30>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_r2_score.py" startline="30" endline="45" pcid="668"></source>
+def test_r2_score():
+
+    size = 51
+    np_y_pred = np.random.rand(size)
+    np_y = np.random.rand(size)
+
+    m = R2Score()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert r2_score(np_y, np_y_pred) == pytest.approx(m.compute())
+
+
+</clonepair30>
+
+<clonepair30>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_median_absolute_percentage_error.py" startline="37" endline="58" pcid="545"></source>
+def test_median_absolute_percentage_error():
+
+    # See https://github.com/torch/torch7/pull/182
+    # For even number of elements, PyTorch returns middle element
+    # NumPy returns average of middle elements
+    # Size of dataset will be odd for these tests
+
+    size = 51
+    np_y_pred = np.random.rand(size)
+    np_y = np.random.rand(size)
+    np_median_absolute_percentage_error = 100.0 * np.median(np.abs(np_y - np_y_pred) / np.abs(np_y))
+
+    m = MedianAbsolutePercentageError()
+    y_pred = torch.from_numpy(np_y_pred)
+    y = torch.from_numpy(np_y)
+
+    m.reset()
+    m.update((y_pred, y))
+
+    assert np_median_absolute_percentage_error == pytest.approx(m.compute())
+
+
+</clonepair30>
+<clonepair31>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_median_relative_absolute_error.py" startline="21" endline="36" pcid="746"></source>
+def test_wrong_input_shapes():
+    m = MedianRelativeAbsoluteError()
+
+    with pytest.raises(ValueError, match=r"Predictions should be of shape"):
+        m.update((torch.rand(4, 1, 2), torch.rand(4, 1)))
+
+    with pytest.raises(ValueError, match=r"Targets should be of shape"):
+        m.update((torch.rand(4, 1), torch.rand(4, 1, 2)))
+
+    with pytest.raises(ValueError, match=r"Predictions should be of shape"):
+        m.update((torch.rand(4, 1, 2), torch.rand(4)))
+
+    with pytest.raises(ValueError, match=r"Targets should be of shape"):
+        m.update((torch.rand(4), torch.rand(4, 1, 2)))
+
+
+</clonepair31>
+
+<clonepair31>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_median_absolute_error.py" startline="21" endline="36" pcid="727"></source>
+def test_wrong_input_shapes():
+    m = MedianAbsoluteError()
+
+    with pytest.raises(ValueError, match=r"Predictions should be of shape"):
+        m.update((torch.rand(4, 1, 2), torch.rand(4, 1)))
+
+    with pytest.raises(ValueError, match=r"Targets should be of shape"):
+        m.update((torch.rand(4, 1), torch.rand(4, 1, 2)))
+
+    with pytest.raises(ValueError, match=r"Predictions should be of shape"):
+        m.update((torch.rand(4, 1, 2), torch.rand(4)))
+
+    with pytest.raises(ValueError, match=r"Targets should be of shape"):
+        m.update((torch.rand(4), torch.rand(4, 1, 2)))
+
+
+</clonepair31>
+<clonepair32>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_median_absolute_error.py" startline="21" endline="36" pcid="727"></source>
+def test_wrong_input_shapes():
+    m = MedianAbsoluteError()
+
+    with pytest.raises(ValueError, match=r"Predictions should be of shape"):
+        m.update((torch.rand(4, 1, 2), torch.rand(4, 1)))
+
+    with pytest.raises(ValueError, match=r"Targets should be of shape"):
+        m.update((torch.rand(4, 1), torch.rand(4, 1, 2)))
+
+    with pytest.raises(ValueError, match=r"Predictions should be of shape"):
+        m.update((torch.rand(4, 1, 2), torch.rand(4)))
+
+    with pytest.raises(ValueError, match=r"Targets should be of shape"):
+        m.update((torch.rand(4), torch.rand(4, 1, 2)))
+
+
+</clonepair32>
+
+<clonepair32>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_median_absolute_percentage_error.py" startline="21" endline="36" pcid="544"></source>
+def test_wrong_input_shapes():
+    m = MedianAbsolutePercentageError()
+
+    with pytest.raises(ValueError, match=r"Predictions should be of shape"):
+        m.update((torch.rand(4, 1, 2), torch.rand(4, 1)))
+
+    with pytest.raises(ValueError, match=r"Targets should be of shape"):
+        m.update((torch.rand(4, 1), torch.rand(4, 1, 2)))
+
+    with pytest.raises(ValueError, match=r"Predictions should be of shape"):
+        m.update((torch.rand(4, 1, 2), torch.rand(4)))
+
+    with pytest.raises(ValueError, match=r"Targets should be of shape"):
+        m.update((torch.rand(4), torch.rand(4, 1, 2)))
+
+
+</clonepair32>
+<clonepair33>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_median_relative_absolute_error.py" startline="21" endline="36" pcid="746"></source>
+def test_wrong_input_shapes():
+    m = MedianRelativeAbsoluteError()
+
+    with pytest.raises(ValueError, match=r"Predictions should be of shape"):
+        m.update((torch.rand(4, 1, 2), torch.rand(4, 1)))
+
+    with pytest.raises(ValueError, match=r"Targets should be of shape"):
+        m.update((torch.rand(4, 1), torch.rand(4, 1, 2)))
+
+    with pytest.raises(ValueError, match=r"Predictions should be of shape"):
+        m.update((torch.rand(4, 1, 2), torch.rand(4)))
+
+    with pytest.raises(ValueError, match=r"Targets should be of shape"):
+        m.update((torch.rand(4), torch.rand(4, 1, 2)))
+
+
+</clonepair33>
+
+<clonepair33>
+<source file="systems/ignite-0.4.8/tests/ignite/contrib/metrics/regression/test_median_absolute_percentage_error.py" startline="21" endline="36" pcid="544"></source>
+def test_wrong_input_shapes():
+    m = MedianAbsolutePercentageError()
+
+    with pytest.raises(ValueError, match=r"Predictions should be of shape"):
+        m.update((torch.rand(4, 1, 2), torch.rand(4, 1)))
+
+    with pytest.raises(ValueError, match=r"Targets should be of shape"):
+        m.update((torch.rand(4, 1), torch.rand(4, 1, 2)))
+
+    with pytest.raises(ValueError, match=r"Predictions should be of shape"):
+        m.update((torch.rand(4, 1, 2), torch.rand(4)))
+
+    with pytest.raises(ValueError, match=r"Targets should be of shape"):
+        m.update((torch.rand(4), torch.rand(4, 1, 2)))
+
+
+</clonepair33>

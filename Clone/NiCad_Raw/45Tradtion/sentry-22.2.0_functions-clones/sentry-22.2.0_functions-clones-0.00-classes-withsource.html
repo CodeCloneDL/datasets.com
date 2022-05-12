@@ -1,0 +1,1305 @@
+<html>
+<head>
+    <title>NiCad6 Clone Report</title>
+    <style type="text/css">
+        body {font-family:sans-serif;}
+        table {background-color:white; border:0px; padding:0px; border-spacing:4px; width:auto; margin-left:30px; margin-right:auto;}
+        td {background-color:rgba(192,212,238,0.8); border:0px; padding:8px; width:auto; vertical-align:top; border-radius:8px}
+        pre {background-color:white; padding:4px;}
+        a {color:darkblue;}
+    </style>
+</head>
+<body>
+<h2>NiCad6 Clone Report</h2>
+<table>
+<tr style="font-size:14pt">
+<td><b>System:</b> &nbsp; sentry-22.2.0</td>
+<td><b>Clone pairs:</b> &nbsp; 20</td>
+<td><b>Clone classes:</b> &nbsp; 18</td>
+</tr>
+<tr style="font-size:12pt">
+<td style="background-color:white">Clone type: &nbsp; 1</td>
+<td style="background-color:white">Granularity: &nbsp; functions</td>
+<td style="background-color:white">Max diff threshold: &nbsp; 0%</td>
+<td style="background-color:white">Clone size: &nbsp; 10 - 2500 lines</td>
+<td style="background-color:white">Total functions: &nbsp; 12453</td>
+</tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 1:</b> &nbsp; 2 fragments, nominal size 33 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1371')" href="javascript:;">
+sentry-22.2.0/src/sentry/migrations/0237_recreate_subscriptions_in_snuba.py: 12-56
+</a>
+<div class="mid" id="frag1371" style="display:none"><pre>
+def migrate_subscriptions(apps, schema_editor):
+    QuerySubscription = apps.get_model("sentry", "QuerySubscription")
+    AppSnubaQueryEventType = apps.get_model("sentry", "SnubaQueryEventType")
+
+    for subscription in RangeQuerySetWrapperWithProgressBar(
+        QuerySubscription.objects.select_related("snuba_query").all()
+    ):
+        if subscription.subscription_id is not None:
+            # The migration apps don't build this property, so manually set it.
+            raw_event_types = AppSnubaQueryEventType.objects.filter(
+                snuba_query=subscription.snuba_query
+            ).all()
+            event_types = [SnubaQueryEventType.EventType(ev.type) for ev in raw_event_types]
+            setattr(subscription.snuba_query, "event_types", event_types)
+
+            subscription_id = None
+            try:
+                subscription_id = _create_in_snuba(subscription)
+            except Exception as e:
+                logging.exception(f"failed to recreate {subscription.subscription_id}: {e}")
+                continue
+
+            try:
+                _delete_from_snuba(
+                    QueryDatasets(subscription.snuba_query.dataset),
+                    subscription.subscription_id,
+                )
+            except Exception as e:
+                try:
+                    # Delete the subscription we just created to avoid orphans
+                    _delete_from_snuba(
+                        QueryDatasets(subscription.snuba_query.dataset),
+                        subscription_id,
+                    )
+                except Exception as oe:
+                    logging.exception(f"failed to delete orphan {subscription_id}: {oe}")
+
+                logging.exception(f"failed to delete {subscription.subscription_id}: {e}")
+                continue
+
+            QuerySubscription.objects.filter(id=subscription.id).update(
+                subscription_id=subscription_id
+            )
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1374')" href="javascript:;">
+sentry-22.2.0/src/sentry/migrations/0233_recreate_subscriptions_in_snuba.py: 12-56
+</a>
+<div class="mid" id="frag1374" style="display:none"><pre>
+def migrate_subscriptions(apps, schema_editor):
+    QuerySubscription = apps.get_model("sentry", "QuerySubscription")
+    AppSnubaQueryEventType = apps.get_model("sentry", "SnubaQueryEventType")
+
+    for subscription in RangeQuerySetWrapperWithProgressBar(
+        QuerySubscription.objects.select_related("snuba_query").all()
+    ):
+        if subscription.subscription_id is not None:
+            # The migration apps don't build this property, so manually set it.
+            raw_event_types = AppSnubaQueryEventType.objects.filter(
+                snuba_query=subscription.snuba_query
+            ).all()
+            event_types = [SnubaQueryEventType.EventType(ev.type) for ev in raw_event_types]
+            setattr(subscription.snuba_query, "event_types", event_types)
+
+            subscription_id = None
+            try:
+                subscription_id = _create_in_snuba(subscription)
+            except Exception as e:
+                logging.exception(f"failed to recreate {subscription.subscription_id}: {e}")
+                continue
+
+            try:
+                _delete_from_snuba(
+                    QueryDatasets(subscription.snuba_query.dataset),
+                    subscription.subscription_id,
+                )
+            except Exception as e:
+                try:
+                    # Delete the subscription we just created to avoid orphans
+                    _delete_from_snuba(
+                        QueryDatasets(subscription.snuba_query.dataset),
+                        subscription_id,
+                    )
+                except Exception as oe:
+                    logging.exception(f"failed to delete orphan {subscription_id}: {oe}")
+
+                logging.exception(f"failed to delete {subscription.subscription_id}: {e}")
+                continue
+
+            QuerySubscription.objects.filter(id=subscription.id).update(
+                subscription_id=subscription_id
+            )
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 2:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2681')" href="javascript:;">
+sentry-22.2.0/src/sentry/api/endpoints/organization_code_mapping_codeowners.py: 13-27
+</a>
+<div class="mid" id="frag2681" style="display:none"><pre>
+    def convert_args(self, request: Request, organization_slug, config_id, *args, **kwargs):
+        args, kwargs = super().convert_args(request, organization_slug, config_id, *args, **kwargs)
+
+        try:
+            kwargs["config"] = RepositoryProjectPathConfig.objects.get(
+                id=config_id,
+                organization_integration__in=OrganizationIntegration.objects.filter(
+                    organization=kwargs["organization"]
+                ).values_list("id", flat=True),
+            )
+        except RepositoryProjectPathConfig.DoesNotExist:
+            raise Http404
+
+        return (args, kwargs)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2981')" href="javascript:;">
+sentry-22.2.0/src/sentry/api/endpoints/organization_code_mapping_details.py: 20-34
+</a>
+<div class="mid" id="frag2981" style="display:none"><pre>
+    def convert_args(self, request: Request, organization_slug, config_id, *args, **kwargs):
+        args, kwargs = super().convert_args(request, organization_slug, config_id, *args, **kwargs)
+
+        try:
+            kwargs["config"] = RepositoryProjectPathConfig.objects.get(
+                id=config_id,
+                organization_integration__in=OrganizationIntegration.objects.filter(
+                    organization=kwargs["organization"]
+                ).values_list("id", flat=True),
+            )
+        except RepositoryProjectPathConfig.DoesNotExist:
+            raise Http404
+
+        return (args, kwargs)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 3:</b> &nbsp; 2 fragments, nominal size 15 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag3722')" href="javascript:;">
+sentry-22.2.0/src/sentry/integrations/bitbucket_server/client.py: 59-78
+</a>
+<div class="mid" id="frag3722" style="display:none"><pre>
+    def get_access_token(self, request_token, verifier):
+        """
+        Step 3 of the oauth flow.
+        Use the verifier and request token from step 1 to get an access token.
+        """
+        if not verifier:
+            raise ApiError("Missing OAuth token verifier")
+        auth = OAuth1(
+            client_key=self.consumer_key,
+            resource_owner_key=request_token["oauth_token"],
+            resource_owner_secret=request_token["oauth_token_secret"],
+            verifier=verifier,
+            rsa_key=self.private_key,
+            signature_method=SIGNATURE_RSA,
+            signature_type="auth_header",
+        )
+        url = self.access_token_url.format(self.base_url)
+        resp = self.post(url, auth=auth, allow_text=True)
+        return dict(parse_qsl(resp.text))
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag3755')" href="javascript:;">
+sentry-22.2.0/src/sentry/integrations/jira_server/client.py: 52-71
+</a>
+<div class="mid" id="frag3755" style="display:none"><pre>
+    def get_access_token(self, request_token, verifier):
+        """
+        Step 3 of the oauth flow.
+        Use the verifier and request token from step 1 to get an access token.
+        """
+        if not verifier:
+            raise ApiError("Missing OAuth token verifier")
+        auth = OAuth1(
+            client_key=self.consumer_key,
+            resource_owner_key=request_token["oauth_token"],
+            resource_owner_secret=request_token["oauth_token_secret"],
+            verifier=verifier,
+            rsa_key=self.private_key,
+            signature_method=SIGNATURE_RSA,
+            signature_type="auth_header",
+        )
+        url = self.access_token_url.format(self.base_url)
+        resp = self.post(url, auth=auth, allow_text=True)
+        return dict(parse_qsl(resp.text))
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 4:</b> &nbsp; 3 fragments, nominal size 10 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5222')" href="javascript:;">
+sentry-22.2.0/tests/sentry/mediators/external_requests/test_issue_link_requester.py: 11-26
+</a>
+<div class="mid" id="frag5222" style="display:none"><pre>
+    def setUp(self):
+        super().setUp()
+
+        self.user = self.create_user(name="foo")
+        self.org = self.create_organization(owner=self.user)
+        self.project = self.create_project(slug="boop", organization=self.org)
+        self.group = self.create_group(project=self.project)
+
+        self.sentry_app = self.create_sentry_app(
+            name="foo", organization=self.org, webhook_url="https://example.com", scopes=()
+        )
+
+        self.install = self.create_sentry_app_installation(
+            slug="foo", organization=self.org, user=self.user
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5262')" href="javascript:;">
+sentry-22.2.0/tests/sentry/mediators/external_issues/test_creator.py: 7-22
+</a>
+<div class="mid" id="frag5262" style="display:none"><pre>
+    def setUp(self):
+        super().setUp()
+
+        self.user = self.create_user(name="foo")
+        self.org = self.create_organization(owner=self.user)
+        self.project = self.create_project(slug="boop", organization=self.org)
+        self.group = self.create_group(project=self.project)
+
+        self.sentry_app = self.create_sentry_app(
+            name="foo", organization=self.org, webhook_url="https://example.com", scopes=()
+        )
+
+        self.install = self.create_sentry_app_installation(
+            slug="foo", organization=self.org, user=self.user
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5264')" href="javascript:;">
+sentry-22.2.0/tests/sentry/mediators/external_issues/test_issue_link_creator.py: 10-25
+</a>
+<div class="mid" id="frag5264" style="display:none"><pre>
+    def setUp(self):
+        super().setUp()
+
+        self.user = self.create_user(name="foo")
+        self.org = self.create_organization(owner=self.user)
+        self.project = self.create_project(slug="boop", organization=self.org)
+        self.group = self.create_group(project=self.project)
+
+        self.sentry_app = self.create_sentry_app(
+            name="foo", organization=self.org, webhook_url="https://example.com", scopes=()
+        )
+
+        self.install = self.create_sentry_app_installation(
+            slug="foo", organization=self.org, user=self.user
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 5:</b> &nbsp; 2 fragments, nominal size 14 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag6055')" href="javascript:;">
+sentry-22.2.0/tests/sentry/tasks/test_symbolication.py: 19-38
+</a>
+<div class="mid" id="frag6055" style="display:none"><pre>
+    def get_event_preprocessors(self, data):
+        def remove_extra(data):
+            del data["extra"]
+            return data
+
+        def put_on_hold(data):
+            data["unprocessed"] = True
+            return data
+
+        if data.get("platform") == "mattlang":
+            return [remove_extra, lambda x: None]
+
+        if data.get("platform") == "noop":
+            return [lambda data: None]
+
+        if data.get("platform") == "holdmeclose":
+            return [put_on_hold]
+
+        return []
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag6085')" href="javascript:;">
+sentry-22.2.0/tests/sentry/tasks/test_store.py: 21-40
+</a>
+<div class="mid" id="frag6085" style="display:none"><pre>
+    def get_event_preprocessors(self, data):
+        def remove_extra(data):
+            del data["extra"]
+            return data
+
+        def put_on_hold(data):
+            data["unprocessed"] = True
+            return data
+
+        if data.get("platform") == "mattlang":
+            return [remove_extra, lambda x: None]
+
+        if data.get("platform") == "noop":
+            return [lambda data: None]
+
+        if data.get("platform") == "holdmeclose":
+            return [put_on_hold]
+
+        return []
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 6:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag6624')" href="javascript:;">
+sentry-22.2.0/tests/sentry/incidents/endpoints/test_organization_incident_comment_index.py: 69-80
+</a>
+<div class="mid" id="frag6624" style="display:none"><pre>
+    def test_access(self):
+        other_user = self.create_user()
+        self.login_as(other_user)
+        other_team = self.create_team()
+        self.create_member(
+            user=self.user, organization=self.organization, role="member", teams=[self.team]
+        )
+        other_project = self.create_project(teams=[other_team])
+        incident = self.create_incident(projects=[other_project])
+        with self.feature("organizations:incidents"):
+            resp = self.get_response(self.organization.slug, incident.identifier, comment="hi")
+            assert resp.status_code == 403
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag6664')" href="javascript:;">
+sentry-22.2.0/tests/sentry/incidents/endpoints/test_organization_incident_subscription_index.py: 23-36
+</a>
+<div class="mid" id="frag6664" style="display:none"><pre>
+    def test_access(self):
+        other_user = self.create_user()
+        self.login_as(other_user)
+        other_team = self.create_team()
+        self.create_member(
+            user=self.user, organization=self.organization, role="member", teams=[self.team]
+        )
+        other_project = self.create_project(teams=[other_team])
+        incident = self.create_incident(projects=[other_project])
+        with self.feature("organizations:incidents"):
+            resp = self.get_response(self.organization.slug, incident.identifier, comment="hi")
+            assert resp.status_code == 403
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 7:</b> &nbsp; 2 fragments, nominal size 31 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag7915')" href="javascript:;">
+sentry-22.2.0/tests/sentry/api/endpoints/test_group_events_latest.py: 6-39
+</a>
+<div class="mid" id="frag7915" style="display:none"><pre>
+    def setUp(self):
+        super().setUp()
+
+        self.login_as(user=self.user)
+        project = self.create_project()
+
+        self.event_a = self.store_event(
+            data={
+                "event_id": "a" * 32,
+                "environment": "development",
+                "timestamp": iso_format(before_now(days=1)),
+                "fingerprint": ["group-1"],
+            },
+            project_id=project.id,
+        )
+        self.event_b = self.store_event(
+            data={
+                "event_id": "b" * 32,
+                "environment": "production",
+                "timestamp": iso_format(before_now(minutes=5)),
+                "fingerprint": ["group-1"],
+            },
+            project_id=project.id,
+        )
+        self.event_c = self.store_event(
+            data={
+                "event_id": "c" * 32,
+                "environment": "staging",
+                "timestamp": iso_format(before_now(minutes=1)),
+                "fingerprint": ["group-1"],
+            },
+            project_id=project.id,
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag8051')" href="javascript:;">
+sentry-22.2.0/tests/sentry/api/endpoints/test_group_events_oldest.py: 6-39
+</a>
+<div class="mid" id="frag8051" style="display:none"><pre>
+    def setUp(self):
+        super().setUp()
+
+        self.login_as(user=self.user)
+        project = self.create_project()
+
+        self.event_a = self.store_event(
+            data={
+                "event_id": "a" * 32,
+                "environment": "development",
+                "timestamp": iso_format(before_now(days=1)),
+                "fingerprint": ["group-1"],
+            },
+            project_id=project.id,
+        )
+        self.event_b = self.store_event(
+            data={
+                "event_id": "b" * 32,
+                "environment": "production",
+                "timestamp": iso_format(before_now(minutes=5)),
+                "fingerprint": ["group-1"],
+            },
+            project_id=project.id,
+        )
+        self.event_c = self.store_event(
+            data={
+                "event_id": "c" * 32,
+                "environment": "staging",
+                "timestamp": iso_format(before_now(minutes=1)),
+                "fingerprint": ["group-1"],
+            },
+            project_id=project.id,
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 8:</b> &nbsp; 2 fragments, nominal size 13 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag10216')" href="javascript:;">
+sentry-22.2.0/tests/sentry/integrations/jira/test_integration.py: 34-47
+</a>
+<div class="mid" id="frag10216" style="display:none"><pre>
+    def integration(self):
+        integration = Integration.objects.create(
+            provider="jira",
+            name="Jira Cloud",
+            metadata={
+                "oauth_client_id": "oauth-client-id",
+                "shared_secret": "a-super-secret-key-from-atlassian",
+                "base_url": "https://example.atlassian.net",
+                "domain_name": "example.atlassian.net",
+            },
+        )
+        integration.add_organization(self.organization, self.user)
+        return integration
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag10252')" href="javascript:;">
+sentry-22.2.0/tests/sentry/integrations/jira/test_search_endpoint.py: 14-27
+</a>
+<div class="mid" id="frag10252" style="display:none"><pre>
+    def integration(self):
+        integration = Integration.objects.create(
+            provider="jira",
+            name="Jira Cloud",
+            metadata={
+                "oauth_client_id": "oauth-client-id",
+                "shared_secret": "a-super-secret-key-from-atlassian",
+                "base_url": "https://example.atlassian.net",
+                "domain_name": "example.atlassian.net",
+            },
+        )
+        integration.add_organization(self.organization, self.user)
+        return integration
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 9:</b> &nbsp; 2 fragments, nominal size 12 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag10264')" href="javascript:;">
+sentry-22.2.0/tests/sentry/integrations/jira/test_uninstalled.py: 18-30
+</a>
+<div class="mid" id="frag10264" style="display:none"><pre>
+    def jwt_token_secret(self):
+        jira_signing_algorithm = "HS256"
+        return jwt.encode(
+            {
+                "iss": self.external_id,
+                "aud": absolute_uri(),
+                "qsh": get_query_hash(self.path, method="POST", query_params={}),
+            },
+            self.shared_secret,
+            algorithm=jira_signing_algorithm,
+            headers={"alg": jira_signing_algorithm},
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag10275')" href="javascript:;">
+sentry-22.2.0/tests/sentry/integrations/jira/test_installed.py: 18-30
+</a>
+<div class="mid" id="frag10275" style="display:none"><pre>
+    def jwt_token_secret(self):
+        jira_signing_algorithm = "HS256"
+        return jwt.encode(
+            {
+                "iss": self.external_id,
+                "aud": absolute_uri(),
+                "qsh": get_query_hash(self.path, method="POST", query_params={}),
+            },
+            self.shared_secret,
+            algorithm=jira_signing_algorithm,
+            headers={"alg": jira_signing_algorithm},
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 10:</b> &nbsp; 2 fragments, nominal size 12 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag10265')" href="javascript:;">
+sentry-22.2.0/tests/sentry/integrations/jira/test_uninstalled.py: 31-43
+</a>
+<div class="mid" id="frag10265" style="display:none"><pre>
+    def jwt_token_cdn(self):
+        jira_signing_algorithm = "RS256"
+        return jwt.encode(
+            {
+                "iss": self.external_id,
+                "aud": absolute_uri(),
+                "qsh": get_query_hash(self.path, method="POST", query_params={}),
+            },
+            RS256_KEY,
+            algorithm=jira_signing_algorithm,
+            headers={"kid": self.kid, "alg": jira_signing_algorithm},
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag10276')" href="javascript:;">
+sentry-22.2.0/tests/sentry/integrations/jira/test_installed.py: 31-43
+</a>
+<div class="mid" id="frag10276" style="display:none"><pre>
+    def jwt_token_cdn(self):
+        jira_signing_algorithm = "RS256"
+        return jwt.encode(
+            {
+                "iss": self.external_id,
+                "aud": absolute_uri(),
+                "qsh": get_query_hash(self.path, method="POST", query_params={}),
+            },
+            RS256_KEY,
+            algorithm=jira_signing_algorithm,
+            headers={"kid": self.kid, "alg": jira_signing_algorithm},
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 11:</b> &nbsp; 2 fragments, nominal size 10 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag11185')" href="javascript:;">
+sentry-22.2.0/tests/acceptance/test_performance_landing.py: 20-32
+</a>
+<div class="mid" id="frag11185" style="display:none"><pre>
+    def setUp(self):
+        super().setUp()
+        self.org = self.create_organization(owner=self.user, name="Rowdy Tiger")
+        self.team = self.create_team(
+            organization=self.org, name="Mariachi Band", members=[self.user]
+        )
+        self.project = self.create_project(organization=self.org, teams=[self.team], name="Bengal")
+        self.group = self.create_group(project=self.project)
+        self.login_as(self.user)
+        self.path = f"/organizations/{self.org.slug}/performance/"
+
+        self.page = BasePage(self.browser)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag11322')" href="javascript:;">
+sentry-22.2.0/tests/acceptance/test_performance_overview.py: 20-32
+</a>
+<div class="mid" id="frag11322" style="display:none"><pre>
+    def setUp(self):
+        super().setUp()
+        self.org = self.create_organization(owner=self.user, name="Rowdy Tiger")
+        self.team = self.create_team(
+            organization=self.org, name="Mariachi Band", members=[self.user]
+        )
+        self.project = self.create_project(organization=self.org, teams=[self.team], name="Bengal")
+        self.group = self.create_group(project=self.project)
+        self.login_as(self.user)
+        self.path = f"/organizations/{self.org.slug}/performance/"
+
+        self.page = BasePage(self.browser)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 12:</b> &nbsp; 2 fragments, nominal size 25 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag11851')" href="javascript:;">
+sentry-22.2.0/tests/snuba/api/endpoints/test_group_events_latest.py: 7-36
+</a>
+<div class="mid" id="frag11851" style="display:none"><pre>
+    def setUp(self):
+        super().setUp()
+        self.login_as(user=self.user)
+
+        project = self.create_project()
+        min_ago = iso_format(before_now(minutes=1))
+        two_min_ago = iso_format(before_now(minutes=2))
+
+        self.event1 = self.store_event(
+            data={
+                "event_id": "a" * 32,
+                "environment": "staging",
+                "fingerprint": ["group_1"],
+                "timestamp": two_min_ago,
+            },
+            project_id=project.id,
+        )
+
+        self.event2 = self.store_event(
+            data={
+                "event_id": "b" * 32,
+                "environment": "production",
+                "fingerprint": ["group_1"],
+                "timestamp": min_ago,
+            },
+            project_id=project.id,
+        )
+
+        self.group = Group.objects.first()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag11918')" href="javascript:;">
+sentry-22.2.0/tests/snuba/api/endpoints/test_group_events_oldest.py: 7-35
+</a>
+<div class="mid" id="frag11918" style="display:none"><pre>
+    def setUp(self):
+        super().setUp()
+        self.login_as(user=self.user)
+
+        project = self.create_project()
+        min_ago = iso_format(before_now(minutes=1))
+        two_min_ago = iso_format(before_now(minutes=2))
+
+        self.event1 = self.store_event(
+            data={
+                "event_id": "a" * 32,
+                "environment": "staging",
+                "fingerprint": ["group_1"],
+                "timestamp": two_min_ago,
+            },
+            project_id=project.id,
+        )
+        self.event2 = self.store_event(
+            data={
+                "event_id": "b" * 32,
+                "environment": "production",
+                "fingerprint": ["group_1"],
+                "timestamp": min_ago,
+            },
+            project_id=project.id,
+        )
+
+        self.group = Group.objects.first()
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 13:</b> &nbsp; 2 fragments, nominal size 42 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag11857')" href="javascript:;">
+sentry-22.2.0/tests/snuba/api/endpoints/test_organization_events_spans_performance.py: 57-110
+</a>
+<div class="mid" id="frag11857" style="display:none"><pre>
+    def create_event(self, **kwargs):
+        if "span_id" not in kwargs:
+            kwargs["span_id"] = "a" * 16
+
+        if "start_timestamp" not in kwargs:
+            kwargs["start_timestamp"] = self.min_ago
+
+        if "timestamp" not in kwargs:
+            kwargs["timestamp"] = self.min_ago + timedelta(seconds=8)
+
+        if "trace_context" not in kwargs:
+            # should appear for all of the pXX metrics
+            kwargs["trace_context"] = {
+                "op": "http.server",
+                "hash": "ab" * 8,
+                "exclusive_time": 4.0,
+            }
+
+        if "spans" not in kwargs:
+            kwargs["spans"] = [
+                # should appear for the sum metric
+                {
+                    "same_process_as_parent": True,
+                    "parent_span_id": "a" * 16,
+                    "span_id": x * 16,
+                    "start_timestamp": iso_format(self.min_ago + timedelta(seconds=1)),
+                    "timestamp": iso_format(self.min_ago + timedelta(seconds=4)),
+                    "op": "django.middleware",
+                    "description": "middleware span",
+                    "hash": "cd" * 8,
+                    "exclusive_time": 3.0,
+                }
+                for x in ["b", "c"]
+            ] + [
+                # should appear for the count metric
+                {
+                    "same_process_as_parent": True,
+                    "parent_span_id": "a" * 16,
+                    "span_id": x * 16,
+                    "start_timestamp": iso_format(self.min_ago + timedelta(seconds=4)),
+                    "timestamp": iso_format(self.min_ago + timedelta(seconds=5)),
+                    "op": "django.view",
+                    "description": "view span",
+                    "hash": "ef" * 8,
+                    "exclusive_time": 1.0,
+                }
+                for x in ["d", "e", "f"]
+            ]
+
+        data = load_data("transaction", **kwargs)
+        data["transaction"] = "root transaction"
+
+        return self.store_event(data, project_id=self.project.id)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag12105')" href="javascript:;">
+sentry-22.2.0/tests/snuba/api/endpoints/test_organization_events_span_ops.py: 25-78
+</a>
+<div class="mid" id="frag12105" style="display:none"><pre>
+    def create_event(self, **kwargs):
+        if "span_id" not in kwargs:
+            kwargs["span_id"] = "a" * 16
+
+        if "start_timestamp" not in kwargs:
+            kwargs["start_timestamp"] = self.min_ago
+
+        if "timestamp" not in kwargs:
+            kwargs["timestamp"] = self.min_ago + timedelta(seconds=8)
+
+        if "trace_context" not in kwargs:
+            # should appear for all of the pXX metrics
+            kwargs["trace_context"] = {
+                "op": "http.server",
+                "hash": "ab" * 8,
+                "exclusive_time": 4.0,
+            }
+
+        if "spans" not in kwargs:
+            kwargs["spans"] = [
+                # should appear for the sum metric
+                {
+                    "same_process_as_parent": True,
+                    "parent_span_id": "a" * 16,
+                    "span_id": x * 16,
+                    "start_timestamp": iso_format(self.min_ago + timedelta(seconds=1)),
+                    "timestamp": iso_format(self.min_ago + timedelta(seconds=4)),
+                    "op": "django.middleware",
+                    "description": "middleware span",
+                    "hash": "cd" * 8,
+                    "exclusive_time": 3.0,
+                }
+                for x in ["b", "c"]
+            ] + [
+                # should appear for the count metric
+                {
+                    "same_process_as_parent": True,
+                    "parent_span_id": "a" * 16,
+                    "span_id": x * 16,
+                    "start_timestamp": iso_format(self.min_ago + timedelta(seconds=4)),
+                    "timestamp": iso_format(self.min_ago + timedelta(seconds=5)),
+                    "op": "django.view",
+                    "description": "view span",
+                    "hash": "ef" * 8,
+                    "exclusive_time": 1.0,
+                }
+                for x in ["d", "e", "f"]
+            ]
+
+        data = load_data("transaction", **kwargs)
+        data["transaction"] = "root transaction"
+
+        return self.store_event(data, project_id=self.project.id)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 14:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag11866')" href="javascript:;">
+sentry-22.2.0/tests/snuba/api/endpoints/test_organization_events_spans_performance.py: 415-428
+</a>
+<div class="mid" id="frag11866" style="display:none"><pre>
+    def test_no_projects(self):
+        user = self.create_user()
+        org = self.create_organization(owner=user)
+        self.login_as(user=user)
+
+        url = reverse(
+            self.URL,
+            kwargs={"organization_slug": org.slug},
+        )
+
+        with self.feature(self.FEATURES):
+            response = self.client.get(url, format="json")
+        assert response.status_code == 404, response.content
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag11882')" href="javascript:;">
+sentry-22.2.0/tests/snuba/api/endpoints/test_organization_events_spans_performance.py: 976-989
+</a>
+<div class="mid" id="frag11882" style="display:none"><pre>
+    def test_no_projects(self):
+        user = self.create_user()
+        org = self.create_organization(owner=user)
+        self.login_as(user=user)
+
+        url = reverse(
+            self.URL,
+            kwargs={"organization_slug": org.slug},
+        )
+
+        with self.feature(self.FEATURES):
+            response = self.client.get(url, format="json")
+        assert response.status_code == 404, response.content
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 15:</b> &nbsp; 2 fragments, nominal size 27 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag11884')" href="javascript:;">
+sentry-22.2.0/tests/snuba/api/endpoints/test_organization_events_spans_performance.py: 1001-1035
+</a>
+<div class="mid" id="frag11884" style="display:none"><pre>
+    def test_bad_span_param(self):
+        with self.feature(self.FEATURES):
+            response = self.client.get(
+                self.url,
+                data={"project": self.project.id, "span": ["http.server"]},
+                format="json",
+            )
+
+        assert response.status_code == 400, response.content
+        assert response.data == {
+            "span": [
+                ErrorDetail(
+                    "span must consist of of a span op and a valid 16 character hex delimited by a colon (:)",
+                    code="invalid",
+                )
+            ]
+        }
+
+        with self.feature(self.FEATURES):
+            response = self.client.get(
+                self.url,
+                data={"project": self.project.id, "span": ["http.server:ab"]},
+                format="json",
+            )
+
+        assert response.status_code == 400, response.content
+        assert response.data == {
+            "span": [
+                ErrorDetail(
+                    "spanGroup must be a valid 16 character hex (containing only digits, or a-f characters)",
+                    code="invalid",
+                )
+            ]
+        }
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag11889')" href="javascript:;">
+sentry-22.2.0/tests/snuba/api/endpoints/test_organization_events_spans_performance.py: 1109-1143
+</a>
+<div class="mid" id="frag11889" style="display:none"><pre>
+    def test_bad_span_param(self):
+        with self.feature(self.FEATURES):
+            response = self.client.get(
+                self.url,
+                data={"project": self.project.id, "span": ["http.server"]},
+                format="json",
+            )
+
+        assert response.status_code == 400, response.content
+        assert response.data == {
+            "span": [
+                ErrorDetail(
+                    "span must consist of of a span op and a valid 16 character hex delimited by a colon (:)",
+                    code="invalid",
+                )
+            ]
+        }
+
+        with self.feature(self.FEATURES):
+            response = self.client.get(
+                self.url,
+                data={"project": self.project.id, "span": ["http.server:ab"]},
+                format="json",
+            )
+
+        assert response.status_code == 400, response.content
+        assert response.data == {
+            "span": [
+                ErrorDetail(
+                    "spanGroup must be a valid 16 character hex (containing only digits, or a-f characters)",
+                    code="invalid",
+                )
+            ]
+        }
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 16:</b> &nbsp; 2 fragments, nominal size 15 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag12016')" href="javascript:;">
+sentry-22.2.0/tests/snuba/api/endpoints/test_organization_events_trends.py: 322-337
+</a>
+<div class="mid" id="frag12016" style="display:none"><pre>
+    def test_invalid_trend_function(self):
+        with self.feature(self.features):
+            response = self.client.get(
+                self.url,
+                format="json",
+                data={
+                    "end": iso_format(self.day_ago + timedelta(hours=2)),
+                    "start": iso_format(self.day_ago),
+                    "field": ["project", "transaction"],
+                    "query": "event.type:transaction",
+                    "trendFunction": "apdex(450)",
+                    "project": [self.project.id],
+                },
+            )
+            assert response.status_code == 400
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag12029')" href="javascript:;">
+sentry-22.2.0/tests/snuba/api/endpoints/test_organization_events_trends.py: 774-789
+</a>
+<div class="mid" id="frag12029" style="display:none"><pre>
+    def test_invalid_trend_function(self):
+        with self.feature(self.features):
+            response = self.client.get(
+                self.url,
+                format="json",
+                data={
+                    "end": iso_format(self.day_ago + timedelta(hours=2)),
+                    "start": iso_format(self.day_ago),
+                    "field": ["project", "transaction"],
+                    "query": "event.type:transaction",
+                    "trendFunction": "apdex(450)",
+                    "project": [self.project.id],
+                },
+            )
+            assert response.status_code == 400
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 17:</b> &nbsp; 2 fragments, nominal size 14 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag12181')" href="javascript:;">
+sentry-22.2.0/tests/snuba/rules/conditions/test_event_frequency.py: 211-227
+</a>
+<div class="mid" id="frag12181" style="display:none"><pre>
+    def increment(self, event, count, environment=None, timestamp=None):
+        data = {
+            "fingerprint": event.data["fingerprint"],
+            "timestamp": iso_format(timestamp) if timestamp else iso_format(before_now(minutes=1)),
+        }
+        if environment:
+            data["environment"] = environment
+
+        for _ in range(count):
+            event_data = deepcopy(data)
+            event_data["user"] = {"id": uuid4().hex}
+            self.store_event(
+                data=event_data,
+                project_id=self.project.id,
+            )
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag12185')" href="javascript:;">
+sentry-22.2.0/tests/snuba/rules/conditions/test_event_frequency.py: 289-304
+</a>
+<div class="mid" id="frag12185" style="display:none"><pre>
+    def increment(self, event, count, environment=None, timestamp=None):
+        data = {
+            "fingerprint": event.data["fingerprint"],
+            "timestamp": iso_format(timestamp) if timestamp else iso_format(before_now(minutes=1)),
+        }
+        if environment:
+            data["environment"] = environment
+
+        for _ in range(count):
+            event_data = deepcopy(data)
+            event_data["user"] = {"id": uuid4().hex}
+            self.store_event(
+                data=event_data,
+                project_id=self.project.id,
+            )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 18:</b> &nbsp; 2 fragments, nominal size 14 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag12274')" href="javascript:;">
+sentry-22.2.0/tests/apidocs/endpoints/releases/test_project_release_files.py: 41-56
+</a>
+<div class="mid" id="frag12274" style="display:none"><pre>
+    def test_post(self):
+        data = {
+            "name": "http://example.com/application.js",
+            "header": "X-SourceMap: http://example.com",
+            "file": SimpleUploadedFile(
+                "application.js", b"function() { }", content_type="application/javascript"
+            ),
+        }
+        response = self.client.post(
+            self.url,
+            data,
+            format="multipart",
+        )
+        request = RequestFactory().post(self.url, data=data, content_type="multipart/form-data")
+
+        self.validate_schema(request, response)
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag12282')" href="javascript:;">
+sentry-22.2.0/tests/apidocs/endpoints/releases/test_organization_release_files.py: 36-51
+</a>
+<div class="mid" id="frag12282" style="display:none"><pre>
+    def test_post(self):
+        data = {
+            "name": "http://example.com/application.js",
+            "header": "X-SourceMap: http://example.com",
+            "file": SimpleUploadedFile(
+                "application.js", b"function() { }", content_type="application/javascript"
+            ),
+        }
+        response = self.client.post(
+            self.url,
+            data,
+            format="multipart",
+        )
+        request = RequestFactory().post(self.url, data=data, content_type="multipart/form-data")
+
+        self.validate_schema(request, response)
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<script language="JavaScript">
+function ShowHide(divId) { 
+    if(document.getElementById(divId).style.display == 'none') {
+        document.getElementById(divId).style.display='block';
+    } else { 
+        document.getElementById(divId).style.display = 'none';
+    } 
+}
+</script>
+</body>
+</html>

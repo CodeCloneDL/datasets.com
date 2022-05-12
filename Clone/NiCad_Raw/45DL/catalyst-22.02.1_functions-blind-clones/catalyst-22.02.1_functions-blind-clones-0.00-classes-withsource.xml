@@ -1,0 +1,855 @@
+<clones>
+<systeminfo processor="nicad6" system="catalyst-22.02.1" granularity="functions-blind" threshold="0%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="856" npairs="22"/>
+<runinfo ncompares="2402" cputime="42992"/>
+<classinfo nclasses="10"/>
+
+<class classid="1" nclones="2" nlines="21" similarity="100">
+<source file="systems/catalyst-22.02.1/catalyst/contrib/utils/thresholds.py" startline="300" endline="339" pcid="69">
+def get_multilabel_thresholds_greedy(
+    scores: np.ndarray,
+    labels: np.ndarray,
+    objective: METRIC_FN,
+    num_iterations: int = 100,
+    num_thresholds: int = 100,
+    thresholds: np.ndarray = None,
+    patience: int = 3,
+    atol: float = 0.01,
+) -> Tuple[float, List[float]]:
+    """Finds best thresholds
+    for multilabel classification task with brute-force algorithm.
+
+    Args:
+        scores: estimated per-class scores/probabilities predicted by the model
+        labels: ground truth labels
+        objective: callable function, metric which we want to maximize
+        num_iterations: number of iteration for brute-force algorithm
+        num_thresholds: number of thresholds ot try for each class
+        thresholds: baseline thresholds, which we want to optimize
+        patience: maximum number of iteration before early stop exit
+        atol: minimum required improvement per iteration for early stop exit
+
+    Returns:
+        tuple with best found objective score and per-class thresholds
+    """
+    best_metric, thresholds = get_thresholds_greedy(
+        scores=scores,
+        labels=labels,
+        score_fn=partial(_multilabel_score_fn, objective=objective),
+        num_iterations=num_iterations,
+        num_thresholds=num_thresholds,
+        thresholds=thresholds,
+        patience=patience,
+        atol=atol,
+    )
+
+    return best_metric, thresholds
+
+
+</source>
+<source file="systems/catalyst-22.02.1/catalyst/contrib/utils/thresholds.py" startline="347" endline="386" pcid="71">
+def get_multiclass_thresholds_greedy(
+    scores: np.ndarray,
+    labels: np.ndarray,
+    objective: METRIC_FN,
+    num_iterations: int = 100,
+    num_thresholds: int = 100,
+    thresholds: np.ndarray = None,
+    patience: int = 3,
+    atol: float = 0.01,
+) -> Tuple[float, List[float]]:
+    """Finds best thresholds
+    for multiclass classification task with brute-force algorithm.
+
+    Args:
+        scores: estimated per-class scores/probabilities predicted by the model
+        labels: ground truth labels
+        objective: callable function, metric which we want to maximize
+        num_iterations: number of iteration for brute-force algorithm
+        num_thresholds: number of thresholds ot try for each class
+        thresholds: baseline thresholds, which we want to optimize
+        patience: maximum number of iteration before early stop exit
+        atol: minimum required improvement per iteration for early stop exit
+
+    Returns:
+        tuple with best found objective score and per-class thresholds
+    """
+    best_metric, thresholds = get_thresholds_greedy(
+        scores=scores,
+        labels=labels,
+        score_fn=partial(_multiclass_score_fn, objective=objective),
+        num_iterations=num_iterations,
+        num_thresholds=num_thresholds,
+        thresholds=thresholds,
+        patience=patience,
+        atol=atol,
+    )
+
+    return best_metric, thresholds
+
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="11" similarity="100">
+<source file="systems/catalyst-22.02.1/catalyst/contrib/optimizers/adamp.py" startline="97" endline="112" pcid="140">
+    def _projection(self, p, grad, perturb, delta, wd_ratio, eps):
+        wd = 1
+        expand_size = [-1] + [1] * (len(p.shape) - 1)
+        for view_func in [self._channel_view, self._layer_view]:
+
+            cosine_sim = self._cosine_similarity(grad, p.data, eps, view_func)
+
+            if cosine_sim.max() < delta / math.sqrt(view_func(p.data).size(1)):
+                p_n = p.data / view_func(p.data).norm(dim=1).view(expand_size).add_(eps)
+                perturb -= p_n * view_func(p_n * perturb).sum(dim=1).view(expand_size)
+                wd = wd_ratio
+
+                return perturb, wd
+
+        return perturb, wd
+
+</source>
+<source file="systems/catalyst-22.02.1/catalyst/contrib/optimizers/sgdp.py" startline="98" endline="113" pcid="149">
+    def _projection(self, p, grad, perturb, delta, wd_ratio, eps):
+        wd = 1
+        expand_size = [-1] + [1] * (len(p.shape) - 1)
+        for view_func in [self._channel_view, self._layer_view]:
+
+            cosine_sim = self._cosine_similarity(grad, p.data, eps, view_func)
+
+            if cosine_sim.max() < delta / math.sqrt(view_func(p.data).size(1)):
+                p_n = p.data / view_func(p.data).norm(dim=1).view(expand_size).add_(eps)
+                perturb -= p_n * view_func(p_n * perturb).sum(dim=1).view(expand_size)
+                wd = wd_ratio
+
+                return perturb, wd
+
+        return perturb, wd
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="23" similarity="100">
+<source file="systems/catalyst-22.02.1/catalyst/callbacks/metrics/classification.py" startline="86" endline="111" pcid="394">
+    def __init__(
+        self,
+        input_key: str,
+        target_key: str,
+        num_classes: Optional[int] = None,
+        zero_division: int = 0,
+        log_on_batch: bool = True,
+        compute_per_class_metrics: bool = SETTINGS.compute_per_class_metrics,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=MulticlassPrecisionRecallF1SupportMetric(
+                zero_division=zero_division,
+                prefix=prefix,
+                suffix=suffix,
+                compute_per_class_metrics=compute_per_class_metrics,
+                num_classes=num_classes,
+            ),
+            input_key=input_key,
+            target_key=target_key,
+            log_on_batch=log_on_batch,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02.1/catalyst/callbacks/metrics/classification.py" startline="193" endline="218" pcid="395">
+    def __init__(
+        self,
+        input_key: str,
+        target_key: str,
+        num_classes: Optional[int] = None,
+        zero_division: int = 0,
+        log_on_batch: bool = True,
+        compute_per_class_metrics: bool = SETTINGS.compute_per_class_metrics,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=MultilabelPrecisionRecallF1SupportMetric(
+                zero_division=zero_division,
+                prefix=prefix,
+                suffix=suffix,
+                compute_per_class_metrics=compute_per_class_metrics,
+                num_classes=num_classes,
+            ),
+            input_key=input_key,
+            target_key=target_key,
+            log_on_batch=log_on_batch,
+        )
+
+
+</source>
+</class>
+
+<class classid="4" nclones="4" nlines="15" similarity="100">
+<source file="systems/catalyst-22.02.1/catalyst/callbacks/metrics/recsys.py" startline="102" endline="119" pcid="402">
+    def __init__(
+        self,
+        input_key: str,
+        target_key: str,
+        topk: Iterable[int] = None,
+        log_on_batch: bool = True,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=HitrateMetric(topk=topk, prefix=prefix, suffix=suffix),
+            input_key=input_key,
+            target_key=target_key,
+            log_on_batch=log_on_batch,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02.1/catalyst/callbacks/metrics/recsys.py" startline="324" endline="341" pcid="404">
+    def __init__(
+        self,
+        input_key: str,
+        target_key: str,
+        topk: Iterable[int] = None,
+        log_on_batch: bool = True,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=MRRMetric(topk=topk, prefix=prefix, suffix=suffix),
+            input_key=input_key,
+            target_key=target_key,
+            log_on_batch=log_on_batch,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02.1/catalyst/callbacks/metrics/recsys.py" startline="435" endline="452" pcid="405">
+    def __init__(
+        self,
+        input_key: str,
+        target_key: str,
+        topk: Iterable[int] = None,
+        log_on_batch: bool = True,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=NDCGMetric(topk=topk, prefix=prefix, suffix=suffix),
+            input_key=input_key,
+            target_key=target_key,
+            log_on_batch=log_on_batch,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02.1/catalyst/callbacks/metrics/recsys.py" startline="213" endline="230" pcid="403">
+    def __init__(
+        self,
+        input_key: str,
+        target_key: str,
+        topk: Iterable[int] = None,
+        log_on_batch: bool = True,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=MAPMetric(topk=topk, prefix=prefix, suffix=suffix),
+            input_key=input_key,
+            target_key=target_key,
+            log_on_batch=log_on_batch,
+        )
+
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="27" similarity="100">
+<source file="systems/catalyst-22.02.1/catalyst/callbacks/metrics/segmentation.py" startline="96" endline="125" pcid="408">
+    def __init__(
+        self,
+        input_key: str,
+        target_key: str,
+        class_dim: int = 1,
+        weights: Optional[List[float]] = None,
+        class_names: Optional[List[str]] = None,
+        threshold: Optional[float] = None,
+        log_on_batch: bool = True,
+        compute_per_class_metrics: bool = SETTINGS.compute_per_class_metrics,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=IOUMetric(
+                class_dim=class_dim,
+                weights=weights,
+                class_names=class_names,
+                threshold=threshold,
+                compute_per_class_metrics=compute_per_class_metrics,
+                prefix=prefix,
+                suffix=suffix,
+            ),
+            input_key=input_key,
+            target_key=target_key,
+            log_on_batch=log_on_batch,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02.1/catalyst/callbacks/metrics/segmentation.py" startline="214" endline="243" pcid="409">
+    def __init__(
+        self,
+        input_key: str,
+        target_key: str,
+        class_dim: int = 1,
+        weights: Optional[List[float]] = None,
+        class_names: Optional[List[str]] = None,
+        threshold: Optional[float] = None,
+        log_on_batch: bool = True,
+        compute_per_class_metrics: bool = SETTINGS.compute_per_class_metrics,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init."""
+        super().__init__(
+            metric=DiceMetric(
+                class_dim=class_dim,
+                weights=weights,
+                class_names=class_names,
+                threshold=threshold,
+                compute_per_class_metrics=compute_per_class_metrics,
+                prefix=prefix,
+                suffix=suffix,
+            ),
+            input_key=input_key,
+            target_key=target_key,
+            log_on_batch=log_on_batch,
+        )
+
+
+</source>
+</class>
+
+<class classid="6" nclones="4" nlines="15" similarity="100">
+<source file="systems/catalyst-22.02.1/catalyst/metrics/_hitrate.py" startline="134" endline="151" pcid="526">
+    def __init__(
+        self,
+        topk: Iterable[int] = None,
+        compute_on_call: bool = True,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init HitrateMetric"""
+        super().__init__(
+            metric_name="hitrate",
+            metric_function=hitrate,
+            topk=topk,
+            compute_on_call=compute_on_call,
+            prefix=prefix,
+            suffix=suffix,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02.1/catalyst/metrics/_ndcg.py" startline="138" endline="155" pcid="541">
+    def __init__(
+        self,
+        topk: Iterable[int] = None,
+        compute_on_call: bool = True,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init NDCGMetric"""
+        super().__init__(
+            metric_name="ndcg",
+            metric_function=ndcg,
+            topk=topk,
+            compute_on_call=compute_on_call,
+            prefix=prefix,
+            suffix=suffix,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02.1/catalyst/metrics/_map.py" startline="146" endline="163" pcid="540">
+    def __init__(
+        self,
+        topk: Iterable[int] = None,
+        compute_on_call: bool = True,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init MAPMetric"""
+        super().__init__(
+            metric_name="map",
+            metric_function=mean_average_precision,
+            topk=topk,
+            compute_on_call=compute_on_call,
+            prefix=prefix,
+            suffix=suffix,
+        )
+
+
+</source>
+<source file="systems/catalyst-22.02.1/catalyst/metrics/_mrr.py" startline="132" endline="149" pcid="527">
+    def __init__(
+        self,
+        topk: Iterable[int] = None,
+        compute_on_call: bool = True,
+        prefix: str = None,
+        suffix: str = None,
+    ):
+        """Init MRRMetric"""
+        super().__init__(
+            metric_name="mrr",
+            metric_function=mrr,
+            topk=topk,
+            compute_on_call=compute_on_call,
+            prefix=prefix,
+            suffix=suffix,
+        )
+
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="20" similarity="100">
+<source file="systems/catalyst-22.02.1/catalyst/metrics/functional/_segmentation.py" startline="174" endline="270" pcid="565">
+def iou(
+    outputs: torch.Tensor,
+    targets: torch.Tensor,
+    class_dim: int = 1,
+    threshold: float = None,
+    mode: str = "per-class",
+    weights: Optional[List[float]] = None,
+    eps: float = 1e-7,
+) -> torch.Tensor:
+    """
+    Computes the iou/jaccard score,
+    iou score = intersection / union = tp / (tp + fp + fn)
+
+    Args:
+        outputs: [N; K; ...] tensor that for each of the N examples
+            indicates the probability of the example belonging to each of
+            the K classes, according to the model.
+        targets:  binary [N; K; ...] tensor that encodes which of the K
+            classes are associated with the N-th input
+        class_dim: indicates class dimention (K) for
+            ``outputs`` and ``targets`` tensors (default = 1), if
+            mode = "micro" means nothing
+        threshold: threshold for outputs binarization
+        mode: class summation strategy. Must be one of ['micro', 'macro',
+            'weighted', 'per-class']. If mode='micro', classes are ignored,
+            and metric are calculated generally. If mode='macro', metric are
+            calculated per-class and than are averaged over all classes. If
+            mode='weighted', metric are calculated per-class and than summed
+            over all classes with weights. If mode='per-class', metric are
+            calculated separately for all classes
+        weights: class weights(for mode="weighted")
+        eps: epsilon to avoid zero division
+
+    Returns:
+        IoU (Jaccard) score for each class(if mode='weighted') or aggregated IOU
+
+    Example:
+
+    .. code-block:: python
+
+        import torch
+        from catalyst import metrics
+
+        size = 4
+        half_size = size // 2
+        shape = (1, 1, size, size)
+        empty = torch.zeros(shape)
+        full = torch.ones(shape)
+        left = torch.ones(shape)
+        left[:, :, :, half_size:] = 0
+        right = torch.ones(shape)
+        right[:, :, :, :half_size] = 0
+        top_left = torch.zeros(shape)
+        top_left[:, :, :half_size, :half_size] = 1
+        pred = torch.cat([empty, left, empty, full, left, top_left], dim=1)
+        targets = torch.cat([full, right, empty, full, left, left], dim=1)
+
+        metrics.iou(
+            outputs=pred,
+            targets=targets,
+            class_dim=1,
+            threshold=0.5,
+            mode="per-class"
+        )
+        # tensor([0.0000, 0.0000, 1.0000, 1.0000, 1.0000, 0.5])
+
+        metrics.iou(
+            outputs=pred,
+            targets=targets,
+            class_dim=1,
+            threshold=0.5,
+            mode="macro"
+        )
+        # tensor(0.5833)
+
+        metrics.iou(
+            outputs=pred,
+            targets=targets,
+            class_dim=1,
+            threshold=0.5,
+            mode="micro"
+        )
+        # tensor(0.4375)
+    """
+    metric_fn = partial(_iou, eps=eps)
+    score = _get_region_based_metrics(
+        outputs=outputs,
+        targets=targets,
+        metric_fn=metric_fn,
+        class_dim=class_dim,
+        threshold=threshold,
+        mode=mode,
+        weights=weights,
+    )
+    return score
+
+
+</source>
+<source file="systems/catalyst-22.02.1/catalyst/metrics/functional/_segmentation.py" startline="271" endline="368" pcid="566">
+def dice(
+    outputs: torch.Tensor,
+    targets: torch.Tensor,
+    class_dim: int = 1,
+    threshold: float = None,
+    mode: str = "per-class",
+    weights: Optional[List[float]] = None,
+    eps: float = 1e-7,
+) -> torch.Tensor:
+    """
+    Computes the dice score,
+    dice score = 2 * intersection / (intersection + union)) = \
+    = 2 * tp / (2 * tp + fp + fn)
+
+    Args:
+        outputs: [N; K; ...] tensor that for each of the N examples
+            indicates the probability of the example belonging to each of
+            the K classes, according to the model.
+        targets:  binary [N; K; ...] tensor that encodes which of the K
+            classes are associated with the N-th input
+        class_dim: indicates class dimention (K) for
+            ``outputs`` and ``targets`` tensors (default = 1), if
+            mode = "micro" means nothing
+        threshold: threshold for outputs binarization
+        mode: class summation strategy. Must be one of ['micro', 'macro',
+            'weighted', 'per-class']. If mode='micro', classes are ignored,
+            and metric are calculated generally. If mode='macro', metric are
+            calculated per-class and than are averaged over all classes. If
+            mode='weighted', metric are calculated per-class and than summed
+            over all classes with weights. If mode='per-class', metric are
+            calculated separately for all classes
+        weights: class weights(for mode="weighted")
+        eps: epsilon to avoid zero division
+
+    Returns:
+        Dice score for each class(if mode='weighted') or aggregated Dice
+
+    Example:
+
+    .. code-block:: python
+
+        import torch
+        from catalyst import metrics
+
+        size = 4
+        half_size = size // 2
+        shape = (1, 1, size, size)
+        empty = torch.zeros(shape)
+        full = torch.ones(shape)
+        left = torch.ones(shape)
+        left[:, :, :, half_size:] = 0
+        right = torch.ones(shape)
+        right[:, :, :, :half_size] = 0
+        top_left = torch.zeros(shape)
+        top_left[:, :, :half_size, :half_size] = 1
+        pred = torch.cat([empty, left, empty, full, left, top_left], dim=1)
+        targets = torch.cat([full, right, empty, full, left, left], dim=1)
+
+        metrics.dice(
+            outputs=pred,
+            targets=targets,
+            class_dim=1,
+            threshold=0.5,
+            mode="per-class"
+        )
+        # tensor([0.0000, 0.0000, 1.0000, 1.0000, 1.0000, 0.6667])
+
+        metrics.dice(
+            outputs=pred,
+            targets=targets,
+            class_dim=1,
+            threshold=0.5,
+            mode="macro"
+        )
+        # tensor(0.6111)
+
+        metrics.dice(
+            outputs=pred,
+            targets=targets,
+            class_dim=1,
+            threshold=0.5,
+            mode="micro"
+        )
+        # tensor(0.6087)
+    """
+    metric_fn = partial(_dice, eps=eps)
+    score = _get_region_based_metrics(
+        outputs=outputs,
+        targets=targets,
+        metric_fn=metric_fn,
+        class_dim=class_dim,
+        threshold=threshold,
+        mode=mode,
+        weights=weights,
+    )
+    return score
+
+
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="33" similarity="100">
+<source file="systems/catalyst-22.02.1/tests/catalyst/metrics/functional/test_iou.py" startline="7" endline="56" pcid="704">
+def test_iou():
+    """
+    Tests for catalyst.metrics.iou metric.
+    """
+    size = 4
+    half_size = size // 2
+    shape = (1, 1, size, size)
+
+    # check 0: one empty
+    empty = torch.zeros(shape)
+    full = torch.ones(shape)
+    assert iou(empty, full, class_dim=1, mode="per-class").item() == 0
+
+    # check 0: no overlap
+    left = torch.ones(shape)
+    left[:, :, :, half_size:] = 0
+    right = torch.ones(shape)
+    right[:, :, :, :half_size] = 0
+    assert iou(left, right, class_dim=1, mode="per-class").item() == 0
+
+    # check 1: both empty, both full, complete overlap
+    assert iou(empty, empty, class_dim=1, mode="per-class").item() == 1
+    assert iou(full, full, class_dim=1, mode="per-class").item() == 1
+    assert iou(left, left, class_dim=1, mode="per-class").item() == 1
+
+    # check 0.5: half overlap
+    top_left = torch.zeros(shape)
+    top_left[:, :, :half_size, :half_size] = 1
+    assert torch.isclose(
+        iou(top_left, left, class_dim=1, mode="per-class"), torch.Tensor([[0.5]])
+    )
+    assert torch.isclose(
+        iou(top_left, left, class_dim=1, mode="micro"), torch.Tensor([[0.5]])
+    )
+    assert torch.isclose(
+        iou(top_left, left, class_dim=1, mode="macro"), torch.Tensor([[0.5]])
+    )
+
+    # check multiclass: 0, 0, 1, 1, 1, 0.5
+    a = torch.cat([empty, left, empty, full, left, top_left], dim=1)
+    b = torch.cat([full, right, empty, full, left, left], dim=1)
+    ans = torch.Tensor([0, 0, 1, 1, 1, 0.5])
+    ans_micro = torch.tensor(0.4375)
+    assert torch.allclose(iou(a, b, class_dim=1, mode="per-class"), ans)
+    assert torch.allclose(iou(a, b, class_dim=1, mode="micro"), ans_micro)
+
+    aaa = torch.cat([a, a, a], dim=0)
+    bbb = torch.cat([b, b, b], dim=0)
+    assert torch.allclose(iou(aaa, bbb, class_dim=1, mode="per-class"), ans)
+    assert torch.allclose(iou(aaa, bbb, class_dim=1, mode="micro"), ans_micro)
+</source>
+<source file="systems/catalyst-22.02.1/tests/catalyst/metrics/functional/test_dice.py" startline="7" endline="56" pcid="717">
+def test_dice():
+    """
+    Tests for catalyst.metrics.dice metric.
+    """
+    size = 4
+    half_size = size // 2
+    shape = (1, 1, size, size)
+
+    # check 0: one empty
+    empty = torch.zeros(shape)
+    full = torch.ones(shape)
+    assert dice(empty, full, class_dim=1, mode="per-class").item() == 0
+
+    # check 0: no overlap
+    left = torch.ones(shape)
+    left[:, :, :, half_size:] = 0
+    right = torch.ones(shape)
+    right[:, :, :, :half_size] = 0
+    assert dice(left, right, class_dim=1, mode="per-class").item() == 0
+
+    # check 1: both empty, both full, complete overlap
+    assert dice(empty, empty, class_dim=1, mode="per-class").item() == 1
+    assert dice(full, full, class_dim=1, mode="per-class").item() == 1
+    assert dice(left, left, class_dim=1, mode="per-class").item() == 1
+
+    # check 0.5: half overlap
+    top_left = torch.zeros(shape)
+    top_left[:, :, :half_size, :half_size] = 1
+    assert torch.isclose(
+        dice(top_left, left, class_dim=1, mode="per-class"), torch.Tensor([[0.6666666]])
+    )
+    assert torch.isclose(
+        dice(top_left, left, class_dim=1, mode="micro"), torch.Tensor([[0.6666666]])
+    )
+    assert torch.isclose(
+        dice(top_left, left, class_dim=1, mode="macro"), torch.Tensor([[0.6666666]])
+    )
+
+    # check multiclass: 0, 0, 1, 1, 1, 0.66667
+    a = torch.cat([empty, left, empty, full, left, top_left], dim=1)
+    b = torch.cat([full, right, empty, full, left, left], dim=1)
+    ans = torch.Tensor([0, 0, 1, 1, 1, 0.6666666])
+    ans_micro = torch.tensor(0.6087)
+    assert torch.allclose(dice(a, b, class_dim=1, mode="per-class"), ans)
+    assert torch.allclose(dice(a, b, class_dim=1, mode="micro"), ans_micro)
+
+    aaa = torch.cat([a, a, a], dim=0)
+    bbb = torch.cat([b, b, b], dim=0)
+    assert torch.allclose(dice(aaa, bbb, class_dim=1, mode="per-class"), ans)
+    assert torch.allclose(dice(aaa, bbb, class_dim=1, mode="micro"), ans_micro)
+</source>
+</class>
+
+<class classid="9" nclones="3" nlines="13" similarity="100">
+<source file="systems/catalyst-22.02.1/tests/catalyst/metrics/functional/test_classification.py" startline="99" endline="125" pcid="708">
+def test_micro(
+    tp: np.array,
+    fp: np.array,
+    fn: np.array,
+    support: np.array,
+    zero_division: int,
+    true_answer: Tuple[float],
+):
+    """
+    Test micro metrics averaging
+
+    Args:
+        tp: true positive statistic
+        fp: false positive statistic
+        fn: false negative statistic
+        support: support statistic
+        zero_division: 0 or 1
+        true_answer: true metric value
+    """
+    _, micro, _, _ = get_aggregated_metrics(
+        tp=tp, fp=fp, fn=fn, support=support, zero_division=zero_division
+    )
+    assert micro[-1] is None
+    for pred, real in zip(micro[:-1], true_answer):
+        assert abs(pred - real) < EPS
+
+
+</source>
+<source file="systems/catalyst-22.02.1/tests/catalyst/metrics/functional/test_classification.py" startline="155" endline="181" pcid="709">
+def test_macro_average(
+    tp: np.array,
+    fp: np.array,
+    fn: np.array,
+    support: np.array,
+    zero_division: int,
+    true_answer: Tuple[float],
+):
+    """
+    Test macro metrics averaging
+
+    Args:
+        tp: true positive statistic
+        fp: false positive statistic
+        fn: false negative statistic
+        support: support statistic
+        zero_division: 0 or 1
+        true_answer: true metric value
+    """
+    _, _, macro, _ = get_aggregated_metrics(
+        tp=tp, fp=fp, fn=fn, support=support, zero_division=zero_division
+    )
+    assert macro[-1] is None
+    for pred, real in zip(macro[:-1], true_answer):
+        assert abs(pred - real) < EPS
+
+
+</source>
+<source file="systems/catalyst-22.02.1/tests/catalyst/metrics/functional/test_classification.py" startline="211" endline="235" pcid="710">
+def test_weighted(
+    tp: np.array,
+    fp: np.array,
+    fn: np.array,
+    support: np.array,
+    zero_division: int,
+    true_answer: Tuple[float],
+):
+    """
+    Test weighted metrics averaging
+
+    Args:
+        tp: true positive statistic
+        fp: false positive statistic
+        fn: false negative statistic
+        support: support statistic
+        zero_division: 0 or 1
+        true_answer: true metric value
+    """
+    _, _, _, weighted = get_aggregated_metrics(
+        tp=tp, fp=fp, fn=fn, support=support, zero_division=zero_division
+    )
+    assert weighted[-1] is None
+    for pred, real in zip(weighted[:-1], true_answer):
+        assert abs(pred - real) < EPS
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="12" similarity="100">
+<source file="systems/catalyst-22.02.1/examples/catalyst_rl/db.py" startline="124" endline="136" pcid="770">
+        def add_message(self, message: IRLDatabaseMessage):
+            if message == IRLDatabaseMessage.ENABLE_SAMPLING:
+                self._set_flag("sampling_flag", 1)
+            elif message == IRLDatabaseMessage.DISABLE_SAMPLING:
+                self._set_flag("sampling_flag", 0)
+            elif message == IRLDatabaseMessage.DISABLE_TRAINING:
+                self._set_flag("sampling_flag", 0)
+                self._set_flag("training_flag", 0)
+            elif message == IRLDatabaseMessage.ENABLE_TRAINING:
+                self._set_flag("training_flag", 1)
+            else:
+                raise NotImplementedError("unknown message", message)
+
+</source>
+<source file="systems/catalyst-22.02.1/examples/catalyst_rl/db.py" startline="253" endline="265" pcid="784">
+        def add_message(self, message: IRLDatabaseMessage):
+            if message == IRLDatabaseMessage.ENABLE_SAMPLING:
+                self._set_flag("sampling_flag", 1)
+            elif message == IRLDatabaseMessage.DISABLE_SAMPLING:
+                self._set_flag("sampling_flag", 0)
+            elif message == IRLDatabaseMessage.DISABLE_TRAINING:
+                self._set_flag("sampling_flag", 0)
+                self._set_flag("training_flag", 0)
+            elif message == IRLDatabaseMessage.ENABLE_TRAINING:
+                self._set_flag("training_flag", 1)
+            else:
+                raise NotImplementedError("unknown message", message)
+
+</source>
+</class>
+
+</clones>

@@ -1,0 +1,828 @@
+<clones>
+<systeminfo processor="nicad6" system="DIG-0.1.2" granularity="functions" threshold="0%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="609" npairs="15"/>
+<runinfo ncompares="1490" cputime="44005"/>
+<classinfo nclasses="15"/>
+
+<class classid="1" nclones="2" nlines="23" similarity="100">
+<source file="systems/DIG-0.1.2/dig/ggraph/method/GraphDF/model/rgcn.py" startline="11" endline="35" pcid="269">
+    def __init__(self, in_features, out_features, edge_dim=3, aggregate='sum', dropout=0., use_relu=True, bias=False):
+        '''
+        :param in/out_features: scalar of channels for node embedding
+        :param edge_dim: dim of edge type, virtual type not included
+        '''
+        super(RelationGraphConvolution, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.edge_dim = edge_dim
+        self.dropout = dropout
+        self.aggregate = aggregate
+        if use_relu:
+            self.act = nn.ReLU()
+        else:
+            self.act = None
+
+        self.weight = nn.Parameter(torch.FloatTensor(
+            self.edge_dim, self.in_features, self.out_features))
+        if bias:
+            self.bias = nn.Parameter(torch.FloatTensor(
+                self.edge_dim, 1, self.out_features))
+        else:
+            self.register_parameter('bias', None)
+        self.reset_parameters()
+
+</source>
+<source file="systems/DIG-0.1.2/dig/ggraph/method/GraphAF/model/rgcn.py" startline="12" endline="36" pcid="330">
+    def __init__(self, in_features, out_features, edge_dim=3, aggregate='sum', dropout=0., use_relu=True, bias=False):
+        '''
+        :param in/out_features: scalar of channels for node embedding
+        :param edge_dim: dim of edge type, virtual type not included
+        '''
+        super(RelationGraphConvolution, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.edge_dim = edge_dim
+        self.dropout = dropout
+        self.aggregate = aggregate
+        if use_relu:
+            self.act = nn.ReLU()
+        else:
+            self.act = None
+
+        self.weight = nn.Parameter(torch.FloatTensor(
+            self.edge_dim, self.in_features, self.out_features))
+        if bias:
+            self.bias = nn.Parameter(torch.FloatTensor(
+                self.edge_dim, 1, self.out_features))
+        else:
+            self.register_parameter('bias', None)
+        self.reset_parameters()
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="33" similarity="100">
+<source file="systems/DIG-0.1.2/dig/ggraph/method/GraphDF/model/rgcn.py" startline="41" endline="83" pcid="271">
+    def forward(self, x, adj):
+        '''
+        :param x: (batch, N, d)
+        :param adj: (batch, E, N, N)
+        typically d=9 e=3
+        :return:
+        updated x with shape (batch, N, d)
+        '''
+        x = F.dropout(x, p=self.dropout, training=self.training)  # (b, N, d)
+
+        batch_size = x.size(0)
+
+        # transform
+        support = torch.einsum('bid, edh-> beih', x, self.weight)
+        output = torch.einsum('beij, bejh-> beih', adj,
+                              support)  # (batch, e, N, d)
+
+        if self.bias is not None:
+            output += self.bias
+        if self.act is not None:
+            output = self.act(output)  # (b, E, N, d)
+        output = output.view(batch_size, self.edge_dim, x.size(
+            1), self.out_features)  # (b, E, N, d)
+
+        if self.aggregate == 'sum':
+            # sum pooling #(b, N, d)
+            node_embedding = torch.sum(output, dim=1, keepdim=False)
+        elif self.aggregate == 'max':
+            # max pooling  #(b, N, d)
+            node_embedding = torch.max(output, dim=1, keepdim=False)
+        elif self.aggregate == 'mean':
+            # mean pooling #(b, N, d)
+            node_embedding = torch.mean(output, dim=1, keepdim=False)
+        elif self.aggregate == 'concat':
+            #! implementation wrong
+            node_embedding = torch.cat(torch.split(
+                output, dim=1, split_size_or_sections=1), dim=3)  # (b, 1, n, d*e)
+            node_embedding = torch.squeeze(
+                node_embedding, dim=1)  # (b, n, d*e)
+        else:
+            print('GCN aggregate error!')
+        return node_embedding
+
+</source>
+<source file="systems/DIG-0.1.2/dig/ggraph/method/GraphAF/model/rgcn.py" startline="42" endline="84" pcid="332">
+    def forward(self, x, adj):
+        '''
+        :param x: (batch, N, d)
+        :param adj: (batch, E, N, N)
+        typically d=9 e=3
+        :return:
+        updated x with shape (batch, N, d)
+        '''
+        x = F.dropout(x, p=self.dropout, training=self.training)  # (b, N, d)
+
+        batch_size = x.size(0)
+
+        # transform
+        support = torch.einsum('bid, edh-> beih', x, self.weight)
+        output = torch.einsum('beij, bejh-> beih', adj,
+                              support)  # (batch, e, N, d)
+
+        if self.bias is not None:
+            output += self.bias
+        if self.act is not None:
+            output = self.act(output)  # (b, E, N, d)
+        output = output.view(batch_size, self.edge_dim, x.size(
+            1), self.out_features)  # (b, E, N, d)
+
+        if self.aggregate == 'sum':
+            # sum pooling #(b, N, d)
+            node_embedding = torch.sum(output, dim=1, keepdim=False)
+        elif self.aggregate == 'max':
+            # max pooling  #(b, N, d)
+            node_embedding = torch.max(output, dim=1, keepdim=False)
+        elif self.aggregate == 'mean':
+            # mean pooling #(b, N, d)
+            node_embedding = torch.mean(output, dim=1, keepdim=False)
+        elif self.aggregate == 'concat':
+            #! implementation wrong
+            node_embedding = torch.cat(torch.split(
+                output, dim=1, split_size_or_sections=1), dim=3)  # (b, 1, n, d*e)
+            node_embedding = torch.squeeze(
+                node_embedding, dim=1)  # (b, n, d*e)
+        else:
+            print('GCN aggregate error!')
+        return node_embedding
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="19" similarity="100">
+<source file="systems/DIG-0.1.2/dig/ggraph/method/GraphDF/model/rgcn.py" startline="90" endline="116" pcid="273">
+    def __init__(self, nfeat, nhid=128, nout=128, edge_dim=3, num_layers=3, dropout=0., normalization=False):
+        '''
+        :num_layars: the number of layers in each R-GCN
+        '''
+        super(RGCN, self).__init__()
+
+        self.nfeat = nfeat
+        self.nhid = nhid
+        self.nout = nout
+        self.edge_dim = edge_dim
+        self.num_layers = num_layers
+
+        self.dropout = dropout
+        self.normalization = normalization
+
+        self.emb = nn.Linear(nfeat, nfeat, bias=False) 
+
+        self.gc1 = RelationGraphConvolution(
+            nfeat, nhid, edge_dim=self.edge_dim, aggregate='sum', use_relu=True, dropout=self.dropout, bias=False)
+
+        self.gc2 = nn.ModuleList([RelationGraphConvolution(nhid, nhid, edge_dim=self.edge_dim, aggregate='sum',
+                                                           use_relu=True, dropout=self.dropout, bias=False)
+                                  for i in range(self.num_layers-2)])
+
+        self.gc3 = RelationGraphConvolution(
+            nhid, nout, edge_dim=self.edge_dim, aggregate='sum', use_relu=False, dropout=self.dropout, bias=False)
+
+</source>
+<source file="systems/DIG-0.1.2/dig/ggraph/method/GraphAF/model/rgcn.py" startline="91" endline="117" pcid="334">
+    def __init__(self, nfeat, nhid=128, nout=128, edge_dim=3, num_layers=3, dropout=0., normalization=False):
+        '''
+        :num_layars: the number of layers in each R-GCN
+        '''
+        super(RGCN, self).__init__()
+
+        self.nfeat = nfeat
+        self.nhid = nhid
+        self.nout = nout
+        self.edge_dim = edge_dim
+        self.num_layers = num_layers
+
+        self.dropout = dropout
+        self.normalization = normalization
+
+        self.emb = nn.Linear(nfeat, nfeat, bias=False) 
+
+        self.gc1 = RelationGraphConvolution(
+            nfeat, nhid, edge_dim=self.edge_dim, aggregate='sum', use_relu=True, dropout=self.dropout, bias=False)
+
+        self.gc2 = nn.ModuleList([RelationGraphConvolution(nhid, nhid, edge_dim=self.edge_dim, aggregate='sum',
+                                                           use_relu=True, dropout=self.dropout, bias=False)
+                                  for i in range(self.num_layers-2)])
+
+        self.gc3 = RelationGraphConvolution(
+            nhid, nout, edge_dim=self.edge_dim, aggregate='sum', use_relu=False, dropout=self.dropout, bias=False)
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="12" similarity="100">
+<source file="systems/DIG-0.1.2/dig/ggraph/method/GraphDF/model/rgcn.py" startline="117" endline="137" pcid="274">
+    def forward(self, x, adj):
+        '''
+        :param x: (batch, N, d)
+        :param adj: (batch, E, N, N)
+        :return:
+        '''
+        # embedding layer
+        x = self.emb(x)
+
+        # first GCN layer
+        x = self.gc1(x, adj)
+
+        # hidden GCN layer(s)
+        for i in range(self.num_layers-2):
+            x = self.gc2[i](x, adj)  # (#node, #class)
+
+        # last GCN layer
+        x = self.gc3(x, adj)  # (batch, N, d)
+
+        # return node embedding
+        return x
+</source>
+<source file="systems/DIG-0.1.2/dig/ggraph/method/GraphAF/model/rgcn.py" startline="118" endline="138" pcid="335">
+    def forward(self, x, adj):
+        '''
+        :param x: (batch, N, d)
+        :param adj: (batch, E, N, N)
+        :return:
+        '''
+        # embedding layer
+        x = self.emb(x)
+
+        # first GCN layer
+        x = self.gc1(x, adj)
+
+        # hidden GCN layer(s)
+        for i in range(self.num_layers-2):
+            x = self.gc2[i](x, adj)  # (#node, #class)
+
+        # last GCN layer
+        x = self.gc3(x, adj)  # (batch, N, d)
+
+        # return node embedding
+        return x
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="13" similarity="100">
+<source file="systems/DIG-0.1.2/dig/ggraph/method/GraphDF/model/disgraphaf.py" startline="149" endline="176" pcid="281">
+    def _get_embs_edge(self, x, adj, index):
+        """
+        Args:
+            x: current node feature matrix with shape (batch, N, 9)
+            adj: current adjacency feature matrix with shape (batch, 4, N, N)
+            index: link prediction index with shape (batch, 2)
+        Returns:
+            Embedding(concatenate graph embedding, edge start node embedding and edge end node embedding) 
+                for updating edge features with shape (batch, 3d)
+        """
+        batch_size = x.size(0)
+        assert batch_size == index.size(0)
+
+        adj = adj[:, :3] # (batch, 3, N, N)
+
+        node_emb = self.rgcn(x, adj) # (batch, N, d)
+        if hasattr(self, 'batchNorm'):
+            node_emb = self.batchNorm(node_emb.transpose(1, 2)).transpose(1, 2) # (batch, N, d)
+
+        graph_emb = torch.sum(node_emb, dim = 1, keepdim=False).contiguous().view(batch_size, 1, -1) # (batch, 1, d)
+
+        index = index.view(batch_size, -1, 1).repeat(1, 1, self.emb_size) # (batch, 2, d)
+        graph_node_emb = torch.cat((torch.gather(node_emb, dim=1, index=index), 
+                                        graph_emb),dim=1)  # (batch_size, 3, d)
+        graph_node_emb = graph_node_emb.view(batch_size, -1) # (batch_size, 3d)
+        return graph_node_emb
+
+
+</source>
+<source file="systems/DIG-0.1.2/dig/ggraph/method/GraphAF/model/graphaf.py" startline="244" endline="271" pcid="342">
+    def _get_embs_edge(self, x, adj, index):
+        """
+        Args:
+            x: current node feature matrix with shape (batch, N, 9)
+            adj: current adjacency feature matrix with shape (batch, 4, N, N)
+            index: link prediction index with shape (batch, 2)
+        Returns:
+            Embedding(concatenate graph embedding, edge start node embedding and edge end node embedding) 
+                for updating edge features with shape (batch, 3d)
+        """
+        batch_size = x.size(0)
+        assert batch_size == index.size(0)
+
+        adj = adj[:, :3] # (batch, 3, N, N)
+
+        node_emb = self.rgcn(x, adj) # (batch, N, d)
+        if hasattr(self, 'batchNorm'):
+            node_emb = self.batchNorm(node_emb.transpose(1, 2)).transpose(1, 2) # (batch, N, d)
+
+        graph_emb = torch.sum(node_emb, dim = 1, keepdim=False).contiguous().view(batch_size, 1, -1) # (batch, 1, d)
+
+        index = index.view(batch_size, -1, 1).repeat(1, 1, self.emb_size) # (batch, 2, d)
+        graph_node_emb = torch.cat((torch.gather(node_emb, dim=1, index=index), 
+                                        graph_emb),dim=1)  # (batch_size, 3, d)
+        graph_node_emb = graph_node_emb.view(batch_size, -1) # (batch_size, 3d)
+        return graph_node_emb
+
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="23" similarity="100">
+<source file="systems/DIG-0.1.2/dig/ggraph/method/GraphDF/model/st_net.py" startline="7" endline="34" pcid="290">
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Sigmoid, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale())
+            self.rescale2 = nn.utils.weight_norm(Rescale())
+
+        else:
+            self.rescale1 = Rescale()
+            self.rescale2 = Rescale()
+
+        self.tanh = nn.Tanh()
+        self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</source>
+<source file="systems/DIG-0.1.2/dig/ggraph/method/GraphAF/model/st_net.py" startline="6" endline="33" pcid="353">
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Sigmoid, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale())
+            self.rescale2 = nn.utils.weight_norm(Rescale())
+
+        else:
+            self.rescale1 = Rescale()
+            self.rescale2 = Rescale()
+
+        self.tanh = nn.Tanh()
+        self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="14" similarity="100">
+<source file="systems/DIG-0.1.2/dig/ggraph/method/GraphDF/model/st_net.py" startline="42" endline="58" pcid="292">
+    def forward(self, x):
+        '''
+        :param x: (batch * repeat_num for node/edge, emb)
+        :return: w and b for affine operation
+        '''
+        if self.apply_batch_norm:
+            x = self.bn_before(x)
+
+        x = self.linear2(self.tanh(self.linear1(x)))
+        x = self.rescale1(x)
+        s = x[:, :self.output_dim]
+        t = x[:, self.output_dim:]
+        s = self.sigmoid(s + self.sigmoid_shift)
+        s = self.rescale2(s) # linear scale seems important, similar to learnable prior..
+        return s, t
+
+
+</source>
+<source file="systems/DIG-0.1.2/dig/ggraph/method/GraphAF/model/st_net.py" startline="41" endline="57" pcid="355">
+    def forward(self, x):
+        '''
+        :param x: (batch * repeat_num for node/edge, emb)
+        :return: w and b for affine operation
+        '''
+        if self.apply_batch_norm:
+            x = self.bn_before(x)
+
+        x = self.linear2(self.tanh(self.linear1(x)))
+        x = self.rescale1(x)
+        s = x[:, :self.output_dim]
+        t = x[:, self.output_dim:]
+        s = self.sigmoid(s + self.sigmoid_shift)
+        s = self.rescale2(s) # linear scale seems important, similar to learnable prior..
+        return s, t
+
+
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="20" similarity="100">
+<source file="systems/DIG-0.1.2/dig/ggraph/method/GraphDF/model/st_net.py" startline="60" endline="87" pcid="293">
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Exp, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale())
+            #self.rescale2 = nn.utils.weight_norm(Rescale())
+
+        else:
+            self.rescale1 = Rescale()
+            #self.rescale2 = Rescale()
+
+        self.tanh = nn.Tanh()
+        #self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</source>
+<source file="systems/DIG-0.1.2/dig/ggraph/method/GraphAF/model/st_net.py" startline="59" endline="86" pcid="356">
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Exp, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale())
+            #self.rescale2 = nn.utils.weight_norm(Rescale())
+
+        else:
+            self.rescale1 = Rescale()
+            #self.rescale2 = Rescale()
+
+        self.tanh = nn.Tanh()
+        #self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="12" similarity="100">
+<source file="systems/DIG-0.1.2/dig/ggraph/method/GraphDF/model/st_net.py" startline="95" endline="112" pcid="295">
+    def forward(self, x):
+        '''
+        :param x: (batch * repeat_num for node/edge, emb)
+        :return: w and b for affine operation
+        '''
+        if self.apply_batch_norm:
+            x = self.bn_before(x)
+
+        x = self.linear2(self.tanh(self.linear1(x)))
+        #x = self.rescale1(x)
+        s = x[:, :self.output_dim]
+        t = x[:, self.output_dim:]
+        s = self.rescale1(torch.tanh(s))
+        #s = self.sigmoid(s + self.sigmoid_shift)
+        #s = self.rescale2(s) # linear scale seems important, similar to learnable prior..
+        return s, t
+
+
+</source>
+<source file="systems/DIG-0.1.2/dig/ggraph/method/GraphAF/model/st_net.py" startline="94" endline="111" pcid="358">
+    def forward(self, x):
+        '''
+        :param x: (batch * repeat_num for node/edge, emb)
+        :return: w and b for affine operation
+        '''
+        if self.apply_batch_norm:
+            x = self.bn_before(x)
+
+        x = self.linear2(self.tanh(self.linear1(x)))
+        #x = self.rescale1(x)
+        s = x[:, :self.output_dim]
+        t = x[:, self.output_dim:]
+        s = self.rescale1(torch.tanh(s))
+        #s = self.sigmoid(s + self.sigmoid_shift)
+        #s = self.rescale2(s) # linear scale seems important, similar to learnable prior..
+        return s, t
+
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="22" similarity="100">
+<source file="systems/DIG-0.1.2/dig/ggraph/method/GraphDF/model/st_net.py" startline="114" endline="141" pcid="296">
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Softplus, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, hid_dim, bias=bias)
+        self.linear3 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale_channel(self.output_dim))
+
+        else:
+            self.rescale1 = Rescale_channel(self.output_dim)
+
+        self.tanh = nn.Tanh()
+        self.softplus = nn.Softplus()
+        #self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</source>
+<source file="systems/DIG-0.1.2/dig/ggraph/method/GraphAF/model/st_net.py" startline="113" endline="140" pcid="359">
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Softplus, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, hid_dim, bias=bias)
+        self.linear3 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale_channel(self.output_dim))
+
+        else:
+            self.rescale1 = Rescale_channel(self.output_dim)
+
+        self.tanh = nn.Tanh()
+        self.softplus = nn.Softplus()
+        #self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</source>
+</class>
+
+<class classid="11" nclones="2" nlines="14" similarity="100">
+<source file="systems/DIG-0.1.2/dig/ggraph/method/GraphDF/model/st_net.py" startline="151" endline="168" pcid="298">
+    def forward(self, x):
+        '''
+        :param x: (batch * repeat_num for node/edge, emb)
+        :return: w and b for affine operation
+        '''
+        if self.apply_batch_norm:
+            x = self.bn_before(x)
+
+        x = F.tanh(self.linear2(F.relu(self.linear1(x))))
+        x = self.linear3(x)
+        #x = self.rescale1(x)
+        s = x[:, :self.output_dim]
+        t = x[:, self.output_dim:]
+        s = self.softplus(s)
+        s = self.rescale1(s) # linear scale seems important, similar to learnable prior..
+        return s, t
+
+
+</source>
+<source file="systems/DIG-0.1.2/dig/ggraph/method/GraphAF/model/st_net.py" startline="150" endline="167" pcid="361">
+    def forward(self, x):
+        '''
+        :param x: (batch * repeat_num for node/edge, emb)
+        :return: w and b for affine operation
+        '''
+        if self.apply_batch_norm:
+            x = self.bn_before(x)
+
+        x = F.tanh(self.linear2(F.relu(self.linear1(x))))
+        x = self.linear3(x)
+        #x = self.rescale1(x)
+        s = x[:, :self.output_dim]
+        t = x[:, self.output_dim:]
+        s = self.softplus(s)
+        s = self.rescale1(s) # linear scale seems important, similar to learnable prior..
+        return s, t
+
+
+</source>
+</class>
+
+<class classid="12" nclones="2" nlines="12" similarity="100">
+<source file="systems/DIG-0.1.2/dig/threedgraph/method/spherenet/features.py" startline="21" endline="35" pcid="486">
+def Jn_zeros(n, k):
+    zerosj = np.zeros((n, k), dtype='float32')
+    zerosj[0] = np.arange(1, k + 1) * np.pi
+    points = np.arange(1, k + n) * np.pi
+    racines = np.zeros(k + n - 1, dtype='float32')
+    for i in range(1, n):
+        for j in range(k + n - 1 - i):
+            foo = brentq(Jn, points[j], points[j + 1], (i, ))
+            racines[j] = foo
+        points = racines
+        zerosj[i][:k] = racines[:k]
+
+    return zerosj
+
+
+</source>
+<source file="systems/DIG-0.1.2/dig/threedgraph/method/dimenetpp/features.py" startline="20" endline="34" pcid="542">
+def Jn_zeros(n, k):
+    zerosj = np.zeros((n, k), dtype='float32')
+    zerosj[0] = np.arange(1, k + 1) * np.pi
+    points = np.arange(1, k + n) * np.pi
+    racines = np.zeros(k + n - 1, dtype='float32')
+    for i in range(1, n):
+        for j in range(k + n - 1 - i):
+            foo = brentq(Jn, points[j], points[j + 1], (i, ))
+            racines[j] = foo
+        points = racines
+        zerosj[i][:k] = racines[:k]
+
+    return zerosj
+
+
+</source>
+</class>
+
+<class classid="13" nclones="2" nlines="20" similarity="100">
+<source file="systems/DIG-0.1.2/dig/threedgraph/method/spherenet/features.py" startline="48" endline="71" pcid="488">
+def bessel_basis(n, k):
+    zeros = Jn_zeros(n, k)
+    normalizer = []
+    for order in range(n):
+        normalizer_tmp = []
+        for i in range(k):
+            normalizer_tmp += [0.5 * Jn(zeros[order, i], order + 1)**2]
+        normalizer_tmp = 1 / np.array(normalizer_tmp)**0.5
+        normalizer += [normalizer_tmp]
+
+    f = spherical_bessel_formulas(n)
+    x = sym.symbols('x')
+    bess_basis = []
+    for order in range(n):
+        bess_basis_tmp = []
+        for i in range(k):
+            bess_basis_tmp += [
+                sym.simplify(normalizer[order][i] *
+                             f[order].subs(x, zeros[order, i] * x))
+            ]
+        bess_basis += [bess_basis_tmp]
+    return bess_basis
+
+
+</source>
+<source file="systems/DIG-0.1.2/dig/threedgraph/method/dimenetpp/features.py" startline="47" endline="70" pcid="544">
+def bessel_basis(n, k):
+    zeros = Jn_zeros(n, k)
+    normalizer = []
+    for order in range(n):
+        normalizer_tmp = []
+        for i in range(k):
+            normalizer_tmp += [0.5 * Jn(zeros[order, i], order + 1)**2]
+        normalizer_tmp = 1 / np.array(normalizer_tmp)**0.5
+        normalizer += [normalizer_tmp]
+
+    f = spherical_bessel_formulas(n)
+    x = sym.symbols('x')
+    bess_basis = []
+    for order in range(n):
+        bess_basis_tmp = []
+        for i in range(k):
+            bess_basis_tmp += [
+                sym.simplify(normalizer[order][i] *
+                             f[order].subs(x, zeros[order, i] * x))
+            ]
+        bess_basis += [bess_basis_tmp]
+    return bess_basis
+
+
+</source>
+</class>
+
+<class classid="14" nclones="2" nlines="20" similarity="100">
+<source file="systems/DIG-0.1.2/dig/threedgraph/method/spherenet/features.py" startline="77" endline="101" pcid="490">
+def associated_legendre_polynomials(k, zero_m_only=True):
+    z = sym.symbols('z')
+    P_l_m = [[0] * (j + 1) for j in range(k)]
+
+    P_l_m[0][0] = 1
+    if k > 0:
+        P_l_m[1][0] = z
+
+        for j in range(2, k):
+            P_l_m[j][0] = sym.simplify(((2 * j - 1) * z * P_l_m[j - 1][0] -
+                                        (j - 1) * P_l_m[j - 2][0]) / j)
+        if not zero_m_only:
+            for i in range(1, k):
+                P_l_m[i][i] = sym.simplify((1 - 2 * i) * P_l_m[i - 1][i - 1])
+                if i + 1 < k:
+                    P_l_m[i + 1][i] = sym.simplify(
+                        (2 * i + 1) * z * P_l_m[i][i])
+                for j in range(i + 2, k):
+                    P_l_m[j][i] = sym.simplify(
+                        ((2 * j - 1) * z * P_l_m[j - 1][i] -
+                         (i + j - 1) * P_l_m[j - 2][i]) / (j - i))
+
+    return P_l_m
+
+
+</source>
+<source file="systems/DIG-0.1.2/dig/threedgraph/method/dimenetpp/features.py" startline="76" endline="100" pcid="546">
+def associated_legendre_polynomials(k, zero_m_only=True):
+    z = sym.symbols('z')
+    P_l_m = [[0] * (j + 1) for j in range(k)]
+
+    P_l_m[0][0] = 1
+    if k > 0:
+        P_l_m[1][0] = z
+
+        for j in range(2, k):
+            P_l_m[j][0] = sym.simplify(((2 * j - 1) * z * P_l_m[j - 1][0] -
+                                        (j - 1) * P_l_m[j - 2][0]) / j)
+        if not zero_m_only:
+            for i in range(1, k):
+                P_l_m[i][i] = sym.simplify((1 - 2 * i) * P_l_m[i - 1][i - 1])
+                if i + 1 < k:
+                    P_l_m[i + 1][i] = sym.simplify(
+                        (2 * i + 1) * z * P_l_m[i][i])
+                for j in range(i + 2, k):
+                    P_l_m[j][i] = sym.simplify(
+                        ((2 * j - 1) * z * P_l_m[j - 1][i] -
+                         (i + j - 1) * P_l_m[j - 2][i]) / (j - i))
+
+    return P_l_m
+
+
+</source>
+</class>
+
+<class classid="15" nclones="2" nlines="10" similarity="100">
+<source file="systems/DIG-0.1.2/dig/threedgraph/method/spherenet/spherenet.py" startline="183" endline="195" pcid="513">
+    def __init__(self, hidden_channels, out_emb_channels, out_channels, num_output_layers, act, output_init):
+        super(update_v, self).__init__()
+        self.act = act
+        self.output_init = output_init
+
+        self.lin_up = nn.Linear(hidden_channels, out_emb_channels, bias=True)
+        self.lins = torch.nn.ModuleList()
+        for _ in range(num_output_layers):
+            self.lins.append(nn.Linear(out_emb_channels, out_emb_channels))
+        self.lin = nn.Linear(out_emb_channels, out_channels, bias=False)
+
+        self.reset_parameters()
+
+</source>
+<source file="systems/DIG-0.1.2/dig/threedgraph/method/dimenetpp/dimenetpp.py" startline="163" endline="175" pcid="533">
+    def __init__(self, hidden_channels, out_emb_channels, out_channels, num_output_layers, act, output_init):
+        super(update_v, self).__init__()
+        self.act = act
+        self.output_init = output_init
+
+        self.lin_up = nn.Linear(hidden_channels, out_emb_channels, bias=True)
+        self.lins = torch.nn.ModuleList()
+        for _ in range(num_output_layers):
+            self.lins.append(nn.Linear(out_emb_channels, out_emb_channels))
+        self.lin = nn.Linear(out_emb_channels, out_channels, bias=False)
+
+        self.reset_parameters()
+
+</source>
+</class>
+
+</clones>

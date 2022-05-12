@@ -1,0 +1,237 @@
+<clones>
+<systeminfo processor="nicad6" system="redis-py-4.2.0rc2" granularity="functions-blind" threshold="0%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="846" npairs="4"/>
+<runinfo ncompares="1606" cputime="43754"/>
+<classinfo nclasses="4"/>
+
+<class classid="1" nclones="2" nlines="41" similarity="100">
+<source file="systems/redis-py-4.2.0rc2/tests/test_json.py" startline="303" endline="354" pcid="133">
+def test_json_delete_with_dollar(client):
+    doc1 = {"a": 1, "nested": {"a": 2, "b": 3}}
+    assert client.json().set("doc1", "$", doc1)
+    assert client.json().delete("doc1", "$..a") == 2
+    r = client.json().get("doc1", "$")
+    assert r == [{"nested": {"b": 3}}]
+
+    doc2 = {"a": {"a": 2, "b": 3}, "b": ["a", "b"], "nested": {"b": [True, "a", "b"]}}
+    assert client.json().set("doc2", "$", doc2)
+    assert client.json().delete("doc2", "$..a") == 1
+    res = client.json().get("doc2", "$")
+    assert res == [{"nested": {"b": [True, "a", "b"]}, "b": ["a", "b"]}]
+
+    doc3 = [
+        {
+            "ciao": ["non ancora"],
+            "nested": [
+                {"ciao": [1, "a"]},
+                {"ciao": [2, "a"]},
+                {"ciaoc": [3, "non", "ciao"]},
+                {"ciao": [4, "a"]},
+                {"e": [5, "non", "ciao"]},
+            ],
+        }
+    ]
+    assert client.json().set("doc3", "$", doc3)
+    assert client.json().delete("doc3", '$.[0]["nested"]..ciao') == 3
+
+    doc3val = [
+        [
+            {
+                "ciao": ["non ancora"],
+                "nested": [
+                    {},
+                    {},
+                    {"ciaoc": [3, "non", "ciao"]},
+                    {},
+                    {"e": [5, "non", "ciao"]},
+                ],
+            }
+        ]
+    ]
+    res = client.json().get("doc3", "$")
+    assert res == doc3val
+
+    # Test default path
+    assert client.json().delete("doc3") == 1
+    assert client.json().get("doc3", "$") is None
+
+    client.json().delete("not_a_document", "..a")
+
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/tests/test_json.py" startline="356" endline="407" pcid="134">
+def test_json_forget_with_dollar(client):
+    doc1 = {"a": 1, "nested": {"a": 2, "b": 3}}
+    assert client.json().set("doc1", "$", doc1)
+    assert client.json().forget("doc1", "$..a") == 2
+    r = client.json().get("doc1", "$")
+    assert r == [{"nested": {"b": 3}}]
+
+    doc2 = {"a": {"a": 2, "b": 3}, "b": ["a", "b"], "nested": {"b": [True, "a", "b"]}}
+    assert client.json().set("doc2", "$", doc2)
+    assert client.json().forget("doc2", "$..a") == 1
+    res = client.json().get("doc2", "$")
+    assert res == [{"nested": {"b": [True, "a", "b"]}, "b": ["a", "b"]}]
+
+    doc3 = [
+        {
+            "ciao": ["non ancora"],
+            "nested": [
+                {"ciao": [1, "a"]},
+                {"ciao": [2, "a"]},
+                {"ciaoc": [3, "non", "ciao"]},
+                {"ciao": [4, "a"]},
+                {"e": [5, "non", "ciao"]},
+            ],
+        }
+    ]
+    assert client.json().set("doc3", "$", doc3)
+    assert client.json().forget("doc3", '$.[0]["nested"]..ciao') == 3
+
+    doc3val = [
+        [
+            {
+                "ciao": ["non ancora"],
+                "nested": [
+                    {},
+                    {},
+                    {"ciaoc": [3, "non", "ciao"]},
+                    {},
+                    {"e": [5, "non", "ciao"]},
+                ],
+            }
+        ]
+    ]
+    res = client.json().get("doc3", "$")
+    assert res == doc3val
+
+    # Test default path
+    assert client.json().forget("doc3") == 1
+    assert client.json().get("doc3", "$") is None
+
+    client.json().forget("not_a_document", "..a")
+
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="10" similarity="100">
+<source file="systems/redis-py-4.2.0rc2/tests/test_ssl.py" startline="119" endline="130" pcid="367">
+    def test_revoked_ocsp_certificate(self):
+        from redis.ocsp import OCSPVerifier
+
+        context = ssl.create_default_context()
+        hostname = "revoked.badssl.com"
+        with socket.create_connection((hostname, 443)) as sock:
+            with context.wrap_socket(sock, server_hostname=hostname) as wrapped:
+                ocsp = OCSPVerifier(wrapped, hostname, 443)
+                with pytest.raises(ConnectionError) as e:
+                    assert ocsp.is_valid()
+                    assert "REVOKED" in str(e)
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/tests/test_ssl.py" startline="144" endline="155" pcid="369">
+    def test_ocsp_not_present_in_response(self):
+        from redis.ocsp import OCSPVerifier
+
+        context = ssl.create_default_context()
+        hostname = "google.co.il"
+        with socket.create_connection((hostname, 443)) as sock:
+            with context.wrap_socket(sock, server_hostname=hostname) as wrapped:
+                ocsp = OCSPVerifier(wrapped, hostname, 443)
+                with pytest.raises(ConnectionError) as e:
+                    assert ocsp.is_valid()
+                    assert "from the" in str(e)
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="10" similarity="100">
+<source file="systems/redis-py-4.2.0rc2/benchmarks/basic_operations.py" startline="80" endline="93" pcid="474">
+def set_int(conn, num, pipeline_size, data_size):
+    if pipeline_size > 1:
+        conn = conn.pipeline()
+
+    set_data = 10 ** (data_size - 1)
+    for i in range(num):
+        conn.set(f"set_int:{i}", set_data)
+        if pipeline_size > 1 and i % pipeline_size == 0:
+            conn.execute()
+
+    if pipeline_size > 1:
+        conn.execute()
+
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/benchmarks/basic_operations.py" startline="137" endline="150" pcid="478">
+def lpush(conn, num, pipeline_size, data_size):
+    if pipeline_size > 1:
+        conn = conn.pipeline()
+
+    set_data = 10 ** (data_size - 1)
+    for i in range(num):
+        conn.lpush("lpush_key", set_data)
+        if pipeline_size > 1 and i % pipeline_size == 0:
+            conn.execute()
+
+    if pipeline_size > 1:
+        conn.execute()
+
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="10" similarity="100">
+<source file="systems/redis-py-4.2.0rc2/redis/commands/bf/__init__.py" startline="134" endline="158" pcid="645">
+    def __init__(self, client, **kwargs):
+        """Create a new RedisBloom client."""
+        # Set the module commands' callbacks
+        MODULE_CALLBACKS = {
+            CF_RESERVE: bool_ok,
+            # CF_ADD: spaceHolder,
+            # CF_ADDNX: spaceHolder,
+            # CF_INSERT: spaceHolder,
+            # CF_INSERTNX: spaceHolder,
+            # CF_EXISTS: spaceHolder,
+            # CF_DEL: spaceHolder,
+            # CF_COUNT: spaceHolder,
+            # CF_SCANDUMP: spaceHolder,
+            # CF_LOADCHUNK: spaceHolder,
+            CF_INFO: CFInfo,
+        }
+
+        self.client = client
+        self.commandmixin = CFCommands
+        self.execute_command = client.execute_command
+
+        for k, v in MODULE_CALLBACKS.items():
+            self.client.set_response_callback(k, v)
+
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/redis/commands/bf/__init__.py" startline="184" endline="204" pcid="647">
+    def __init__(self, client, **kwargs):
+        """Create a new RedisBloom client."""
+        # Set the module commands' callbacks
+        MODULE_CALLBACKS = {
+            BF_RESERVE: bool_ok,
+            # BF_ADD: spaceHolder,
+            # BF_MADD: spaceHolder,
+            # BF_INSERT: spaceHolder,
+            # BF_EXISTS: spaceHolder,
+            # BF_MEXISTS: spaceHolder,
+            # BF_SCANDUMP: spaceHolder,
+            # BF_LOADCHUNK: spaceHolder,
+            BF_INFO: BFInfo,
+        }
+
+        self.client = client
+        self.commandmixin = BFCommands
+        self.execute_command = client.execute_command
+
+        for k, v in MODULE_CALLBACKS.items():
+            self.client.set_response_callback(k, v)
+</source>
+</class>
+
+</clones>

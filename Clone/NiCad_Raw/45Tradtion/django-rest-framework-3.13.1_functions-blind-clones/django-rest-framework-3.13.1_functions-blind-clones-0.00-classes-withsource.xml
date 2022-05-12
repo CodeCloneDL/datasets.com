@@ -1,0 +1,1032 @@
+<clones>
+<systeminfo processor="nicad6" system="django-rest-framework-3.13.1" granularity="functions-blind" threshold="0%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="1955" npairs="54"/>
+<runinfo ncompares="6046" cputime="48070"/>
+<classinfo nclasses="16"/>
+
+<class classid="1" nclones="2" nlines="10" similarity="100">
+<source file="systems/django-rest-framework-3.13.1/tests/test_model_serializer.py" startline="322" endline="340" pcid="130">
+    def test_missing_field(self):
+        """
+        Fields that have been declared on the serializer class must be included
+        in the `Meta.fields` if it exists.
+        """
+        class TestSerializer(serializers.ModelSerializer):
+            missing = serializers.ReadOnlyField()
+
+            class Meta:
+                model = RegularFieldsModel
+                fields = ('auto_field',)
+
+        expected = (
+            "The field 'missing' was declared on serializer TestSerializer, "
+            "but has not been included in the 'fields' option."
+        )
+        with self.assertRaisesMessage(AssertionError, expected):
+            TestSerializer().fields
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/test_model_serializer.py" startline="982" endline="998" pcid="163">
+    def test_declared_fields_with_exclude_option(self):
+        class ExampleSerializer(serializers.ModelSerializer):
+            text = serializers.CharField()
+
+            class Meta:
+                model = MetaClassTestModel
+                exclude = ('text',)
+
+        expected = (
+            "Cannot both declare the field 'text' and include it in the "
+            "ExampleSerializer 'exclude' option. Remove the field or, if "
+            "inherited from a parent serializer, disable with `text = None`."
+        )
+        with self.assertRaisesMessage(AssertionError, expected):
+            ExampleSerializer().fields
+
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="13" similarity="100">
+<source file="systems/django-rest-framework-3.13.1/tests/test_viewsets.py" startline="203" endline="217" pcid="207">
+    def test_extra_actions(self):
+        view = ActionViewSet()
+        actual = [action.__name__ for action in view.get_extra_actions()]
+        expected = [
+            'custom_detail_action',
+            'custom_list_action',
+            'detail_action',
+            'list_action',
+            'unresolvable_detail_action',
+            'wrapped_detail_action',
+            'wrapped_list_action',
+        ]
+
+        self.assertEqual(actual, expected)
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/test_viewsets.py" startline="218" endline="231" pcid="208">
+    def test_should_only_return_decorated_methods(self):
+        view = ActionViewSetWithMapping()
+        actual = [action.__name__ for action in view.get_extra_actions()]
+        expected = [
+            'custom_detail_action',
+            'custom_list_action',
+            'detail_action',
+            'list_action',
+            'unresolvable_detail_action',
+            'wrapped_detail_action',
+            'wrapped_list_action',
+        ]
+        self.assertEqual(actual, expected)
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="10" similarity="100">
+<source file="systems/django-rest-framework-3.13.1/tests/test_decorators.py" startline="61" endline="74" pcid="338">
+    def test_calling_put_method(self):
+
+        @api_view(['GET', 'PUT'])
+        def view(request):
+            return Response({})
+
+        request = self.factory.put('/')
+        response = view(request)
+        assert response.status_code == status.HTTP_200_OK
+
+        request = self.factory.post('/')
+        response = view(request)
+        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/test_decorators.py" startline="75" endline="88" pcid="340">
+    def test_calling_patch_method(self):
+
+        @api_view(['GET', 'PATCH'])
+        def view(request):
+            return Response({})
+
+        request = self.factory.patch('/')
+        response = view(request)
+        assert response.status_code == status.HTTP_200_OK
+
+        request = self.factory.post('/')
+        response = view(request)
+        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+
+</source>
+</class>
+
+<class classid="4" nclones="3" nlines="11" similarity="100">
+<source file="systems/django-rest-framework-3.13.1/tests/test_filters.py" startline="97" endline="110" pcid="516">
+    def test_exact_search(self):
+        class SearchListView(generics.ListAPIView):
+            queryset = SearchFilterModel.objects.all()
+            serializer_class = SearchFilterSerializer
+            filter_backends = (filters.SearchFilter,)
+            search_fields = ('=title', 'text')
+
+        view = SearchListView.as_view()
+        request = factory.get('/', {'search': 'zzz'})
+        response = view(request)
+        assert response.data == [
+            {'id': 3, 'title': 'zzz', 'text': 'cde'}
+        ]
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/test_filters.py" startline="111" endline="124" pcid="517">
+    def test_startswith_search(self):
+        class SearchListView(generics.ListAPIView):
+            queryset = SearchFilterModel.objects.all()
+            serializer_class = SearchFilterSerializer
+            filter_backends = (filters.SearchFilter,)
+            search_fields = ('title', '^text')
+
+        view = SearchListView.as_view()
+        request = factory.get('/', {'search': 'b'})
+        response = view(request)
+        assert response.data == [
+            {'id': 2, 'title': 'zz', 'text': 'bcd'}
+        ]
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/test_filters.py" startline="125" endline="138" pcid="518">
+    def test_regexp_search(self):
+        class SearchListView(generics.ListAPIView):
+            queryset = SearchFilterModel.objects.all()
+            serializer_class = SearchFilterSerializer
+            filter_backends = (filters.SearchFilter,)
+            search_fields = ('$title', '$text')
+
+        view = SearchListView.as_view()
+        request = factory.get('/', {'search': 'z{2} ^b'})
+        response = view(request)
+        assert response.data == [
+            {'id': 2, 'title': 'zz', 'text': 'bcd'}
+        ]
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="10" similarity="100">
+<source file="systems/django-rest-framework-3.13.1/tests/test_filters.py" startline="305" endline="316" pcid="528">
+    def test_m2m_search(self):
+        class SearchListView(generics.ListAPIView):
+            queryset = SearchFilterModelM2M.objects.all()
+            serializer_class = SearchFilterM2MSerializer
+            filter_backends = (filters.SearchFilter,)
+            search_fields = ('=title', 'text', 'attributes__label')
+
+        view = SearchListView.as_view()
+        request = factory.get('/', {'search': 'zz'})
+        response = view(request)
+        assert len(response.data) == 1
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/test_filters.py" startline="363" endline="375" pcid="531">
+    def test_multiple_filter_conditions(self):
+        class SearchListView(generics.ListAPIView):
+            queryset = Blog.objects.all()
+            serializer_class = BlogSerializer
+            filter_backends = (filters.SearchFilter,)
+            search_fields = ('=name', 'entry__headline', '=entry__pub_date__year')
+
+        view = SearchListView.as_view()
+        request = factory.get('/', {'search': 'Lennon,1979'})
+        response = view(request)
+        assert len(response.data) == 1
+
+
+</source>
+</class>
+
+<class classid="6" nclones="4" nlines="15" similarity="100">
+<source file="systems/django-rest-framework-3.13.1/tests/test_filters.py" startline="501" endline="517" pcid="537">
+    def test_ordering(self):
+        class OrderingListView(generics.ListAPIView):
+            queryset = OrderingFilterModel.objects.all()
+            serializer_class = OrderingFilterSerializer
+            filter_backends = (filters.OrderingFilter,)
+            ordering = ('title',)
+            ordering_fields = ('text',)
+
+        view = OrderingListView.as_view()
+        request = factory.get('/', {'ordering': 'text'})
+        response = view(request)
+        assert response.data == [
+            {'id': 1, 'title': 'zyx', 'text': 'abc'},
+            {'id': 2, 'title': 'yxw', 'text': 'bcd'},
+            {'id': 3, 'title': 'xwv', 'text': 'cde'},
+        ]
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/test_filters.py" startline="518" endline="534" pcid="538">
+    def test_reverse_ordering(self):
+        class OrderingListView(generics.ListAPIView):
+            queryset = OrderingFilterModel.objects.all()
+            serializer_class = OrderingFilterSerializer
+            filter_backends = (filters.OrderingFilter,)
+            ordering = ('title',)
+            ordering_fields = ('text',)
+
+        view = OrderingListView.as_view()
+        request = factory.get('/', {'ordering': '-text'})
+        response = view(request)
+        assert response.data == [
+            {'id': 3, 'title': 'xwv', 'text': 'cde'},
+            {'id': 2, 'title': 'yxw', 'text': 'bcd'},
+            {'id': 1, 'title': 'zyx', 'text': 'abc'},
+        ]
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/test_filters.py" startline="552" endline="568" pcid="540">
+    def test_incorrectfield_ordering(self):
+        class OrderingListView(generics.ListAPIView):
+            queryset = OrderingFilterModel.objects.all()
+            serializer_class = OrderingFilterSerializer
+            filter_backends = (filters.OrderingFilter,)
+            ordering = ('title',)
+            ordering_fields = ('text',)
+
+        view = OrderingListView.as_view()
+        request = factory.get('/', {'ordering': 'foobar'})
+        response = view(request)
+        assert response.data == [
+            {'id': 3, 'title': 'xwv', 'text': 'cde'},
+            {'id': 2, 'title': 'yxw', 'text': 'bcd'},
+            {'id': 1, 'title': 'zyx', 'text': 'abc'},
+        ]
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/test_filters.py" startline="535" endline="551" pcid="539">
+    def test_incorrecturl_extrahyphens_ordering(self):
+        class OrderingListView(generics.ListAPIView):
+            queryset = OrderingFilterModel.objects.all()
+            serializer_class = OrderingFilterSerializer
+            filter_backends = (filters.OrderingFilter,)
+            ordering = ('title',)
+            ordering_fields = ('text',)
+
+        view = OrderingListView.as_view()
+        request = factory.get('/', {'ordering': '--text'})
+        response = view(request)
+        assert response.data == [
+            {'id': 3, 'title': 'xwv', 'text': 'cde'},
+            {'id': 2, 'title': 'yxw', 'text': 'bcd'},
+            {'id': 1, 'title': 'zyx', 'text': 'abc'},
+        ]
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="21" similarity="100">
+<source file="systems/django-rest-framework-3.13.1/tests/test_filters.py" startline="805" endline="831" pcid="552">
+    def test_order_by_serializer_fields(self):
+        for serializer_cls in [
+            SensitiveDataSerializer1,
+            SensitiveDataSerializer2,
+            SensitiveDataSerializer3
+        ]:
+            class OrderingListView(generics.ListAPIView):
+                queryset = SensitiveOrderingFilterModel.objects.all().order_by('username')
+                filter_backends = (filters.OrderingFilter,)
+                serializer_class = serializer_cls
+
+            view = OrderingListView.as_view()
+            request = factory.get('/', {'ordering': '-username'})
+            response = view(request)
+
+            if serializer_cls == SensitiveDataSerializer3:
+                username_field = 'user'
+            else:
+                username_field = 'username'
+
+            # Note: Inverse username ordering correctly applied.
+            assert response.data == [
+                {'id': 3, username_field: 'userC'},
+                {'id': 2, username_field: 'userB'},
+                {'id': 1, username_field: 'userA'},
+            ]
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/test_filters.py" startline="832" endline="857" pcid="553">
+    def test_cannot_order_by_non_serializer_fields(self):
+        for serializer_cls in [
+            SensitiveDataSerializer1,
+            SensitiveDataSerializer2,
+            SensitiveDataSerializer3
+        ]:
+            class OrderingListView(generics.ListAPIView):
+                queryset = SensitiveOrderingFilterModel.objects.all().order_by('username')
+                filter_backends = (filters.OrderingFilter,)
+                serializer_class = serializer_cls
+
+            view = OrderingListView.as_view()
+            request = factory.get('/', {'ordering': 'password'})
+            response = view(request)
+
+            if serializer_cls == SensitiveDataSerializer3:
+                username_field = 'user'
+            else:
+                username_field = 'username'
+
+            # Note: The passwords are not in order.  Default ordering is used.
+            assert response.data == [
+                {'id': 1, username_field: 'userA'},  # PassB
+                {'id': 2, username_field: 'userB'},  # PassC
+                {'id': 3, username_field: 'userC'},  # PassA
+            ]
+</source>
+</class>
+
+<class classid="8" nclones="3" nlines="11" similarity="100">
+<source file="systems/django-rest-framework-3.13.1/tests/test_renderers.py" startline="694" endline="707" pcid="898">
+    def test_render_dict(self):
+        factory = APIRequestFactory()
+
+        class DummyView(APIView):
+            renderer_classes = (AdminRenderer, )
+
+            def get(self, request):
+                return Response({'foo': 'a string'})
+        view = DummyView.as_view()
+        request = factory.get('/')
+        response = view(request)
+        response.render()
+        self.assertContains(response, '<tr><th>Foo</th><td>a string</td></tr>', html=True)
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/test_renderers.py" startline="708" endline="722" pcid="900">
+    def test_render_dict_with_items_key(self):
+        factory = APIRequestFactory()
+
+        class DummyView(APIView):
+            renderer_classes = (AdminRenderer, )
+
+            def get(self, request):
+                return Response({'items': 'a string'})
+
+        view = DummyView.as_view()
+        request = factory.get('/')
+        response = view(request)
+        response.render()
+        self.assertContains(response, '<tr><th>Items</th><td>a string</td></tr>', html=True)
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/test_renderers.py" startline="723" endline="737" pcid="902">
+    def test_render_dict_with_iteritems_key(self):
+        factory = APIRequestFactory()
+
+        class DummyView(APIView):
+            renderer_classes = (AdminRenderer, )
+
+            def get(self, request):
+                return Response({'iteritems': 'a string'})
+
+        view = DummyView.as_view()
+        request = factory.get('/')
+        response = view(request)
+        response.render()
+        self.assertContains(response, '<tr><th>Iteritems</th><td>a string</td></tr>', html=True)
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="33" similarity="100">
+<source file="systems/django-rest-framework-3.13.1/tests/test_pagination.py" startline="262" endline="297" pcid="936">
+    def test_get_paginated_response_schema(self):
+        unpaginated_schema = {
+            'type': 'object',
+            'item': {
+                'properties': {
+                    'test-property': {
+                        'type': 'integer',
+                    },
+                },
+            },
+        }
+
+        assert self.pagination.get_paginated_response_schema(unpaginated_schema) == {
+            'type': 'object',
+            'properties': {
+                'count': {
+                    'type': 'integer',
+                    'example': 123,
+                },
+                'next': {
+                    'type': 'string',
+                    'nullable': True,
+                    'format': 'uri',
+                    'example': 'http://api.example.org/accounts/?page=4',
+                },
+                'previous': {
+                    'type': 'string',
+                    'nullable': True,
+                    'format': 'uri',
+                    'example': 'http://api.example.org/accounts/?page=2',
+                },
+                'results': unpaginated_schema,
+            },
+        }
+
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/test_pagination.py" startline="573" endline="608" pcid="958">
+    def test_get_paginated_response_schema(self):
+        unpaginated_schema = {
+            'type': 'object',
+            'item': {
+                'properties': {
+                    'test-property': {
+                        'type': 'integer',
+                    },
+                },
+            },
+        }
+
+        assert self.pagination.get_paginated_response_schema(unpaginated_schema) == {
+            'type': 'object',
+            'properties': {
+                'count': {
+                    'type': 'integer',
+                    'example': 123,
+                },
+                'next': {
+                    'type': 'string',
+                    'nullable': True,
+                    'format': 'uri',
+                    'example': 'http://api.example.org/accounts/?offset=400&limit=100',
+                },
+                'previous': {
+                    'type': 'string',
+                    'nullable': True,
+                    'format': 'uri',
+                    'example': 'http://api.example.org/accounts/?offset=200&limit=100',
+                },
+                'results': unpaginated_schema,
+            },
+        }
+
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="21" similarity="100">
+<source file="systems/django-rest-framework-3.13.1/tests/test_pagination.py" startline="412" endline="440" pcid="949">
+    def test_single_offset(self):
+        """
+        When the offset is not a multiple of the limit we get some edge cases:
+        * The first page should still be offset zero.
+        * We may end up displaying an extra page in the pagination control.
+        """
+        request = Request(factory.get('/', {'limit': 5, 'offset': 1}))
+        queryset = self.paginate_queryset(request)
+        content = self.get_paginated_content(queryset)
+        context = self.get_html_context()
+        assert queryset == [2, 3, 4, 5, 6]
+        assert content == {
+            'results': [2, 3, 4, 5, 6],
+            'previous': 'http://testserver/?limit=5',
+            'next': 'http://testserver/?limit=5&offset=6',
+            'count': 100
+        }
+        assert context == {
+            'previous_url': 'http://testserver/?limit=5',
+            'next_url': 'http://testserver/?limit=5&offset=6',
+            'page_links': [
+                PageLink('http://testserver/?limit=5', 1, False, False),
+                PageLink('http://testserver/?limit=5&offset=1', 2, True, False),
+                PageLink('http://testserver/?limit=5&offset=6', 3, False, False),
+                PAGE_BREAK,
+                PageLink('http://testserver/?limit=5&offset=96', 21, False, False),
+            ]
+        }
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/test_pagination.py" startline="441" endline="464" pcid="950">
+    def test_first_offset(self):
+        request = Request(factory.get('/', {'limit': 5, 'offset': 5}))
+        queryset = self.paginate_queryset(request)
+        content = self.get_paginated_content(queryset)
+        context = self.get_html_context()
+        assert queryset == [6, 7, 8, 9, 10]
+        assert content == {
+            'results': [6, 7, 8, 9, 10],
+            'previous': 'http://testserver/?limit=5',
+            'next': 'http://testserver/?limit=5&offset=10',
+            'count': 100
+        }
+        assert context == {
+            'previous_url': 'http://testserver/?limit=5',
+            'next_url': 'http://testserver/?limit=5&offset=10',
+            'page_links': [
+                PageLink('http://testserver/?limit=5', 1, False, False),
+                PageLink('http://testserver/?limit=5&offset=5', 2, True, False),
+                PageLink('http://testserver/?limit=5&offset=10', 3, False, False),
+                PAGE_BREAK,
+                PageLink('http://testserver/?limit=5&offset=95', 20, False, False),
+            ]
+        }
+
+</source>
+</class>
+
+<class classid="11" nclones="2" nlines="45" similarity="100">
+<source file="systems/django-rest-framework-3.13.1/tests/test_pagination.py" startline="773" endline="839" pcid="966">
+    def test_cursor_pagination_with_page_size_zero(self):
+        (previous, current, next, previous_url, next_url) = self.get_pages('/?page_size=0')
+
+        assert previous is None
+        assert current == [1, 1, 1, 1, 1]
+        assert next == [1, 2, 3, 4, 4]
+
+        (previous, current, next, previous_url, next_url) = self.get_pages(next_url)
+
+        assert previous == [1, 1, 1, 1, 1]
+        assert current == [1, 2, 3, 4, 4]
+        assert next == [4, 4, 5, 6, 7]
+
+        (previous, current, next, previous_url, next_url) = self.get_pages(next_url)
+
+        assert previous == [1, 2, 3, 4, 4]
+        assert current == [4, 4, 5, 6, 7]
+        assert next == [7, 7, 7, 7, 7]
+
+        (previous, current, next, previous_url, next_url) = self.get_pages(next_url)
+
+        assert previous == [4, 4, 4, 5, 6]  # Paging artifact
+        assert current == [7, 7, 7, 7, 7]
+        assert next == [7, 7, 7, 8, 9]
+
+        (previous, current, next, previous_url, next_url) = self.get_pages(next_url)
+
+        assert previous == [7, 7, 7, 7, 7]
+        assert current == [7, 7, 7, 8, 9]
+        assert next == [9, 9, 9, 9, 9]
+
+        (previous, current, next, previous_url, next_url) = self.get_pages(next_url)
+
+        assert previous == [7, 7, 7, 8, 9]
+        assert current == [9, 9, 9, 9, 9]
+        assert next is None
+
+        (previous, current, next, previous_url, next_url) = self.get_pages(previous_url)
+
+        assert previous == [7, 7, 7, 7, 7]
+        assert current == [7, 7, 7, 8, 9]
+        assert next == [9, 9, 9, 9, 9]
+
+        (previous, current, next, previous_url, next_url) = self.get_pages(previous_url)
+
+        assert previous == [4, 4, 5, 6, 7]
+        assert current == [7, 7, 7, 7, 7]
+        assert next == [8, 9, 9, 9, 9]  # Paging artifact
+
+        (previous, current, next, previous_url, next_url) = self.get_pages(previous_url)
+
+        assert previous == [1, 2, 3, 4, 4]
+        assert current == [4, 4, 5, 6, 7]
+        assert next == [7, 7, 7, 7, 7]
+
+        (previous, current, next, previous_url, next_url) = self.get_pages(previous_url)
+
+        assert previous == [1, 1, 1, 1, 1]
+        assert current == [1, 2, 3, 4, 4]
+        assert next == [4, 4, 5, 6, 7]
+
+        (previous, current, next, previous_url, next_url) = self.get_pages(previous_url)
+
+        assert previous is None
+        assert current == [1, 1, 1, 1, 1]
+        assert next == [1, 2, 3, 4, 4]
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/test_pagination.py" startline="840" endline="906" pcid="967">
+    def test_cursor_pagination_with_page_size_negative(self):
+        (previous, current, next, previous_url, next_url) = self.get_pages('/?page_size=-5')
+
+        assert previous is None
+        assert current == [1, 1, 1, 1, 1]
+        assert next == [1, 2, 3, 4, 4]
+
+        (previous, current, next, previous_url, next_url) = self.get_pages(next_url)
+
+        assert previous == [1, 1, 1, 1, 1]
+        assert current == [1, 2, 3, 4, 4]
+        assert next == [4, 4, 5, 6, 7]
+
+        (previous, current, next, previous_url, next_url) = self.get_pages(next_url)
+
+        assert previous == [1, 2, 3, 4, 4]
+        assert current == [4, 4, 5, 6, 7]
+        assert next == [7, 7, 7, 7, 7]
+
+        (previous, current, next, previous_url, next_url) = self.get_pages(next_url)
+
+        assert previous == [4, 4, 4, 5, 6]  # Paging artifact
+        assert current == [7, 7, 7, 7, 7]
+        assert next == [7, 7, 7, 8, 9]
+
+        (previous, current, next, previous_url, next_url) = self.get_pages(next_url)
+
+        assert previous == [7, 7, 7, 7, 7]
+        assert current == [7, 7, 7, 8, 9]
+        assert next == [9, 9, 9, 9, 9]
+
+        (previous, current, next, previous_url, next_url) = self.get_pages(next_url)
+
+        assert previous == [7, 7, 7, 8, 9]
+        assert current == [9, 9, 9, 9, 9]
+        assert next is None
+
+        (previous, current, next, previous_url, next_url) = self.get_pages(previous_url)
+
+        assert previous == [7, 7, 7, 7, 7]
+        assert current == [7, 7, 7, 8, 9]
+        assert next == [9, 9, 9, 9, 9]
+
+        (previous, current, next, previous_url, next_url) = self.get_pages(previous_url)
+
+        assert previous == [4, 4, 5, 6, 7]
+        assert current == [7, 7, 7, 7, 7]
+        assert next == [8, 9, 9, 9, 9]  # Paging artifact
+
+        (previous, current, next, previous_url, next_url) = self.get_pages(previous_url)
+
+        assert previous == [1, 2, 3, 4, 4]
+        assert current == [4, 4, 5, 6, 7]
+        assert next == [7, 7, 7, 7, 7]
+
+        (previous, current, next, previous_url, next_url) = self.get_pages(previous_url)
+
+        assert previous == [1, 1, 1, 1, 1]
+        assert current == [1, 2, 3, 4, 4]
+        assert next == [4, 4, 5, 6, 7]
+
+        (previous, current, next, previous_url, next_url) = self.get_pages(previous_url)
+
+        assert previous is None
+        assert current == [1, 1, 1, 1, 1]
+        assert next == [1, 2, 3, 4, 4]
+
+</source>
+</class>
+
+<class classid="12" nclones="3" nlines="28" similarity="100">
+<source file="systems/django-rest-framework-3.13.1/tests/schemas/test_coreapi.py" startline="414" endline="456" pcid="1005">
+    def test_schema_for_regular_views(self):
+        """
+        Ensure that schema generation works for APIView classes.
+        """
+        generator = SchemaGenerator(title='Example API', patterns=self.patterns)
+        schema = generator.get_schema()
+        expected = coreapi.Document(
+            url='',
+            title='Example API',
+            content={
+                'example': {
+                    'create': coreapi.Link(
+                        url='/example/',
+                        action='post',
+                        fields=[]
+                    ),
+                    'list': coreapi.Link(
+                        url='/example/',
+                        action='get',
+                        fields=[]
+                    ),
+                    'read': coreapi.Link(
+                        url='/example/{id}/',
+                        action='get',
+                        fields=[
+                            coreapi.Field('id', required=True, location='path', schema=coreschema.String())
+                        ]
+                    ),
+                    'sub': {
+                        'list': coreapi.Link(
+                            url='/example/{id}/sub/',
+                            action='get',
+                            fields=[
+                                coreapi.Field('id', required=True, location='path', schema=coreschema.String())
+                            ]
+                        )
+                    }
+                }
+            }
+        )
+        assert schema == expected
+
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/schemas/test_coreapi.py" startline="520" endline="563" pcid="1009">
+    def test_schema_for_regular_views(self):
+        """
+        Ensure that schema generation with an API that is not at the URL
+        root continues to use correct structure for link keys.
+        """
+        generator = SchemaGenerator(title='Example API', patterns=self.patterns)
+        schema = generator.get_schema()
+        expected = coreapi.Document(
+            url='',
+            title='Example API',
+            content={
+                'example': {
+                    'create': coreapi.Link(
+                        url='/api/v1/example/',
+                        action='post',
+                        fields=[]
+                    ),
+                    'list': coreapi.Link(
+                        url='/api/v1/example/',
+                        action='get',
+                        fields=[]
+                    ),
+                    'read': coreapi.Link(
+                        url='/api/v1/example/{id}/',
+                        action='get',
+                        fields=[
+                            coreapi.Field('id', required=True, location='path', schema=coreschema.String())
+                        ]
+                    ),
+                    'sub': {
+                        'list': coreapi.Link(
+                            url='/api/v1/example/{id}/sub/',
+                            action='get',
+                            fields=[
+                                coreapi.Field('id', required=True, location='path', schema=coreschema.String())
+                            ]
+                        )
+                    }
+                }
+            }
+        )
+        assert schema == expected
+
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/schemas/test_coreapi.py" startline="467" endline="509" pcid="1007">
+    def test_schema_for_regular_views(self):
+        """
+        Ensure that schema generation works for APIView classes.
+        """
+        generator = SchemaGenerator(title='Example API', patterns=self.patterns)
+        schema = generator.get_schema()
+        expected = coreapi.Document(
+            url='',
+            title='Example API',
+            content={
+                'example': {
+                    'create': coreapi.Link(
+                        url='/example/',
+                        action='post',
+                        fields=[]
+                    ),
+                    'list': coreapi.Link(
+                        url='/example/',
+                        action='get',
+                        fields=[]
+                    ),
+                    'read': coreapi.Link(
+                        url='/example/{id}/',
+                        action='get',
+                        fields=[
+                            coreapi.Field('id', required=True, location='path', schema=coreschema.String())
+                        ]
+                    ),
+                    'sub': {
+                        'list': coreapi.Link(
+                            url='/example/{id}/sub/',
+                            action='get',
+                            fields=[
+                                coreapi.Field('id', required=True, location='path', schema=coreschema.String())
+                            ]
+                        )
+                    }
+                }
+            }
+        )
+        assert schema == expected
+
+
+</source>
+</class>
+
+<class classid="13" nclones="2" nlines="13" similarity="100">
+<source file="systems/django-rest-framework-3.13.1/tests/test_prefetch_related.py" startline="27" endline="41" pcid="1144">
+    def test_prefetch_related_updates(self):
+        view = UserUpdate.as_view()
+        pk = self.user.pk
+        groups_pk = self.groups[0].pk
+        request = factory.put('/', {'username': 'new', 'groups': [groups_pk]}, format='json')
+        response = view(request, pk=pk)
+        assert User.objects.get(pk=pk).groups.count() == 1
+        expected = {
+            'id': pk,
+            'username': 'new',
+            'groups': [1],
+            'email': 'tom@example.com'
+        }
+        assert response.data == expected
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/test_prefetch_related.py" startline="42" endline="58" pcid="1145">
+    def test_prefetch_related_excluding_instance_from_original_queryset(self):
+        """
+        Regression test for https://github.com/encode/django-rest-framework/issues/4661
+        """
+        view = UserUpdate.as_view()
+        pk = self.user.pk
+        groups_pk = self.groups[0].pk
+        request = factory.put('/', {'username': 'exclude', 'groups': [groups_pk]}, format='json')
+        response = view(request, pk=pk)
+        assert User.objects.get(pk=pk).groups.count() == 1
+        expected = {
+            'id': pk,
+            'username': 'exclude',
+            'groups': [1],
+            'email': 'tom@example.com'
+        }
+        assert response.data == expected
+</source>
+</class>
+
+<class classid="14" nclones="8" nlines="10" similarity="100">
+<source file="systems/django-rest-framework-3.13.1/tests/test_generics.py" startline="562" endline="572" pcid="1233">
+    def test_create_api_view_post(self):
+        class MockCreateApiView(generics.CreateAPIView):
+            def create(self, request, *args, **kwargs):
+                self.called = True
+                self.call_args = (request, args, kwargs)
+        view = MockCreateApiView()
+        data = ('test request', ('test arg',), {'test_kwarg': 'test'})
+        view.post('test request', 'test arg', test_kwarg='test')
+        assert view.called is True
+        assert view.call_args == data
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/test_generics.py" startline="573" endline="583" pcid="1235">
+    def test_destroy_api_view_delete(self):
+        class MockDestroyApiView(generics.DestroyAPIView):
+            def destroy(self, request, *args, **kwargs):
+                self.called = True
+                self.call_args = (request, args, kwargs)
+        view = MockDestroyApiView()
+        data = ('test request', ('test arg',), {'test_kwarg': 'test'})
+        view.delete('test request', 'test arg', test_kwarg='test')
+        assert view.called is True
+        assert view.call_args == data
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/test_generics.py" startline="639" endline="650" pcid="1247">
+    def test_retrieve_destroy_api_view_delete(self):
+        class MockRetrieveDestroyUApiView(generics.RetrieveDestroyAPIView):
+            def destroy(self, request, *args, **kwargs):
+                self.called = True
+                self.call_args = (request, args, kwargs)
+        view = MockRetrieveDestroyUApiView()
+        data = ('test request', ('test arg',), {'test_kwarg': 'test'})
+        view.delete('test request', 'test arg', test_kwarg='test')
+        assert view.called is True
+        assert view.call_args == data
+
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/test_generics.py" startline="584" endline="594" pcid="1237">
+    def test_update_api_view_partial_update(self):
+        class MockUpdateApiView(generics.UpdateAPIView):
+            def partial_update(self, request, *args, **kwargs):
+                self.called = True
+                self.call_args = (request, args, kwargs)
+        view = MockUpdateApiView()
+        data = ('test request', ('test arg',), {'test_kwarg': 'test'})
+        view.patch('test request', 'test arg', test_kwarg='test')
+        assert view.called is True
+        assert view.call_args == data
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/test_generics.py" startline="595" endline="605" pcid="1239">
+    def test_retrieve_update_api_view_get(self):
+        class MockRetrieveUpdateApiView(generics.RetrieveUpdateAPIView):
+            def retrieve(self, request, *args, **kwargs):
+                self.called = True
+                self.call_args = (request, args, kwargs)
+        view = MockRetrieveUpdateApiView()
+        data = ('test request', ('test arg',), {'test_kwarg': 'test'})
+        view.get('test request', 'test arg', test_kwarg='test')
+        assert view.called is True
+        assert view.call_args == data
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/test_generics.py" startline="606" endline="616" pcid="1241">
+    def test_retrieve_update_api_view_put(self):
+        class MockRetrieveUpdateApiView(generics.RetrieveUpdateAPIView):
+            def update(self, request, *args, **kwargs):
+                self.called = True
+                self.call_args = (request, args, kwargs)
+        view = MockRetrieveUpdateApiView()
+        data = ('test request', ('test arg',), {'test_kwarg': 'test'})
+        view.put('test request', 'test arg', test_kwarg='test')
+        assert view.called is True
+        assert view.call_args == data
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/test_generics.py" startline="617" endline="627" pcid="1243">
+    def test_retrieve_update_api_view_patch(self):
+        class MockRetrieveUpdateApiView(generics.RetrieveUpdateAPIView):
+            def partial_update(self, request, *args, **kwargs):
+                self.called = True
+                self.call_args = (request, args, kwargs)
+        view = MockRetrieveUpdateApiView()
+        data = ('test request', ('test arg',), {'test_kwarg': 'test'})
+        view.patch('test request', 'test arg', test_kwarg='test')
+        assert view.called is True
+        assert view.call_args == data
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/tests/test_generics.py" startline="628" endline="638" pcid="1245">
+    def test_retrieve_destroy_api_view_get(self):
+        class MockRetrieveDestroyUApiView(generics.RetrieveDestroyAPIView):
+            def retrieve(self, request, *args, **kwargs):
+                self.called = True
+                self.call_args = (request, args, kwargs)
+        view = MockRetrieveDestroyUApiView()
+        data = ('test request', ('test arg',), {'test_kwarg': 'test'})
+        view.get('test request', 'test arg', test_kwarg='test')
+        assert view.called is True
+        assert view.call_args == data
+
+</source>
+</class>
+
+<class classid="15" nclones="2" nlines="11" similarity="100">
+<source file="systems/django-rest-framework-3.13.1/rest_framework/filters.py" startline="147" endline="161" pcid="1870">
+    def get_schema_fields(self, view):
+        assert coreapi is not None, 'coreapi must be installed to use `get_schema_fields()`'
+        assert coreschema is not None, 'coreschema must be installed to use `get_schema_fields()`'
+        return [
+            coreapi.Field(
+                name=self.search_param,
+                required=False,
+                location='query',
+                schema=coreschema.String(
+                    title=force_str(self.search_title),
+                    description=force_str(self.search_description)
+                )
+            )
+        ]
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/rest_framework/filters.py" startline="307" endline="321" pcid="1881">
+    def get_schema_fields(self, view):
+        assert coreapi is not None, 'coreapi must be installed to use `get_schema_fields()`'
+        assert coreschema is not None, 'coreschema must be installed to use `get_schema_fields()`'
+        return [
+            coreapi.Field(
+                name=self.ordering_param,
+                required=False,
+                location='query',
+                schema=coreschema.String(
+                    title=force_str(self.ordering_title),
+                    description=force_str(self.ordering_description)
+                )
+            )
+        ]
+
+</source>
+</class>
+
+<class classid="16" nclones="2" nlines="12" similarity="100">
+<source file="systems/django-rest-framework-3.13.1/rest_framework/filters.py" startline="162" endline="175" pcid="1871">
+    def get_schema_operation_parameters(self, view):
+        return [
+            {
+                'name': self.search_param,
+                'required': False,
+                'in': 'query',
+                'description': force_str(self.search_description),
+                'schema': {
+                    'type': 'string',
+                },
+            },
+        ]
+
+
+</source>
+<source file="systems/django-rest-framework-3.13.1/rest_framework/filters.py" startline="322" endline="333" pcid="1882">
+    def get_schema_operation_parameters(self, view):
+        return [
+            {
+                'name': self.ordering_param,
+                'required': False,
+                'in': 'query',
+                'description': force_str(self.ordering_description),
+                'schema': {
+                    'type': 'string',
+                },
+            },
+        ]
+</source>
+</class>
+
+</clones>

@@ -1,0 +1,1673 @@
+<html>
+<head>
+    <title>NiCad6 Clone Report</title>
+    <style type="text/css">
+        body {font-family:sans-serif;}
+        table {background-color:white; border:0px; padding:0px; border-spacing:4px; width:auto; margin-left:30px; margin-right:auto;}
+        td {background-color:rgba(192,212,238,0.8); border:0px; padding:8px; width:auto; vertical-align:top; border-radius:8px}
+        pre {background-color:white; padding:4px;}
+        a {color:darkblue;}
+    </style>
+</head>
+<body>
+<h2>NiCad6 Clone Report</h2>
+<table>
+<tr style="font-size:14pt">
+<td><b>System:</b> &nbsp; luminoth-0.1.1</td>
+<td><b>Clone pairs:</b> &nbsp; 22</td>
+<td><b>Clone classes:</b> &nbsp; 15</td>
+</tr>
+<tr style="font-size:12pt">
+<td style="background-color:white">Clone type: &nbsp; 3-2</td>
+<td style="background-color:white">Granularity: &nbsp; functions-blind</td>
+<td style="background-color:white">Max diff threshold: &nbsp; 30%</td>
+<td style="background-color:white">Clone size: &nbsp; 10 - 2500 lines</td>
+<td style="background-color:white">Total functions-blind: &nbsp; 434</td>
+</tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 1:</b> &nbsp; 2 fragments, nominal size 21 lines, similarity 76%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag21')" href="javascript:;">
+luminoth-0.1.1/luminoth/models/fasterrcnn/rpn.py: 21-66
+</a>
+<div class="mid" id="frag21" style="display:none"><pre>
+    def __init__(self, num_anchors, config, debug=False, seed=None,
+                 name='rpn'):
+        """RPN - Region Proposal Network.
+
+        Given an image (as feature map) and a fixed set of anchors, the RPN
+        will learn weights to adjust those anchors so they better look like the
+        ground truth objects, as well as scoring them by "objectness" (ie. how
+        likely they are to be an object vs background).
+
+        The final result will be a set of rectangular boxes ("proposals"),
+        each associated with an objectness score.
+
+        Note: this module can be used independently of Faster R-CNN.
+        """
+        super(RPN, self).__init__(name=name)
+        self._num_anchors = num_anchors
+        self._num_channels = config.num_channels
+        self._kernel_shape = config.kernel_shape
+
+        self._debug = debug
+        self._seed = seed
+
+        self._rpn_initializer = get_initializer(
+            config.rpn_initializer, seed=seed
+        )
+        # According to Faster RCNN paper we need to initialize layers with
+        # "from a zero-mean Gaussian distribution with standard deviation 0.01
+        self._cls_initializer = get_initializer(
+            config.cls_initializer, seed=seed
+        )
+        self._bbox_initializer = get_initializer(
+            config.bbox_initializer, seed=seed
+        )
+        self._regularizer = tf.contrib.layers.l2_regularizer(
+            scale=config.l2_regularization_scale
+        )
+
+        self._l1_sigma = config.l1_sigma
+
+        # We could use normal relu without any problems.
+        self._rpn_activation = get_activation_function(
+            config.activation_function
+        )
+
+        self._config = config
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag25')" href="javascript:;">
+luminoth-0.1.1/luminoth/models/fasterrcnn/rcnn.py: 38-69
+</a>
+<div class="mid" id="frag25" style="display:none"><pre>
+    def __init__(self, num_classes, config, debug=False, seed=None,
+                 name='rcnn'):
+        super(RCNN, self).__init__(name=name)
+        self._num_classes = num_classes
+        # List of the fully connected layer sizes used before classifying and
+        # adjusting the bounding box.
+        self._layer_sizes = config.layer_sizes
+        self._activation = get_activation_function(config.activation_function)
+        self._dropout_keep_prob = config.dropout_keep_prob
+        self._use_mean = config.use_mean
+        self._variances = config.target_normalization_variances
+
+        self._rcnn_initializer = get_initializer(
+            config.rcnn_initializer, seed=seed
+        )
+        self._cls_initializer = get_initializer(
+            config.cls_initializer, seed=seed
+        )
+        self._bbox_initializer = get_initializer(
+            config.bbox_initializer, seed=seed
+        )
+        self.regularizer = tf.contrib.layers.l2_regularizer(
+            scale=config.l2_regularization_scale)
+
+        self._l1_sigma = config.l1_sigma
+
+        # Debug mode makes the module return more detailed Tensors which can be
+        # useful for debugging.
+        self._debug = debug
+        self._config = config
+        self._seed = seed
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 2:</b> &nbsp; 2 fragments, nominal size 22 lines, similarity 78%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag35')" href="javascript:;">
+luminoth-0.1.1/luminoth/models/fasterrcnn/rcnn_target_test.py: 52-96
+</a>
+<div class="mid" id="frag35" style="display:none"><pre>
+    def testBasic(self):
+        """Tests a basic case.
+
+        We have one ground truth box and three proposals. One should be
+        background, one foreground, and one should be an ignored background
+        (i.e. less IoU than whatever value is set as
+        config.background_threshold_low).
+        """
+
+        gt_boxes = tf.constant(
+            [(20, 20, 80, 100, self._placeholder_label)],
+            dtype=tf.float32
+        )
+
+        proposed_boxes = tf.constant(
+            [
+                (55, 75, 85, 105),  # Background
+                                    # IoU ~0.1293
+                (25, 21, 85, 105),  # Foreground
+                                    # IoU ~0.7934
+                (78, 98, 99, 135),  # Ignored
+                                    # IoU ~0.0015
+            ],
+            dtype=tf.float32
+        )
+
+        proposals_label, bbox_targets = self._run_rcnn_target(
+            self._shared_model, gt_boxes, proposed_boxes
+        )
+        # We test that all values are 'close' (up to self._equality_delta)
+        # instead of equal to avoid failing due to a floating point rounding
+        # error.
+        # We sum 1 to the placeholder label because rcnn_target does the same
+        # due to the fact that it uses 0 to signal 'background'.
+        self.assertAllClose(
+            proposals_label,
+            np.array([0., self._placeholder_label + 1, -1.]),
+            atol=self._equality_delta
+        )
+
+        self.assertEqual(
+            proposals_label[proposals_label &gt;= 0].shape[0],
+            self._config.minibatch_size
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag36')" href="javascript:;">
+luminoth-0.1.1/luminoth/models/fasterrcnn/rcnn_target_test.py: 97-135
+</a>
+<div class="mid" id="frag36" style="display:none"><pre>
+    def testEmptyCase(self):
+        """Tests we're choosing the best box when none are above the
+        foreground threshold.
+        """
+
+        gt_boxes = tf.constant(
+            [(423, 30, 501, 80, self._placeholder_label)],
+            dtype=tf.float32
+        )
+
+        proposed_boxes = tf.constant(
+            [
+                (491, 70, 510, 92),  # IoU 0.0277
+                (400, 60, 450, 92),  # IoU 0.1147
+                (413, 40, 480, 77),  # IoU 0.4998: highest
+                (411, 40, 480, 77),  # IoU 0.4914
+            ],
+            dtype=tf.float32
+        )
+
+        proposals_label, bbox_targets = self._run_rcnn_target(
+            self._shared_model, gt_boxes, proposed_boxes
+        )
+
+        # Assertions
+        self.assertAlmostEqual(
+            proposals_label[2], self._placeholder_label + 1,
+            delta=self._equality_delta
+        )
+
+        for i, label in enumerate(proposals_label):
+            if i != 2:
+                self.assertLess(label, 1)
+
+        self.assertEqual(
+            proposals_label[proposals_label &gt;= 0].shape[0],
+            self._config.minibatch_size
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 3:</b> &nbsp; 3 fragments, nominal size 40 lines, similarity 71%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag39')" href="javascript:;">
+luminoth-0.1.1/luminoth/models/fasterrcnn/rcnn_target_test.py: 228-291
+</a>
+<div class="mid" id="frag39" style="display:none"><pre>
+    def testOddMinibatchSize(self):
+        """Tests we're getting the right results when there's an odd minibatch
+        size.
+        """
+
+        config = EasyDict({
+            'foreground_threshold': 0.5,
+            'background_threshold_high': 0.5,
+            'background_threshold_low': 0.1,
+            'foreground_fraction': 0.5,
+            'minibatch_size': 5,
+        })
+
+        model = RCNNTarget(self._num_classes, config, seed=0)
+
+        gt_boxes = tf.constant(
+            [(200, 300, 250, 390, self._placeholder_label)],
+            dtype=tf.float32
+        )
+
+        proposed_boxes = tf.constant(
+            [
+                (12, 70, 350, 540),  # noise
+                (190, 310, 240, 370),  # IoU: 0.4763
+                (197, 300, 252, 389),  # IoU: 0.9015
+                (196, 300, 252, 389),  # IoU: 0.8859
+                (197, 303, 252, 394),  # IoU: 0.8459
+                (180, 310, 235, 370),  # IoU: 0.3747
+                (0, 0, 400, 400),  # noise
+                (197, 302, 252, 389),  # IoU: 0.8832
+                (180, 310, 235, 370),  # IoU: 0.3747
+                (180, 310, 235, 370),  # IoU: 0.3747
+                (0, 0, 400, 400),  # noise
+            ],
+            dtype=tf.float32
+        )
+
+        (proposals_label, bbox_targets) = self._run_rcnn_target(
+            model,
+            gt_boxes,
+            proposed_boxes
+        )
+
+        foreground_number = proposals_label[proposals_label &gt;= 1].shape[0]
+        background_number = proposals_label[proposals_label == 0].shape[0]
+
+        foreground_fraction = config.foreground_fraction
+        minibatch_size = config.minibatch_size
+
+        self.assertLessEqual(
+            foreground_number,
+            np.floor(foreground_fraction * minibatch_size)
+        )
+        self.assertGreater(foreground_number, 0)
+        self.assertLessEqual(
+            background_number,
+            minibatch_size - foreground_number
+        )
+
+        self.assertEqual(
+            proposals_label[proposals_label &gt;= 0].shape[0],
+            config.minibatch_size
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag40')" href="javascript:;">
+luminoth-0.1.1/luminoth/models/fasterrcnn/rcnn_target_test.py: 292-348
+</a>
+<div class="mid" id="frag40" style="display:none"><pre>
+    def testBboxTargetConsistency(self):
+        """Tests that bbox_targets is consistent with proposals_label.
+
+        That means we test that we have the same number of elements in
+        bbox_targets and proposals_label, and that only the proposals
+        marked with a class are assigned a non-zero bbox_target.
+        """
+
+        config = EasyDict({
+            'foreground_threshold': 0.5,
+            'background_threshold_high': 0.5,
+            'background_threshold_low': 0,  # use 0 to get complete batch
+            'foreground_fraction': 0.5,
+            # We change the minibatch_size the catch all our foregrounds
+            'minibatch_size': 8,
+        })
+
+        model = RCNNTarget(self._num_classes, config, seed=0)
+
+        gt_boxes = tf.constant(
+            [(200, 300, 250, 390, self._placeholder_label)],
+            dtype=tf.float32
+        )
+
+        proposed_boxes = tf.constant(
+            [
+                (12, 70, 350, 540),  # noise
+                (190, 310, 240, 370),  # IoU: 0.4763
+                (197, 300, 252, 389),  # IoU: 0.9015
+                (196, 300, 252, 389),  # IoU: 0.8859
+                (197, 303, 252, 394),  # IoU: 0.8459
+                (180, 310, 235, 370),  # IoU: 0.3747
+                (0, 0, 400, 400),  # noise
+                (197, 302, 252, 389),  # IoU: 0.8832
+                (0, 0, 400, 400),  # noise
+            ],
+            dtype=tf.float32
+        )
+
+        (proposals_label, bbox_targets) = self._run_rcnn_target(
+            model,
+            gt_boxes,
+            proposed_boxes
+        )
+
+        foreground_idxs = np.nonzero(proposals_label &gt;= 1)
+        non_empty_bbox_target_idxs = np.nonzero(np.any(bbox_targets, axis=1))
+
+        self.assertAllEqual(
+            foreground_idxs, non_empty_bbox_target_idxs
+        )
+        self.assertGreater(proposals_label[proposals_label &gt;= 1].shape[0], 0)
+        self.assertEqual(
+            proposals_label[proposals_label &gt;= 0].shape[0],
+            config.minibatch_size
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag41')" href="javascript:;">
+luminoth-0.1.1/luminoth/models/fasterrcnn/rcnn_target_test.py: 349-399
+</a>
+<div class="mid" id="frag41" style="display:none"><pre>
+    def testMultipleGtBoxes(self):
+        """Tests we're getting the right labels when there's several gt_boxes.
+        """
+
+        num_classes = 3
+        config = EasyDict({
+            'foreground_threshold': 0.5,
+            'background_threshold_high': 0.5,
+            'background_threshold_low': 0.1,
+            'foreground_fraction': 0.5,
+            # We change the minibatch_size the catch all our foregrounds
+            'minibatch_size': 18,
+        })
+        model = RCNNTarget(num_classes, config, seed=0)
+
+        gt_boxes = tf.constant(
+            [
+                (10, 0, 398, 399, 0),
+                (200, 300, 250, 390, 1),
+                (185, 305, 235, 372, 2),
+            ],
+            dtype=tf.float32
+        )
+        proposed_boxes = tf.constant(
+            [
+                (12, 70, 350, 540),  # noise
+                (190, 310, 240, 370),  # 2
+                (197, 300, 252, 389),  # 1
+                (196, 300, 252, 389),  # 1
+                (197, 303, 252, 394),  # 1
+                (180, 310, 235, 370),  # 2
+                (0, 0, 400, 400),  # 0
+                (197, 302, 252, 389),  # 1
+                (0, 0, 400, 400),  # 0
+            ],
+            dtype=tf.float32
+        )
+
+        (proposals_label, bbox_targets) = self._run_rcnn_target(
+            model,
+            gt_boxes,
+            proposed_boxes
+        )
+        # We don't care much about the first value.
+        self.assertAllClose(
+            proposals_label[1:],
+            # We sum one to normalize for RCNNTarget's results.
+            np.add([2., 1., 1., 1., 2., 0., 1., 0.], 1),
+            self._equality_delta
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 4:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 72%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag68')" href="javascript:;">
+luminoth-0.1.1/luminoth/models/fasterrcnn/rcnn_target.py: 27-47
+</a>
+<div class="mid" id="frag68" style="display:none"><pre>
+    def __init__(self, num_classes, config, seed=None, variances=None,
+                 name='rcnn_proposal'):
+        """
+        Args:
+            num_classes: Number of possible classes.
+            config: Configuration object for RCNNTarget.
+        """
+        super(RCNNTarget, self).__init__(name=name)
+        self._num_classes = num_classes
+        self._variances = variances
+        # Ratio of foreground vs background for the minibatch.
+        self._foreground_fraction = config.foreground_fraction
+        self._minibatch_size = config.minibatch_size
+        # IoU lower threshold with a ground truth box to be considered that
+        # specific class.
+        self._foreground_threshold = config.foreground_threshold
+        # High and low treshold to be considered background.
+        self._background_threshold_high = config.background_threshold_high
+        self._background_threshold_low = config.background_threshold_low
+        self._seed = seed
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag93')" href="javascript:;">
+luminoth-0.1.1/luminoth/models/fasterrcnn/rpn_target.py: 52-72
+</a>
+<div class="mid" id="frag93" style="display:none"><pre>
+    def __init__(self, num_anchors, config, seed=None, name='anchor_target'):
+        super(RPNTarget, self).__init__(name=name)
+        self._num_anchors = num_anchors
+
+        self._allowed_border = config.allowed_border
+        # We set clobber positive to False to make sure that there is always at
+        # least one positive anchor per GT box.
+        self._clobber_positives = config.clobber_positives
+        # We set anchors as positive when the IoU is greater than
+        # `positive_overlap`.
+        self._positive_overlap = config.foreground_threshold
+        # We set anchors as negative when the IoU is less than
+        # `negative_overlap`.
+        self._negative_overlap = config.background_threshold_high
+        # Fraction of the batch to be foreground labeled anchors.
+        self._foreground_fraction = config.foreground_fraction
+        self._minibatch_size = config.minibatch_size
+
+        # When choosing random targets use `seed` to replicate behaviour.
+        self._seed = seed
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 5:</b> &nbsp; 2 fragments, nominal size 18 lines, similarity 84%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag70')" href="javascript:;">
+luminoth-0.1.1/luminoth/models/fasterrcnn/rcnn_target.py: 167-195
+</a>
+<div class="mid" id="frag70" style="display:none"><pre>
+        def disable_some_fgs():
+            # We want to delete a randomly-selected subset of fg_inds of
+            # size `fg_inds.shape[0] - max_fg`.
+            # We shuffle along the dimension 0 and then we get the first
+            # num_fg_inds - max_fg indices and we disable them.
+            shuffled_inds = tf.random_shuffle(fg_inds, seed=self._seed)
+            disable_place = (tf.shape(fg_inds)[0] - max_fg)
+            # This function should never run if num_fg_inds &lt;= max_fg, so we
+            # add an assertion to catch the wrong behaviour if it happens.
+            integrity_assertion = tf.assert_positive(
+                disable_place,
+                message="disable_place in disable_some_fgs is negative."
+            )
+            with tf.control_dependencies([integrity_assertion]):
+                disable_inds = shuffled_inds[:disable_place]
+            is_disabled = tf.sparse_to_dense(
+                sparse_indices=disable_inds,
+                sparse_values=True, default_value=False,
+                output_shape=tf.cast(proposals_label_shape, tf.int64),
+                # We are shuffling the indices, so they may not be ordered.
+                validate_indices=False
+            )
+            return tf.where(
+                condition=is_disabled,
+                # We set it to -label for debugging purposes.
+                x=tf.negative(proposals_label),
+                y=proposals_label
+            )
+        # Disable some fgs if we have too many foregrounds.
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag71')" href="javascript:;">
+luminoth-0.1.1/luminoth/models/fasterrcnn/rcnn_target.py: 221-245
+</a>
+<div class="mid" id="frag71" style="display:none"><pre>
+        def disable_some_bgs():
+            # Mutatis mutandis, all comments from disable_some_fgs apply.
+            shuffled_inds = tf.random_shuffle(bg_inds, seed=self._seed)
+            disable_place = (tf.shape(bg_inds)[0] - max_bg)
+            integrity_assertion = tf.assert_non_negative(
+                disable_place,
+                message="disable_place in disable_some_bgs is negative."
+            )
+            with tf.control_dependencies([integrity_assertion]):
+                disable_inds = shuffled_inds[:disable_place]
+            is_disabled = tf.sparse_to_dense(
+                sparse_indices=disable_inds,
+                sparse_values=True, default_value=False,
+                output_shape=tf.cast(proposals_label_shape, tf.int64),
+                validate_indices=False
+            )
+            return tf.where(
+                condition=is_disabled,
+                x=tf.fill(
+                    dims=proposals_label_shape,
+                    value=-1.
+                ),
+                y=proposals_label
+            )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 6:</b> &nbsp; 3 fragments, nominal size 28 lines, similarity 71%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag80')" href="javascript:;">
+luminoth-0.1.1/luminoth/models/fasterrcnn/rcnn_proposal_test.py: 75-115
+</a>
+<div class="mid" id="frag80" style="display:none"><pre>
+    def testNoBackgroundClass(self):
+        """Tests that we're not returning an object with background class.
+
+        For this, we make sure all predictions have a class between 0 and 2.
+        That is, even though we have four classes (three plus background),
+        background is completely ignored.
+        """
+
+        proposed_boxes = tf.constant([
+            (85, 500, 730, 590),
+            (50, 500, 70, 530),
+            (700, 570, 740, 598),
+        ])
+        gt_boxes_per_class = tf.constant([
+            [(101, 101, 201, 249)],
+            [(200, 502, 209, 532)],
+            [(86, 571, 743, 599)],
+        ])
+        bbox_pred = self._get_bbox_pred(proposed_boxes, gt_boxes_per_class)
+
+        # We build one prediction for each class.
+        cls_prob = tf.constant([
+            (0., .3, .3, .4),
+            (.8, 0., 0., 2.),
+            (.35, .3, .2, .15),
+        ])
+
+        proposal_prediction = self._run_rcnn_proposal(
+            self._shared_model,
+            proposed_boxes,
+            bbox_pred,
+            cls_prob,
+        )
+
+        # Make sure we get 3 predictions, one per class (as they're NMSed int
+        # a single one).
+        self.assertEqual(len(proposal_prediction['objects']), 3)
+        self.assertIn(0, proposal_prediction['proposal_label'])
+        self.assertIn(1, proposal_prediction['proposal_label'])
+        self.assertIn(2, proposal_prediction['proposal_label'])
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag83')" href="javascript:;">
+luminoth-0.1.1/luminoth/models/fasterrcnn/rcnn_proposal_test.py: 198-243
+</a>
+<div class="mid" id="frag83" style="display:none"><pre>
+    def testBboxPred(self):
+        """Tests that we're using bbox_pred correctly."""
+
+        proposed_boxes = tf.constant([
+            (200, 315, 400, 370),
+            (56, 0, 106, 4),
+            (15, 15, 20, 20),
+        ])
+
+        gt_boxes_per_class = tf.constant([
+            [(0, 0, 1, 1)],
+            [(5, 5, 10, 10)],
+            [(15, 15, 20, 20)],
+        ])
+        bbox_pred = self._get_bbox_pred(proposed_boxes, gt_boxes_per_class)
+
+        cls_prob = tf.constant([
+            (0., 1., 0., 0.),
+            (.2, .25, .3, .25),
+            (.45, 0., 0., .55),
+        ])
+
+        proposal_prediction = self._run_rcnn_proposal(
+            self._shared_model,
+            proposed_boxes,
+            bbox_pred,
+            cls_prob,
+        )
+
+        objects = self._compute_tf_graph(
+            tf.squeeze(gt_boxes_per_class, axis=1)
+        )
+        # We need to sort the objects by `cls_prob` from high to low score.
+        cls_prob = self._compute_tf_graph(cls_prob)
+        # Ignoring background prob get the reverse argsort for the max of each
+        # object.
+        decreasing_idxs = cls_prob[:, 1:].max(axis=1).argsort()[::-1]
+        # Sort by indexing.
+        objects_sorted = objects[decreasing_idxs]
+
+        self.assertAllClose(
+            proposal_prediction['objects'],
+            objects_sorted,
+            atol=self._equality_delta
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag81')" href="javascript:;">
+luminoth-0.1.1/luminoth/models/fasterrcnn/rcnn_proposal_test.py: 116-146
+</a>
+<div class="mid" id="frag81" style="display:none"><pre>
+    def testNMSFilter(self):
+        """Tests that we're applying NMS correctly."""
+
+        proposed_boxes = tf.constant([
+            (85, 500, 730, 590),
+            (50, 500, 740, 570),
+            (700, 570, 740, 598),
+        ])
+        gt_boxes_per_class = tf.constant([
+            [(101, 101, 201, 249)],
+            [(200, 502, 209, 532)],
+            [(86, 571, 743, 599)],
+        ])
+        bbox_pred = self._get_bbox_pred(proposed_boxes, gt_boxes_per_class)
+        cls_prob = tf.constant([
+            (0., .1, .3, .6),
+            (.1, .2, .25, .45),
+            (.2, .3, .25, .25),
+        ])
+
+        proposal_prediction = self._run_rcnn_proposal(
+            self._shared_model,
+            proposed_boxes,
+            bbox_pred,
+            cls_prob,
+        )
+
+        # All proposals are mapped perfectly into each GT box, so we should
+        # have 3 resulting objects after applying NMS.
+        self.assertEqual(len(proposal_prediction['objects']), 3)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 7:</b> &nbsp; 2 fragments, nominal size 13 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag95')" href="javascript:;">
+luminoth-0.1.1/luminoth/models/fasterrcnn/rpn_target.py: 204-225
+</a>
+<div class="mid" id="frag95" style="display:none"><pre>
+        def subsample_positive():
+            # Shuffle the foreground indices
+            disable_fg_inds = tf.random_shuffle(fg_inds, seed=self._seed)
+            # Select the indices that we have to ignore, this is
+            # `tf.shape(fg_inds)[0] - num_fg` because we want to get only
+            # `num_fg` foreground labels.
+            disable_place = (tf.shape(fg_inds)[0] - num_fg)
+            disable_fg_inds = disable_fg_inds[:disable_place]
+            # Order the indices for sparse_to_dense compatibility
+            disable_fg_inds, _ = tf.nn.top_k(
+                disable_fg_inds, k=tf.shape(disable_fg_inds)[-1])
+            disable_fg_inds = tf.reverse(disable_fg_inds, [0])
+            disable_fg_inds = tf.sparse_to_dense(
+                disable_fg_inds, tf.shape(labels, out_type=tf.int64),
+                True, default_value=False
+            )
+            # Put -1 to ignore the anchors in the selected indices
+            return tf.where(
+                condition=tf.squeeze(disable_fg_inds),
+                x=tf.to_float(tf.fill(tf.shape(labels), -1)), y=labels
+            )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag96')" href="javascript:;">
+luminoth-0.1.1/luminoth/models/fasterrcnn/rpn_target.py: 241-266
+</a>
+<div class="mid" id="frag96" style="display:none"><pre>
+        def subsample_negative():
+            # Shuffle the background indices
+            disable_bg_inds = tf.random_shuffle(bg_inds, seed=self._seed)
+
+            # Select the indices that we have to ignore, this is
+            # `tf.shape(bg_inds)[0] - num_bg` because we want to get only
+            # `num_bg` background labels.
+            disable_place = (tf.shape(bg_inds)[0] - num_bg)
+            disable_bg_inds = disable_bg_inds[:disable_place]
+            # Order the indices for sparse_to_dense compatibility
+            disable_bg_inds, _ = tf.nn.top_k(
+                disable_bg_inds, k=tf.shape(disable_bg_inds)[-1])
+            disable_bg_inds = tf.reverse(disable_bg_inds, [0])
+            disable_bg_inds = tf.sparse_to_dense(
+                disable_bg_inds, tf.shape(labels, out_type=tf.int64),
+                True, default_value=False
+            )
+            # Put -1 to ignore the anchors in the selected indices
+            return tf.where(
+                condition=tf.squeeze(disable_bg_inds),
+                x=tf.to_float(tf.fill(tf.shape(labels), -1)), y=labels
+            )
+
+        # Recalculate the foreground indices after (maybe) disable some of them
+
+        # Get foreground indices, get True in the indices where we have a one.
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 8:</b> &nbsp; 2 fragments, nominal size 30 lines, similarity 75%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag104')" href="javascript:;">
+luminoth-0.1.1/luminoth/models/fasterrcnn/roi_pool_test.py: 56-111
+</a>
+<div class="mid" id="frag104" style="display:none"><pre>
+    def testBasic(self):
+        """
+        Test basic max pooling. We have 4 'roi_proposals' and use a 'pool size'
+        of 2x2 ('pooled_width': 2, 'pooled_height': 2), then we will get as
+        result a 'roi_pool' of 2x2.
+        """
+        roi_proposals = np.array([
+            [1, 1, 4, 4],  # Inside mat_A
+            [6, 1, 9, 4],  # Inside mat_B
+            [1, 6, 4, 9],  # Inside mat_C
+            [6, 6, 9, 9],  # Inside mat_D
+        ])
+
+        results = self._run_roi_pooling(
+            roi_proposals, self.pretrained, self.config)
+
+        # Check that crops has the correct shape. This is (4, 4, 4, 1)
+        # because we have 4 proposals, 'pool size' = 2x2 then the
+        # tf.image.crop_and_resize function duplicates that size.
+        self.assertEqual(
+            results['crops'].shape,
+            (4, 4, 4, 1)
+        )
+
+        # Check that roi_pool has the correct shape. This is (4, 2, 2, 1)
+        # because we have 4 proposals, 'pool size' = 2x2.
+        self.assertEqual(
+            results['roi_pool'].shape,
+            (4, 2, 2, 1)
+        )
+
+        results['roi_pool'] = np.squeeze(results['roi_pool'], axis=3)
+        # Check that max polling returns only 'multiplier_a'
+        self.assertAllEqual(
+            results['roi_pool'][0],
+            np.ones((2, 2)) * self.multiplier_a
+        )
+
+        # Check that max polling returns only 'multiplier_b'
+        self.assertAllEqual(
+            results['roi_pool'][1],
+            np.ones((2, 2)) * self.multiplier_b
+        )
+
+        # Check that max polling returns only 'multiplier_c'
+        self.assertAllEqual(
+            results['roi_pool'][2],
+            np.ones((2, 2)) * self.multiplier_c
+        )
+
+        # Check that max polling returns only 'multiplier_d'
+        self.assertAllEqual(
+            results['roi_pool'][3],
+            np.ones((2, 2)) * self.multiplier_d
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag105')" href="javascript:;">
+luminoth-0.1.1/luminoth/models/fasterrcnn/roi_pool_test.py: 112-176
+</a>
+<div class="mid" id="frag105" style="display:none"><pre>
+    def testMaxPoolingWithoutInterpolation(self):
+        """
+        Test max pooling with a little bit more complex 'roi_proposals'.
+        We have 4 'roi_proposals' and use a 'pool size'
+        of 2x2 ('pooled_width': 2, 'pooled_height': 2), then we will get as
+        result a 'roi_pool' of 2x2. with
+        """
+        roi_proposals = np.array([
+            [3, 1, 6, 4],  # Across mat_A and mat_B (half-half)
+            [1, 3, 4, 7],  # Across mat_A and mat_C (half-half)
+            [5, 3, 9, 7],  # Inside mat_B and mat_D (half-half)
+            [3, 6, 6, 9],  # Inside mat_C and mat_D (half-half)
+        ])
+        a = self.multiplier_a
+        b = self.multiplier_b
+        c = self.multiplier_c
+        d = self.multiplier_d
+
+        results = self._run_roi_pooling(
+            roi_proposals, self.pretrained, self.config)
+
+        # Check that crops has the correct shape. This is (4, 4, 4, 1)
+        # because we have 4 proposals, 'pool size' = 2x2 then the
+        # tf.image.crop_and_resize function duplicates that size.
+        self.assertEqual(
+            results['crops'].shape,
+            (4, 4, 4, 1)
+        )
+
+        # Check that roi_pool has the correct shape. This is (4, 2, 2, 1)
+        # because we have 4 proposals, 'pool size' = 2x2.
+        self.assertEqual(
+            results['roi_pool'].shape,
+            (4, 2, 2, 1)
+        )
+
+        results['roi_pool'] = np.squeeze(results['roi_pool'], axis=3)
+        # Check that max polling returns a column of 'one' and
+        # a column of 'two'.
+        self.assertAllEqual(
+            results['roi_pool'][0],
+            np.array([[a, b], [a, b]])
+        )
+
+        # Check that max polling returns a row of 'one' and
+        # a row of 'three'.
+        self.assertAllEqual(
+            results['roi_pool'][1],
+            np.array([[a, a], [c, c]])
+        )
+
+        # Check that max polling returns a row of 'one' and
+        # a row of 'three'.
+        self.assertAllEqual(
+            results['roi_pool'][2],
+            np.array([[b, b], [d, d]])
+        )
+
+        # Check that max polling returns a column of 'three' and
+        # a column of 'four'.
+        self.assertAllEqual(
+            results['roi_pool'][3],
+            np.array([[c, d], [c, d]])
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 9:</b> &nbsp; 2 fragments, nominal size 26 lines, similarity 88%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag191')" href="javascript:;">
+luminoth-0.1.1/luminoth/utils/image_test.py: 355-395
+</a>
+<div class="mid" id="frag191" style="display:none"><pre>
+    def testRandomPatchImageBboxes(self):
+        """Tests the integrity of the return values of random_patch
+
+        When bboxes is not None.
+        """
+        im_shape = (800, 600, 3)
+        total_boxes = 5
+        # We don't care about the label
+        label = 3
+        # First test case, we use randomly generated image and bboxes.
+        image, bboxes = self._get_image_with_boxes(im_shape, total_boxes)
+        # Add a label to each bbox.
+        bboxes_w_label = tf.concat(
+            [
+                bboxes,
+                tf.fill((bboxes.shape[0], 1), label)
+            ],
+            axis=1
+        )
+        config = self._random_patch_config
+        ret_image, ret_bboxes = self._random_patch(
+            image, config, bboxes_w_label
+        )
+        # Assertions
+        self.assertLessEqual(ret_bboxes.shape[0], total_boxes)
+        self.assertGreater(ret_bboxes.shape[0], 0)
+        self.assertTrue(np.all(ret_bboxes &gt;= 0))
+        self.assertTrue(np.all(
+            ret_bboxes[:, 0] &lt;= ret_image.shape[1]
+        ))
+        self.assertTrue(np.all(
+            ret_bboxes[:, 1] &lt;= ret_image.shape[0]
+        ))
+        self.assertTrue(np.all(
+            ret_bboxes[:, 2] &lt;= ret_image.shape[1]
+        ))
+        self.assertTrue(np.all(
+            ret_bboxes[:, 3] &lt;= ret_image.shape[0]
+        ))
+        self.assertTrue(np.all(ret_image.shape &lt;= im_shape))
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag192')" href="javascript:;">
+luminoth-0.1.1/luminoth/utils/image_test.py: 396-435
+</a>
+<div class="mid" id="frag192" style="display:none"><pre>
+    def testRandomPatchLargerThanImage(self):
+        """Tests random_patch normalizes the minimum sizes.
+        """
+        im_shape = (600, 800, 3)
+        total_boxes = 5
+        config = EasyDict({
+            'min_height': 900,
+            'min_width': 900
+        })
+        label = 3
+        image, bboxes = self._get_image_with_boxes(im_shape, total_boxes)
+        # Add a label to each bbox.
+        bboxes_w_label = tf.concat(
+            [
+                bboxes,
+                tf.fill((bboxes.shape[0], 1), label)
+            ],
+            axis=1
+        )
+        ret_image, ret_bboxes = self._random_patch(
+            image, config, bboxes_w_label
+        )
+        # Assertions
+        self.assertLessEqual(ret_bboxes.shape[0], total_boxes)
+        self.assertGreater(ret_bboxes.shape[0], 0)
+        self.assertTrue(np.all(ret_bboxes &gt;= 0))
+        self.assertTrue(np.all(
+            ret_bboxes[:, 0] &lt;= ret_image.shape[1]
+        ))
+        self.assertTrue(np.all(
+            ret_bboxes[:, 1] &lt;= ret_image.shape[0]
+        ))
+        self.assertTrue(np.all(
+            ret_bboxes[:, 2] &lt;= ret_image.shape[1]
+        ))
+        self.assertTrue(np.all(
+            ret_bboxes[:, 3] &lt;= ret_image.shape[0]
+        ))
+        self.assertTrue(np.all(ret_image.shape &lt;= im_shape))
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 10:</b> &nbsp; 2 fragments, nominal size 17 lines, similarity 72%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag194')" href="javascript:;">
+luminoth-0.1.1/luminoth/utils/image_test.py: 451-481
+</a>
+<div class="mid" id="frag194" style="display:none"><pre>
+    def testRandomResizeImageBboxes(self):
+        """Tests the integrity of the return values of random_resize
+
+        This tests the case when bboxes is not None.
+        """
+        im_shape = (600, 800, 3)
+        config = self._random_resize_config
+        total_boxes = 5
+        label = 3
+
+        image, bboxes = self._get_image_with_boxes(im_shape, total_boxes)
+        # Add a label to each bbox.
+        bboxes_w_label = tf.concat(
+            [
+                bboxes,
+                tf.fill((bboxes.shape[0], 1), label)
+            ],
+            axis=1
+        )
+        ret_image, ret_bboxes = self._random_resize(
+            image, config, bboxes_w_label
+        )
+        # Assertions
+        self.assertEqual(ret_bboxes.shape[0], total_boxes)
+        self.assertTrue(np.all(
+            np.asarray(ret_image.shape[:2]) &gt;= config.min_size
+        ))
+        self.assertTrue(np.all(
+            np.asarray(ret_image.shape[:2]) &lt;= config.max_size
+        ))
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag196')" href="javascript:;">
+luminoth-0.1.1/luminoth/utils/image_test.py: 500-526
+</a>
+<div class="mid" id="frag196" style="display:none"><pre>
+    def testRandomDistort(self):
+        """Tests the integrity of the return values of random_distortion.
+        """
+        im_shape = (600, 900, 3)
+        config = self._random_distort_config
+        total_boxes = 5
+        label = 3
+
+        image, bboxes = self._get_image_with_boxes(im_shape, total_boxes)
+        # Add a label to each bbox.
+        bboxes_w_label = tf.concat(
+            [
+                bboxes,
+                tf.fill((bboxes.shape[0], 1), label)
+            ],
+            axis=1
+        )
+
+        ret_image, ret_bboxes = self._random_distort(
+            image, config, bboxes_w_label
+        )
+        # Assertions
+        self.assertEqual(im_shape, ret_image.shape)
+        self.assertAllEqual(
+            bboxes, ret_bboxes[:, :4]
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 11:</b> &nbsp; 4 fragments, nominal size 12 lines, similarity 75%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag235')" href="javascript:;">
+luminoth-0.1.1/luminoth/utils/bbox_transform_test.py: 17-38
+</a>
+<div class="mid" id="frag235" style="display:none"><pre>
+    def _encode(self, proposals, gt_boxes):
+        """
+        Encodes the adjustment from proposals to GT boxes using both the
+        TensorFlow and the Numpy implementation.
+
+        Asserts that both results are equal.
+        """
+        proposals_tf = tf.placeholder(tf.float32, shape=proposals.shape)
+        gt_boxes_tf = tf.placeholder(tf.float32, shape=gt_boxes.shape)
+
+        encoded_tf = encode_tf(proposals_tf, gt_boxes_tf)
+        with self.test_session() as sess:
+            encoded_tf_val = sess.run(encoded_tf, feed_dict={
+                proposals_tf: proposals,
+                gt_boxes_tf: gt_boxes,
+            })
+
+        encoded_np = encode_np(proposals, gt_boxes)
+
+        self.assertAllClose(encoded_np, encoded_tf_val)
+        return encoded_np
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag237')" href="javascript:;">
+luminoth-0.1.1/luminoth/utils/bbox_transform_test.py: 61-76
+</a>
+<div class="mid" id="frag237" style="display:none"><pre>
+    def _encode_decode(self, proposals, gt_boxes):
+        """
+        Encode and decode to check inverse.
+        """
+        proposals_tf = tf.placeholder(tf.float32, shape=proposals.shape)
+        gt_boxes_tf = tf.placeholder(tf.float32, shape=gt_boxes.shape)
+        deltas_tf = encode_tf(proposals_tf, gt_boxes_tf)
+        decoded_gt_boxes_tf = decode_tf(proposals_tf, deltas_tf)
+
+        with self.test_session() as sess:
+            decoded_gt_boxes = sess.run(decoded_gt_boxes_tf, feed_dict={
+                proposals_tf: proposals,
+                gt_boxes_tf: gt_boxes,
+            })
+            self.assertAllClose(decoded_gt_boxes, gt_boxes, atol=1e-04)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag238')" href="javascript:;">
+luminoth-0.1.1/luminoth/utils/bbox_transform_test.py: 77-96
+</a>
+<div class="mid" id="frag238" style="display:none"><pre>
+    def _clip_boxes(self, proposals, image_shape):
+        """
+        Clips boxes to image shape using both the TensorFlow and the Numpy
+        implementation.
+
+        Asserts that both results are equal.
+        """
+        proposals_tf = tf.placeholder(tf.float32, shape=proposals.shape)
+        image_shape_tf = tf.placeholder(tf.int32, shape=(2,))
+        clipped_tf = clip_boxes_tf(proposals, image_shape_tf)
+        with self.test_session() as sess:
+            clipped_tf_val = sess.run(clipped_tf, feed_dict={
+                proposals_tf: proposals,
+                image_shape_tf: image_shape,
+            })
+
+        clipped_np_val = clip_boxes_np(proposals, image_shape)
+        self.assertAllClose(clipped_np_val, clipped_tf_val)
+        return clipped_np_val
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag236')" href="javascript:;">
+luminoth-0.1.1/luminoth/utils/bbox_transform_test.py: 39-60
+</a>
+<div class="mid" id="frag236" style="display:none"><pre>
+    def _decode(self, proposals, deltas):
+        """
+        Encodes the final boxes from proposals with deltas, using both the
+        TensorFlow and the Numpy implementation.
+
+        Asserts that both results are equal.
+        """
+        proposals_tf = tf.placeholder(tf.float32, shape=proposals.shape)
+        deltas_tf = tf.placeholder(tf.float32, shape=deltas.shape)
+
+        decoded_tf = decode_tf(proposals_tf, deltas_tf)
+        with self.test_session() as sess:
+            decoded_tf_val = sess.run(decoded_tf, feed_dict={
+                proposals_tf: proposals,
+                deltas_tf: deltas,
+            })
+
+        decoded_np = decode_np(proposals, deltas)
+
+        self.assertAllClose(decoded_np, decoded_tf_val)
+        return decoded_np
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 12:</b> &nbsp; 2 fragments, nominal size 40 lines, similarity 71%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag267')" href="javascript:;">
+luminoth-0.1.1/luminoth/utils/image_vis.py: 670-735
+</a>
+<div class="mid" id="frag267" style="display:none"><pre>
+def draw_rpn_cls_loss(pred_dict, image, foreground=True, topn=10,
+                      worst=True):
+    """
+    For each bounding box labeled object. We want to display the softmax score.
+
+    We display the anchors, and not the adjusted bounding boxes.
+    """
+    loss = pred_dict['rpn_prediction']['cross_entropy_per_anchor']
+    type_str = 'foreground' if foreground else 'background'
+    logger.debug(
+        'RPN classification loss (anchors, with the softmax score) '
+        '(mean softmax loss (all): {})'.format(loss.mean()))
+    logger.debug('Showing {} only'.format(type_str))
+    logger.debug('{} {} performers'.format('Worst' if worst else 'Best', topn))
+    prob = pred_dict['rpn_prediction']['rpn_cls_prob']
+    prob = prob.reshape([-1, 2])[:, 1]
+    target = pred_dict['rpn_prediction']['rpn_cls_target']
+    anchors = pred_dict['all_anchors']
+    gt_bboxes = pred_dict['gt_bboxes']
+
+    non_ignored_indices = target &gt;= 0
+    target = target[non_ignored_indices]
+    prob = prob[non_ignored_indices]
+    anchors = anchors[non_ignored_indices]
+
+    # Get anchors with positive label.
+    if foreground:
+        positive_indices = np.nonzero(target &gt; 0)[0]
+    else:
+        positive_indices = np.nonzero(target == 0)[0]
+
+    loss = loss[positive_indices]
+    prob = prob[positive_indices]
+    anchors = anchors[positive_indices]
+
+    logger.debug('Mean loss for {}: {}'.format(type_str, loss.mean()))
+
+    sorted_idx = loss.argsort()
+    if worst:
+        sorted_idx = sorted_idx[::-1]
+
+    sorted_idx = sorted_idx[:topn]
+
+    loss = loss[sorted_idx]
+    prob = prob[sorted_idx]
+    anchors = anchors[sorted_idx]
+
+    logger.debug(
+        'Mean loss for displayed {}: {}'.format(type_str, loss.mean()))
+
+    image_pil, draw = get_image_draw(image)
+
+    for anchor_prob, anchor, anchor_loss in zip(prob, anchors, loss):
+        anchor = list(anchor)
+        draw.rectangle(anchor, fill=(0, 255, 0, 20), outline=(0, 255, 0, 100))
+        draw.text(
+            tuple([anchor[0], anchor[1]]), text='{:.2f}'.format(anchor_loss),
+            font=font, fill=(0, 0, 0, 255))
+
+    for gt_box in gt_bboxes:
+        draw.rectangle(
+            list(gt_box[:4]), fill=(0, 0, 255, 60), outline=(0, 0, 255, 150))
+
+    return image_pil
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag270')" href="javascript:;">
+luminoth-0.1.1/luminoth/utils/image_vis.py: 825-878
+</a>
+<div class="mid" id="frag270" style="display:none"><pre>
+def draw_ssd_cls_loss(pred_dict, image, foreground=True, topn=10, worst=True):
+    """
+    For each bounding box labeled object. We want to display the softmax score.
+
+    We display the anchors, and not the adjusted bounding boxes.
+    """
+    loss = pred_dict['cls_loss_per_proposal']
+
+    prob = pred_dict['cls_prob']
+    target = pred_dict['target']['cls']
+    anchors = pred_dict['target']['anchors']
+    gt_bboxes = pred_dict['gt_bboxes']
+
+    non_ignored_indices = target &gt;= 0
+    target = target[non_ignored_indices]
+    prob = prob[non_ignored_indices]
+    anchors = anchors[non_ignored_indices]
+
+    # Get anchors with positive label.
+    if foreground:
+        positive_indices = np.nonzero(target &gt; 0)[0]
+    else:
+        positive_indices = np.nonzero(target == 0)[0]
+
+    loss = loss[positive_indices]
+    prob = prob[positive_indices]
+    anchors = anchors[positive_indices]
+
+    sorted_idx = loss.argsort()
+    if worst:
+        sorted_idx = sorted_idx[::-1]
+
+    sorted_idx = sorted_idx[:topn]
+
+    loss = loss[sorted_idx]
+    prob = prob[sorted_idx]
+    anchors = anchors[sorted_idx]
+
+    image_pil, draw = get_image_draw(image)
+
+    for anchor_prob, anchor, anchor_loss in zip(prob, anchors, loss):
+        anchor = list(anchor)
+        draw.rectangle(anchor, fill=(0, 255, 0, 20), outline=(0, 255, 0, 100))
+        draw.text(
+            tuple([anchor[0], anchor[1]]), text='{:.2f}'.format(anchor_loss),
+            font=font, fill=(0, 0, 0, 255))
+
+    for gt_box in gt_bboxes:
+        draw.rectangle(
+            list(gt_box[:4]), fill=(0, 0, 255, 60), outline=(0, 0, 255, 150))
+
+    return image_pil
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 13:</b> &nbsp; 2 fragments, nominal size 37 lines, similarity 92%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag269')" href="javascript:;">
+luminoth-0.1.1/luminoth/utils/image_vis.py: 769-824
+</a>
+<div class="mid" id="frag269" style="display:none"><pre>
+def draw_rpn_bbox_pred(pred_dict, image, top_k=5):
+    """
+    For each bounding box labeled object. We want to display bbox_reg_error.
+
+    We display the final bounding box and the anchor. Drawing lines between the
+    corners.
+    """
+    logger.debug(
+        'RPN regression loss (bbox to original anchors, '
+        'with the smoothL1Loss)')
+    target = pred_dict['rpn_prediction']['rpn_cls_target']
+    bbox_pred = pred_dict['rpn_prediction']['rpn_bbox_pred']
+    all_anchors = pred_dict['all_anchors']
+    # Get anchors with positive label.
+    positive_indices = target &gt; 0
+
+    bbox_pred = bbox_pred[positive_indices]
+    all_anchors = all_anchors[positive_indices]
+
+    loss_per_anchor = pred_dict['rpn_prediction']['reg_loss_per_anchor']
+
+    top_losses_idx = np.argsort(loss_per_anchor)[::-1][:top_k]
+
+    loss_per_anchor = loss_per_anchor[top_losses_idx]
+    bbox_pred = bbox_pred[top_losses_idx]
+    all_anchors = all_anchors[top_losses_idx]
+
+    bbox_final = decode(all_anchors, bbox_pred)
+
+    image_pil, draw = get_image_draw(image)
+
+    for anchor, bbox, loss in zip(all_anchors, bbox_final, loss_per_anchor):
+        anchor = list(anchor)
+        bbox = list(bbox)
+        draw.rectangle(anchor, fill=(0, 255, 0, 20), outline=(0, 255, 0, 100))
+        draw.rectangle(
+            bbox, fill=(255, 0, 255, 20), outline=(255, 0, 255, 100))
+        draw.text(
+            tuple([anchor[0], anchor[1]]), text='{:.2f}'.format(loss),
+            font=font, fill=(0, 0, 0, 255))
+        draw.line(
+            [(anchor[0], anchor[1]), (bbox[0], bbox[1])],
+            fill=(0, 0, 0, 170), width=1)
+        draw.line(
+            [(anchor[2], anchor[1]), (bbox[2], bbox[1])],
+            fill=(0, 0, 0, 170), width=1)
+        draw.line(
+            [(anchor[2], anchor[3]), (bbox[2], bbox[3])],
+            fill=(0, 0, 0, 170), width=1)
+        draw.line(
+            [(anchor[0], anchor[3]), (bbox[0], bbox[3])],
+            fill=(0, 0, 0, 170), width=1)
+
+    return image_pil
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag282')" href="javascript:;">
+luminoth-0.1.1/luminoth/utils/image_vis.py: 1328-1381
+</a>
+<div class="mid" id="frag282" style="display:none"><pre>
+def draw_ssd_bbox_pred(pred_dict, image, top_k=5):
+    """
+    For each bounding box labeled object.
+
+    We display the final bounding box and the anchor. Drawing lines between the
+    corners.
+    """
+
+    target = pred_dict['target']['cls']
+    all_anchors = pred_dict['target']['anchors']
+    bbox_pred = pred_dict['loc_pred']
+    # Get anchors with positive label.
+    positive_indices = target &gt; 0
+
+    bbox_pred = bbox_pred[positive_indices]
+    all_anchors = all_anchors[positive_indices]
+
+    loss_per_proposal = pred_dict['reg_loss_per_proposal']
+
+    top_losses_idx = np.argsort(loss_per_proposal)[::-1][:top_k]
+
+    loss_per_proposal = loss_per_proposal[top_losses_idx]
+    bbox_pred = bbox_pred[top_losses_idx]
+    all_anchors = all_anchors[top_losses_idx]
+
+    bbox_final = decode(all_anchors, bbox_pred)
+
+    image_pil, draw = get_image_draw(image)
+
+    for anchor, bbox, loss in zip(all_anchors, bbox_final, loss_per_proposal):
+        anchor = list(anchor)
+        bbox = list(bbox)
+        draw.rectangle(anchor, fill=(0, 255, 0, 20), outline=(0, 255, 0, 100))
+        draw.rectangle(
+            bbox, fill=(255, 0, 255, 20), outline=(255, 0, 255, 100))
+        draw.text(
+            tuple([anchor[0], anchor[1]]), text='{:.2f}'.format(loss),
+            font=font, fill=(0, 0, 0, 255))
+        draw.line(
+            [(anchor[0], anchor[1]), (bbox[0], bbox[1])],
+            fill=(0, 0, 0, 170), width=1)
+        draw.line(
+            [(anchor[2], anchor[1]), (bbox[2], bbox[1])],
+            fill=(0, 0, 0, 170), width=1)
+        draw.line(
+            [(anchor[2], anchor[3]), (bbox[2], bbox[3])],
+            fill=(0, 0, 0, 170), width=1)
+        draw.line(
+            [(anchor[0], anchor[3]), (bbox[0], bbox[3])],
+            fill=(0, 0, 0, 170), width=1)
+
+    return image_pil
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 14:</b> &nbsp; 2 fragments, nominal size 14 lines, similarity 85%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag363')" href="javascript:;">
+luminoth-0.1.1/luminoth/tools/dataset/readers/object_detection/flat_reader.py: 158-175
+</a>
+<div class="mid" id="frag363" style="display:none"><pre>
+    def _get_image_path(self, image_id):
+        default_path = os.path.join(self._get_split_path(), image_id)
+        if tf.gfile.Exists(default_path):
+            return default_path
+
+        # Lets assume it doesn't have extension
+        possible_files = [
+            f for f in self.files if f.startswith('{}.'.format(image_id))
+        ]
+        if len(possible_files) == 0:
+            return
+        elif len(possible_files) &gt; 1:
+            tf.logging.warning(
+                'Image {} matches with {} files ({}).'.format(
+                    image_id, len(possible_files)))
+
+        return os.path.join(self._get_split_path(), possible_files[0])
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag393')" href="javascript:;">
+luminoth-0.1.1/luminoth/tools/dataset/readers/object_detection/csv_reader.py: 179-196
+</a>
+<div class="mid" id="frag393" style="display:none"><pre>
+    def _get_image_path(self, image_id):
+        default_path = os.path.join(self._data_dir, self._split, image_id)
+        if tf.gfile.Exists(default_path):
+            return default_path
+
+        # Lets assume it doesn't have extension
+        possible_files = [
+            f for f in self.files if f.startswith('{}.'.format(image_id))
+        ]
+        if len(possible_files) == 0:
+            return
+        elif len(possible_files) &gt; 1:
+            tf.logging.warning(
+                'Image {} matches with {} files ({}).'.format(
+                    image_id, len(possible_files)))
+
+        return os.path.join(self._data_dir, self._split, possible_files[0])
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 15:</b> &nbsp; 2 fragments, nominal size 10 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag380')" href="javascript:;">
+luminoth-0.1.1/luminoth/tools/dataset/readers/object_detection/imagenet.py: 117-131
+</a>
+<div class="mid" id="frag380" style="display:none"><pre>
+    def _validate_structure(self):
+        if not tf.gfile.Exists(self._data_dir):
+            raise InvalidDataDirectory(
+                '"{}" does not exist.'.format(self._data_dir)
+            )
+
+        if not tf.gfile.Exists(self._imagesets_path):
+            raise InvalidDataDirectory('ImageSets path is missing')
+
+        if not tf.gfile.Exists(self._images_path):
+            raise InvalidDataDirectory('Images path is missing')
+
+        if not tf.gfile.Exists(self._annotations_path):
+            raise InvalidDataDirectory('Annotations path is missing')
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag398')" href="javascript:;">
+luminoth-0.1.1/luminoth/tools/dataset/readers/object_detection/pascalvoc.py: 39-53
+</a>
+<div class="mid" id="frag398" style="display:none"><pre>
+    def _validate_structure(self):
+        if not tf.gfile.Exists(self._data_dir):
+            raise InvalidDataDirectory(
+                '"{}" does not exist.'.format(self._data_dir)
+            )
+
+        if not tf.gfile.Exists(self._labels_path):
+            raise InvalidDataDirectory('Labels path is missing')
+
+        if not tf.gfile.Exists(self._images_path):
+            raise InvalidDataDirectory('Images path is missing')
+
+        if not tf.gfile.Exists(self._annots_path):
+            raise InvalidDataDirectory('Annotations path is missing')
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<script language="JavaScript">
+function ShowHide(divId) { 
+    if(document.getElementById(divId).style.display == 'none') {
+        document.getElementById(divId).style.display='block';
+    } else { 
+        document.getElementById(divId).style.display = 'none';
+    } 
+}
+</script>
+</body>
+</html>

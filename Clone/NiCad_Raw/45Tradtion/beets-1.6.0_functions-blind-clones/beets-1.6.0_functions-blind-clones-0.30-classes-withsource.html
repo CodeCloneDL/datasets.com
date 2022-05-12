@@ -1,0 +1,3243 @@
+<html>
+<head>
+    <title>NiCad6 Clone Report</title>
+    <style type="text/css">
+        body {font-family:sans-serif;}
+        table {background-color:white; border:0px; padding:0px; border-spacing:4px; width:auto; margin-left:30px; margin-right:auto;}
+        td {background-color:rgba(192,212,238,0.8); border:0px; padding:8px; width:auto; vertical-align:top; border-radius:8px}
+        pre {background-color:white; padding:4px;}
+        a {color:darkblue;}
+    </style>
+</head>
+<body>
+<h2>NiCad6 Clone Report</h2>
+<table>
+<tr style="font-size:14pt">
+<td><b>System:</b> &nbsp; beets-1.6.0</td>
+<td><b>Clone pairs:</b> &nbsp; 136</td>
+<td><b>Clone classes:</b> &nbsp; 35</td>
+</tr>
+<tr style="font-size:12pt">
+<td style="background-color:white">Clone type: &nbsp; 3-2</td>
+<td style="background-color:white">Granularity: &nbsp; functions-blind</td>
+<td style="background-color:white">Max diff threshold: &nbsp; 30%</td>
+<td style="background-color:white">Clone size: &nbsp; 10 - 2500 lines</td>
+<td style="background-color:white">Total functions-blind: &nbsp; 2132</td>
+</tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 1:</b> &nbsp; 2 fragments, nominal size 51 lines, similarity 73%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag59')" href="javascript:;">
+beets-1.6.0/beetsplug/spotify.py: 157-224
+</a>
+<div class="mid" id="frag59" style="display:none"><pre>
+    def album_for_id(self, album_id):
+        """Fetch an album by its Spotify ID or URL and return an
+        AlbumInfo object or None if the album is not found.
+
+        :param album_id: Spotify ID or URL for the album
+        :type album_id: str
+        :return: AlbumInfo object for album
+        :rtype: beets.autotag.hooks.AlbumInfo or None
+        """
+        spotify_id = self._get_id('album', album_id)
+        if spotify_id is None:
+            return None
+
+        album_data = self._handle_response(
+            requests.get, self.album_url + spotify_id
+        )
+        artist, artist_id = self.get_artist(album_data['artists'])
+
+        date_parts = [
+            int(part) for part in album_data['release_date'].split('-')
+        ]
+
+        release_date_precision = album_data['release_date_precision']
+        if release_date_precision == 'day':
+            year, month, day = date_parts
+        elif release_date_precision == 'month':
+            year, month = date_parts
+            day = None
+        elif release_date_precision == 'year':
+            year = date_parts[0]
+            month = None
+            day = None
+        else:
+            raise ui.UserError(
+                "Invalid `release_date_precision` returned "
+                "by {} API: '{}'".format(
+                    self.data_source, release_date_precision
+                )
+            )
+
+        tracks = []
+        medium_totals = collections.defaultdict(int)
+        for i, track_data in enumerate(album_data['tracks']['items'], start=1):
+            track = self._get_track(track_data)
+            track.index = i
+            medium_totals[track.medium] += 1
+            tracks.append(track)
+        for track in tracks:
+            track.medium_total = medium_totals[track.medium]
+
+        return AlbumInfo(
+            album=album_data['name'],
+            album_id=spotify_id,
+            artist=artist,
+            artist_id=artist_id,
+            tracks=tracks,
+            albumtype=album_data['album_type'],
+            va=len(album_data['artists']) == 1
+            and artist.lower() == 'various artists',
+            year=year,
+            month=month,
+            day=day,
+            label=album_data['label'],
+            mediums=max(medium_totals.keys()),
+            data_source=self.data_source,
+            data_url=album_data['external_urls']['spotify'],
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag454')" href="javascript:;">
+beets-1.6.0/beetsplug/deezer.py: 45-113
+</a>
+<div class="mid" id="frag454" style="display:none"><pre>
+    def album_for_id(self, album_id):
+        """Fetch an album by its Deezer ID or URL and return an
+        AlbumInfo object or None if the album is not found.
+
+        :param album_id: Deezer ID or URL for the album.
+        :type album_id: str
+        :return: AlbumInfo object for album.
+        :rtype: beets.autotag.hooks.AlbumInfo or None
+        """
+        deezer_id = self._get_id('album', album_id)
+        if deezer_id is None:
+            return None
+
+        album_data = requests.get(self.album_url + deezer_id).json()
+        artist, artist_id = self.get_artist(album_data['contributors'])
+
+        release_date = album_data['release_date']
+        date_parts = [int(part) for part in release_date.split('-')]
+        num_date_parts = len(date_parts)
+
+        if num_date_parts == 3:
+            year, month, day = date_parts
+        elif num_date_parts == 2:
+            year, month = date_parts
+            day = None
+        elif num_date_parts == 1:
+            year = date_parts[0]
+            month = None
+            day = None
+        else:
+            raise ui.UserError(
+                "Invalid `release_date` returned "
+                "by {} API: '{}'".format(self.data_source, release_date)
+            )
+
+        tracks_data = requests.get(
+            self.album_url + deezer_id + '/tracks'
+        ).json()['data']
+        if not tracks_data:
+            return None
+        tracks = []
+        medium_totals = collections.defaultdict(int)
+        for i, track_data in enumerate(tracks_data, start=1):
+            track = self._get_track(track_data)
+            track.index = i
+            medium_totals[track.medium] += 1
+            tracks.append(track)
+        for track in tracks:
+            track.medium_total = medium_totals[track.medium]
+
+        return AlbumInfo(
+            album=album_data['title'],
+            album_id=deezer_id,
+            artist=artist,
+            artist_credit=self.get_artist([album_data['artist']])[0],
+            artist_id=artist_id,
+            tracks=tracks,
+            albumtype=album_data['record_type'],
+            va=len(album_data['contributors']) == 1
+            and artist.lower() == 'various artists',
+            year=year,
+            month=month,
+            day=day,
+            label=album_data['label'],
+            mediums=max(medium_totals.keys()),
+            data_source=self.data_source,
+            data_url=album_data['link'],
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 2:</b> &nbsp; 2 fragments, nominal size 15 lines, similarity 73%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag60')" href="javascript:;">
+beets-1.6.0/beetsplug/spotify.py: 225-247
+</a>
+<div class="mid" id="frag60" style="display:none"><pre>
+    def _get_track(self, track_data):
+        """Convert a Spotify track object dict to a TrackInfo object.
+
+        :param track_data: Simplified track object
+            (https://developer.spotify.com/documentation/web-api/reference/object-model/#track-object-simplified)
+        :type track_data: dict
+        :return: TrackInfo object for track
+        :rtype: beets.autotag.hooks.TrackInfo
+        """
+        artist, artist_id = self.get_artist(track_data['artists'])
+        return TrackInfo(
+            title=track_data['name'],
+            track_id=track_data['id'],
+            artist=artist,
+            artist_id=artist_id,
+            length=track_data['duration_ms'] / 1000,
+            index=track_data['track_number'],
+            medium=track_data['disc_number'],
+            medium_index=track_data['track_number'],
+            data_source=self.data_source,
+            data_url=track_data['external_urls']['spotify'],
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag455')" href="javascript:;">
+beets-1.6.0/beetsplug/deezer.py: 114-137
+</a>
+<div class="mid" id="frag455" style="display:none"><pre>
+    def _get_track(self, track_data):
+        """Convert a Deezer track object dict to a TrackInfo object.
+
+        :param track_data: Deezer Track object dict
+        :type track_data: dict
+        :return: TrackInfo object for track
+        :rtype: beets.autotag.hooks.TrackInfo
+        """
+        artist, artist_id = self.get_artist(
+            track_data.get('contributors', [track_data['artist']])
+        )
+        return TrackInfo(
+            title=track_data['title'],
+            track_id=track_data['id'],
+            artist=artist,
+            artist_id=artist_id,
+            length=track_data['duration'],
+            index=track_data['track_position'],
+            medium=track_data['disk_number'],
+            medium_index=track_data['track_position'],
+            data_source=self.data_source,
+            data_url=track_data['link'],
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 3:</b> &nbsp; 2 fragments, nominal size 18 lines, similarity 77%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag61')" href="javascript:;">
+beets-1.6.0/beetsplug/spotify.py: 248-284
+</a>
+<div class="mid" id="frag61" style="display:none"><pre>
+    def track_for_id(self, track_id=None, track_data=None):
+        """Fetch a track by its Spotify ID or URL and return a
+        TrackInfo object or None if the track is not found.
+
+        :param track_id: (Optional) Spotify ID or URL for the track. Either
+            ``track_id`` or ``track_data`` must be provided.
+        :type track_id: str
+        :param track_data: (Optional) Simplified track object dict. May be
+            provided instead of ``track_id`` to avoid unnecessary API calls.
+        :type track_data: dict
+        :return: TrackInfo object for track
+        :rtype: beets.autotag.hooks.TrackInfo or None
+        """
+        if track_data is None:
+            spotify_id = self._get_id('track', track_id)
+            if spotify_id is None:
+                return None
+            track_data = self._handle_response(
+                requests.get, self.track_url + spotify_id
+            )
+        track = self._get_track(track_data)
+
+        # Get album's tracks to set `track.index` (position on the entire
+        # release) and `track.medium_total` (total number of tracks on
+        # the track's disc).
+        album_data = self._handle_response(
+            requests.get, self.album_url + track_data['album']['id']
+        )
+        medium_total = 0
+        for i, track_data in enumerate(album_data['tracks']['items'], start=1):
+            if track_data['disc_number'] == track.medium:
+                medium_total += 1
+                if track_data['id'] == track.track_id:
+                    track.index = i
+        track.medium_total = medium_total
+        return track
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag456')" href="javascript:;">
+beets-1.6.0/beetsplug/deezer.py: 138-172
+</a>
+<div class="mid" id="frag456" style="display:none"><pre>
+    def track_for_id(self, track_id=None, track_data=None):
+        """Fetch a track by its Deezer ID or URL and return a
+        TrackInfo object or None if the track is not found.
+
+        :param track_id: (Optional) Deezer ID or URL for the track. Either
+            ``track_id`` or ``track_data`` must be provided.
+        :type track_id: str
+        :param track_data: (Optional) Simplified track object dict. May be
+            provided instead of ``track_id`` to avoid unnecessary API calls.
+        :type track_data: dict
+        :return: TrackInfo object for track
+        :rtype: beets.autotag.hooks.TrackInfo or None
+        """
+        if track_data is None:
+            deezer_id = self._get_id('track', track_id)
+            if deezer_id is None:
+                return None
+            track_data = requests.get(self.track_url + deezer_id).json()
+        track = self._get_track(track_data)
+
+        # Get album's tracks to set `track.index` (position on the entire
+        # release) and `track.medium_total` (total number of tracks on
+        # the track's disc).
+        album_tracks_data = requests.get(
+            self.album_url + str(track_data['album']['id']) + '/tracks'
+        ).json()['data']
+        medium_total = 0
+        for i, track_data in enumerate(album_tracks_data, start=1):
+            if track_data['disk_number'] == track.medium:
+                medium_total += 1
+                if track_data['id'] == track.track_id:
+                    track.index = i
+        track.medium_total = medium_total
+        return track
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 4:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 72%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag143')" href="javascript:;">
+beets-1.6.0/beetsplug/subsonicupdate.py: 46-57
+</a>
+<div class="mid" id="frag143" style="display:none"><pre>
+    def __init__(self):
+        super().__init__()
+        # Set default configuration values
+        config['subsonic'].add({
+            'user': 'admin',
+            'pass': 'admin',
+            'url': 'http://localhost:4040',
+            'auth': 'token',
+        })
+        config['subsonic']['pass'].redact = True
+        self.register_listener('import', self.start_scan)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag369')" href="javascript:;">
+beets-1.6.0/beetsplug/plexupdate.py: 74-88
+</a>
+<div class="mid" id="frag369" style="display:none"><pre>
+    def __init__(self):
+        super().__init__()
+
+        # Adding defaults.
+        config['plex'].add({
+            'host': 'localhost',
+            'port': 32400,
+            'token': '',
+            'library_name': 'Music',
+            'secure': False,
+            'ignore_cert_errors': False})
+
+        config['plex']['token'].redact = True
+        self.register_listener('database_change', self.listen_for_db_change)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 5:</b> &nbsp; 2 fragments, nominal size 27 lines, similarity 81%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag281')" href="javascript:;">
+beets-1.6.0/beetsplug/export.py: 81-110
+</a>
+<div class="mid" id="frag281" style="display:none"><pre>
+    def commands(self):
+        cmd = ui.Subcommand('export', help='export data from beets')
+        cmd.func = self.run
+        cmd.parser.add_option(
+            '-l', '--library', action='store_true',
+            help='show library fields instead of tags',
+        )
+        cmd.parser.add_option(
+            '-a', '--album', action='store_true',
+            help='show album fields instead of tracks (implies "--library")',
+        )
+        cmd.parser.add_option(
+            '--append', action='store_true', default=False,
+            help='if should append data to the file',
+        )
+        cmd.parser.add_option(
+            '-i', '--include-keys', default=[],
+            action='append', dest='included_keys',
+            help='comma separated list of keys to show',
+        )
+        cmd.parser.add_option(
+            '-o', '--output',
+            help='path for the output file. If not given, will print the data'
+        )
+        cmd.parser.add_option(
+            '-f', '--format', default='json',
+            help="the output format: json (default), jsonlines, csv, or xml"
+        )
+        return [cmd]
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag505')" href="javascript:;">
+beets-1.6.0/beetsplug/info.py: 152-178
+</a>
+<div class="mid" id="frag505" style="display:none"><pre>
+    def commands(self):
+        cmd = ui.Subcommand('info', help='show file metadata')
+        cmd.func = self.run
+        cmd.parser.add_option(
+            '-l', '--library', action='store_true',
+            help='show library fields instead of tags',
+        )
+        cmd.parser.add_option(
+            '-a', '--album', action='store_true',
+            help='show album fields instead of tracks (implies "--library")',
+        )
+        cmd.parser.add_option(
+            '-s', '--summarize', action='store_true',
+            help='summarize the tags of all files',
+        )
+        cmd.parser.add_option(
+            '-i', '--include-keys', default=[],
+            action='append', dest='included_keys',
+            help='comma separated list of keys to show',
+        )
+        cmd.parser.add_option(
+            '-k', '--keys-only', action='store_true',
+            help='show only the keys',
+        )
+        cmd.parser.add_format_option(target='item')
+        return [cmd]
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 6:</b> &nbsp; 2 fragments, nominal size 34 lines, similarity 70%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag377')" href="javascript:;">
+beets-1.6.0/beetsplug/web/__init__.py: 108-161
+</a>
+<div class="mid" id="frag377" style="display:none"><pre>
+def resource(name, patchable=False):
+    """Decorates a function to handle RESTful HTTP requests for a resource.
+    """
+    def make_responder(retriever):
+        def responder(ids):
+            entities = [retriever(id) for id in ids]
+            entities = [entity for entity in entities if entity]
+
+            if get_method() == "DELETE":
+
+                if app.config.get('READONLY', True):
+                    return flask.abort(405)
+
+                for entity in entities:
+                    entity.remove(delete=is_delete())
+
+                return flask.make_response(jsonify({'deleted': True}), 200)
+
+            elif get_method() == "PATCH" and patchable:
+                if app.config.get('READONLY', True):
+                    return flask.abort(405)
+
+                for entity in entities:
+                    entity.update(flask.request.get_json())
+                    entity.try_sync(True, False)  # write, don't move
+
+                if len(entities) == 1:
+                    return flask.jsonify(_rep(entities[0], expand=is_expand()))
+                elif entities:
+                    return app.response_class(
+                        json_generator(entities, root=name),
+                        mimetype='application/json'
+                    )
+
+            elif get_method() == "GET":
+                if len(entities) == 1:
+                    return flask.jsonify(_rep(entities[0], expand=is_expand()))
+                elif entities:
+                    return app.response_class(
+                        json_generator(entities, root=name),
+                        mimetype='application/json'
+                    )
+                else:
+                    return flask.abort(404)
+
+            else:
+                return flask.abort(405)
+
+        responder.__name__ = f'get_{name}'
+
+        return responder
+    return make_responder
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag380')" href="javascript:;">
+beets-1.6.0/beetsplug/web/__init__.py: 162-210
+</a>
+<div class="mid" id="frag380" style="display:none"><pre>
+def resource_query(name, patchable=False):
+    """Decorates a function to handle RESTful HTTP queries for resources.
+    """
+    def make_responder(query_func):
+        def responder(queries):
+            entities = query_func(queries)
+
+            if get_method() == "DELETE":
+
+                if app.config.get('READONLY', True):
+                    return flask.abort(405)
+
+                for entity in entities:
+                    entity.remove(delete=is_delete())
+
+                return flask.make_response(jsonify({'deleted': True}), 200)
+
+            elif get_method() == "PATCH" and patchable:
+                if app.config.get('READONLY', True):
+                    return flask.abort(405)
+
+                for entity in entities:
+                    entity.update(flask.request.get_json())
+                    entity.try_sync(True, False)  # write, don't move
+
+                return app.response_class(
+                    json_generator(entities, root=name),
+                    mimetype='application/json'
+                )
+
+            elif get_method() == "GET":
+                return app.response_class(
+                    json_generator(
+                        entities,
+                        root='results', expand=is_expand()
+                    ),
+                    mimetype='application/json'
+                )
+
+            else:
+                return flask.abort(405)
+
+        responder.__name__ = f'query_{name}'
+
+        return responder
+
+    return make_responder
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 7:</b> &nbsp; 2 fragments, nominal size 10 lines, similarity 90%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag531')" href="javascript:;">
+beets-1.6.0/beetsplug/beatport.py: 377-390
+</a>
+<div class="mid" id="frag531" style="display:none"><pre>
+
+    def album_for_id(self, release_id):
+        """Fetches a release by its Beatport ID and returns an AlbumInfo object
+        or None if the query is not a valid ID or release is not found.
+        """
+        self._log.debug('Searching for release {0}', release_id)
+        match = re.search(r'(^|beatport\.com/release/.+/)(\d+)$', release_id)
+        if not match:
+            self._log.debug('Not a valid Beatport release ID.')
+            return None
+        release = self.client.get_release(match.group(2))
+        if release:
+            return self._get_album_info(release)
+        return None
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag532')" href="javascript:;">
+beets-1.6.0/beetsplug/beatport.py: 391-404
+</a>
+<div class="mid" id="frag532" style="display:none"><pre>
+
+    def track_for_id(self, track_id):
+        """Fetches a track by its Beatport ID and returns a TrackInfo object
+        or None if the track is not a valid Beatport ID or track is not found.
+        """
+        self._log.debug('Searching for track {0}', track_id)
+        match = re.search(r'(^|beatport\.com/track/.+/)(\d+)$', track_id)
+        if not match:
+            self._log.debug('Not a valid Beatport track ID.')
+            return None
+        bp_track = self.client.get_track(match.group(2))
+        if bp_track is not None:
+            return self._get_track_info(bp_track)
+        return None
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 8:</b> &nbsp; 3 fragments, nominal size 13 lines, similarity 76%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag597')" href="javascript:;">
+beets-1.6.0/test/test_hook.py: 90-107
+</a>
+<div class="mid" id="frag597" style="display:none"><pre>
+    def test_hook_no_arguments(self):
+        temporary_paths = [
+            get_temporary_path() for i in range(self.TEST_HOOK_COUNT)
+        ]
+
+        for index, path in enumerate(temporary_paths):
+            self._add_hook(f'test_no_argument_event_{index}',
+                           f'touch "{path}"')
+
+        self.load_plugins('hook')
+
+        for index in range(len(temporary_paths)):
+            plugins.send(f'test_no_argument_event_{index}')
+
+        for path in temporary_paths:
+            self.assertTrue(os.path.isfile(path))
+            os.remove(path)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag600')" href="javascript:;">
+beets-1.6.0/test/test_hook.py: 149-168
+</a>
+<div class="mid" id="frag600" style="display:none"><pre>
+    def test_hook_bytes_interpolation(self):
+        temporary_paths = [
+            get_temporary_path().encode('utf-8')
+            for i in range(self.TEST_HOOK_COUNT)
+        ]
+
+        for index, path in enumerate(temporary_paths):
+            self._add_hook(f'test_bytes_event_{index}',
+                           'touch "{path}"')
+
+        self.load_plugins('hook')
+
+        for index, path in enumerate(temporary_paths):
+            plugins.send(f'test_bytes_event_{index}', path=path)
+
+        for path in temporary_paths:
+            self.assertTrue(os.path.isfile(path))
+            os.remove(path)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag599')" href="javascript:;">
+beets-1.6.0/test/test_hook.py: 130-147
+</a>
+<div class="mid" id="frag599" style="display:none"><pre>
+    def test_hook_argument_substitution(self):
+        temporary_paths = [
+            get_temporary_path() for i in range(self.TEST_HOOK_COUNT)
+        ]
+
+        for index, path in enumerate(temporary_paths):
+            self._add_hook(f'test_argument_event_{index}',
+                           'touch "{path}"')
+
+        self.load_plugins('hook')
+
+        for index, path in enumerate(temporary_paths):
+            plugins.send(f'test_argument_event_{index}', path=path)
+
+        for path in temporary_paths:
+            self.assertTrue(os.path.isfile(path))
+            os.remove(path)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 9:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 81%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag616')" href="javascript:;">
+beets-1.6.0/test/test_plugins.py: 135-149
+</a>
+<div class="mid" id="frag616" style="display:none"><pre>
+
+    def test_mismatch(self):
+        class EventListenerPlugin(plugins.BeetsPlugin):
+            item_types = {'duplicate': types.INTEGER}
+
+        class AdventListenerPlugin(plugins.BeetsPlugin):
+            item_types = {'duplicate': types.FLOAT}
+
+        self.event_listener_plugin = EventListenerPlugin
+        self.advent_listener_plugin = AdventListenerPlugin
+        self.register_plugin(EventListenerPlugin)
+        self.register_plugin(AdventListenerPlugin)
+        self.assertRaises(plugins.PluginConflictException,
+                          plugins.types, Item
+                          )
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag617')" href="javascript:;">
+beets-1.6.0/test/test_plugins.py: 150-163
+</a>
+<div class="mid" id="frag617" style="display:none"><pre>
+
+    def test_match(self):
+        class EventListenerPlugin(plugins.BeetsPlugin):
+            item_types = {'duplicate': types.INTEGER}
+
+        class AdventListenerPlugin(plugins.BeetsPlugin):
+            item_types = {'duplicate': types.INTEGER}
+
+        self.event_listener_plugin = EventListenerPlugin
+        self.advent_listener_plugin = AdventListenerPlugin
+        self.register_plugin(EventListenerPlugin)
+        self.register_plugin(AdventListenerPlugin)
+        self.assertNotEqual(None, plugins.types(Item))
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 10:</b> &nbsp; 5 fragments, nominal size 18 lines, similarity 72%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag647')" href="javascript:;">
+beets-1.6.0/test/test_plugins.py: 427-449
+</a>
+<div class="mid" id="frag647" style="display:none"><pre>
+        self.teardown_beets()
+        self.matcher.restore()
+
+    def test_plugin_choices_in_ui_input_options_album(self):
+        """Test the presence of plugin choices on the prompt (album)."""
+        class DummyPlugin(plugins.BeetsPlugin):
+            def __init__(self):
+                super().__init__()
+                self.register_listener('before_choose_candidate',
+                                       self.return_choices)
+
+            def return_choices(self, session, task):
+                return [ui.commands.PromptChoice('f', 'Foo', None),
+                        ui.commands.PromptChoice('r', 'baR', None)]
+
+        self.register_plugin(DummyPlugin)
+        # Default options + extra choices by the plugin ('Foo', 'Bar')
+        opts = ('Apply', 'More candidates', 'Skip', 'Use as-is',
+                'as Tracks', 'Group albums', 'Enter search',
+                'enter Id', 'aBort') + ('Foo', 'baR')
+
+        self.importer.add_choice(action.SKIP)
+        self.importer.run()
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag660')" href="javascript:;">
+beets-1.6.0/test/test_plugins.py: 529-557
+</a>
+<div class="mid" id="frag660" style="display:none"><pre>
+        self.mock_input_options.assert_called_with(opts, default='a',
+                                                   require=ANY)
+
+    def test_plugin_callback_return(self):
+        """Test that plugin callbacks that return a value exit the loop."""
+        class DummyPlugin(plugins.BeetsPlugin):
+            def __init__(self):
+                super().__init__()
+                self.register_listener('before_choose_candidate',
+                                       self.return_choices)
+
+            def return_choices(self, session, task):
+                return [ui.commands.PromptChoice('f', 'Foo', self.foo)]
+
+            def foo(self, session, task):
+                return action.SKIP
+
+        self.register_plugin(DummyPlugin)
+        # Default options + extra choices by the plugin ('Foo', 'Bar')
+        opts = ('Apply', 'More candidates', 'Skip', 'Use as-is',
+                'as Tracks', 'Group albums', 'Enter search',
+                'enter Id', 'aBort') + ('Foo',)
+
+        # DummyPlugin.foo() should be called once
+        with helper.control_stdin('f\n'):
+            self.importer.run()
+
+        # input_options should be called once, as foo() returns SKIP
+        self.mock_input_options.assert_called_once_with(opts, default='a',
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag650')" href="javascript:;">
+beets-1.6.0/test/test_plugins.py: 450-473
+</a>
+<div class="mid" id="frag650" style="display:none"><pre>
+        self.mock_input_options.assert_called_once_with(opts, default='a',
+                                                        require=ANY)
+
+    def test_plugin_choices_in_ui_input_options_singleton(self):
+        """Test the presence of plugin choices on the prompt (singleton)."""
+        class DummyPlugin(plugins.BeetsPlugin):
+            def __init__(self):
+                super().__init__()
+                self.register_listener('before_choose_candidate',
+                                       self.return_choices)
+
+            def return_choices(self, session, task):
+                return [ui.commands.PromptChoice('f', 'Foo', None),
+                        ui.commands.PromptChoice('r', 'baR', None)]
+
+        self.register_plugin(DummyPlugin)
+        # Default options + extra choices by the plugin ('Foo', 'Bar')
+        opts = ('Apply', 'More candidates', 'Skip', 'Use as-is',
+                'Enter search',
+                'enter Id', 'aBort') + ('Foo', 'baR')
+
+        config['import']['singletons'] = True
+        self.importer.add_choice(action.SKIP)
+        self.importer.run()
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag653')" href="javascript:;">
+beets-1.6.0/test/test_plugins.py: 474-497
+</a>
+<div class="mid" id="frag653" style="display:none"><pre>
+        self.mock_input_options.assert_called_with(opts, default='a',
+                                                   require=ANY)
+
+    def test_choices_conflicts(self):
+        """Test the short letter conflict solving."""
+        class DummyPlugin(plugins.BeetsPlugin):
+            def __init__(self):
+                super().__init__()
+                self.register_listener('before_choose_candidate',
+                                       self.return_choices)
+
+            def return_choices(self, session, task):
+                return [ui.commands.PromptChoice('a', 'A foo', None),  # dupe
+                        ui.commands.PromptChoice('z', 'baZ', None),    # ok
+                        ui.commands.PromptChoice('z', 'Zupe', None),   # dupe
+                        ui.commands.PromptChoice('z', 'Zoo', None)]    # dupe
+
+        self.register_plugin(DummyPlugin)
+        # Default options + not dupe extra choices by the plugin ('baZ')
+        opts = ('Apply', 'More candidates', 'Skip', 'Use as-is',
+                'as Tracks', 'Group albums', 'Enter search',
+                'enter Id', 'aBort') + ('baZ',)
+        self.importer.add_choice(action.SKIP)
+        self.importer.run()
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag656')" href="javascript:;">
+beets-1.6.0/test/test_plugins.py: 498-528
+</a>
+<div class="mid" id="frag656" style="display:none"><pre>
+        self.mock_input_options.assert_called_once_with(opts, default='a',
+                                                        require=ANY)
+
+    def test_plugin_callback(self):
+        """Test that plugin callbacks are being called upon user choice."""
+        class DummyPlugin(plugins.BeetsPlugin):
+            def __init__(self):
+                super().__init__()
+                self.register_listener('before_choose_candidate',
+                                       self.return_choices)
+
+            def return_choices(self, session, task):
+                return [ui.commands.PromptChoice('f', 'Foo', self.foo)]
+
+            def foo(self, session, task):
+                pass
+
+        self.register_plugin(DummyPlugin)
+        # Default options + extra choices by the plugin ('Foo', 'Bar')
+        opts = ('Apply', 'More candidates', 'Skip', 'Use as-is',
+                'as Tracks', 'Group albums', 'Enter search',
+                'enter Id', 'aBort') + ('Foo',)
+
+        # DummyPlugin.foo() should be called once
+        with patch.object(DummyPlugin, 'foo', autospec=True) as mock_foo:
+            with helper.control_stdin('\n'.join(['f', 's'])):
+                self.importer.run()
+            self.assertEqual(mock_foo.call_count, 1)
+
+        # input_options should be called twice, as foo() returns None
+        self.assertEqual(self.mock_input_options.call_count, 2)
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 11:</b> &nbsp; 3 fragments, nominal size 10 lines, similarity 90%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag776')" href="javascript:;">
+beets-1.6.0/test/test_types_plugin.py: 35-50
+</a>
+<div class="mid" id="frag776" style="display:none"><pre>
+    def test_integer_modify_and_query(self):
+        self.config['types'] = {'myint': 'int'}
+        item = self.add_item(artist='aaa')
+
+        # Do not match unset values
+        out = self.list('myint:1..3')
+        self.assertEqual('', out)
+
+        self.modify('myint=2')
+        item.load()
+        self.assertEqual(item['myint'], 2)
+
+        # Match in range
+        out = self.list('myint:1..3')
+        self.assertIn('aaa', out)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag778')" href="javascript:;">
+beets-1.6.0/test/test_types_plugin.py: 67-82
+</a>
+<div class="mid" id="frag778" style="display:none"><pre>
+    def test_float_modify_and_query(self):
+        self.config['types'] = {'myfloat': 'float'}
+        item = self.add_item(artist='aaa')
+
+        # Do not match unset values
+        out = self.list('myfloat:10..0')
+        self.assertEqual('', out)
+
+        self.modify('myfloat=-9.1')
+        item.load()
+        self.assertEqual(item['myfloat'], -9.1)
+
+        # Match in range
+        out = self.list('myfloat:-10..0')
+        self.assertIn('aaa', out)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag777')" href="javascript:;">
+beets-1.6.0/test/test_types_plugin.py: 51-66
+</a>
+<div class="mid" id="frag777" style="display:none"><pre>
+    def test_album_integer_modify_and_query(self):
+        self.config['types'] = {'myint': 'int'}
+        album = self.add_album(albumartist='aaa')
+
+        # Do not match unset values
+        out = self.list_album('myint:1..3')
+        self.assertEqual('', out)
+
+        self.modify('-a', 'myint=2')
+        album.load()
+        self.assertEqual(album['myint'], 2)
+
+        # Match in range
+        out = self.list_album('myint:1..3')
+        self.assertIn('aaa', out)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 12:</b> &nbsp; 2 fragments, nominal size 16 lines, similarity 75%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag779')" href="javascript:;">
+beets-1.6.0/test/test_types_plugin.py: 83-113
+</a>
+<div class="mid" id="frag779" style="display:none"><pre>
+    def test_bool_modify_and_query(self):
+        self.config['types'] = {'mybool': 'bool'}
+        true = self.add_item(artist='true')
+        false = self.add_item(artist='false')
+        self.add_item(artist='unset')
+
+        # Do not match unset values
+        out = self.list('mybool:true, mybool:false')
+        self.assertEqual('', out)
+
+        # Set true
+        self.modify('mybool=1', 'artist:true')
+        true.load()
+        self.assertEqual(true['mybool'], True)
+
+        # Set false
+        self.modify('mybool=false', 'artist:false')
+        false.load()
+        self.assertEqual(false['mybool'], False)
+
+        # Query bools
+        out = self.list('mybool:true', '$artist $mybool')
+        self.assertEqual('true True', out)
+
+        out = self.list('mybool:false', '$artist $mybool')
+
+        # Dealing with unset fields?
+        # self.assertEqual('false False', out)
+        # out = self.list('mybool:', '$artist $mybool')
+        # self.assertIn('unset $mybool', out)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag780')" href="javascript:;">
+beets-1.6.0/test/test_types_plugin.py: 114-140
+</a>
+<div class="mid" id="frag780" style="display:none"><pre>
+    def test_date_modify_and_query(self):
+        self.config['types'] = {'mydate': 'date'}
+        # FIXME parsing should also work with default time format
+        self.config['time_format'] = '%Y-%m-%d'
+        old = self.add_item(artist='prince')
+        new = self.add_item(artist='britney')
+
+        # Do not match unset values
+        out = self.list('mydate:..2000')
+        self.assertEqual('', out)
+
+        self.modify('mydate=1999-01-01', 'artist:prince')
+        old.load()
+        self.assertEqual(old['mydate'], mktime(1999, 1, 1))
+
+        self.modify('mydate=1999-12-30', 'artist:britney')
+        new.load()
+        self.assertEqual(new['mydate'], mktime(1999, 12, 30))
+
+        # Match in range
+        out = self.list('mydate:..1999-07', '$artist $mydate')
+        self.assertEqual('prince 1999-01-01', out)
+
+        # FIXME some sort of timezone issue here
+        # out = self.list('mydate:1999-12-30', '$artist $mydate')
+        # self.assertEqual('britney 1999-12-30', out)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 13:</b> &nbsp; 16 fragments, nominal size 11 lines, similarity 71%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag790')" href="javascript:;">
+beets-1.6.0/test/test_sort.py: 107-118
+</a>
+<div class="mid" id="frag790" style="display:none"><pre>
+    def test_sort_asc(self):
+        q = ''
+        sort = dbcore.query.FixedFieldSort("year", True)
+        results = self.lib.items(q, sort)
+        self.assertLessEqual(results[0]['year'], results[1]['year'])
+        self.assertEqual(results[0]['year'], 2001)
+        # same thing with query string
+        q = 'year+'
+        results2 = self.lib.items(q)
+        for r1, r2 in zip(results, results2):
+            self.assertEqual(r1.id, r2.id)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag794')" href="javascript:;">
+beets-1.6.0/test/test_sort.py: 161-172
+</a>
+<div class="mid" id="frag794" style="display:none"><pre>
+    def test_sort_asc(self):
+        q = ''
+        sort = dbcore.query.SlowFieldSort("flex1", True)
+        results = self.lib.items(q, sort)
+        self.assertLessEqual(results[0]['flex1'], results[1]['flex1'])
+        self.assertEqual(results[0]['flex1'], 'Flex1-0')
+        # same thing with query string
+        q = 'flex1+'
+        results2 = self.lib.items(q)
+        for r1, r2 in zip(results, results2):
+            self.assertEqual(r1.id, r2.id)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag800')" href="javascript:;">
+beets-1.6.0/test/test_sort.py: 253-264
+</a>
+<div class="mid" id="frag800" style="display:none"><pre>
+    def test_sort_asc(self):
+        q = ''
+        sort = dbcore.query.SlowFieldSort("flex1", True)
+        results = self.lib.albums(q, sort)
+        self.assertLessEqual(results[0]['flex1'], results[1]['flex1'])
+        self.assertLessEqual(results[1]['flex1'], results[2]['flex1'])
+        # same thing with query string
+        q = 'flex1+'
+        results2 = self.lib.albums(q)
+        for r1, r2 in zip(results, results2):
+            self.assertEqual(r1.id, r2.id)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag791')" href="javascript:;">
+beets-1.6.0/test/test_sort.py: 119-130
+</a>
+<div class="mid" id="frag791" style="display:none"><pre>
+    def test_sort_desc(self):
+        q = ''
+        sort = dbcore.query.FixedFieldSort("year", False)
+        results = self.lib.items(q, sort)
+        self.assertGreaterEqual(results[0]['year'], results[1]['year'])
+        self.assertEqual(results[0]['year'], 2004)
+        # same thing with query string
+        q = 'year-'
+        results2 = self.lib.items(q)
+        for r1, r2 in zip(results, results2):
+            self.assertEqual(r1.id, r2.id)
+
+</pre></div>
+</td>
+</tr><tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag798')" href="javascript:;">
+beets-1.6.0/test/test_sort.py: 220-231
+</a>
+<div class="mid" id="frag798" style="display:none"><pre>
+    def test_sort_desc(self):
+        q = ''
+        sort = dbcore.query.FixedFieldSort("year", False)
+        results = self.lib.albums(q, sort)
+        self.assertGreaterEqual(results[0]['year'], results[1]['year'])
+        self.assertEqual(results[0]['year'], 2005)
+        # same thing with query string
+        q = 'year-'
+        results2 = self.lib.albums(q)
+        for r1, r2 in zip(results, results2):
+            self.assertEqual(r1.id, r2.id)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag801')" href="javascript:;">
+beets-1.6.0/test/test_sort.py: 265-276
+</a>
+<div class="mid" id="frag801" style="display:none"><pre>
+    def test_sort_desc(self):
+        q = ''
+        sort = dbcore.query.SlowFieldSort("flex1", False)
+        results = self.lib.albums(q, sort)
+        self.assertGreaterEqual(results[0]['flex1'], results[1]['flex1'])
+        self.assertGreaterEqual(results[1]['flex1'], results[2]['flex1'])
+        # same thing with query string
+        q = 'flex1-'
+        results2 = self.lib.albums(q)
+        for r1, r2 in zip(results, results2):
+            self.assertEqual(r1.id, r2.id)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag797')" href="javascript:;">
+beets-1.6.0/test/test_sort.py: 208-219
+</a>
+<div class="mid" id="frag797" style="display:none"><pre>
+    def test_sort_asc(self):
+        q = ''
+        sort = dbcore.query.FixedFieldSort("year", True)
+        results = self.lib.albums(q, sort)
+        self.assertLessEqual(results[0]['year'], results[1]['year'])
+        self.assertEqual(results[0]['year'], 2001)
+        # same thing with query string
+        q = 'year+'
+        results2 = self.lib.albums(q)
+        for r1, r2 in zip(results, results2):
+            self.assertEqual(r1.id, r2.id)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag803')" href="javascript:;">
+beets-1.6.0/test/test_sort.py: 298-309
+</a>
+<div class="mid" id="frag803" style="display:none"><pre>
+    def test_sort_asc(self):
+        q = ''
+        sort = dbcore.query.SlowFieldSort("path", True)
+        results = self.lib.albums(q, sort)
+        self.assertLessEqual(results[0]['path'], results[1]['path'])
+        self.assertLessEqual(results[1]['path'], results[2]['path'])
+        # same thing with query string
+        q = 'path+'
+        results2 = self.lib.albums(q)
+        for r1, r2 in zip(results, results2):
+            self.assertEqual(r1.id, r2.id)
+
+</pre></div>
+</td>
+</tr><tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag804')" href="javascript:;">
+beets-1.6.0/test/test_sort.py: 310-322
+</a>
+<div class="mid" id="frag804" style="display:none"><pre>
+    def test_sort_desc(self):
+        q = ''
+        sort = dbcore.query.SlowFieldSort("path", False)
+        results = self.lib.albums(q, sort)
+        self.assertGreaterEqual(results[0]['path'], results[1]['path'])
+        self.assertGreaterEqual(results[1]['path'], results[2]['path'])
+        # same thing with query string
+        q = 'path-'
+        results2 = self.lib.albums(q)
+        for r1, r2 in zip(results, results2):
+            self.assertEqual(r1.id, r2.id)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag795')" href="javascript:;">
+beets-1.6.0/test/test_sort.py: 173-186
+</a>
+<div class="mid" id="frag795" style="display:none"><pre>
+    def test_sort_desc(self):
+        q = ''
+        sort = dbcore.query.SlowFieldSort("flex1", False)
+        results = self.lib.items(q, sort)
+        self.assertGreaterEqual(results[0]['flex1'], results[1]['flex1'])
+        self.assertGreaterEqual(results[1]['flex1'], results[2]['flex1'])
+        self.assertGreaterEqual(results[2]['flex1'], results[3]['flex1'])
+        self.assertEqual(results[0]['flex1'], 'Flex1-2')
+        # same thing with query string
+        q = 'flex1-'
+        results2 = self.lib.items(q)
+        for r1, r2 in zip(results, results2):
+            self.assertEqual(r1.id, r2.id)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag805')" href="javascript:;">
+beets-1.6.0/test/test_sort.py: 324-338
+</a>
+<div class="mid" id="frag805" style="display:none"><pre>
+    def test_computed_first(self):
+        q = ''
+        s1 = dbcore.query.SlowFieldSort("path", True)
+        s2 = dbcore.query.FixedFieldSort("year", True)
+        sort = dbcore.query.MultipleSort()
+        sort.add_sort(s1)
+        sort.add_sort(s2)
+        results = self.lib.albums(q, sort)
+        self.assertLessEqual(results[0]['path'], results[1]['path'])
+        self.assertLessEqual(results[1]['path'], results[2]['path'])
+        q = 'path+ year+'
+        results2 = self.lib.albums(q)
+        for r1, r2 in zip(results, results2):
+            self.assertEqual(r1.id, r2.id)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag806')" href="javascript:;">
+beets-1.6.0/test/test_sort.py: 339-355
+</a>
+<div class="mid" id="frag806" style="display:none"><pre>
+    def test_computed_second(self):
+        q = ''
+        s1 = dbcore.query.FixedFieldSort("year", True)
+        s2 = dbcore.query.SlowFieldSort("path", True)
+        sort = dbcore.query.MultipleSort()
+        sort.add_sort(s1)
+        sort.add_sort(s2)
+        results = self.lib.albums(q, sort)
+        self.assertLessEqual(results[0]['year'], results[1]['year'])
+        self.assertLessEqual(results[1]['year'], results[2]['year'])
+        self.assertLessEqual(results[0]['path'], results[1]['path'])
+        q = 'year+ path+'
+        results2 = self.lib.albums(q)
+        for r1, r2 in zip(results, results2):
+            self.assertEqual(r1.id, r2.id)
+
+
+</pre></div>
+</td>
+</tr><tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag792')" href="javascript:;">
+beets-1.6.0/test/test_sort.py: 131-149
+</a>
+<div class="mid" id="frag792" style="display:none"><pre>
+    def test_sort_two_field_asc(self):
+        q = ''
+        s1 = dbcore.query.FixedFieldSort("album", True)
+        s2 = dbcore.query.FixedFieldSort("year", True)
+        sort = dbcore.query.MultipleSort()
+        sort.add_sort(s1)
+        sort.add_sort(s2)
+        results = self.lib.items(q, sort)
+        self.assertLessEqual(results[0]['album'], results[1]['album'])
+        self.assertLessEqual(results[1]['album'], results[2]['album'])
+        self.assertEqual(results[0]['album'], 'Baz')
+        self.assertEqual(results[1]['album'], 'Baz')
+        self.assertLessEqual(results[0]['year'], results[1]['year'])
+        # same thing with query string
+        q = 'album+ year+'
+        results2 = self.lib.items(q)
+        for r1, r2 in zip(results, results2):
+            self.assertEqual(r1.id, r2.id)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag796')" href="javascript:;">
+beets-1.6.0/test/test_sort.py: 187-206
+</a>
+<div class="mid" id="frag796" style="display:none"><pre>
+    def test_sort_two_field(self):
+        q = ''
+        s1 = dbcore.query.SlowFieldSort("flex2", False)
+        s2 = dbcore.query.SlowFieldSort("flex1", True)
+        sort = dbcore.query.MultipleSort()
+        sort.add_sort(s1)
+        sort.add_sort(s2)
+        results = self.lib.items(q, sort)
+        self.assertGreaterEqual(results[0]['flex2'], results[1]['flex2'])
+        self.assertGreaterEqual(results[1]['flex2'], results[2]['flex2'])
+        self.assertEqual(results[0]['flex2'], 'Flex2-A')
+        self.assertEqual(results[1]['flex2'], 'Flex2-A')
+        self.assertLessEqual(results[0]['flex1'], results[1]['flex1'])
+        # same thing with query string
+        q = 'flex2- flex1+'
+        results2 = self.lib.items(q)
+        for r1, r2 in zip(results, results2):
+            self.assertEqual(r1.id, r2.id)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag802')" href="javascript:;">
+beets-1.6.0/test/test_sort.py: 277-296
+</a>
+<div class="mid" id="frag802" style="display:none"><pre>
+    def test_sort_two_field_asc(self):
+        q = ''
+        s1 = dbcore.query.SlowFieldSort("flex2", True)
+        s2 = dbcore.query.SlowFieldSort("flex1", True)
+        sort = dbcore.query.MultipleSort()
+        sort.add_sort(s1)
+        sort.add_sort(s2)
+        results = self.lib.albums(q, sort)
+        self.assertLessEqual(results[0]['flex2'], results[1]['flex2'])
+        self.assertLessEqual(results[1]['flex2'], results[2]['flex2'])
+        self.assertEqual(results[0]['flex2'], 'Flex2-A')
+        self.assertEqual(results[1]['flex2'], 'Flex2-A')
+        self.assertLessEqual(results[0]['flex1'], results[1]['flex1'])
+        # same thing with query string
+        q = 'flex2+ flex1+'
+        results2 = self.lib.albums(q)
+        for r1, r2 in zip(results, results2):
+            self.assertEqual(r1.id, r2.id)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag799')" href="javascript:;">
+beets-1.6.0/test/test_sort.py: 232-251
+</a>
+<div class="mid" id="frag799" style="display:none"><pre>
+    def test_sort_two_field_asc(self):
+        q = ''
+        s1 = dbcore.query.FixedFieldSort("genre", True)
+        s2 = dbcore.query.FixedFieldSort("album", True)
+        sort = dbcore.query.MultipleSort()
+        sort.add_sort(s1)
+        sort.add_sort(s2)
+        results = self.lib.albums(q, sort)
+        self.assertLessEqual(results[0]['genre'], results[1]['genre'])
+        self.assertLessEqual(results[1]['genre'], results[2]['genre'])
+        self.assertEqual(results[1]['genre'], 'Rock')
+        self.assertEqual(results[2]['genre'], 'Rock')
+        self.assertLessEqual(results[1]['album'], results[2]['album'])
+        # same thing with query string
+        q = 'genre+ album+'
+        results2 = self.lib.albums(q)
+        for r1, r2 in zip(results, results2):
+            self.assertEqual(r1.id, r2.id)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 14:</b> &nbsp; 5 fragments, nominal size 18 lines, similarity 70%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag835')" href="javascript:;">
+beets-1.6.0/test/test_zero.py: 121-145
+</a>
+<div class="mid" id="frag835" style="display:none"><pre>
+    def test_subcommand_update_database_true(self):
+        item = self.add_item_fixture(
+            year=2016,
+            day=13,
+            month=3,
+            comments='test comment'
+        )
+        item.write()
+        item_id = item.id
+        self.config['zero']['fields'] = ['comments']
+        self.config['zero']['update_database'] = True
+        self.config['zero']['auto'] = False
+
+        self.load_plugins('zero')
+        with control_stdin('y'):
+            self.run_command('zero')
+
+        mf = MediaFile(syspath(item.path))
+        item = self.lib.get_item(item_id)
+
+        self.assertEqual(item['year'], 2016)
+        self.assertEqual(mf.year, 2016)
+        self.assertEqual(mf.comments, None)
+        self.assertEqual(item['comments'], '')
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag837')" href="javascript:;">
+beets-1.6.0/test/test_zero.py: 172-193
+</a>
+<div class="mid" id="frag837" style="display:none"><pre>
+    def test_subcommand_query_include(self):
+        item = self.add_item_fixture(
+            year=2016,
+            day=13,
+            month=3,
+            comments='test comment'
+        )
+
+        item.write()
+
+        self.config['zero']['fields'] = ['comments']
+        self.config['zero']['update_database'] = False
+        self.config['zero']['auto'] = False
+
+        self.load_plugins('zero')
+        self.run_command('zero', 'year: 2016')
+
+        mf = MediaFile(syspath(item.path))
+
+        self.assertEqual(mf.year, 2016)
+        self.assertEqual(mf.comments, None)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag844')" href="javascript:;">
+beets-1.6.0/test/test_zero.py: 286-311
+</a>
+<div class="mid" id="frag844" style="display:none"><pre>
+    def test_empty_query_n_response_no_changes(self):
+        item = self.add_item_fixture(
+            year=2016,
+            day=13,
+            month=3,
+            comments='test comment'
+        )
+        item.write()
+        item_id = item.id
+        self.config['zero']['fields'] = ['comments']
+        self.config['zero']['update_database'] = True
+        self.config['zero']['auto'] = False
+
+        self.load_plugins('zero')
+        with control_stdin('n'):
+            self.run_command('zero')
+
+        mf = MediaFile(syspath(item.path))
+        item = self.lib.get_item(item_id)
+
+        self.assertEqual(item['year'], 2016)
+        self.assertEqual(mf.year, 2016)
+        self.assertEqual(mf.comments, 'test comment')
+        self.assertEqual(item['comments'], 'test comment')
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag836')" href="javascript:;">
+beets-1.6.0/test/test_zero.py: 146-171
+</a>
+<div class="mid" id="frag836" style="display:none"><pre>
+    def test_subcommand_update_database_false(self):
+        item = self.add_item_fixture(
+            year=2016,
+            day=13,
+            month=3,
+            comments='test comment'
+        )
+        item.write()
+        item_id = item.id
+
+        self.config['zero']['fields'] = ['comments']
+        self.config['zero']['update_database'] = False
+        self.config['zero']['auto'] = False
+
+        self.load_plugins('zero')
+        with control_stdin('y'):
+            self.run_command('zero')
+
+        mf = MediaFile(syspath(item.path))
+        item = self.lib.get_item(item_id)
+
+        self.assertEqual(item['year'], 2016)
+        self.assertEqual(mf.year, 2016)
+        self.assertEqual(item['comments'], 'test comment')
+        self.assertEqual(mf.comments, None)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag838')" href="javascript:;">
+beets-1.6.0/test/test_zero.py: 194-215
+</a>
+<div class="mid" id="frag838" style="display:none"><pre>
+    def test_subcommand_query_exclude(self):
+        item = self.add_item_fixture(
+            year=2016,
+            day=13,
+            month=3,
+            comments='test comment'
+        )
+
+        item.write()
+
+        self.config['zero']['fields'] = ['comments']
+        self.config['zero']['update_database'] = False
+        self.config['zero']['auto'] = False
+
+        self.load_plugins('zero')
+        self.run_command('zero', 'year: 0000')
+
+        mf = MediaFile(syspath(item.path))
+
+        self.assertEqual(mf.year, 2016)
+        self.assertEqual(mf.comments, 'test comment')
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 15:</b> &nbsp; 2 fragments, nominal size 13 lines, similarity 85%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag839')" href="javascript:;">
+beets-1.6.0/test/test_zero.py: 216-232
+</a>
+<div class="mid" id="frag839" style="display:none"><pre>
+    def test_no_fields(self):
+        item = self.add_item_fixture(year=2016)
+        item.write()
+        mediafile = MediaFile(syspath(item.path))
+        self.assertEqual(mediafile.year, 2016)
+
+        item_id = item.id
+
+        self.load_plugins('zero')
+        with control_stdin('y'):
+            self.run_command('zero')
+
+        item = self.lib.get_item(item_id)
+
+        self.assertEqual(item['year'], 2016)
+        self.assertEqual(mediafile.year, 2016)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag840')" href="javascript:;">
+beets-1.6.0/test/test_zero.py: 233-251
+</a>
+<div class="mid" id="frag840" style="display:none"><pre>
+    def test_whitelist_and_blacklist(self):
+        item = self.add_item_fixture(year=2016)
+        item.write()
+        mf = MediaFile(syspath(item.path))
+        self.assertEqual(mf.year, 2016)
+
+        item_id = item.id
+        self.config['zero']['fields'] = ['year']
+        self.config['zero']['keep_fields'] = ['comments']
+
+        self.load_plugins('zero')
+        with control_stdin('y'):
+            self.run_command('zero')
+
+        item = self.lib.get_item(item_id)
+
+        self.assertEqual(item['year'], 2016)
+        self.assertEqual(mf.year, 2016)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 16:</b> &nbsp; 3 fragments, nominal size 12 lines, similarity 83%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag888')" href="javascript:;">
+beets-1.6.0/test/test_plugin_mediafield.py: 46-61
+</a>
+<div class="mid" id="frag888" style="display:none"><pre>
+    def test_extended_field_write(self):
+        plugin = BeetsPlugin()
+        plugin.add_media_field('customtag', field_extension)
+
+        try:
+            mf = self._mediafile_fixture('empty')
+            mf.customtag = 'F#'
+            mf.save()
+
+            mf = mediafile.MediaFile(mf.path)
+            self.assertEqual(mf.customtag, 'F#')
+
+        finally:
+            delattr(mediafile.MediaFile, 'customtag')
+            Item._media_fields.remove('customtag')
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag890')" href="javascript:;">
+beets-1.6.0/test/test_plugin_mediafield.py: 79-94
+</a>
+<div class="mid" id="frag890" style="display:none"><pre>
+    def test_read_flexible_attribute_from_file(self):
+        plugin = BeetsPlugin()
+        plugin.add_media_field('customtag', field_extension)
+
+        try:
+            mf = self._mediafile_fixture('empty')
+            mf.update({'customtag': 'F#'})
+            mf.save()
+
+            item = Item.from_path(mf.path)
+            self.assertEqual(item['customtag'], 'F#')
+
+        finally:
+            delattr(mediafile.MediaFile, 'customtag')
+            Item._media_fields.remove('customtag')
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag889')" href="javascript:;">
+beets-1.6.0/test/test_plugin_mediafield.py: 62-78
+</a>
+<div class="mid" id="frag889" style="display:none"><pre>
+    def test_write_extended_tag_from_item(self):
+        plugin = BeetsPlugin()
+        plugin.add_media_field('customtag', field_extension)
+
+        try:
+            mf = self._mediafile_fixture('empty')
+            self.assertIsNone(mf.customtag)
+
+            item = Item(path=mf.path, customtag='Gb')
+            item.write()
+            mf = mediafile.MediaFile(mf.path)
+            self.assertEqual(mf.customtag, 'Gb')
+
+        finally:
+            delattr(mediafile.MediaFile, 'customtag')
+            Item._media_fields.remove('customtag')
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 17:</b> &nbsp; 2 fragments, nominal size 29 lines, similarity 86%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag972')" href="javascript:;">
+beets-1.6.0/test/test_spotify.py: 64-94
+</a>
+<div class="mid" id="frag972" style="display:none"><pre>
+    def test_missing_request(self):
+        json_file = os.path.join(
+            _common.RSRC, b'spotify', b'missing_request.json'
+        )
+        with open(json_file, 'rb') as f:
+            response_body = f.read()
+
+        responses.add(
+            responses.GET,
+            spotify.SpotifyPlugin.search_url,
+            body=response_body,
+            status=200,
+            content_type='application/json',
+        )
+        item = Item(
+            mb_trackid='01234',
+            album='lkajsdflakjsd',
+            albumartist='ujydfsuihse',
+            title='duifhjslkef',
+            length=10,
+        )
+        item.add(self.lib)
+        self.assertEqual([], self.spotify._match_library_tracks(self.lib, ""))
+
+        params = _params(responses.calls[0].request.url)
+        query = params['q'][0]
+        self.assertIn('duifhjslkef', query)
+        self.assertIn('artist:ujydfsuihse', query)
+        self.assertIn('album:lkajsdflakjsd', query)
+        self.assertEqual(params['type'], ['track'])
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag973')" href="javascript:;">
+beets-1.6.0/test/test_spotify.py: 96-129
+</a>
+<div class="mid" id="frag973" style="display:none"><pre>
+    def test_track_request(self):
+        json_file = os.path.join(
+            _common.RSRC, b'spotify', b'track_request.json'
+        )
+        with open(json_file, 'rb') as f:
+            response_body = f.read()
+
+        responses.add(
+            responses.GET,
+            spotify.SpotifyPlugin.search_url,
+            body=response_body,
+            status=200,
+            content_type='application/json',
+        )
+        item = Item(
+            mb_trackid='01234',
+            album='Despicable Me 2',
+            albumartist='Pharrell Williams',
+            title='Happy',
+            length=10,
+        )
+        item.add(self.lib)
+        results = self.spotify._match_library_tracks(self.lib, "Happy")
+        self.assertEqual(1, len(results))
+        self.assertEqual("6NPVjNh8Jhru9xOmyQigds", results[0]['id'])
+        self.spotify._output_match_results(results)
+
+        params = _params(responses.calls[0].request.url)
+        query = params['q'][0]
+        self.assertIn('Happy', query)
+        self.assertIn('artist:Pharrell Williams', query)
+        self.assertIn('album:Despicable Me 2', query)
+        self.assertEqual(params['type'], ['track'])
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 18:</b> &nbsp; 2 fragments, nominal size 10 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag996')" href="javascript:;">
+beets-1.6.0/test/test_logging.py: 186-196
+</a>
+<div class="mid" id="frag996" style="display:none"><pre>
+        def listener1(self):
+            try:
+                self.test_case.assertEqual(self._log.level, log.INFO)
+                self.t1_step = 1
+                self.lock1.acquire()
+                self.test_case.assertEqual(self._log.level, log.INFO)
+                self.t1_step = 2
+            except Exception:
+                import sys
+                self.exc_info = sys.exc_info()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag997')" href="javascript:;">
+beets-1.6.0/test/test_logging.py: 197-207
+</a>
+<div class="mid" id="frag997" style="display:none"><pre>
+        def listener2(self):
+            try:
+                self.test_case.assertEqual(self._log.level, log.DEBUG)
+                self.t2_step = 1
+                self.lock2.acquire()
+                self.test_case.assertEqual(self._log.level, log.DEBUG)
+                self.t2_step = 2
+            except Exception:
+                import sys
+                self.exc_info = sys.exc_info()
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 19:</b> &nbsp; 2 fragments, nominal size 13 lines, similarity 73%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1084')" href="javascript:;">
+beets-1.6.0/test/test_filefilter.py: 116-130
+</a>
+<div class="mid" id="frag1084" style="display:none"><pre>
+    def test_import_default(self):
+        """ The default configuration should import everything.
+        """
+        self.__run([
+            'Album: %s' % displayable_path(self.artist_path),
+            '  %s' % displayable_path(self.artist_paths[0]),
+            '  %s' % displayable_path(self.artist_paths[1]),
+            'Album: %s' % displayable_path(self.album_path),
+            '  %s' % displayable_path(self.album_paths[0]),
+            '  %s' % displayable_path(self.album_paths[1]),
+            'Album: %s' % displayable_path(self.misc_path),
+            '  %s' % displayable_path(self.misc_paths[0]),
+            '  %s' % displayable_path(self.misc_paths[1])
+        ])
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1088')" href="javascript:;">
+beets-1.6.0/test/test_filefilter.py: 169-187
+</a>
+<div class="mid" id="frag1088" style="display:none"><pre>
+    def test_import_singleton(self):
+        config['filefilter']['singleton_path'] = '.*track_1.*\\.mp3'
+        self.__run([
+            'Singleton: %s' % displayable_path(self.artist_paths[0]),
+            'Singleton: %s' % displayable_path(self.misc_paths[0])
+        ], singletons=True)
+        self.__run([
+            'Album: %s' % displayable_path(self.artist_path),
+            '  %s' % displayable_path(self.artist_paths[0]),
+            '  %s' % displayable_path(self.artist_paths[1]),
+            'Album: %s' % displayable_path(self.album_path),
+            '  %s' % displayable_path(self.album_paths[0]),
+            '  %s' % displayable_path(self.album_paths[1]),
+            'Album: %s' % displayable_path(self.misc_path),
+            '  %s' % displayable_path(self.misc_paths[0]),
+            '  %s' % displayable_path(self.misc_paths[1])
+        ])
+
+    # Album and singleton options
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 20:</b> &nbsp; 3 fragments, nominal size 12 lines, similarity 73%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1086')" href="javascript:;">
+beets-1.6.0/test/test_filefilter.py: 137-150
+</a>
+<div class="mid" id="frag1086" style="display:none"><pre>
+    def test_import_global(self):
+        config['filefilter']['path'] = '.*track_1.*\\.mp3'
+        self.__run([
+            'Album: %s' % displayable_path(self.artist_path),
+            '  %s' % displayable_path(self.artist_paths[0]),
+            'Album: %s' % displayable_path(self.misc_path),
+            '  %s' % displayable_path(self.misc_paths[0]),
+        ])
+        self.__run([
+            'Singleton: %s' % displayable_path(self.artist_paths[0]),
+            'Singleton: %s' % displayable_path(self.misc_paths[0])
+        ], singletons=True)
+
+    # Album options
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1087')" href="javascript:;">
+beets-1.6.0/test/test_filefilter.py: 151-168
+</a>
+<div class="mid" id="frag1087" style="display:none"><pre>
+    def test_import_album(self):
+        config['filefilter']['album_path'] = '.*track_1.*\\.mp3'
+        self.__run([
+            'Album: %s' % displayable_path(self.artist_path),
+            '  %s' % displayable_path(self.artist_paths[0]),
+            'Album: %s' % displayable_path(self.misc_path),
+            '  %s' % displayable_path(self.misc_paths[0]),
+        ])
+        self.__run([
+            'Singleton: %s' % displayable_path(self.artist_paths[0]),
+            'Singleton: %s' % displayable_path(self.artist_paths[1]),
+            'Singleton: %s' % displayable_path(self.album_paths[0]),
+            'Singleton: %s' % displayable_path(self.album_paths[1]),
+            'Singleton: %s' % displayable_path(self.misc_paths[0]),
+            'Singleton: %s' % displayable_path(self.misc_paths[1])
+        ], singletons=True)
+
+    # Singleton options
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1089')" href="javascript:;">
+beets-1.6.0/test/test_filefilter.py: 188-202
+</a>
+<div class="mid" id="frag1089" style="display:none"><pre>
+    def test_import_both(self):
+        config['filefilter']['album_path'] = '.*track_1.*\\.mp3'
+        config['filefilter']['singleton_path'] = '.*track_2.*\\.mp3'
+        self.__run([
+            'Album: %s' % displayable_path(self.artist_path),
+            '  %s' % displayable_path(self.artist_paths[0]),
+            'Album: %s' % displayable_path(self.misc_path),
+            '  %s' % displayable_path(self.misc_paths[0]),
+        ])
+        self.__run([
+            'Singleton: %s' % displayable_path(self.artist_paths[1]),
+            'Singleton: %s' % displayable_path(self.misc_paths[1])
+        ], singletons=True)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 21:</b> &nbsp; 2 fragments, nominal size 34 lines, similarity 94%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1114')" href="javascript:;">
+beets-1.6.0/test/test_mbsync.py: 77-129
+</a>
+<div class="mid" id="frag1114" style="display:none"><pre>
+        self.assertEqual(album_item.mb_trackid, 'track id')
+
+        album.load()
+        self.assertEqual(album.album, 'album info')
+
+    def test_message_when_skipping(self):
+        config['format_item'] = '$artist - $album - $title'
+        config['format_album'] = '$albumartist - $album'
+
+        # Test album with no mb_albumid.
+        # The default format for an album include $albumartist so
+        # set that here, too.
+        album_invalid = Item(
+            albumartist='album info',
+            album='album info',
+            path=''
+        )
+        self.lib.add_album([album_invalid])
+
+        # default format
+        with capture_log('beets.mbsync') as logs:
+            self.run_command('mbsync')
+        e = 'mbsync: Skipping album with no mb_albumid: ' + \
+            'album info - album info'
+        self.assertEqual(e, logs[0])
+
+        # custom format
+        with capture_log('beets.mbsync') as logs:
+            self.run_command('mbsync', '-f', "'$album'")
+        e = "mbsync: Skipping album with no mb_albumid: 'album info'"
+        self.assertEqual(e, logs[0])
+
+        # restore the config
+        config['format_item'] = '$artist - $album - $title'
+        config['format_album'] = '$albumartist - $album'
+
+        # Test singleton with no mb_trackid.
+        # The default singleton format includes $artist and $album
+        # so we need to stub them here
+        item_invalid = Item(
+            artist='album info',
+            album='album info',
+            title='old title',
+            path='',
+        )
+        self.lib.add(item_invalid)
+
+        # default format
+        with capture_log('beets.mbsync') as logs:
+            self.run_command('mbsync')
+        e = 'mbsync: Skipping singleton with no mb_trackid: ' + \
+            'album info - album info - old title'
+        self.assertEqual(e, logs[0])
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1115')" href="javascript:;">
+beets-1.6.0/test/test_mbsync.py: 130-185
+</a>
+<div class="mid" id="frag1115" style="display:none"><pre>
+
+        # custom format
+        with capture_log('beets.mbsync') as logs:
+            self.run_command('mbsync', '-f', "'$title'")
+        e = "mbsync: Skipping singleton with no mb_trackid: 'old title'"
+        self.assertEqual(e, logs[0])
+
+    def test_message_when_invalid(self):
+        config['format_item'] = '$artist - $album - $title'
+        config['format_album'] = '$albumartist - $album'
+
+        # Test album with invalid mb_albumid.
+        # The default format for an album include $albumartist so
+        # set that here, too.
+        album_invalid = Item(
+            albumartist='album info',
+            album='album info',
+            mb_albumid='a1b2c3d4',
+            path=''
+        )
+        self.lib.add_album([album_invalid])
+
+        # default format
+        with capture_log('beets.mbsync') as logs:
+            self.run_command('mbsync')
+        e = 'mbsync: Skipping album with invalid mb_albumid: ' + \
+            'album info - album info'
+        self.assertEqual(e, logs[0])
+
+        # custom format
+        with capture_log('beets.mbsync') as logs:
+            self.run_command('mbsync', '-f', "'$album'")
+        e = "mbsync: Skipping album with invalid mb_albumid: 'album info'"
+        self.assertEqual(e, logs[0])
+
+        # restore the config
+        config['format_item'] = '$artist - $album - $title'
+        config['format_album'] = '$albumartist - $album'
+
+        # Test singleton with invalid mb_trackid.
+        # The default singleton format includes $artist and $album
+        # so we need to stub them here
+        item_invalid = Item(
+            artist='album info',
+            album='album info',
+            title='old title',
+            mb_trackid='a1b2c3d4',
+            path='',
+        )
+        self.lib.add(item_invalid)
+
+        # default format
+        with capture_log('beets.mbsync') as logs:
+            self.run_command('mbsync')
+        e = 'mbsync: Skipping singleton with invalid mb_trackid: ' + \
+            'album info - album info - old title'
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 22:</b> &nbsp; 2 fragments, nominal size 10 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1151')" href="javascript:;">
+beets-1.6.0/test/test_albumtypes.py: 38-50
+</a>
+<div class="mid" id="frag1151" style="display:none"><pre>
+    def test_renames_types(self):
+        """Tests if the plugin correctly renames the specified types."""
+        self._set_config(
+            types=[('ep', 'EP'), ('remix', 'Remix')],
+            ignore_va=[],
+            bracket='()'
+        )
+        album = self._create_album(album_types=['ep', 'remix'])
+        subject = AlbumTypesPlugin()
+        result = subject._atypes(album)
+        self.assertEqual('(EP)(Remix)', result)
+        return
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1153')" href="javascript:;">
+beets-1.6.0/test/test_albumtypes.py: 63-75
+</a>
+<div class="mid" id="frag1153" style="display:none"><pre>
+    def test_respects_type_order(self):
+        """Tests if the types are returned in the same order as config."""
+        self._set_config(
+            types=[('remix', 'Remix'), ('ep', 'EP')],
+            ignore_va=[],
+            bracket='()'
+        )
+        album = self._create_album(album_types=['ep', 'remix'])
+        subject = AlbumTypesPlugin()
+        result = subject._atypes(album)
+        self.assertEqual('(Remix)(EP)', result)
+        return
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 23:</b> &nbsp; 2 fragments, nominal size 16 lines, similarity 72%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1182')" href="javascript:;">
+beets-1.6.0/test/test_discogs.py: 123-138
+</a>
+<div class="mid" id="frag1182" style="display:none"><pre>
+    def test_parse_medium_numbers_two_mediums_two_sided(self):
+        release = self._make_release_from_positions(['A1', 'B1', 'C1'])
+        d = DiscogsPlugin().get_album_info(release)
+        t = d.tracks
+
+        self.assertEqual(d.mediums, 2)
+        self.assertEqual(t[0].medium, 1)
+        self.assertEqual(t[0].medium_total, 2)
+        self.assertEqual(t[0].medium_index, 1)
+        self.assertEqual(t[1].medium, 1)
+        self.assertEqual(t[1].medium_total, 2)
+        self.assertEqual(t[1].medium_index, 2)
+        self.assertEqual(t[2].medium, 2)
+        self.assertEqual(t[2].medium_total, 1)
+        self.assertEqual(t[2].medium_index, 1)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1184')" href="javascript:;">
+beets-1.6.0/test/test_discogs.py: 151-170
+</a>
+<div class="mid" id="frag1184" style="display:none"><pre>
+    def test_parse_track_indices_several_media(self):
+        release = self._make_release_from_positions(['1-1', '1-2', '2-1',
+                                                     '3-1'])
+        d = DiscogsPlugin().get_album_info(release)
+        t = d.tracks
+
+        self.assertEqual(d.mediums, 3)
+        self.assertEqual(t[0].medium_index, 1)
+        self.assertEqual(t[0].index, 1)
+        self.assertEqual(t[0].medium_total, 2)
+        self.assertEqual(t[1].medium_index, 2)
+        self.assertEqual(t[1].index, 2)
+        self.assertEqual(t[1].medium_total, 2)
+        self.assertEqual(t[2].medium_index, 1)
+        self.assertEqual(t[2].index, 3)
+        self.assertEqual(t[2].medium_total, 1)
+        self.assertEqual(t[3].medium_index, 1)
+        self.assertEqual(t[3].index, 4)
+        self.assertEqual(t[3].medium_total, 1)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 24:</b> &nbsp; 2 fragments, nominal size 10 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1191')" href="javascript:;">
+beets-1.6.0/test/test_discogs.py: 232-246
+</a>
+<div class="mid" id="frag1191" style="display:none"><pre>
+    def test_parse_tracklist_subtracks_dot(self):
+        """Test standard Discogs position 12.2.9#5: "sub tracks, dots"."""
+        release = self._make_release_from_positions(['1', '2.1', '2.2', '3'])
+        d = DiscogsPlugin().get_album_info(release)
+
+        self.assertEqual(d.mediums, 1)
+        self.assertEqual(len(d.tracks), 3)
+
+        release = self._make_release_from_positions(['A1', 'A2.1', 'A2.2',
+                                                     'A3'])
+        d = DiscogsPlugin().get_album_info(release)
+
+        self.assertEqual(d.mediums, 1)
+        self.assertEqual(len(d.tracks), 3)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1192')" href="javascript:;">
+beets-1.6.0/test/test_discogs.py: 247-261
+</a>
+<div class="mid" id="frag1192" style="display:none"><pre>
+    def test_parse_tracklist_subtracks_letter(self):
+        """Test standard Discogs position 12.2.9#5: "sub tracks, letter"."""
+        release = self._make_release_from_positions(['A1', 'A2a', 'A2b', 'A3'])
+        d = DiscogsPlugin().get_album_info(release)
+
+        self.assertEqual(d.mediums, 1)
+        self.assertEqual(len(d.tracks), 3)
+
+        release = self._make_release_from_positions(['A1', 'A2.a', 'A2.b',
+                                                     'A3'])
+        d = DiscogsPlugin().get_album_info(release)
+
+        self.assertEqual(d.mediums, 1)
+        self.assertEqual(len(d.tracks), 3)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 25:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 90%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1195')" href="javascript:;">
+beets-1.6.0/test/test_discogs.py: 284-300
+</a>
+<div class="mid" id="frag1195" style="display:none"><pre>
+    def test_parse_tracklist_subtracks_nested_logical(self):
+        """Test parsing of subtracks defined inside a index track that are
+        logical subtracks (ie. should be grouped together into a single track).
+        """
+        release = self._make_release_from_positions(['1', '', '3'])
+        # Track 2: Index track with track group title, and sub_tracks
+        release.data['tracklist'][1]['title'] = 'TRACK GROUP TITLE'
+        release.data['tracklist'][1]['sub_tracks'] = [
+            self._make_track('TITLE ONE', '2.1', '01:01'),
+            self._make_track('TITLE TWO', '2.2', '02:02')
+        ]
+
+        d = DiscogsPlugin().get_album_info(release)
+        self.assertEqual(d.mediums, 1)
+        self.assertEqual(len(d.tracks), 3)
+        self.assertEqual(d.tracks[1].title, 'TRACK GROUP TITLE')
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1196')" href="javascript:;">
+beets-1.6.0/test/test_discogs.py: 301-318
+</a>
+<div class="mid" id="frag1196" style="display:none"><pre>
+    def test_parse_tracklist_subtracks_nested_physical(self):
+        """Test parsing of subtracks defined inside a index track that are
+        physical subtracks (ie. should not be grouped together).
+        """
+        release = self._make_release_from_positions(['1', '', '4'])
+        # Track 2: Index track with track group title, and sub_tracks
+        release.data['tracklist'][1]['title'] = 'TRACK GROUP TITLE'
+        release.data['tracklist'][1]['sub_tracks'] = [
+            self._make_track('TITLE ONE', '2', '01:01'),
+            self._make_track('TITLE TWO', '3', '02:02')
+        ]
+
+        d = DiscogsPlugin().get_album_info(release)
+        self.assertEqual(d.mediums, 1)
+        self.assertEqual(len(d.tracks), 4)
+        self.assertEqual(d.tracks[1].title, 'TITLE ONE')
+        self.assertEqual(d.tracks[2].title, 'TITLE TWO')
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 26:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1214')" href="javascript:;">
+beets-1.6.0/test/test_embedart.py: 147-159
+</a>
+<div class="mid" id="frag1214" style="display:none"><pre>
+    def test_reject_different_art(self):
+        self._setup_data(self.abbey_artpath)
+        album = self.add_album_fixture()
+        item = album.items()[0]
+        self.run_command('embedart', '-y', '-f', self.abbey_artpath)
+        config['embedart']['compare_threshold'] = 20
+        self.run_command('embedart', '-y', '-f', self.abbey_differentpath)
+        mediafile = MediaFile(syspath(item.path))
+
+        self.assertEqual(mediafile.images[0].data, self.image_data,
+                         'Image written is not {}'.format(
+                         displayable_path(self.abbey_artpath)))
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1215')" href="javascript:;">
+beets-1.6.0/test/test_embedart.py: 161-173
+</a>
+<div class="mid" id="frag1215" style="display:none"><pre>
+    def test_accept_similar_art(self):
+        self._setup_data(self.abbey_similarpath)
+        album = self.add_album_fixture()
+        item = album.items()[0]
+        self.run_command('embedart', '-y', '-f', self.abbey_artpath)
+        config['embedart']['compare_threshold'] = 20
+        self.run_command('embedart', '-y', '-f', self.abbey_similarpath)
+        mediafile = MediaFile(syspath(item.path))
+
+        self.assertEqual(mediafile.images[0].data, self.image_data,
+                         'Image written is not {}'.format(
+                         displayable_path(self.abbey_similarpath)))
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 27:</b> &nbsp; 2 fragments, nominal size 10 lines, similarity 90%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1218')" href="javascript:;">
+beets-1.6.0/test/test_embedart.py: 196-206
+</a>
+<div class="mid" id="frag1218" style="display:none"><pre>
+    def test_clear_art_with_yes_input(self):
+        self._setup_data()
+        album = self.add_album_fixture()
+        item = album.items()[0]
+        self.io.addinput('y')
+        self.run_command('embedart', '-f', self.small_artpath)
+        self.io.addinput('y')
+        self.run_command('clearart')
+        mediafile = MediaFile(syspath(item.path))
+        self.assertEqual(len(mediafile.images), 0)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1219')" href="javascript:;">
+beets-1.6.0/test/test_embedart.py: 207-218
+</a>
+<div class="mid" id="frag1219" style="display:none"><pre>
+    def test_clear_art_with_no_input(self):
+        self._setup_data()
+        album = self.add_album_fixture()
+        item = album.items()[0]
+        self.io.addinput('y')
+        self.run_command('embedart', '-f', self.small_artpath)
+        self.io.addinput('n')
+        self.run_command('clearart')
+        mediafile = MediaFile(syspath(item.path))
+        self.assertEqual(mediafile.images[0].data, self.image_data)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 28:</b> &nbsp; 3 fragments, nominal size 13 lines, similarity 84%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1334')" href="javascript:;">
+beets-1.6.0/test/test_ui.py: 921-936
+</a>
+<div class="mid" id="frag1334" style="display:none"><pre>
+    @unittest.skipIf(sys.platform, 'win32')  # FIXME: fails on windows
+    def test_cli_config_paths_resolve_relative_to_user_dir(self):
+        cli_config_path = os.path.join(self.temp_dir, b'config.yaml')
+        with open(cli_config_path, 'w') as file:
+            file.write('library: beets.db\n')
+            file.write('statefile: state')
+
+        self.run_command('--config', cli_config_path, 'test', lib=None)
+        self.assert_equal_path(
+            util.bytestring_path(config['library'].as_filename()),
+            os.path.join(self.user_config_dir, b'beets.db')
+        )
+        self.assert_equal_path(
+            util.bytestring_path(config['statefile'].as_filename()),
+            os.path.join(self.user_config_dir, b'state')
+        )
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1342')" href="javascript:;">
+beets-1.6.0/test/test_ui.py: 1009-1027
+</a>
+<div class="mid" id="frag1342" style="display:none"><pre>
+
+    def test_beetsdir_config_paths_resolve_relative_to_beetsdir(self):
+        os.environ['BEETSDIR'] = util.py3_path(self.beetsdir)
+
+        env_config_path = os.path.join(self.beetsdir, b'config.yaml')
+        with open(env_config_path, 'w') as file:
+            file.write('library: beets.db\n')
+            file.write('statefile: state')
+
+        config.read()
+        self.assert_equal_path(
+            util.bytestring_path(config['library'].as_filename()),
+            os.path.join(self.beetsdir, b'beets.db')
+        )
+        self.assert_equal_path(
+            util.bytestring_path(config['statefile'].as_filename()),
+            os.path.join(self.beetsdir, b'state')
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1335')" href="javascript:;">
+beets-1.6.0/test/test_ui.py: 937-954
+</a>
+<div class="mid" id="frag1335" style="display:none"><pre>
+
+    def test_cli_config_paths_resolve_relative_to_beetsdir(self):
+        os.environ['BEETSDIR'] = util.py3_path(self.beetsdir)
+
+        cli_config_path = os.path.join(self.temp_dir, b'config.yaml')
+        with open(cli_config_path, 'w') as file:
+            file.write('library: beets.db\n')
+            file.write('statefile: state')
+
+        self.run_command('--config', cli_config_path, 'test', lib=None)
+        self.assert_equal_path(
+            util.bytestring_path(config['library'].as_filename()),
+            os.path.join(self.beetsdir, b'beets.db')
+        )
+        self.assert_equal_path(
+            util.bytestring_path(config['statefile'].as_filename()),
+            os.path.join(self.beetsdir, b'state')
+        )
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 29:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1425')" href="javascript:;">
+beets-1.6.0/test/test_library.py: 311-322
+</a>
+<div class="mid" id="frag1425" style="display:none"><pre>
+    def test_albumtype_query_path(self):
+        self.i.comp = True
+        self.lib.add_album([self.i])
+        self.i.albumtype = 'sometype'
+        self.lib.directory = b'one'
+        self.lib.path_formats = [
+            ('default', 'two'),
+            ('albumtype:sometype', 'four'),
+            ('comp:true', 'three'),
+        ]
+        self.assertEqual(self.i.destination(), np('one/four'))
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1426')" href="javascript:;">
+beets-1.6.0/test/test_library.py: 323-334
+</a>
+<div class="mid" id="frag1426" style="display:none"><pre>
+    def test_albumtype_path_fallback_to_comp(self):
+        self.i.comp = True
+        self.lib.add_album([self.i])
+        self.i.albumtype = 'sometype'
+        self.lib.directory = b'one'
+        self.lib.path_formats = [
+            ('default', 'two'),
+            ('albumtype:anothertype', 'four'),
+            ('comp:true', 'three'),
+        ]
+        self.assertEqual(self.i.destination(), np('one/three'))
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 30:</b> &nbsp; 7 fragments, nominal size 10 lines, similarity 70%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1604')" href="javascript:;">
+beets-1.6.0/test/test_mb.py: 363-373
+</a>
+<div class="mid" id="frag1604" style="display:none"><pre>
+
+    def test_skip_data_track(self):
+        tracks = [self._make_track('TITLE ONE', 'ID ONE', 100.0 * 1000.0),
+                  self._make_track('[data track]', 'ID DATA TRACK',
+                                   100.0 * 1000.0),
+                  self._make_track('TITLE TWO', 'ID TWO', 200.0 * 1000.0)]
+        release = self._make_release(tracks=tracks)
+        d = mb.album_info(release)
+        self.assertEqual(len(d.tracks), 2)
+        self.assertEqual(d.tracks[0].title, 'TITLE ONE')
+        self.assertEqual(d.tracks[1].title, 'TITLE TWO')
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1608')" href="javascript:;">
+beets-1.6.0/test/test_mb.py: 409-419
+</a>
+<div class="mid" id="frag1608" style="display:none"><pre>
+
+    def test_skip_video_data_tracks_by_default(self):
+        tracks = [self._make_track('TITLE ONE', 'ID ONE', 100.0 * 1000.0),
+                  self._make_track('TITLE TWO', 'ID TWO', 200.0 * 1000.0)]
+        data_tracks = [self._make_track('TITLE VIDEO', 'ID VIDEO',
+                                        100.0 * 1000.0, False, True)]
+        release = self._make_release(tracks=tracks, data_tracks=data_tracks)
+        d = mb.album_info(release)
+        self.assertEqual(len(d.tracks), 2)
+        self.assertEqual(d.tracks[0].title, 'TITLE ONE')
+        self.assertEqual(d.tracks[1].title, 'TITLE TWO')
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1607')" href="javascript:;">
+beets-1.6.0/test/test_mb.py: 398-408
+</a>
+<div class="mid" id="frag1607" style="display:none"><pre>
+
+    def test_skip_video_tracks_by_default(self):
+        tracks = [self._make_track('TITLE ONE', 'ID ONE', 100.0 * 1000.0),
+                  self._make_track('TITLE VIDEO', 'ID VIDEO', 100.0 * 1000.0,
+                                   False, True),
+                  self._make_track('TITLE TWO', 'ID TWO', 200.0 * 1000.0)]
+        release = self._make_release(tracks=tracks)
+        d = mb.album_info(release)
+        self.assertEqual(len(d.tracks), 2)
+        self.assertEqual(d.tracks[0].title, 'TITLE ONE')
+        self.assertEqual(d.tracks[1].title, 'TITLE TWO')
+</pre></div>
+</td>
+</tr><tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1605')" href="javascript:;">
+beets-1.6.0/test/test_mb.py: 374-384
+</a>
+<div class="mid" id="frag1605" style="display:none"><pre>
+
+    def test_skip_audio_data_tracks_by_default(self):
+        tracks = [self._make_track('TITLE ONE', 'ID ONE', 100.0 * 1000.0),
+                  self._make_track('TITLE TWO', 'ID TWO', 200.0 * 1000.0)]
+        data_tracks = [self._make_track('TITLE AUDIO DATA', 'ID DATA TRACK',
+                                        100.0 * 1000.0)]
+        release = self._make_release(tracks=tracks, data_tracks=data_tracks)
+        d = mb.album_info(release)
+        self.assertEqual(len(d.tracks), 2)
+        self.assertEqual(d.tracks[0].title, 'TITLE ONE')
+        self.assertEqual(d.tracks[1].title, 'TITLE TWO')
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1610')" href="javascript:;">
+beets-1.6.0/test/test_mb.py: 434-447
+</a>
+<div class="mid" id="frag1610" style="display:none"><pre>
+
+    def test_no_skip_video_data_tracks_if_configured(self):
+        config['match']['ignore_data_tracks'] = False
+        config['match']['ignore_video_tracks'] = False
+        tracks = [self._make_track('TITLE ONE', 'ID ONE', 100.0 * 1000.0),
+                  self._make_track('TITLE TWO', 'ID TWO', 200.0 * 1000.0)]
+        data_tracks = [self._make_track('TITLE VIDEO', 'ID VIDEO',
+                                        100.0 * 1000.0, False, True)]
+        release = self._make_release(tracks=tracks, data_tracks=data_tracks)
+        d = mb.album_info(release)
+        self.assertEqual(len(d.tracks), 3)
+        self.assertEqual(d.tracks[0].title, 'TITLE ONE')
+        self.assertEqual(d.tracks[1].title, 'TITLE TWO')
+        self.assertEqual(d.tracks[2].title, 'TITLE VIDEO')
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1606')" href="javascript:;">
+beets-1.6.0/test/test_mb.py: 385-397
+</a>
+<div class="mid" id="frag1606" style="display:none"><pre>
+
+    def test_no_skip_audio_data_tracks_if_configured(self):
+        config['match']['ignore_data_tracks'] = False
+        tracks = [self._make_track('TITLE ONE', 'ID ONE', 100.0 * 1000.0),
+                  self._make_track('TITLE TWO', 'ID TWO', 200.0 * 1000.0)]
+        data_tracks = [self._make_track('TITLE AUDIO DATA', 'ID DATA TRACK',
+                                        100.0 * 1000.0)]
+        release = self._make_release(tracks=tracks, data_tracks=data_tracks)
+        d = mb.album_info(release)
+        self.assertEqual(len(d.tracks), 3)
+        self.assertEqual(d.tracks[0].title, 'TITLE ONE')
+        self.assertEqual(d.tracks[1].title, 'TITLE TWO')
+        self.assertEqual(d.tracks[2].title, 'TITLE AUDIO DATA')
+</pre></div>
+</td>
+</tr><tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1609')" href="javascript:;">
+beets-1.6.0/test/test_mb.py: 420-433
+</a>
+<div class="mid" id="frag1609" style="display:none"><pre>
+
+    def test_no_skip_video_tracks_if_configured(self):
+        config['match']['ignore_data_tracks'] = False
+        config['match']['ignore_video_tracks'] = False
+        tracks = [self._make_track('TITLE ONE', 'ID ONE', 100.0 * 1000.0),
+                  self._make_track('TITLE VIDEO', 'ID VIDEO', 100.0 * 1000.0,
+                                   False, True),
+                  self._make_track('TITLE TWO', 'ID TWO', 200.0 * 1000.0)]
+        release = self._make_release(tracks=tracks)
+        d = mb.album_info(release)
+        self.assertEqual(len(d.tracks), 3)
+        self.assertEqual(d.tracks[0].title, 'TITLE ONE')
+        self.assertEqual(d.tracks[1].title, 'TITLE VIDEO')
+        self.assertEqual(d.tracks[2].title, 'TITLE TWO')
+</pre></div>
+</td>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 31:</b> &nbsp; 3 fragments, nominal size 12 lines, similarity 73%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1721')" href="javascript:;">
+beets-1.6.0/test/test_files.py: 240-257
+</a>
+<div class="mid" id="frag1721" style="display:none"><pre>
+    def setUp(self):
+        super().setUp()
+
+        # Make library and item.
+        self.lib = beets.library.Library(':memory:')
+        self.lib.path_formats = \
+            [('default', join('$albumartist', '$album', '$title'))]
+        self.libdir = os.path.join(self.temp_dir, b'testlibdir')
+        self.lib.directory = self.libdir
+        self.i = item(self.lib)
+        # Make a file for the item.
+        self.i.path = self.i.destination()
+        util.mkdirall(self.i.path)
+        touch(self.i.path)
+        # Make an album.
+        self.ai = self.lib.add_album((self.i,))
+        # Alternate destination dir.
+        self.otherdir = os.path.join(self.temp_dir, b'testotherdir')
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1738')" href="javascript:;">
+beets-1.6.0/test/test_files.py: 480-494
+</a>
+<div class="mid" id="frag1738" style="display:none"><pre>
+class RemoveTest(_common.TestCase):
+    def setUp(self):
+        super().setUp()
+
+        # Make library and item.
+        self.lib = beets.library.Library(':memory:')
+        self.libdir = os.path.join(self.temp_dir, b'testlibdir')
+        self.lib.directory = self.libdir
+        self.i = item(self.lib)
+        self.i.path = self.i.destination()
+        # Make a music file.
+        util.mkdirall(self.i.path)
+        touch(self.i.path)
+        # Make an album with the item.
+        self.ai = self.lib.add_album((self.i,))
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1727')" href="javascript:;">
+beets-1.6.0/test/test_files.py: 305-326
+</a>
+<div class="mid" id="frag1727" style="display:none"><pre>
+class ArtFileTest(_common.TestCase):
+    def setUp(self):
+        super().setUp()
+
+        # Make library and item.
+        self.lib = beets.library.Library(':memory:')
+        self.libdir = os.path.join(self.temp_dir, b'testlibdir')
+        self.lib.directory = self.libdir
+        self.i = item(self.lib)
+        self.i.path = self.i.destination()
+        # Make a music file.
+        util.mkdirall(self.i.path)
+        touch(self.i.path)
+        # Make an album.
+        self.ai = self.lib.add_album((self.i,))
+        # Make an art file too.
+        self.art = self.lib.get_album(self.i).art_destination('something.jpg')
+        touch(self.art)
+        self.ai.artpath = self.art
+        self.ai.store()
+        # Alternate destination dir.
+        self.otherdir = os.path.join(self.temp_dir, b'testotherdir')
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 32:</b> &nbsp; 4 fragments, nominal size 12 lines, similarity 71%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1731')" href="javascript:;">
+beets-1.6.0/test/test_files.py: 356-370
+</a>
+<div class="mid" id="frag1731" style="display:none"><pre>
+
+    def test_setart_copies_image(self):
+        os.remove(self.art)
+
+        newart = os.path.join(self.libdir, b'newart.jpg')
+        touch(newart)
+        i2 = item()
+        i2.path = self.i.path
+        i2.artist = 'someArtist'
+        ai = self.lib.add_album((i2,))
+        i2.move(operation=MoveOperation.COPY)
+
+        self.assertEqual(ai.artpath, None)
+        ai.set_art(newart)
+        self.assertTrue(os.path.exists(ai.artpath))
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1733')" href="javascript:;">
+beets-1.6.0/test/test_files.py: 388-404
+</a>
+<div class="mid" id="frag1733" style="display:none"><pre>
+
+    def test_setart_to_existing_but_unset_art_works(self):
+        newart = os.path.join(self.libdir, b'newart.jpg')
+        touch(newart)
+        i2 = item()
+        i2.path = self.i.path
+        i2.artist = 'someArtist'
+        ai = self.lib.add_album((i2,))
+        i2.move(operation=MoveOperation.COPY)
+
+        # Copy the art to the destination.
+        artdest = ai.art_destination(newart)
+        shutil.copy(newart, artdest)
+
+        # Set the art again.
+        ai.set_art(artdest)
+        self.assertTrue(os.path.exists(ai.artpath))
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1732')" href="javascript:;">
+beets-1.6.0/test/test_files.py: 371-387
+</a>
+<div class="mid" id="frag1732" style="display:none"><pre>
+
+    def test_setart_to_existing_art_works(self):
+        os.remove(self.art)
+
+        # Original art.
+        newart = os.path.join(self.libdir, b'newart.jpg')
+        touch(newart)
+        i2 = item()
+        i2.path = self.i.path
+        i2.artist = 'someArtist'
+        ai = self.lib.add_album((i2,))
+        i2.move(operation=MoveOperation.COPY)
+        ai.set_art(newart)
+
+        # Set the art again.
+        ai.set_art(ai.artpath)
+        self.assertTrue(os.path.exists(ai.artpath))
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1734')" href="javascript:;">
+beets-1.6.0/test/test_files.py: 405-423
+</a>
+<div class="mid" id="frag1734" style="display:none"><pre>
+
+    def test_setart_to_conflicting_file_gets_new_path(self):
+        newart = os.path.join(self.libdir, b'newart.jpg')
+        touch(newart)
+        i2 = item()
+        i2.path = self.i.path
+        i2.artist = 'someArtist'
+        ai = self.lib.add_album((i2,))
+        i2.move(operation=MoveOperation.COPY)
+
+        # Make a file at the destination.
+        artdest = ai.art_destination(newart)
+        touch(artdest)
+
+        # Set the art.
+        ai.set_art(newart)
+        self.assertNotEqual(artdest, ai.artpath)
+        self.assertEqual(os.path.dirname(artdest),
+                         os.path.dirname(ai.artpath))
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 33:</b> &nbsp; 2 fragments, nominal size 13 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1793')" href="javascript:;">
+beets-1.6.0/test/test_convert.py: 50-65
+</a>
+<div class="mid" id="frag1793" style="display:none"><pre>
+    def assertFileTag(self, path, tag):  # noqa
+        """Assert that the path is a file and the files content ends with `tag`.
+        """
+        display_tag = tag
+        tag = tag.encode('utf-8')
+        self.assertTrue(os.path.isfile(path),
+                        '{} is not a file'.format(
+                            util.displayable_path(path)))
+        with open(path, 'rb') as f:
+            f.seek(-len(display_tag), os.SEEK_END)
+            self.assertEqual(f.read(), tag,
+                             '{} is not tagged with {}'
+                             .format(
+                                 util.displayable_path(path),
+                                 display_tag))
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1794')" href="javascript:;">
+beets-1.6.0/test/test_convert.py: 66-83
+</a>
+<div class="mid" id="frag1794" style="display:none"><pre>
+    def assertNoFileTag(self, path, tag):  # noqa
+        """Assert that the path is a file and the files content does not
+        end with `tag`.
+        """
+        display_tag = tag
+        tag = tag.encode('utf-8')
+        self.assertTrue(os.path.isfile(path),
+                        '{} is not a file'.format(
+                            util.displayable_path(path)))
+        with open(path, 'rb') as f:
+            f.seek(-len(tag), os.SEEK_END)
+            self.assertNotEqual(f.read(), tag,
+                                '{} is unexpectedly tagged with {}'
+                                .format(
+                                    util.displayable_path(path),
+                                    display_tag))
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 34:</b> &nbsp; 2 fragments, nominal size 13 lines, similarity 84%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1835')" href="javascript:;">
+beets-1.6.0/test/helper.py: 358-375
+</a>
+<div class="mid" id="frag1835" style="display:none"><pre>
+    def add_item_fixtures(self, ext='mp3', count=1):
+        """Add a number of items with files to the database.
+        """
+        # TODO base this on `add_item()`
+        items = []
+        path = os.path.join(_common.RSRC, util.bytestring_path('full.' + ext))
+        for i in range(count):
+            item = Item.from_path(path)
+            item.album = f'\u00e4lbum {i}'  # Check unicode paths
+            item.title = f't\u00eftle {i}'
+            # mtime needs to be set last since other assignments reset it.
+            item.mtime = 12345
+            item.add(self.lib)
+            item.move(operation=MoveOperation.COPY)
+            item.store()
+            items.append(item)
+        return items
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1836')" href="javascript:;">
+beets-1.6.0/test/helper.py: 376-392
+</a>
+<div class="mid" id="frag1836" style="display:none"><pre>
+    def add_album_fixture(self, track_count=1, ext='mp3'):
+        """Add an album with files to the database.
+        """
+        items = []
+        path = os.path.join(_common.RSRC, util.bytestring_path('full.' + ext))
+        for i in range(track_count):
+            item = Item.from_path(path)
+            item.album = '\u00e4lbum'  # Check unicode paths
+            item.title = f't\u00eftle {i}'
+            # mtime needs to be set last since other assignments reset it.
+            item.mtime = 12345
+            item.add(self.lib)
+            item.move(operation=MoveOperation.COPY)
+            item.store()
+            items.append(item)
+        return self.lib.add_album(items)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 35:</b> &nbsp; 2 fragments, nominal size 18 lines, similarity 73%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1956')" href="javascript:;">
+beets-1.6.0/beets/util/pipeline.py: 251-278
+</a>
+<div class="mid" id="frag1956" style="display:none"><pre>
+    def run(self):
+        try:
+            while True:
+                with self.abort_lock:
+                    if self.abort_flag:
+                        return
+
+                # Get the value from the generator.
+                try:
+                    msg = next(self.coro)
+                except StopIteration:
+                    break
+
+                # Send messages to the next stage.
+                for msg in _allmsgs(msg):
+                    with self.abort_lock:
+                        if self.abort_flag:
+                            return
+                    self.out_queue.put(msg)
+
+        except BaseException:
+            self.abort_all(sys.exc_info())
+            return
+
+        # Generator finished; shut down the pipeline.
+        self.out_queue.release()
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1960')" href="javascript:;">
+beets-1.6.0/beets/util/pipeline.py: 338-364
+</a>
+<div class="mid" id="frag1960" style="display:none"><pre>
+    def run(self):
+        # Prime the coroutine.
+        next(self.coro)
+
+        try:
+            while True:
+                with self.abort_lock:
+                    if self.abort_flag:
+                        return
+
+                # Get the message from the previous stage.
+                msg = self.in_queue.get()
+                if msg is POISON:
+                    break
+
+                with self.abort_lock:
+                    if self.abort_flag:
+                        return
+
+                # Send to consumer.
+                self.coro.send(msg)
+
+        except BaseException:
+            self.abort_all(sys.exc_info())
+            return
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<script language="JavaScript">
+function ShowHide(divId) { 
+    if(document.getElementById(divId).style.display == 'none') {
+        document.getElementById(divId).style.display='block';
+    } else { 
+        document.getElementById(divId).style.display = 'none';
+    } 
+}
+</script>
+</body>
+</html>

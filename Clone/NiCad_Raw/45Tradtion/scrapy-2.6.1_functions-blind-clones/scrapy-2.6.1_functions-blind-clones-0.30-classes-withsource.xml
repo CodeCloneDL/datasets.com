@@ -1,0 +1,2031 @@
+<clones>
+<systeminfo processor="nicad6" system="scrapy-2.6.1" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="2008" npairs="106"/>
+<runinfo ncompares="53208" cputime="61984"/>
+<classinfo nclasses="34"/>
+
+<class classid="1" nclones="2" nlines="12" similarity="91">
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_redirect.py" startline="88" endline="102" pcid="39">
+    def test_redirect_302_head(self):
+        url = 'http://www.example.com/302'
+        url2 = 'http://www.example.com/redirected2'
+        req = Request(url, method='HEAD')
+        rsp = Response(url, headers={'Location': url2}, status=302)
+
+        req2 = self.mw.process_response(req, rsp, self.spider)
+        assert isinstance(req2, Request)
+        self.assertEqual(req2.url, url2)
+        self.assertEqual(req2.method, 'HEAD')
+
+        # response without Location header but with status code is 3XX should be ignored
+        del rsp.headers['Location']
+        assert self.mw.process_response(req, rsp, self.spider) is rsp
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_redirect.py" startline="103" endline="118" pcid="40">
+    def test_redirect_302_relative(self):
+        url = 'http://www.example.com/302'
+        url2 = '///i8n.example2.com/302'
+        url3 = 'http://i8n.example2.com/302'
+        req = Request(url, method='HEAD')
+        rsp = Response(url, headers={'Location': url2}, status=302)
+
+        req2 = self.mw.process_response(req, rsp, self.spider)
+        assert isinstance(req2, Request)
+        self.assertEqual(req2.url, url3)
+        self.assertEqual(req2.method, 'HEAD')
+
+        # response without Location header but with status code is 3XX should be ignored
+        del rsp.headers['Location']
+        assert self.mw.process_response(req, rsp, self.spider) is rsp
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="13" similarity="71">
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_redirect.py" startline="139" endline="153" pcid="43">
+    def test_redirect_urls(self):
+        req1 = Request('http://scrapytest.org/first')
+        rsp1 = Response('http://scrapytest.org/first', headers={'Location': '/redirected'}, status=302)
+        req2 = self.mw.process_response(req1, rsp1, self.spider)
+        rsp2 = Response('http://scrapytest.org/redirected', headers={'Location': '/redirected2'}, status=302)
+        req3 = self.mw.process_response(req2, rsp2, self.spider)
+
+        self.assertEqual(req2.url, 'http://scrapytest.org/redirected')
+        self.assertEqual(req2.meta['redirect_urls'], ['http://scrapytest.org/first'])
+        self.assertEqual(req3.url, 'http://scrapytest.org/redirected2')
+        self.assertEqual(
+            req3.meta['redirect_urls'],
+            ['http://scrapytest.org/first', 'http://scrapytest.org/redirected']
+        )
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_redirect.py" startline="268" endline="283" pcid="58">
+    def test_redirect_urls(self):
+        req1 = Request('http://scrapytest.org/first')
+        rsp1 = HtmlResponse(req1.url, body=self._body(url='/redirected'))
+        req2 = self.mw.process_response(req1, rsp1, self.spider)
+        assert isinstance(req2, Request), req2
+        rsp2 = HtmlResponse(req2.url, body=self._body(url='/redirected2'))
+        req3 = self.mw.process_response(req2, rsp2, self.spider)
+        assert isinstance(req3, Request), req3
+        self.assertEqual(req2.url, 'http://scrapytest.org/redirected')
+        self.assertEqual(req2.meta['redirect_urls'], ['http://scrapytest.org/first'])
+        self.assertEqual(req3.url, 'http://scrapytest.org/redirected2')
+        self.assertEqual(
+            req3.meta['redirect_urls'],
+            ['http://scrapytest.org/first', 'http://scrapytest.org/redirected']
+        )
+
+</source>
+</class>
+
+<class classid="3" nclones="3" nlines="11" similarity="83">
+<source file="systems/scrapy-2.6.1/tests/test_responsetypes.py" startline="9" endline="21" pcid="212">
+    def test_from_filename(self):
+        mappings = [
+            ('data.bin', Response),
+            ('file.txt', TextResponse),
+            ('file.xml.gz', Response),
+            ('file.xml', XmlResponse),
+            ('file.html', HtmlResponse),
+            ('file.unknownext', Response),
+        ]
+        for source, cls in mappings:
+            retcls = responsetypes.from_filename(source)
+            assert retcls is cls, f"{source} ==> {retcls} != {cls}"
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_responsetypes.py" startline="52" endline="62" pcid="215">
+    def test_from_body(self):
+        mappings = [
+            (b'\x03\x02\xdf\xdd\x23', Response),
+            (b'Some plain text\ndata with tabs\t and null bytes\0', TextResponse),
+            (b'<html><head><title>Hello</title></head>', HtmlResponse),
+            (b'<?xml version="1.0" encoding="utf-8"', XmlResponse),
+        ]
+        for source, cls in mappings:
+            retcls = responsetypes.from_body(source)
+            assert retcls is cls, f"{source} ==> {retcls} != {cls}"
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_responsetypes.py" startline="37" endline="51" pcid="214">
+    def test_from_content_type(self):
+        mappings = [
+            ('text/html; charset=UTF-8', HtmlResponse),
+            ('text/xml; charset=UTF-8', XmlResponse),
+            ('application/xhtml+xml; charset=UTF-8', HtmlResponse),
+            ('application/vnd.wap.xhtml+xml; charset=utf-8', HtmlResponse),
+            ('application/xml; charset=UTF-8', XmlResponse),
+            ('application/octet-stream', Response),
+            ('application/x-json; encoding=UTF8;charset=UTF-8', TextResponse),
+            ('application/json-amazonui-streaming;charset=UTF-8', TextResponse),
+        ]
+        for source, cls in mappings:
+            retcls = responsetypes.from_content_type(source)
+            assert retcls is cls, f"{source} ==> {retcls} != {cls}"
+
+</source>
+</class>
+
+<class classid="4" nclones="3" nlines="13" similarity="76">
+<source file="systems/scrapy-2.6.1/tests/test_request_attribute_binding.py" startline="91" endline="103" pcid="235">
+    def test_downloader_middleware_raise_exception(self):
+        url = self.mockserver.url("/status?n=200")
+        runner = CrawlerRunner(settings={
+            "DOWNLOADER_MIDDLEWARES": {
+                RaiseExceptionRequestMiddleware: 590,
+            },
+        })
+        crawler = runner.create_crawler(SingleRequestSpider)
+        yield crawler.crawl(seed=url, mockserver=self.mockserver)
+        failure = crawler.spider.meta["failure"]
+        self.assertEqual(failure.request.url, url)
+        self.assertIsInstance(failure.value, ZeroDivisionError)
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_request_attribute_binding.py" startline="163" endline="182" pcid="239">
+    def test_downloader_middleware_do_not_override_in_process_exception(self):
+        """
+        An exception is raised but caught by the next middleware, which
+        returns a Response without a specific 'request' attribute.
+
+        The spider callback should receive the original response.request
+        """
+        url = self.mockserver.url("/status?n=200")
+        runner = CrawlerRunner(settings={
+            "DOWNLOADER_MIDDLEWARES": {
+                RaiseExceptionRequestMiddleware: 590,
+                CatchExceptionDoNotOverrideRequestMiddleware: 595,
+            },
+        })
+        crawler = runner.create_crawler(SingleRequestSpider)
+        yield crawler.crawl(seed=url, mockserver=self.mockserver)
+        response = crawler.spider.meta["responses"][0]
+        self.assertEqual(response.body, b"Caught ZeroDivisionError")
+        self.assertEqual(response.request.url, url)
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_request_attribute_binding.py" startline="142" endline="161" pcid="238">
+    def test_downloader_middleware_override_in_process_exception(self):
+        """
+        An exception is raised but caught by the next middleware, which
+        returns a Response with a specific 'request' attribute.
+
+        The spider callback should receive the overridden response.request
+        """
+        url = self.mockserver.url("/status?n=200")
+        runner = CrawlerRunner(settings={
+            "DOWNLOADER_MIDDLEWARES": {
+                RaiseExceptionRequestMiddleware: 590,
+                CatchExceptionOverrideRequestMiddleware: 595,
+            },
+        })
+        crawler = runner.create_crawler(SingleRequestSpider)
+        yield crawler.crawl(seed=url, mockserver=self.mockserver)
+        response = crawler.spider.meta["responses"][0]
+        self.assertEqual(response.body, b"Caught ZeroDivisionError")
+        self.assertEqual(response.request.url, OVERRIDEN_URL)
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="14" similarity="92">
+<source file="systems/scrapy-2.6.1/tests/test_loader.py" startline="247" endline="266" pcid="260">
+    def test_output_processor(self):
+
+        class TempItem(Item):
+            temp = Field()
+
+            def __init__(self, *args, **kwargs):
+                super().__init__(self, *args, **kwargs)
+                self.setdefault('temp', 0.3)
+
+        class TempLoader(ItemLoader):
+            default_item_class = TempItem
+            default_input_processor = Identity()
+            default_output_processor = Compose(TakeFirst())
+
+        loader = TempLoader()
+        item = loader.load_item()
+        self.assertIsInstance(item, TempItem)
+        self.assertEqual(dict(item), {'temp': 0.3})
+
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_loader_deprecated.py" startline="578" endline="595" pcid="1254">
+    def test_output_processor(self):
+
+        class TempDict(dict):
+            def __init__(self, *args, **kwargs):
+                super().__init__(self, *args, **kwargs)
+                self.setdefault('temp', 0.3)
+
+        class TempLoader(ItemLoader):
+            default_item_class = TempDict
+            default_input_processor = Identity()
+            default_output_processor = Compose(TakeFirst())
+
+        loader = TempLoader()
+        item = loader.load_item()
+        self.assertIsInstance(item, TempDict)
+        self.assertEqual(dict(item), {'temp': 0.3})
+
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="12" similarity="100">
+<source file="systems/scrapy-2.6.1/tests/test_loader.py" startline="448" endline="463" pcid="279">
+    def test_nested_xpath(self):
+        l = NestedItemLoader(response=self.response)
+
+        nl = l.nested_xpath("//header")
+        nl.add_xpath('name', 'div/text()')
+        nl.add_css('name_div', '#id')
+        nl.add_value('name_value', nl.selector.xpath('div[@id = "id"]/text()').getall())
+
+        self.assertEqual(l.get_output_value('name'), ['marta'])
+        self.assertEqual(l.get_output_value('name_div'), ['<div id="id">marta</div>'])
+        self.assertEqual(l.get_output_value('name_value'), ['marta'])
+
+        self.assertEqual(l.get_output_value('name'), nl.get_output_value('name'))
+        self.assertEqual(l.get_output_value('name_div'), nl.get_output_value('name_div'))
+        self.assertEqual(l.get_output_value('name_value'), nl.get_output_value('name_value'))
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_loader.py" startline="464" endline="478" pcid="280">
+    def test_nested_css(self):
+        l = NestedItemLoader(response=self.response)
+        nl = l.nested_css("header")
+        nl.add_xpath('name', 'div/text()')
+        nl.add_css('name_div', '#id')
+        nl.add_value('name_value', nl.selector.xpath('div[@id = "id"]/text()').getall())
+
+        self.assertEqual(l.get_output_value('name'), ['marta'])
+        self.assertEqual(l.get_output_value('name_div'), ['<div id="id">marta</div>'])
+        self.assertEqual(l.get_output_value('name_value'), ['marta'])
+
+        self.assertEqual(l.get_output_value('name'), nl.get_output_value('name'))
+        self.assertEqual(l.get_output_value('name_div'), nl.get_output_value('name_div'))
+        self.assertEqual(l.get_output_value('name_value'), nl.get_output_value('name_value'))
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="11" similarity="100">
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_httpproxy.py" startline="63" endline="75" pcid="459">
+    def test_proxy_auth(self):
+        os.environ['http_proxy'] = 'https://user:pass@proxy:3128'
+        mw = HttpProxyMiddleware()
+        req = Request('http://scrapytest.org')
+        assert mw.process_request(req, spider) is None
+        self.assertEqual(req.meta, {'proxy': 'https://proxy:3128'})
+        self.assertEqual(req.headers.get('Proxy-Authorization'), b'Basic dXNlcjpwYXNz')
+        # proxy from request.meta
+        req = Request('http://scrapytest.org', meta={'proxy': 'https://username:password@proxy:3128'})
+        assert mw.process_request(req, spider) is None
+        self.assertEqual(req.meta, {'proxy': 'https://proxy:3128'})
+        self.assertEqual(req.headers.get('Proxy-Authorization'), b'Basic dXNlcm5hbWU6cGFzc3dvcmQ=')
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_httpproxy.py" startline="76" endline="88" pcid="460">
+    def test_proxy_auth_empty_passwd(self):
+        os.environ['http_proxy'] = 'https://user:@proxy:3128'
+        mw = HttpProxyMiddleware()
+        req = Request('http://scrapytest.org')
+        assert mw.process_request(req, spider) is None
+        self.assertEqual(req.meta, {'proxy': 'https://proxy:3128'})
+        self.assertEqual(req.headers.get('Proxy-Authorization'), b'Basic dXNlcjo=')
+        # proxy from request.meta
+        req = Request('http://scrapytest.org', meta={'proxy': 'https://username:@proxy:3128'})
+        assert mw.process_request(req, spider) is None
+        self.assertEqual(req.meta, {'proxy': 'https://proxy:3128'})
+        self.assertEqual(req.headers.get('Proxy-Authorization'), b'Basic dXNlcm5hbWU6')
+
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="19" similarity="90">
+<source file="systems/scrapy-2.6.1/tests/test_contracts.py" startline="292" endline="320" pcid="492">
+    def test_returns(self):
+        spider = TestSpider()
+        response = ResponseMock()
+
+        # returns_item
+        request = self.conman.from_method(spider.returns_item, self.results)
+        request.callback(response)
+        self.should_succeed()
+
+        # returns_dict_item
+        request = self.conman.from_method(spider.returns_dict_item, self.results)
+        request.callback(response)
+        self.should_succeed()
+
+        # returns_request
+        request = self.conman.from_method(spider.returns_request, self.results)
+        request.callback(response)
+        self.should_succeed()
+
+        # returns_fail
+        request = self.conman.from_method(spider.returns_fail, self.results)
+        request.callback(response)
+        self.should_fail()
+
+        # returns_dict_fail
+        request = self.conman.from_method(spider.returns_dict_fail, self.results)
+        request.callback(response)
+        self.should_fail()
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_contracts.py" startline="321" endline="351" pcid="493">
+    def test_scrapes(self):
+        spider = TestSpider()
+        response = ResponseMock()
+
+        # scrapes_item_ok
+        request = self.conman.from_method(spider.scrapes_item_ok, self.results)
+        request.callback(response)
+        self.should_succeed()
+
+        # scrapes_dict_item_ok
+        request = self.conman.from_method(spider.scrapes_dict_item_ok, self.results)
+        request.callback(response)
+        self.should_succeed()
+
+        # scrapes_item_fail
+        request = self.conman.from_method(spider.scrapes_item_fail, self.results)
+        request.callback(response)
+        self.should_fail()
+
+        # scrapes_dict_item_fail
+        request = self.conman.from_method(spider.scrapes_dict_item_fail, self.results)
+        request.callback(response)
+        self.should_fail()
+
+        # scrapes_multiple_missing_fields
+        request = self.conman.from_method(spider.scrapes_multiple_missing_fields, self.results)
+        request.callback(response)
+        self.should_fail()
+        message = 'ContractFail: Missing fields: name, url'
+        assert message in self.results.failures[-1][-1]
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="16" similarity="75">
+<source file="systems/scrapy-2.6.1/tests/test_squeues_request.py" startline="47" endline="63" pcid="512">
+    def test_one_element_with_peek(self):
+        if not hasattr(queuelib.queue.FifoMemoryQueue, "peek"):
+            raise unittest.SkipTest("The queuelib queues do not define peek")
+        q = self.queue()
+        self.assertEqual(len(q), 0)
+        self.assertIsNone(q.peek())
+        self.assertIsNone(q.pop())
+        req = Request("http://www.example.com")
+        q.push(req)
+        self.assertEqual(len(q), 1)
+        self.assertEqual(q.peek().url, req.url)
+        self.assertEqual(q.pop().url, req.url)
+        self.assertEqual(len(q), 0)
+        self.assertIsNone(q.peek())
+        self.assertIsNone(q.pop())
+        q.close()
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_squeues_request.py" startline="64" endline="80" pcid="513">
+    def test_one_element_without_peek(self):
+        if hasattr(queuelib.queue.FifoMemoryQueue, "peek"):
+            raise unittest.SkipTest("The queuelib queues define peek")
+        q = self.queue()
+        self.assertEqual(len(q), 0)
+        self.assertIsNone(q.pop())
+        req = Request("http://www.example.com")
+        q.push(req)
+        self.assertEqual(len(q), 1)
+        with self.assertRaises(NotImplementedError, msg="The underlying queue class does not implement 'peek'"):
+            q.peek()
+        self.assertEqual(q.pop().url, req.url)
+        self.assertEqual(len(q), 0)
+        self.assertIsNone(q.pop())
+        q.close()
+
+
+</source>
+</class>
+
+<class classid="10" nclones="5" nlines="25" similarity="76">
+<source file="systems/scrapy-2.6.1/tests/test_squeues_request.py" startline="82" endline="108" pcid="514">
+    def test_fifo_with_peek(self):
+        if not hasattr(queuelib.queue.FifoMemoryQueue, "peek"):
+            raise unittest.SkipTest("The queuelib queues do not define peek")
+        q = self.queue()
+        self.assertEqual(len(q), 0)
+        self.assertIsNone(q.peek())
+        self.assertIsNone(q.pop())
+        req1 = Request("http://www.example.com/1")
+        req2 = Request("http://www.example.com/2")
+        req3 = Request("http://www.example.com/3")
+        q.push(req1)
+        q.push(req2)
+        q.push(req3)
+        self.assertEqual(len(q), 3)
+        self.assertEqual(q.peek().url, req1.url)
+        self.assertEqual(q.pop().url, req1.url)
+        self.assertEqual(len(q), 2)
+        self.assertEqual(q.peek().url, req2.url)
+        self.assertEqual(q.pop().url, req2.url)
+        self.assertEqual(len(q), 1)
+        self.assertEqual(q.peek().url, req3.url)
+        self.assertEqual(q.pop().url, req3.url)
+        self.assertEqual(len(q), 0)
+        self.assertIsNone(q.peek())
+        self.assertIsNone(q.pop())
+        q.close()
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_squeues_request.py" startline="162" endline="186" pcid="517">
+    def test_lifo_without_peek(self):
+        if hasattr(queuelib.queue.FifoMemoryQueue, "peek"):
+            raise unittest.SkipTest("The queuelib queues do not define peek")
+        q = self.queue()
+        self.assertEqual(len(q), 0)
+        self.assertIsNone(q.pop())
+        req1 = Request("http://www.example.com/1")
+        req2 = Request("http://www.example.com/2")
+        req3 = Request("http://www.example.com/3")
+        q.push(req1)
+        q.push(req2)
+        q.push(req3)
+        with self.assertRaises(NotImplementedError, msg="The underlying queue class does not implement 'peek'"):
+            q.peek()
+        self.assertEqual(len(q), 3)
+        self.assertEqual(q.pop().url, req3.url)
+        self.assertEqual(len(q), 2)
+        self.assertEqual(q.pop().url, req2.url)
+        self.assertEqual(len(q), 1)
+        self.assertEqual(q.pop().url, req1.url)
+        self.assertEqual(len(q), 0)
+        self.assertIsNone(q.pop())
+        q.close()
+
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_squeues_request.py" startline="109" endline="133" pcid="515">
+    def test_fifo_without_peek(self):
+        if hasattr(queuelib.queue.FifoMemoryQueue, "peek"):
+            raise unittest.SkipTest("The queuelib queues do not define peek")
+        q = self.queue()
+        self.assertEqual(len(q), 0)
+        self.assertIsNone(q.pop())
+        req1 = Request("http://www.example.com/1")
+        req2 = Request("http://www.example.com/2")
+        req3 = Request("http://www.example.com/3")
+        q.push(req1)
+        q.push(req2)
+        q.push(req3)
+        with self.assertRaises(NotImplementedError, msg="The underlying queue class does not implement 'peek'"):
+            q.peek()
+        self.assertEqual(len(q), 3)
+        self.assertEqual(q.pop().url, req1.url)
+        self.assertEqual(len(q), 2)
+        self.assertEqual(q.pop().url, req2.url)
+        self.assertEqual(len(q), 1)
+        self.assertEqual(q.pop().url, req3.url)
+        self.assertEqual(len(q), 0)
+        self.assertIsNone(q.pop())
+        q.close()
+
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_pqueues.py" startline="44" endline="67" pcid="1170">
+    def test_peek(self):
+        if not hasattr(queuelib.queue.FifoMemoryQueue, "peek"):
+            raise unittest.SkipTest("queuelib.queue.FifoMemoryQueue.peek is undefined")
+        temp_dir = tempfile.mkdtemp()
+        queue = ScrapyPriorityQueue.from_crawler(self.crawler, FifoMemoryQueue, temp_dir)
+        self.assertEqual(len(queue), 0)
+        self.assertIsNone(queue.peek())
+        req1 = Request("https://example.org/1")
+        req2 = Request("https://example.org/2")
+        req3 = Request("https://example.org/3")
+        queue.push(req1)
+        queue.push(req2)
+        queue.push(req3)
+        self.assertEqual(len(queue), 3)
+        self.assertEqual(queue.peek().url, req1.url)
+        self.assertEqual(queue.pop().url, req1.url)
+        self.assertEqual(len(queue), 2)
+        self.assertEqual(queue.peek().url, req2.url)
+        self.assertEqual(queue.pop().url, req2.url)
+        self.assertEqual(len(queue), 1)
+        self.assertEqual(queue.peek().url, req3.url)
+        self.assertEqual(queue.pop().url, req3.url)
+        self.assertEqual(queue.close(), [])
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_squeues_request.py" startline="135" endline="161" pcid="516">
+    def test_lifo_with_peek(self):
+        if not hasattr(queuelib.queue.FifoMemoryQueue, "peek"):
+            raise unittest.SkipTest("The queuelib queues do not define peek")
+        q = self.queue()
+        self.assertEqual(len(q), 0)
+        self.assertIsNone(q.peek())
+        self.assertIsNone(q.pop())
+        req1 = Request("http://www.example.com/1")
+        req2 = Request("http://www.example.com/2")
+        req3 = Request("http://www.example.com/3")
+        q.push(req1)
+        q.push(req2)
+        q.push(req3)
+        self.assertEqual(len(q), 3)
+        self.assertEqual(q.peek().url, req3.url)
+        self.assertEqual(q.pop().url, req3.url)
+        self.assertEqual(len(q), 2)
+        self.assertEqual(q.peek().url, req2.url)
+        self.assertEqual(q.pop().url, req2.url)
+        self.assertEqual(len(q), 1)
+        self.assertEqual(q.peek().url, req1.url)
+        self.assertEqual(q.pop().url, req1.url)
+        self.assertEqual(len(q), 0)
+        self.assertIsNone(q.peek())
+        self.assertIsNone(q.pop())
+        q.close()
+
+</source>
+</class>
+
+<class classid="11" nclones="2" nlines="21" similarity="76">
+<source file="systems/scrapy-2.6.1/tests/test_utils_conf.py" startline="161" endline="181" pcid="542">
+    def test_feed_complete_default_values_from_settings_empty(self):
+        feed = {}
+        settings = Settings({
+            "FEED_EXPORT_ENCODING": "custom encoding",
+            "FEED_EXPORT_FIELDS": ["f1", "f2", "f3"],
+            "FEED_EXPORT_INDENT": 42,
+            "FEED_STORE_EMPTY": True,
+            "FEED_URI_PARAMS": (1, 2, 3, 4),
+            "FEED_EXPORT_BATCH_ITEM_COUNT": 2,
+        })
+        new_feed = feed_complete_default_values_from_settings(feed, settings)
+        self.assertEqual(new_feed, {
+            "encoding": "custom encoding",
+            "fields": ["f1", "f2", "f3"],
+            "indent": 42,
+            "store_empty": True,
+            "uri_params": (1, 2, 3, 4),
+            "batch_item_count": 2,
+            "item_export_kwargs": {},
+        })
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_utils_conf.py" startline="182" endline="205" pcid="543">
+    def test_feed_complete_default_values_from_settings_non_empty(self):
+        feed = {
+            "encoding": "other encoding",
+            "fields": None,
+        }
+        settings = Settings({
+            "FEED_EXPORT_ENCODING": "custom encoding",
+            "FEED_EXPORT_FIELDS": ["f1", "f2", "f3"],
+            "FEED_EXPORT_INDENT": 42,
+            "FEED_STORE_EMPTY": True,
+            "FEED_EXPORT_BATCH_ITEM_COUNT": 2,
+        })
+        new_feed = feed_complete_default_values_from_settings(feed, settings)
+        self.assertEqual(new_feed, {
+            "encoding": "other encoding",
+            "fields": None,
+            "indent": 42,
+            "store_empty": True,
+            "uri_params": None,
+            "batch_item_count": 2,
+            "item_export_kwargs": {},
+        })
+
+
+</source>
+</class>
+
+<class classid="12" nclones="8" nlines="17" similarity="70">
+<source file="systems/scrapy-2.6.1/tests/test_spider.py" startline="203" endline="222" pcid="582">
+    def test_rule_without_link_extractor(self):
+
+        response = HtmlResponse("http://example.org/somepage/index.html", body=self.test_body)
+
+        class _CrawlSpider(self.spider_class):
+            name = "test"
+            allowed_domains = ['example.org']
+            rules = (
+                Rule(),
+            )
+
+        spider = _CrawlSpider()
+        output = list(spider._requests_to_follow(response))
+        self.assertEqual(len(output), 3)
+        self.assertTrue(all(map(lambda r: isinstance(r, Request), output)))
+        self.assertEqual([r.url for r in output],
+                         ['http://example.org/somepage/item/12.html',
+                          'http://example.org/about.html',
+                          'http://example.org/nofollow.html'])
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_spider.py" startline="223" endline="245" pcid="583">
+    def test_process_links(self):
+
+        response = HtmlResponse("http://example.org/somepage/index.html", body=self.test_body)
+
+        class _CrawlSpider(self.spider_class):
+            name = "test"
+            allowed_domains = ['example.org']
+            rules = (
+                Rule(LinkExtractor(), process_links="dummy_process_links"),
+            )
+
+            def dummy_process_links(self, links):
+                return links
+
+        spider = _CrawlSpider()
+        output = list(spider._requests_to_follow(response))
+        self.assertEqual(len(output), 3)
+        self.assertTrue(all(map(lambda r: isinstance(r, Request), output)))
+        self.assertEqual([r.url for r in output],
+                         ['http://example.org/somepage/item/12.html',
+                          'http://example.org/about.html',
+                          'http://example.org/nofollow.html'])
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_spider.py" startline="246" endline="271" pcid="585">
+    def test_process_links_filter(self):
+
+        response = HtmlResponse("http://example.org/somepage/index.html", body=self.test_body)
+
+        class _CrawlSpider(self.spider_class):
+            import re
+
+            name = "test"
+            allowed_domains = ['example.org']
+            rules = (
+                Rule(LinkExtractor(), process_links="filter_process_links"),
+            )
+            _test_regex = re.compile('nofollow')
+
+            def filter_process_links(self, links):
+                return [link for link in links
+                        if not self._test_regex.search(link.url)]
+
+        spider = _CrawlSpider()
+        output = list(spider._requests_to_follow(response))
+        self.assertEqual(len(output), 2)
+        self.assertTrue(all(map(lambda r: isinstance(r, Request), output)))
+        self.assertEqual([r.url for r in output],
+                         ['http://example.org/somepage/item/12.html',
+                          'http://example.org/about.html'])
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_spider.py" startline="296" endline="318" pcid="589">
+    def test_process_request(self):
+
+        response = HtmlResponse("http://example.org/somepage/index.html", body=self.test_body)
+
+        def process_request_change_domain(request, response):
+            return request.replace(url=request.url.replace('.org', '.com'))
+
+        class _CrawlSpider(self.spider_class):
+            name = "test"
+            allowed_domains = ['example.org']
+            rules = (
+                Rule(LinkExtractor(), process_request=process_request_change_domain),
+            )
+
+        spider = _CrawlSpider()
+        output = list(spider._requests_to_follow(response))
+        self.assertEqual(len(output), 3)
+        self.assertTrue(all(map(lambda r: isinstance(r, Request), output)))
+        self.assertEqual([r.url for r in output],
+                         ['http://example.com/somepage/item/12.html',
+                          'http://example.com/about.html',
+                          'http://example.com/nofollow.html'])
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_spider.py" startline="272" endline="295" pcid="587">
+    def test_process_links_generator(self):
+
+        response = HtmlResponse("http://example.org/somepage/index.html", body=self.test_body)
+
+        class _CrawlSpider(self.spider_class):
+            name = "test"
+            allowed_domains = ['example.org']
+            rules = (
+                Rule(LinkExtractor(), process_links="dummy_process_links"),
+            )
+
+            def dummy_process_links(self, links):
+                for link in links:
+                    yield link
+
+        spider = _CrawlSpider()
+        output = list(spider._requests_to_follow(response))
+        self.assertEqual(len(output), 3)
+        self.assertTrue(all(map(lambda r: isinstance(r, Request), output)))
+        self.assertEqual([r.url for r in output],
+                         ['http://example.org/somepage/item/12.html',
+                          'http://example.org/about.html',
+                          'http://example.org/nofollow.html'])
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_spider.py" startline="345" endline="367" pcid="593">
+    def test_process_request_instance_method(self):
+
+        response = HtmlResponse("http://example.org/somepage/index.html", body=self.test_body)
+
+        class _CrawlSpider(self.spider_class):
+            name = "test"
+            allowed_domains = ['example.org']
+            rules = (
+                Rule(LinkExtractor(), process_request='process_request_upper'),
+            )
+
+            def process_request_upper(self, request, response):
+                return request.replace(url=request.url.upper())
+
+        spider = _CrawlSpider()
+        output = list(spider._requests_to_follow(response))
+        self.assertEqual(len(output), 3)
+        self.assertTrue(all(map(lambda r: isinstance(r, Request), output)))
+        self.assertEqual([r.url for r in output],
+                         ['http://EXAMPLE.ORG/SOMEPAGE/ITEM/12.HTML',
+                          'http://EXAMPLE.ORG/ABOUT.HTML',
+                          'http://EXAMPLE.ORG/NOFOLLOW.HTML'])
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_spider.py" startline="319" endline="344" pcid="591">
+    def test_process_request_with_response(self):
+
+        response = HtmlResponse("http://example.org/somepage/index.html", body=self.test_body)
+
+        def process_request_meta_response_class(request, response):
+            request.meta['response_class'] = response.__class__.__name__
+            return request
+
+        class _CrawlSpider(self.spider_class):
+            name = "test"
+            allowed_domains = ['example.org']
+            rules = (
+                Rule(LinkExtractor(), process_request=process_request_meta_response_class),
+            )
+
+        spider = _CrawlSpider()
+        output = list(spider._requests_to_follow(response))
+        self.assertEqual(len(output), 3)
+        self.assertTrue(all(map(lambda r: isinstance(r, Request), output)))
+        self.assertEqual([r.url for r in output],
+                         ['http://example.org/somepage/item/12.html',
+                          'http://example.org/about.html',
+                          'http://example.org/nofollow.html'])
+        self.assertEqual([r.meta['response_class'] for r in output],
+                         ['HtmlResponse', 'HtmlResponse', 'HtmlResponse'])
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_spider.py" startline="368" endline="393" pcid="595">
+    def test_process_request_instance_method_with_response(self):
+
+        response = HtmlResponse("http://example.org/somepage/index.html", body=self.test_body)
+
+        class _CrawlSpider(self.spider_class):
+            name = "test"
+            allowed_domains = ['example.org']
+            rules = (
+                Rule(LinkExtractor(), process_request='process_request_meta_response_class'),
+            )
+
+            def process_request_meta_response_class(self, request, response):
+                request.meta['response_class'] = response.__class__.__name__
+                return request
+
+        spider = _CrawlSpider()
+        output = list(spider._requests_to_follow(response))
+        self.assertEqual(len(output), 3)
+        self.assertTrue(all(map(lambda r: isinstance(r, Request), output)))
+        self.assertEqual([r.url for r in output],
+                         ['http://example.org/somepage/item/12.html',
+                          'http://example.org/about.html',
+                          'http://example.org/nofollow.html'])
+        self.assertEqual([r.meta['response_class'] for r in output],
+                         ['HtmlResponse', 'HtmlResponse', 'HtmlResponse'])
+
+</source>
+</class>
+
+<class classid="13" nclones="3" nlines="17" similarity="77">
+<source file="systems/scrapy-2.6.1/tests/test_spider.py" startline="500" endline="531" pcid="606">
+    def test_sitemap_filter(self):
+        sitemap = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+        <url>
+            <loc>http://www.example.com/english/</loc>
+            <lastmod>2010-01-01</lastmod>
+        </url>
+        <url>
+            <loc>http://www.example.com/portuguese/</loc>
+            <lastmod>2005-01-01</lastmod>
+        </url>
+    </urlset>"""
+
+        class FilteredSitemapSpider(self.spider_class):
+            def sitemap_filter(self, entries):
+                from datetime import datetime
+                for entry in entries:
+                    date_time = datetime.strptime(entry['lastmod'], '%Y-%m-%d')
+                    if date_time.year > 2008:
+                        yield entry
+
+        r = TextResponse(url="http://www.example.com/sitemap.xml", body=sitemap)
+        spider = self.spider_class("example.com")
+        self.assertEqual([req.url for req in spider._parse_sitemap(r)],
+                         ['http://www.example.com/english/',
+                          'http://www.example.com/portuguese/'])
+
+        spider = FilteredSitemapSpider("example.com")
+        self.assertEqual([req.url for req in spider._parse_sitemap(r)],
+                         ['http://www.example.com/english/'])
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_spider.py" startline="567" endline="598" pcid="610">
+    def test_sitemapindex_filter(self):
+        sitemap = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+        <sitemap>
+            <loc>http://www.example.com/sitemap1.xml</loc>
+            <lastmod>2004-01-01T20:00:00+00:00</lastmod>
+        </sitemap>
+        <sitemap>
+            <loc>http://www.example.com/sitemap2.xml</loc>
+            <lastmod>2005-01-01</lastmod>
+        </sitemap>
+    </sitemapindex>"""
+
+        class FilteredSitemapSpider(self.spider_class):
+            def sitemap_filter(self, entries):
+                from datetime import datetime
+                for entry in entries:
+                    date_time = datetime.strptime(entry['lastmod'].split('T')[0], '%Y-%m-%d')
+                    if date_time.year > 2004:
+                        yield entry
+
+        r = TextResponse(url="http://www.example.com/sitemap.xml", body=sitemap)
+        spider = self.spider_class("example.com")
+        self.assertEqual([req.url for req in spider._parse_sitemap(r)],
+                         ['http://www.example.com/sitemap1.xml',
+                          'http://www.example.com/sitemap2.xml'])
+
+        spider = FilteredSitemapSpider("example.com")
+        self.assertEqual([req.url for req in spider._parse_sitemap(r)],
+                         ['http://www.example.com/sitemap2.xml'])
+
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_spider.py" startline="532" endline="566" pcid="608">
+    def test_sitemap_filter_with_alternate_links(self):
+        sitemap = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+        <url>
+            <loc>http://www.example.com/english/article_1/</loc>
+            <lastmod>2010-01-01</lastmod>
+            <xhtml:link rel="alternate" hreflang="de"
+                href="http://www.example.com/deutsch/article_1/"/>
+        </url>
+        <url>
+            <loc>http://www.example.com/english/article_2/</loc>
+            <lastmod>2015-01-01</lastmod>
+        </url>
+    </urlset>"""
+
+        class FilteredSitemapSpider(self.spider_class):
+            def sitemap_filter(self, entries):
+                for entry in entries:
+                    alternate_links = entry.get('alternate', tuple())
+                    for link in alternate_links:
+                        if '/deutsch/' in link:
+                            entry['loc'] = link
+                            yield entry
+
+        r = TextResponse(url="http://www.example.com/sitemap.xml", body=sitemap)
+        spider = self.spider_class("example.com")
+        self.assertEqual([req.url for req in spider._parse_sitemap(r)],
+                         ['http://www.example.com/english/article_1/',
+                          'http://www.example.com/english/article_2/'])
+
+        spider = FilteredSitemapSpider("example.com")
+        self.assertEqual([req.url for req in spider._parse_sitemap(r)],
+                         ['http://www.example.com/deutsch/article_1/'])
+
+</source>
+</class>
+
+<class classid="14" nclones="2" nlines="11" similarity="90">
+<source file="systems/scrapy-2.6.1/tests/test_exporters.py" startline="150" endline="162" pcid="651">
+    def test_export_list(self):
+        i1 = self.item_class(name='Joseph', age='22')
+        i2 = self.item_class(name='Maria', age=[i1])
+        i3 = self.item_class(name='Jesus', age=[i2])
+        ie = self._get_exporter()
+        exported = ie.export_item(i3)
+        self.assertEqual(
+            exported,
+            {'age': [{'age': [{'age': '22', 'name': 'Joseph'}], 'name': 'Maria'}], 'name': 'Jesus'}
+        )
+        self.assertEqual(type(exported['age'][0]), dict)
+        self.assertEqual(type(exported['age'][0]['age'][0]), dict)
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_exporters.py" startline="163" endline="175" pcid="652">
+    def test_export_item_dict_list(self):
+        i1 = self.item_class(name='Joseph', age='22')
+        i2 = dict(name='Maria', age=[i1])
+        i3 = self.item_class(name='Jesus', age=[i2])
+        ie = self._get_exporter()
+        exported = ie.export_item(i3)
+        self.assertEqual(
+            exported,
+            {'age': [{'age': [{'age': '22', 'name': 'Joseph'}], 'name': 'Maria'}], 'name': 'Jesus'}
+        )
+        self.assertEqual(type(exported['age'][0]), dict)
+        self.assertEqual(type(exported['age'][0]['age'][0]), dict)
+
+</source>
+</class>
+
+<class classid="15" nclones="2" nlines="10" similarity="70">
+<source file="systems/scrapy-2.6.1/tests/test_exporters.py" startline="565" endline="575" pcid="699">
+    def test_nested_item(self):
+        i1 = self.item_class(name='Joseph\xa3', age='22')
+        i2 = self.item_class(name='Maria', age=i1)
+        i3 = self.item_class(name='Jesus', age=i2)
+        self.ie.start_exporting()
+        self.ie.export_item(i3)
+        self.ie.finish_exporting()
+        exported = json.loads(to_unicode(self.output.getvalue()))
+        expected = {'name': 'Jesus', 'age': {'name': 'Maria', 'age': ItemAdapter(i1).asdict()}}
+        self.assertEqual(exported, [expected])
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_exporters.py" startline="576" endline="586" pcid="700">
+    def test_nested_dict_item(self):
+        i1 = dict(name='Joseph\xa3', age='22')
+        i2 = self.item_class(name='Maria', age=i1)
+        i3 = dict(name='Jesus', age=i2)
+        self.ie.start_exporting()
+        self.ie.export_item(i3)
+        self.ie.finish_exporting()
+        exported = json.loads(to_unicode(self.output.getvalue()))
+        expected = {'name': 'Jesus', 'age': {'name': 'Maria', 'age': i1}}
+        self.assertEqual(exported, [expected])
+
+</source>
+</class>
+
+<class classid="16" nclones="2" nlines="12" similarity="83">
+<source file="systems/scrapy-2.6.1/tests/test_spidermiddleware.py" startline="69" endline="85" pcid="711">
+    def test_invalid_process_spider_exception(self):
+
+        class InvalidProcessSpiderOutputExceptionMiddleware:
+            def process_spider_exception(self, response, exception, spider):
+                return 1
+
+        class RaiseExceptionProcessSpiderOutputMiddleware:
+            def process_spider_output(self, response, result, spider):
+                raise Exception()
+
+        self.mwman._add_middleware(InvalidProcessSpiderOutputExceptionMiddleware())
+        self.mwman._add_middleware(RaiseExceptionProcessSpiderOutputMiddleware())
+        result = self._scrape_response()
+        self.assertIsInstance(result, Failure)
+        self.assertIsInstance(result.value, _InvalidOutput)
+
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_spidermiddleware.py" startline="89" endline="103" pcid="714">
+    def test_process_spider_exception_return_none(self):
+
+        class ProcessSpiderExceptionReturnNoneMiddleware:
+            def process_spider_exception(self, response, exception, spider):
+                return None
+
+        class RaiseExceptionProcessSpiderOutputMiddleware:
+            def process_spider_output(self, response, result, spider):
+                1 / 0
+
+        self.mwman._add_middleware(ProcessSpiderExceptionReturnNoneMiddleware())
+        self.mwman._add_middleware(RaiseExceptionProcessSpiderOutputMiddleware())
+        result = self._scrape_response()
+        self.assertIsInstance(result, Failure)
+        self.assertIsInstance(result.value, ZeroDivisionError)
+</source>
+</class>
+
+<class classid="17" nclones="2" nlines="10" similarity="70">
+<source file="systems/scrapy-2.6.1/tests/test_utils_iterators.py" startline="383" endline="395" pcid="818">
+    def test_csviter_headers(self):
+        sample = get_testdata('feeds', 'feed-sample3.csv').splitlines()
+        headers, body = sample[0].split(b','), b'\n'.join(sample[1:])
+
+        response = TextResponse(url="http://example.com/", body=body)
+        csv = csviter(response, headers=[h.decode('utf-8') for h in headers])
+
+        self.assertEqual([row for row in csv],
+                         [{'id': '1', 'name': 'alpha', 'value': 'foobar'},
+                          {'id': '2', 'name': 'unicode', 'value': '\xfan\xedc\xf3d\xe9\u203d'},
+                          {'id': '3', 'name': 'multi', 'value': 'foo\nbar'},
+                          {'id': '4', 'name': 'empty', 'value': ''}])
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_utils_iterators.py" startline="396" endline="408" pcid="819">
+    def test_csviter_falserow(self):
+        body = get_testdata('feeds', 'feed-sample3.csv')
+        body = b'\n'.join((body, b'a,b', b'a,b,c,d'))
+
+        response = TextResponse(url="http://example.com/", body=body)
+        csv = csviter(response)
+
+        self.assertEqual([row for row in csv],
+                         [{'id': '1', 'name': 'alpha', 'value': 'foobar'},
+                          {'id': '2', 'name': 'unicode', 'value': '\xfan\xedc\xf3d\xe9\u203d'},
+                          {'id': '3', 'name': 'multi', 'value': "foo\nbar"},
+                          {'id': '4', 'name': 'empty', 'value': ''}])
+
+</source>
+</class>
+
+<class classid="18" nclones="3" nlines="11" similarity="81">
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_robotstxt.py" startline="30" endline="51" pcid="868">
+    def _get_successful_crawler(self):
+        crawler = self.crawler
+        crawler.settings.set('ROBOTSTXT_OBEY', True)
+        ROBOTS = """
+User-Agent: *
+Disallow: /admin/
+Disallow: /static/
+# taken from https://en.wikipedia.org/robots.txt
+Disallow: /wiki/K%C3%A4ytt%C3%A4j%C3%A4:
+Disallow: /wiki/Käyttäjä:
+User-Agent: UnicödeBöt
+Disallow: /some/randome/page.html
+""".encode('utf-8')
+        response = TextResponse('http://site.local/robots.txt', body=ROBOTS)
+
+        def return_response(request):
+            deferred = Deferred()
+            reactor.callFromThread(deferred.callback, response)
+            return deferred
+        crawler.engine.download.side_effect = return_response
+        return crawler
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_robotstxt.py" startline="100" endline="111" pcid="876">
+    def _get_emptybody_crawler(self):
+        crawler = self.crawler
+        crawler.settings.set('ROBOTSTXT_OBEY', True)
+        response = Response('http://site.local/robots.txt')
+
+        def return_response(request):
+            deferred = Deferred()
+            reactor.callFromThread(deferred.callback, response)
+            return deferred
+        crawler.engine.download.side_effect = return_response
+        return crawler
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_robotstxt.py" startline="77" endline="88" pcid="873">
+    def _get_garbage_crawler(self):
+        crawler = self.crawler
+        crawler.settings.set('ROBOTSTXT_OBEY', True)
+        response = Response('http://site.local/robots.txt', body=b'GIF89a\xd3\x00\xfe\x00\xa2')
+
+        def return_response(request):
+            deferred = Deferred()
+            reactor.callFromThread(deferred.callback, response)
+            return deferred
+        crawler.engine.download.side_effect = return_response
+        return crawler
+
+</source>
+</class>
+
+<class classid="19" nclones="2" nlines="13" similarity="76">
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_robotstxt.py" startline="121" endline="136" pcid="879">
+    def test_robotstxt_error(self):
+        self.crawler.settings.set('ROBOTSTXT_OBEY', True)
+        err = error.DNSLookupError('Robotstxt address not found')
+
+        def return_failure(request):
+            deferred = Deferred()
+            reactor.callFromThread(deferred.errback, failure.Failure(err))
+            return deferred
+        self.crawler.engine.download.side_effect = return_failure
+
+        middleware = RobotsTxtMiddleware(self.crawler)
+        middleware._logerror = mock.MagicMock(side_effect=middleware._logerror)
+        deferred = middleware.process_request(Request('http://site.local'), None)
+        deferred.addCallback(lambda _: self.assertTrue(middleware._logerror.called))
+        return deferred
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_robotstxt.py" startline="150" endline="165" pcid="883">
+    def test_ignore_robotstxt_request(self):
+        self.crawler.settings.set('ROBOTSTXT_OBEY', True)
+
+        def ignore_request(request):
+            deferred = Deferred()
+            reactor.callFromThread(deferred.errback, failure.Failure(IgnoreRequest()))
+            return deferred
+        self.crawler.engine.download.side_effect = ignore_request
+
+        middleware = RobotsTxtMiddleware(self.crawler)
+        mw_module_logger.error = mock.MagicMock()
+
+        d = self.assertNotIgnored(Request('http://site.local/allowed'), middleware)
+        d.addCallback(lambda _: self.assertFalse(mw_module_logger.error.called))
+        return d
+
+</source>
+</class>
+
+<class classid="20" nclones="2" nlines="23" similarity="73">
+<source file="systems/scrapy-2.6.1/tests/test_dupefilters.py" startline="162" endline="190" pcid="900">
+    def test_log(self):
+        with LogCapture() as log:
+            settings = {'DUPEFILTER_DEBUG': False,
+                        'DUPEFILTER_CLASS': FromCrawlerRFPDupeFilter}
+            crawler = get_crawler(SimpleSpider, settings_dict=settings)
+            scheduler = Scheduler.from_crawler(crawler)
+            spider = SimpleSpider.from_crawler(crawler)
+
+            dupefilter = scheduler.df
+            dupefilter.open()
+
+            r1 = Request('http://scrapytest.org/index.html')
+            r2 = Request('http://scrapytest.org/index.html')
+
+            dupefilter.log(r1, spider)
+            dupefilter.log(r2, spider)
+
+            assert crawler.stats.get_value('dupefilter/filtered') == 2
+            log.check_present(
+                (
+                    'scrapy.dupefilters',
+                    'DEBUG',
+                    'Filtered duplicate request: <GET http://scrapytest.org/index.html> - no more'
+                    ' duplicates will be shown (see DUPEFILTER_DEBUG to show all duplicates)'
+                )
+            )
+
+            dupefilter.close('finished')
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_dupefilters.py" startline="191" endline="226" pcid="901">
+    def test_log_debug(self):
+        with LogCapture() as log:
+            settings = {'DUPEFILTER_DEBUG': True,
+                        'DUPEFILTER_CLASS': FromCrawlerRFPDupeFilter}
+            crawler = get_crawler(SimpleSpider, settings_dict=settings)
+            scheduler = Scheduler.from_crawler(crawler)
+            spider = SimpleSpider.from_crawler(crawler)
+
+            dupefilter = scheduler.df
+            dupefilter.open()
+
+            r1 = Request('http://scrapytest.org/index.html')
+            r2 = Request('http://scrapytest.org/index.html',
+                         headers={'Referer': 'http://scrapytest.org/INDEX.html'})
+
+            dupefilter.log(r1, spider)
+            dupefilter.log(r2, spider)
+
+            assert crawler.stats.get_value('dupefilter/filtered') == 2
+            log.check_present(
+                (
+                    'scrapy.dupefilters',
+                    'DEBUG',
+                    'Filtered duplicate request: <GET http://scrapytest.org/index.html> (referer: None)'
+                )
+            )
+            log.check_present(
+                (
+                    'scrapy.dupefilters',
+                    'DEBUG',
+                    'Filtered duplicate request: <GET http://scrapytest.org/index.html>'
+                    ' (referer: http://scrapytest.org/INDEX.html)'
+                )
+            )
+
+            dupefilter.close('finished')
+</source>
+</class>
+
+<class classid="21" nclones="5" nlines="10" similarity="70">
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_httpcompression.py" startline="99" endline="110" pcid="964">
+    def test_process_response_gzip(self):
+        response = self._getresponse('gzip')
+        request = response.request
+
+        self.assertEqual(response.headers['Content-Encoding'], b'gzip')
+        newresponse = self.mw.process_response(request, response, self.spider)
+        assert newresponse is not response
+        assert newresponse.body.startswith(b'<!DOCTYPE')
+        assert 'Content-Encoding' not in newresponse.headers
+        self.assertStatsEqual('httpcompression/response_count', 1)
+        self.assertStatsEqual('httpcompression/response_bytes', 74837)
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_httpcompression.py" startline="123" endline="137" pcid="966">
+    def test_process_response_br(self):
+        try:
+            import brotli  # noqa: F401
+        except ImportError:
+            raise SkipTest("no brotli")
+        response = self._getresponse('br')
+        request = response.request
+        self.assertEqual(response.headers['Content-Encoding'], b'br')
+        newresponse = self.mw.process_response(request, response, self.spider)
+        assert newresponse is not response
+        assert newresponse.body.startswith(b"<!DOCTYPE")
+        assert 'Content-Encoding' not in newresponse.headers
+        self.assertStatsEqual('httpcompression/response_count', 1)
+        self.assertStatsEqual('httpcompression/response_bytes', 74837)
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_httpcompression.py" startline="159" endline="170" pcid="968">
+    def test_process_response_rawdeflate(self):
+        response = self._getresponse('rawdeflate')
+        request = response.request
+
+        self.assertEqual(response.headers['Content-Encoding'], b'deflate')
+        newresponse = self.mw.process_response(request, response, self.spider)
+        assert newresponse is not response
+        assert newresponse.body.startswith(b'<!DOCTYPE')
+        assert 'Content-Encoding' not in newresponse.headers
+        self.assertStatsEqual('httpcompression/response_count', 1)
+        self.assertStatsEqual('httpcompression/response_bytes', 74840)
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_httpcompression.py" startline="111" endline="122" pcid="965">
+    def test_process_response_gzip_no_stats(self):
+        mw = HttpCompressionMiddleware()
+        response = self._getresponse('gzip')
+        request = response.request
+
+        self.assertEqual(response.headers['Content-Encoding'], b'gzip')
+        newresponse = mw.process_response(request, response, self.spider)
+        self.assertEqual(mw.stats, None)
+        assert newresponse is not response
+        assert newresponse.body.startswith(b'<!DOCTYPE')
+        assert 'Content-Encoding' not in newresponse.headers
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_httpcompression.py" startline="171" endline="182" pcid="969">
+    def test_process_response_zlibdelate(self):
+        response = self._getresponse('zlibdeflate')
+        request = response.request
+
+        self.assertEqual(response.headers['Content-Encoding'], b'deflate')
+        newresponse = self.mw.process_response(request, response, self.spider)
+        assert newresponse is not response
+        assert newresponse.body.startswith(b'<!DOCTYPE')
+        assert 'Content-Encoding' not in newresponse.headers
+        self.assertStatsEqual('httpcompression/response_count', 1)
+        self.assertStatsEqual('httpcompression/response_bytes', 74840)
+
+</source>
+</class>
+
+<class classid="22" nclones="2" nlines="18" similarity="100">
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_httpcompression.py" startline="202" endline="222" pcid="972">
+    def test_process_response_encoding_inside_body(self):
+        headers = {
+            'Content-Type': 'text/html',
+            'Content-Encoding': 'gzip',
+        }
+        f = BytesIO()
+        plainbody = (b'<html><head><title>Some page</title>'
+                     b'<meta http-equiv="Content-Type" content="text/html; charset=gb2312">')
+        zf = GzipFile(fileobj=f, mode='wb')
+        zf.write(plainbody)
+        zf.close()
+        response = Response("http;//www.example.com/", headers=headers, body=f.getvalue())
+        request = Request("http://www.example.com/")
+
+        newresponse = self.mw.process_response(request, response, self.spider)
+        assert isinstance(newresponse, HtmlResponse)
+        self.assertEqual(newresponse.body, plainbody)
+        self.assertEqual(newresponse.encoding, resolve_encoding('gb2312'))
+        self.assertStatsEqual('httpcompression/response_count', 1)
+        self.assertStatsEqual('httpcompression/response_bytes', 104)
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_httpcompression.py" startline="223" endline="243" pcid="973">
+    def test_process_response_force_recalculate_encoding(self):
+        headers = {
+            'Content-Type': 'text/html',
+            'Content-Encoding': 'gzip',
+        }
+        f = BytesIO()
+        plainbody = (b'<html><head><title>Some page</title>'
+                     b'<meta http-equiv="Content-Type" content="text/html; charset=gb2312">')
+        zf = GzipFile(fileobj=f, mode='wb')
+        zf.write(plainbody)
+        zf.close()
+        response = HtmlResponse("http;//www.example.com/page.html", headers=headers, body=f.getvalue())
+        request = Request("http://www.example.com/")
+
+        newresponse = self.mw.process_response(request, response, self.spider)
+        assert isinstance(newresponse, HtmlResponse)
+        self.assertEqual(newresponse.body, plainbody)
+        self.assertEqual(newresponse.encoding, resolve_encoding('gb2312'))
+        self.assertStatsEqual('httpcompression/response_count', 1)
+        self.assertStatsEqual('httpcompression/response_bytes', 104)
+
+</source>
+</class>
+
+<class classid="23" nclones="3" nlines="10" similarity="100">
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_httpcompression.py" startline="261" endline="272" pcid="975">
+    def test_process_response_gzipped_contenttype(self):
+        response = self._getresponse('gzip')
+        response.headers['Content-Type'] = 'application/gzip'
+        request = response.request
+
+        newresponse = self.mw.process_response(request, response, self.spider)
+        self.assertIsNot(newresponse, response)
+        self.assertTrue(newresponse.body.startswith(b'<!DOCTYPE'))
+        self.assertNotIn('Content-Encoding', newresponse.headers)
+        self.assertStatsEqual('httpcompression/response_count', 1)
+        self.assertStatsEqual('httpcompression/response_bytes', 74837)
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_httpcompression.py" startline="273" endline="284" pcid="976">
+    def test_process_response_gzip_app_octetstream_contenttype(self):
+        response = self._getresponse('gzip')
+        response.headers['Content-Type'] = 'application/octet-stream'
+        request = response.request
+
+        newresponse = self.mw.process_response(request, response, self.spider)
+        self.assertIsNot(newresponse, response)
+        self.assertTrue(newresponse.body.startswith(b'<!DOCTYPE'))
+        self.assertNotIn('Content-Encoding', newresponse.headers)
+        self.assertStatsEqual('httpcompression/response_count', 1)
+        self.assertStatsEqual('httpcompression/response_bytes', 74837)
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_httpcompression.py" startline="285" endline="296" pcid="977">
+    def test_process_response_gzip_binary_octetstream_contenttype(self):
+        response = self._getresponse('x-gzip')
+        response.headers['Content-Type'] = 'binary/octet-stream'
+        request = response.request
+
+        newresponse = self.mw.process_response(request, response, self.spider)
+        self.assertIsNot(newresponse, response)
+        self.assertTrue(newresponse.body.startswith(b'<!DOCTYPE'))
+        self.assertNotIn('Content-Encoding', newresponse.headers)
+        self.assertStatsEqual('httpcompression/response_count', 1)
+        self.assertStatsEqual('httpcompression/response_bytes', 74837)
+
+</source>
+</class>
+
+<class classid="24" nclones="2" nlines="13" similarity="84">
+<source file="systems/scrapy-2.6.1/tests/test_utils_deprecate.py" startline="71" endline="86" pcid="1040">
+    def test_subclassing_warns_only_on_direct_childs(self):
+        Deprecated = create_deprecated_class('Deprecated', NewName,
+                                             warn_once=False,
+                                             warn_category=MyWarning)
+
+        with warnings.catch_warnings(record=True) as w:
+            class UserClass(Deprecated):
+                pass
+
+            class NoWarnOnMe(UserClass):
+                pass
+
+        w = self._mywarnings(w)
+        self.assertEqual(len(w), 1)
+        self.assertIn('UserClass', str(w[0].message))
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_utils_deprecate.py" startline="87" endline="104" pcid="1041">
+    def test_subclassing_warns_once_by_default(self):
+        Deprecated = create_deprecated_class('Deprecated', NewName,
+                                             warn_category=MyWarning)
+
+        with warnings.catch_warnings(record=True) as w:
+            class UserClass(Deprecated):
+                pass
+
+            class FooClass(Deprecated):
+                pass
+
+            class BarClass(Deprecated):
+                pass
+
+        w = self._mywarnings(w)
+        self.assertEqual(len(w), 1)
+        self.assertIn('UserClass', str(w[0].message))
+
+</source>
+</class>
+
+<class classid="25" nclones="4" nlines="12" similarity="71">
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_retry.py" startline="133" endline="145" pcid="1065">
+    def test_with_settings_zero(self):
+        max_retry_times = 0
+        settings = {'RETRY_TIMES': max_retry_times}
+        spider, middleware = self.get_spider_and_middleware(settings)
+        req = Request(self.invalid_url)
+        self._test_retry(
+            req,
+            DNSLookupError('foo'),
+            max_retry_times,
+            spider=spider,
+            middleware=middleware,
+        )
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_retry.py" startline="146" endline="158" pcid="1066">
+    def test_with_metakey_zero(self):
+        max_retry_times = 0
+        spider, middleware = self.get_spider_and_middleware()
+        meta = {'max_retry_times': max_retry_times}
+        req = Request(self.invalid_url, meta=meta)
+        self._test_retry(
+            req,
+            DNSLookupError('foo'),
+            max_retry_times,
+            spider=spider,
+            middleware=middleware,
+        )
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_retry.py" startline="159" endline="171" pcid="1067">
+    def test_without_metakey(self):
+        max_retry_times = 5
+        settings = {'RETRY_TIMES': max_retry_times}
+        spider, middleware = self.get_spider_and_middleware(settings)
+        req = Request(self.invalid_url)
+        self._test_retry(
+            req,
+            DNSLookupError('foo'),
+            max_retry_times,
+            spider=spider,
+            middleware=middleware,
+        )
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_retry.py" startline="222" endline="237" pcid="1070">
+    def test_with_dont_retry(self):
+        max_retry_times = 4
+        spider, middleware = self.get_spider_and_middleware()
+        meta = {
+            'max_retry_times': max_retry_times,
+            'dont_retry': True,
+        }
+        req = Request(self.invalid_url, meta=meta)
+        self._test_retry(
+            req,
+            DNSLookupError('foo'),
+            0,
+            spider=spider,
+            middleware=middleware,
+        )
+
+</source>
+</class>
+
+<class classid="26" nclones="2" nlines="21" similarity="100">
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_retry.py" startline="172" endline="196" pcid="1068">
+    def test_with_metakey_greater(self):
+        meta_max_retry_times = 3
+        middleware_max_retry_times = 2
+
+        req1 = Request(self.invalid_url, meta={'max_retry_times': meta_max_retry_times})
+        req2 = Request(self.invalid_url)
+
+        settings = {'RETRY_TIMES': middleware_max_retry_times}
+        spider, middleware = self.get_spider_and_middleware(settings)
+
+        self._test_retry(
+            req1,
+            DNSLookupError('foo'),
+            meta_max_retry_times,
+            spider=spider,
+            middleware=middleware,
+        )
+        self._test_retry(
+            req2,
+            DNSLookupError('foo'),
+            middleware_max_retry_times,
+            spider=spider,
+            middleware=middleware,
+        )
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_retry.py" startline="197" endline="221" pcid="1069">
+    def test_with_metakey_lesser(self):
+        meta_max_retry_times = 4
+        middleware_max_retry_times = 5
+
+        req1 = Request(self.invalid_url, meta={'max_retry_times': meta_max_retry_times})
+        req2 = Request(self.invalid_url)
+
+        settings = {'RETRY_TIMES': middleware_max_retry_times}
+        spider, middleware = self.get_spider_and_middleware(settings)
+
+        self._test_retry(
+            req1,
+            DNSLookupError('foo'),
+            meta_max_retry_times,
+            spider=spider,
+            middleware=middleware,
+        )
+        self._test_retry(
+            req2,
+            DNSLookupError('foo'),
+            middleware_max_retry_times,
+            spider=spider,
+            middleware=middleware,
+        )
+
+</source>
+</class>
+
+<class classid="27" nclones="2" nlines="24" similarity="95">
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_retry.py" startline="264" endline="289" pcid="1073">
+    def test_basic_usage(self):
+        request = Request('https://example.com')
+        spider = self.get_spider()
+        with LogCapture() as log:
+            new_request = get_retry_request(
+                request,
+                spider=spider,
+            )
+        self.assertIsInstance(new_request, Request)
+        self.assertNotEqual(new_request, request)
+        self.assertEqual(new_request.dont_filter, True)
+        expected_retry_times = 1
+        self.assertEqual(new_request.meta['retry_times'], expected_retry_times)
+        self.assertEqual(new_request.priority, -1)
+        expected_reason = "unspecified"
+        for stat in ('retry/count', f'retry/reason_count/{expected_reason}'):
+            self.assertEqual(spider.crawler.stats.get_value(stat), 1)
+        log.check_present(
+            (
+                "scrapy.downloadermiddlewares.retry",
+                "DEBUG",
+                f"Retrying {request} (failed {expected_retry_times} times): "
+                f"{expected_reason}",
+            )
+        )
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_retry.py" startline="316" endline="342" pcid="1075">
+    def test_one_retry(self):
+        request = Request('https://example.com')
+        spider = self.get_spider()
+        with LogCapture() as log:
+            new_request = get_retry_request(
+                request,
+                spider=spider,
+                max_retry_times=1,
+            )
+        self.assertIsInstance(new_request, Request)
+        self.assertNotEqual(new_request, request)
+        self.assertEqual(new_request.dont_filter, True)
+        expected_retry_times = 1
+        self.assertEqual(new_request.meta['retry_times'], expected_retry_times)
+        self.assertEqual(new_request.priority, -1)
+        expected_reason = "unspecified"
+        for stat in ('retry/count', f'retry/reason_count/{expected_reason}'):
+            self.assertEqual(spider.crawler.stats.get_value(stat), 1)
+        log.check_present(
+            (
+                "scrapy.downloadermiddlewares.retry",
+                "DEBUG",
+                f"Retrying {request} (failed {expected_retry_times} times): "
+                f"{expected_reason}",
+            )
+        )
+
+</source>
+</class>
+
+<class classid="28" nclones="3" nlines="10" similarity="70">
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_retry.py" startline="411" endline="421" pcid="1079">
+    def test_max_retry_times_meta(self):
+        max_retry_times = 0
+        spider = self.get_spider({'RETRY_TIMES': max_retry_times + 1})
+        meta = {'max_retry_times': max_retry_times}
+        request = Request('https://example.com', meta=meta)
+        new_request = get_retry_request(
+            request,
+            spider=spider,
+        )
+        self.assertEqual(new_request, None)
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_retry.py" startline="444" endline="454" pcid="1082">
+    def test_priority_adjust_argument(self):
+        priority_adjust = 1
+        spider = self.get_spider({'RETRY_PRIORITY_ADJUST': priority_adjust + 1})
+        request = Request('https://example.com')
+        new_request = get_retry_request(
+            request,
+            spider=spider,
+            priority_adjust=priority_adjust,
+        )
+        self.assertEqual(new_request.priority, priority_adjust)
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_retry.py" startline="422" endline="433" pcid="1080">
+    def test_max_retry_times_argument(self):
+        max_retry_times = 0
+        spider = self.get_spider({'RETRY_TIMES': max_retry_times + 1})
+        meta = {'max_retry_times': max_retry_times + 1}
+        request = Request('https://example.com', meta=meta)
+        new_request = get_retry_request(
+            request,
+            spider=spider,
+            max_retry_times=max_retry_times,
+        )
+        self.assertEqual(new_request, None)
+
+</source>
+</class>
+
+<class classid="29" nclones="6" nlines="19" similarity="80">
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_retry.py" startline="476" endline="497" pcid="1085">
+    def test_reason_string(self):
+        request = Request('https://example.com')
+        spider = self.get_spider()
+        expected_reason = 'because'
+        with LogCapture() as log:
+            get_retry_request(
+                request,
+                spider=spider,
+                reason=expected_reason,
+            )
+        expected_retry_times = 1
+        for stat in ('retry/count', f'retry/reason_count/{expected_reason}'):
+            self.assertEqual(spider.crawler.stats.get_value(stat), 1)
+        log.check_present(
+            (
+                "scrapy.downloadermiddlewares.retry",
+                "DEBUG",
+                f"Retrying {request} (failed {expected_retry_times} times): "
+                f"{expected_reason}",
+            )
+        )
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_retry.py" startline="573" endline="597" pcid="1089">
+    def test_reason_custom_exception_class(self):
+        request = Request('https://example.com')
+        spider = self.get_spider()
+        expected_reason = IgnoreRequest
+        expected_reason_string = 'scrapy.exceptions.IgnoreRequest'
+        with LogCapture() as log:
+            get_retry_request(
+                request,
+                spider=spider,
+                reason=expected_reason,
+            )
+        expected_retry_times = 1
+        stat = spider.crawler.stats.get_value(
+            f'retry/reason_count/{expected_reason_string}'
+        )
+        self.assertEqual(stat, 1)
+        log.check_present(
+            (
+                "scrapy.downloadermiddlewares.retry",
+                "DEBUG",
+                f"Retrying {request} (failed {expected_retry_times} times): "
+                f"{expected_reason}",
+            )
+        )
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_retry.py" startline="598" endline="617" pcid="1090">
+    def test_custom_logger(self):
+        logger = logging.getLogger("custom-logger")
+        request = Request("https://example.com")
+        spider = self.get_spider()
+        expected_reason = "because"
+        with LogCapture() as log:
+            get_retry_request(
+                request,
+                spider=spider,
+                reason=expected_reason,
+                logger=logger,
+            )
+        log.check_present(
+            (
+                "custom-logger",
+                "DEBUG",
+                f"Retrying {request} (failed 1 times): {expected_reason}",
+            )
+        )
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_retry.py" startline="548" endline="572" pcid="1088">
+    def test_reason_custom_exception(self):
+        request = Request('https://example.com')
+        spider = self.get_spider()
+        expected_reason = IgnoreRequest()
+        expected_reason_string = 'scrapy.exceptions.IgnoreRequest'
+        with LogCapture() as log:
+            get_retry_request(
+                request,
+                spider=spider,
+                reason=expected_reason,
+            )
+        expected_retry_times = 1
+        stat = spider.crawler.stats.get_value(
+            f'retry/reason_count/{expected_reason_string}'
+        )
+        self.assertEqual(stat, 1)
+        log.check_present(
+            (
+                "scrapy.downloadermiddlewares.retry",
+                "DEBUG",
+                f"Retrying {request} (failed {expected_retry_times} times): "
+                f"{expected_reason}",
+            )
+        )
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_retry.py" startline="523" endline="547" pcid="1087">
+    def test_reason_builtin_exception_class(self):
+        request = Request('https://example.com')
+        spider = self.get_spider()
+        expected_reason = NotImplementedError
+        expected_reason_string = 'builtins.NotImplementedError'
+        with LogCapture() as log:
+            get_retry_request(
+                request,
+                spider=spider,
+                reason=expected_reason,
+            )
+        expected_retry_times = 1
+        stat = spider.crawler.stats.get_value(
+            f'retry/reason_count/{expected_reason_string}'
+        )
+        self.assertEqual(stat, 1)
+        log.check_present(
+            (
+                "scrapy.downloadermiddlewares.retry",
+                "DEBUG",
+                f"Retrying {request} (failed {expected_retry_times} times): "
+                f"{expected_reason}",
+            )
+        )
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_downloadermiddleware_retry.py" startline="498" endline="522" pcid="1086">
+    def test_reason_builtin_exception(self):
+        request = Request('https://example.com')
+        spider = self.get_spider()
+        expected_reason = NotImplementedError()
+        expected_reason_string = 'builtins.NotImplementedError'
+        with LogCapture() as log:
+            get_retry_request(
+                request,
+                spider=spider,
+                reason=expected_reason,
+            )
+        expected_retry_times = 1
+        stat = spider.crawler.stats.get_value(
+            f'retry/reason_count/{expected_reason_string}'
+        )
+        self.assertEqual(stat, 1)
+        log.check_present(
+            (
+                "scrapy.downloadermiddlewares.retry",
+                "DEBUG",
+                f"Retrying {request} (failed {expected_retry_times} times): "
+                f"{expected_reason}",
+            )
+        )
+
+</source>
+</class>
+
+<class classid="30" nclones="2" nlines="11" similarity="90">
+<source file="systems/scrapy-2.6.1/tests/test_robotstxt_interface.py" startline="45" endline="63" pcid="1140">
+    def test_allowed_wildcards(self):
+        robotstxt_robotstxt_body = """User-agent: first
+                                Disallow: /disallowed/*/end$
+
+                                User-agent: second
+                                Allow: /*allowed
+                                Disallow: /
+                                """.encode('utf-8')
+        rp = self.parser_cls.from_crawler(crawler=None, robotstxt_body=robotstxt_robotstxt_body)
+
+        self.assertTrue(rp.allowed("https://www.site.local/disallowed", "first"))
+        self.assertFalse(rp.allowed("https://www.site.local/disallowed/xyz/end", "first"))
+        self.assertFalse(rp.allowed("https://www.site.local/disallowed/abc/end", "first"))
+        self.assertTrue(rp.allowed("https://www.site.local/disallowed/xyz/endinglater", "first"))
+
+        self.assertTrue(rp.allowed("https://www.site.local/allowed", "second"))
+        self.assertTrue(rp.allowed("https://www.site.local/is_still_allowed", "second"))
+        self.assertTrue(rp.allowed("https://www.site.local/is_allowed_too", "second"))
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_robotstxt_interface.py" startline="95" endline="116" pcid="1145">
+    def test_unicode_url_and_useragent(self):
+        robotstxt_robotstxt_body = """
+        User-Agent: *
+        Disallow: /admin/
+        Disallow: /static/
+        # taken from https://en.wikipedia.org/robots.txt
+        Disallow: /wiki/K%C3%A4ytt%C3%A4j%C3%A4:
+        Disallow: /wiki/Käyttäjä:
+
+        User-Agent: UnicödeBöt
+        Disallow: /some/randome/page.html""".encode('utf-8')
+        rp = self.parser_cls.from_crawler(crawler=None, robotstxt_body=robotstxt_robotstxt_body)
+        self.assertTrue(rp.allowed("https://site.local/", "*"))
+        self.assertFalse(rp.allowed("https://site.local/admin/", "*"))
+        self.assertFalse(rp.allowed("https://site.local/static/", "*"))
+        self.assertTrue(rp.allowed("https://site.local/admin/", "UnicödeBöt"))
+        self.assertFalse(rp.allowed("https://site.local/wiki/K%C3%A4ytt%C3%A4j%C3%A4:", "*"))
+        self.assertFalse(rp.allowed("https://site.local/wiki/Käyttäjä:", "*"))
+        self.assertTrue(rp.allowed("https://site.local/some/randome/page.html", "*"))
+        self.assertFalse(rp.allowed("https://site.local/some/randome/page.html", "UnicödeBöt"))
+
+
+</source>
+</class>
+
+<class classid="31" nclones="2" nlines="19" similarity="75">
+<source file="systems/scrapy-2.6.1/tests/test_pqueues.py" startline="100" endline="117" pcid="1174">
+    def test_push_pop(self):
+        self.assertEqual(len(self.queue), 0)
+        self.assertIsNone(self.queue.pop())
+        req1 = Request("http://www.example.com/1")
+        req2 = Request("http://www.example.com/2")
+        req3 = Request("http://www.example.com/3")
+        self.queue.push(req1)
+        self.queue.push(req2)
+        self.queue.push(req3)
+        self.assertEqual(len(self.queue), 3)
+        self.assertEqual(self.queue.pop().url, req1.url)
+        self.assertEqual(len(self.queue), 2)
+        self.assertEqual(self.queue.pop().url, req2.url)
+        self.assertEqual(len(self.queue), 1)
+        self.assertEqual(self.queue.pop().url, req3.url)
+        self.assertEqual(len(self.queue), 0)
+        self.assertIsNone(self.queue.pop())
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_pqueues.py" startline="125" endline="144" pcid="1176">
+    def test_peek(self):
+        if not hasattr(queuelib.queue.FifoMemoryQueue, "peek"):
+            raise unittest.SkipTest("queuelib.queue.FifoMemoryQueue.peek is undefined")
+        self.assertEqual(len(self.queue), 0)
+        req1 = Request("https://example.org/1")
+        req2 = Request("https://example.org/2")
+        req3 = Request("https://example.org/3")
+        self.queue.push(req1)
+        self.queue.push(req2)
+        self.queue.push(req3)
+        self.assertEqual(len(self.queue), 3)
+        self.assertEqual(self.queue.peek().url, req1.url)
+        self.assertEqual(self.queue.pop().url, req1.url)
+        self.assertEqual(len(self.queue), 2)
+        self.assertEqual(self.queue.peek().url, req2.url)
+        self.assertEqual(self.queue.pop().url, req2.url)
+        self.assertEqual(len(self.queue), 1)
+        self.assertEqual(self.queue.peek().url, req3.url)
+        self.assertEqual(self.queue.pop().url, req3.url)
+        self.assertIsNone(self.queue.peek())
+</source>
+</class>
+
+<class classid="32" nclones="2" nlines="15" similarity="93">
+<source file="systems/scrapy-2.6.1/tests/test_spidermiddleware_referer.py" startline="526" endline="541" pcid="1183">
+    def test_valid_name(self):
+        for s, p in [
+            (POLICY_SCRAPY_DEFAULT, DefaultReferrerPolicy),
+            (POLICY_NO_REFERRER, NoReferrerPolicy),
+            (POLICY_NO_REFERRER_WHEN_DOWNGRADE, NoReferrerWhenDowngradePolicy),
+            (POLICY_SAME_ORIGIN, SameOriginPolicy),
+            (POLICY_ORIGIN, OriginPolicy),
+            (POLICY_STRICT_ORIGIN, StrictOriginPolicy),
+            (POLICY_ORIGIN_WHEN_CROSS_ORIGIN, OriginWhenCrossOriginPolicy),
+            (POLICY_STRICT_ORIGIN_WHEN_CROSS_ORIGIN, StrictOriginWhenCrossOriginPolicy),
+            (POLICY_UNSAFE_URL, UnsafeUrlPolicy),
+        ]:
+            settings = Settings({'REFERRER_POLICY': s})
+            mw = RefererMiddleware(settings)
+            self.assertEqual(mw.default_policy, p)
+
+</source>
+<source file="systems/scrapy-2.6.1/tests/test_spidermiddleware_referer.py" startline="542" endline="557" pcid="1184">
+    def test_valid_name_casevariants(self):
+        for s, p in [
+            (POLICY_SCRAPY_DEFAULT, DefaultReferrerPolicy),
+            (POLICY_NO_REFERRER, NoReferrerPolicy),
+            (POLICY_NO_REFERRER_WHEN_DOWNGRADE, NoReferrerWhenDowngradePolicy),
+            (POLICY_SAME_ORIGIN, SameOriginPolicy),
+            (POLICY_ORIGIN, OriginPolicy),
+            (POLICY_STRICT_ORIGIN, StrictOriginPolicy),
+            (POLICY_ORIGIN_WHEN_CROSS_ORIGIN, OriginWhenCrossOriginPolicy),
+            (POLICY_STRICT_ORIGIN_WHEN_CROSS_ORIGIN, StrictOriginWhenCrossOriginPolicy),
+            (POLICY_UNSAFE_URL, UnsafeUrlPolicy),
+        ]:
+            settings = Settings({'REFERRER_POLICY': s.upper()})
+            mw = RefererMiddleware(settings)
+            self.assertEqual(mw.default_policy, p)
+
+</source>
+</class>
+
+<class classid="33" nclones="2" nlines="15" similarity="73">
+<source file="systems/scrapy-2.6.1/scrapy/extensions/memusage.py" startline="77" endline="95" pcid="1365">
+    def _check_limit(self):
+        if self.get_virtual_size() > self.limit:
+            self.crawler.stats.set_value('memusage/limit_reached', 1)
+            mem = self.limit/1024/1024
+            logger.error("Memory usage exceeded %(memusage)dM. Shutting down Scrapy...",
+                         {'memusage': mem}, extra={'crawler': self.crawler})
+            if self.notify_mails:
+                subj = (
+                    f"{self.crawler.settings['BOT_NAME']} terminated: "
+                    f"memory usage exceeded {mem}M at {socket.gethostname()}"
+                )
+                self._send_report(self.notify_mails, subj)
+                self.crawler.stats.set_value('memusage/limit_notified', 1)
+
+            if self.crawler.engine.spider is not None:
+                self.crawler.engine.close_spider(self.crawler.engine.spider, 'memusage_exceeded')
+            else:
+                self.crawler.stop()
+
+</source>
+<source file="systems/scrapy-2.6.1/scrapy/extensions/memusage.py" startline="96" endline="112" pcid="1366">
+    def _check_warning(self):
+        if self.warned: # warn only once
+            return
+        if self.get_virtual_size() > self.warning:
+            self.crawler.stats.set_value('memusage/warning_reached', 1)
+            mem = self.warning/1024/1024
+            logger.warning("Memory usage reached %(memusage)dM",
+                           {'memusage': mem}, extra={'crawler': self.crawler})
+            if self.notify_mails:
+                subj = (
+                    f"{self.crawler.settings['BOT_NAME']} warning: "
+                    f"memory usage reached {mem}M at {socket.gethostname()}"
+                )
+                self._send_report(self.notify_mails, subj)
+                self.crawler.stats.set_value('memusage/warning_notified', 1)
+            self.warned = True
+
+</source>
+</class>
+
+<class classid="34" nclones="2" nlines="11" similarity="72">
+<source file="systems/scrapy-2.6.1/scrapy/core/downloader/middleware.py" startline="38" endline="50" pcid="1845">
+        def process_request(request: Request):
+            for method in self.methods['process_request']:
+                method = cast(Callable, method)
+                response = yield deferred_from_coro(method(request=request, spider=spider))
+                if response is not None and not isinstance(response, (Response, Request)):
+                    raise _InvalidOutput(
+                        f"Middleware {method.__qualname__} must return None, Response or "
+                        f"Request, got {response.__class__.__name__}"
+                    )
+                if response:
+                    return response
+            return (yield download_func(request=request, spider=spider))
+
+</source>
+<source file="systems/scrapy-2.6.1/scrapy/core/downloader/middleware.py" startline="71" endline="84" pcid="1847">
+        def process_exception(failure: Failure):
+            exception = failure.value
+            for method in self.methods['process_exception']:
+                method = cast(Callable, method)
+                response = yield deferred_from_coro(method(request=request, exception=exception, spider=spider))
+                if response is not None and not isinstance(response, (Response, Request)):
+                    raise _InvalidOutput(
+                        f"Middleware {method.__qualname__} must return None, Response or "
+                        f"Request, got {type(response)}"
+                    )
+                if response:
+                    return response
+            return failure
+
+</source>
+</class>
+
+</clones>

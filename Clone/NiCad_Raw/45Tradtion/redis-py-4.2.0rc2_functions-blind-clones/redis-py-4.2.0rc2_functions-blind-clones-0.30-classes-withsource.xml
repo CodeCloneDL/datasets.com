@@ -1,0 +1,947 @@
+<clones>
+<systeminfo processor="nicad6" system="redis-py-4.2.0rc2" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="846" npairs="33"/>
+<runinfo ncompares="12448" cputime="47724"/>
+<classinfo nclasses="17"/>
+
+<class classid="1" nclones="2" nlines="41" similarity="100">
+<source file="systems/redis-py-4.2.0rc2/tests/test_json.py" startline="303" endline="354" pcid="133">
+def test_json_delete_with_dollar(client):
+    doc1 = {"a": 1, "nested": {"a": 2, "b": 3}}
+    assert client.json().set("doc1", "$", doc1)
+    assert client.json().delete("doc1", "$..a") == 2
+    r = client.json().get("doc1", "$")
+    assert r == [{"nested": {"b": 3}}]
+
+    doc2 = {"a": {"a": 2, "b": 3}, "b": ["a", "b"], "nested": {"b": [True, "a", "b"]}}
+    assert client.json().set("doc2", "$", doc2)
+    assert client.json().delete("doc2", "$..a") == 1
+    res = client.json().get("doc2", "$")
+    assert res == [{"nested": {"b": [True, "a", "b"]}, "b": ["a", "b"]}]
+
+    doc3 = [
+        {
+            "ciao": ["non ancora"],
+            "nested": [
+                {"ciao": [1, "a"]},
+                {"ciao": [2, "a"]},
+                {"ciaoc": [3, "non", "ciao"]},
+                {"ciao": [4, "a"]},
+                {"e": [5, "non", "ciao"]},
+            ],
+        }
+    ]
+    assert client.json().set("doc3", "$", doc3)
+    assert client.json().delete("doc3", '$.[0]["nested"]..ciao') == 3
+
+    doc3val = [
+        [
+            {
+                "ciao": ["non ancora"],
+                "nested": [
+                    {},
+                    {},
+                    {"ciaoc": [3, "non", "ciao"]},
+                    {},
+                    {"e": [5, "non", "ciao"]},
+                ],
+            }
+        ]
+    ]
+    res = client.json().get("doc3", "$")
+    assert res == doc3val
+
+    # Test default path
+    assert client.json().delete("doc3") == 1
+    assert client.json().get("doc3", "$") is None
+
+    client.json().delete("not_a_document", "..a")
+
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/tests/test_json.py" startline="356" endline="407" pcid="134">
+def test_json_forget_with_dollar(client):
+    doc1 = {"a": 1, "nested": {"a": 2, "b": 3}}
+    assert client.json().set("doc1", "$", doc1)
+    assert client.json().forget("doc1", "$..a") == 2
+    r = client.json().get("doc1", "$")
+    assert r == [{"nested": {"b": 3}}]
+
+    doc2 = {"a": {"a": 2, "b": 3}, "b": ["a", "b"], "nested": {"b": [True, "a", "b"]}}
+    assert client.json().set("doc2", "$", doc2)
+    assert client.json().forget("doc2", "$..a") == 1
+    res = client.json().get("doc2", "$")
+    assert res == [{"nested": {"b": [True, "a", "b"]}, "b": ["a", "b"]}]
+
+    doc3 = [
+        {
+            "ciao": ["non ancora"],
+            "nested": [
+                {"ciao": [1, "a"]},
+                {"ciao": [2, "a"]},
+                {"ciaoc": [3, "non", "ciao"]},
+                {"ciao": [4, "a"]},
+                {"e": [5, "non", "ciao"]},
+            ],
+        }
+    ]
+    assert client.json().set("doc3", "$", doc3)
+    assert client.json().forget("doc3", '$.[0]["nested"]..ciao') == 3
+
+    doc3val = [
+        [
+            {
+                "ciao": ["non ancora"],
+                "nested": [
+                    {},
+                    {},
+                    {"ciaoc": [3, "non", "ciao"]},
+                    {},
+                    {"e": [5, "non", "ciao"]},
+                ],
+            }
+        ]
+    ]
+    res = client.json().get("doc3", "$")
+    assert res == doc3val
+
+    # Test default path
+    assert client.json().forget("doc3") == 1
+    assert client.json().get("doc3", "$") is None
+
+    client.json().forget("not_a_document", "..a")
+
+
+</source>
+</class>
+
+<class classid="2" nclones="3" nlines="15" similarity="86">
+<source file="systems/redis-py-4.2.0rc2/tests/test_retry.py" startline="130" endline="145" pcid="184">
+    def test_client_retry_on_error_raise(self, request):
+        with patch.object(Redis, "parse_response") as parse_response:
+            parse_response.side_effect = BusyLoadingError()
+            retries = 3
+            r = _get_client(
+                Redis,
+                request,
+                retry_on_error=[ReadOnlyError, BusyLoadingError],
+                retry=Retry(NoBackoff(), retries),
+            )
+            with pytest.raises(BusyLoadingError):
+                try:
+                    r.get("foo")
+                finally:
+                    assert parse_response.call_count == retries + 1
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/tests/test_retry.py" startline="146" endline="161" pcid="185">
+    def test_client_retry_on_error_different_error_raised(self, request):
+        with patch.object(Redis, "parse_response") as parse_response:
+            parse_response.side_effect = TimeoutError()
+            retries = 3
+            r = _get_client(
+                Redis,
+                request,
+                retry_on_error=[ReadOnlyError],
+                retry=Retry(NoBackoff(), retries),
+            )
+            with pytest.raises(TimeoutError):
+                try:
+                    r.get("foo")
+                finally:
+                    assert parse_response.call_count == 1
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/tests/test_retry.py" startline="162" endline="178" pcid="186">
+    def test_client_retry_on_error_and_timeout(self, request):
+        with patch.object(Redis, "parse_response") as parse_response:
+            parse_response.side_effect = TimeoutError()
+            retries = 3
+            r = _get_client(
+                Redis,
+                request,
+                retry_on_error=[ReadOnlyError],
+                retry_on_timeout=True,
+                retry=Retry(NoBackoff(), retries),
+            )
+            with pytest.raises(TimeoutError):
+                try:
+                    r.get("foo")
+                finally:
+                    assert parse_response.call_count == retries + 1
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="10" similarity="70">
+<source file="systems/redis-py-4.2.0rc2/tests/test_lock.py" startline="100" endline="111" pcid="254">
+    def test_blocking_timeout(self, r):
+        lock1 = self.get_lock(r, "foo")
+        assert lock1.acquire(blocking=False)
+        bt = 0.2
+        sleep = 0.05
+        lock2 = self.get_lock(r, "foo", sleep=sleep, blocking_timeout=bt)
+        start = time.monotonic()
+        assert not lock2.acquire()
+        # The elapsed duration should be less than the total blocking_timeout
+        assert bt > (time.monotonic() - start) > bt - sleep
+        lock1.release()
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/tests/test_lock.py" startline="125" endline="137" pcid="257">
+    def test_high_sleep_small_blocking_timeout(self, r):
+        lock1 = self.get_lock(r, "foo")
+        assert lock1.acquire(blocking=False)
+        sleep = 60
+        bt = 1
+        lock2 = self.get_lock(r, "foo", sleep=sleep, blocking_timeout=bt)
+        start = time.monotonic()
+        assert not lock2.acquire()
+        # the elapsed timed is less than the blocking_timeout as the lock is
+        # unattainable given the sleep/blocking_timeout configuration
+        assert bt > (time.monotonic() - start)
+        lock1.release()
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="15" similarity="80">
+<source file="systems/redis-py-4.2.0rc2/tests/test_pubsub.py" startline="187" endline="203" pcid="284">
+    def test_ignore_all_subscribe_messages(self, r):
+        p = r.pubsub(ignore_subscribe_messages=True)
+
+        checks = (
+            (p.subscribe, "foo"),
+            (p.unsubscribe, "foo"),
+            (p.psubscribe, "f*"),
+            (p.punsubscribe, "f*"),
+        )
+
+        assert p.subscribed is False
+        for func, channel in checks:
+            assert func(channel) is None
+            assert p.subscribed is True
+            assert wait_for_message(p) is None
+        assert p.subscribed is False
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/tests/test_pubsub.py" startline="204" endline="221" pcid="285">
+    def test_ignore_individual_subscribe_messages(self, r):
+        p = r.pubsub()
+
+        checks = (
+            (p.subscribe, "foo"),
+            (p.unsubscribe, "foo"),
+            (p.psubscribe, "f*"),
+            (p.punsubscribe, "f*"),
+        )
+
+        assert p.subscribed is False
+        for func, channel in checks:
+            assert func(channel) is None
+            assert p.subscribed is True
+            message = wait_for_message(p, ignore_subscribe_messages=True)
+            assert message is None
+        assert p.subscribed is False
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="12" similarity="91">
+<source file="systems/redis-py-4.2.0rc2/tests/test_pubsub.py" startline="231" endline="244" pcid="288">
+    def _test_sub_unsub_resub(
+        self, p, sub_type, unsub_type, sub_func, unsub_func, keys
+    ):
+        # https://github.com/andymccurdy/redis-py/issues/764
+        key = keys[0]
+        sub_func(key)
+        unsub_func(key)
+        sub_func(key)
+        assert p.subscribed is True
+        assert wait_for_message(p) == make_message(sub_type, key, 1)
+        assert wait_for_message(p) == make_message(unsub_type, key, 0)
+        assert wait_for_message(p) == make_message(sub_type, key, 1)
+        assert p.subscribed is True
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/tests/test_pubsub.py" startline="253" endline="267" pcid="291">
+    def _test_sub_unsub_all_resub(
+        self, p, sub_type, unsub_type, sub_func, unsub_func, keys
+    ):
+        # https://github.com/andymccurdy/redis-py/issues/764
+        key = keys[0]
+        sub_func(key)
+        unsub_func()
+        sub_func(key)
+        assert p.subscribed is True
+        assert wait_for_message(p) == make_message(sub_type, key, 1)
+        assert wait_for_message(p) == make_message(unsub_type, key, 0)
+        assert wait_for_message(p) == make_message(sub_type, key, 1)
+        assert p.subscribed is True
+
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="15" similarity="75">
+<source file="systems/redis-py-4.2.0rc2/tests/test_pubsub.py" startline="408" endline="424" pcid="308">
+    def test_channel_message_handler(self, r):
+        p = r.pubsub(ignore_subscribe_messages=True)
+        p.subscribe(**{self.channel: self.message_handler})
+        assert wait_for_message(p) is None
+        r.publish(self.channel, self.data)
+        assert wait_for_message(p) is None
+        assert self.message == self.make_message("message", self.channel, self.data)
+
+        # test that we reconnected to the correct channel
+        self.message = None
+        p.connection.disconnect()
+        assert wait_for_message(p) is None  # should reconnect
+        new_data = self.data + "new data"
+        r.publish(self.channel, new_data)
+        assert wait_for_message(p) is None
+        assert self.message == self.make_message("message", self.channel, new_data)
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/tests/test_pubsub.py" startline="425" endline="445" pcid="309">
+    def test_pattern_message_handler(self, r):
+        p = r.pubsub(ignore_subscribe_messages=True)
+        p.psubscribe(**{self.pattern: self.message_handler})
+        assert wait_for_message(p) is None
+        r.publish(self.channel, self.data)
+        assert wait_for_message(p) is None
+        assert self.message == self.make_message(
+            "pmessage", self.channel, self.data, pattern=self.pattern
+        )
+
+        # test that we reconnected to the correct pattern
+        self.message = None
+        p.connection.disconnect()
+        assert wait_for_message(p) is None  # should reconnect
+        new_data = self.data + "new data"
+        r.publish(self.channel, new_data)
+        assert wait_for_message(p) is None
+        assert self.message == self.make_message(
+            "pmessage", self.channel, new_data, pattern=self.pattern
+        )
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="20" similarity="72">
+<source file="systems/redis-py-4.2.0rc2/tests/test_function.py" startline="49" endline="66" pcid="330">
+    def test_function_list(self, r):
+        r.function_load("Lua", "mylib", function)
+        res = [
+            [
+                "library_name",
+                "mylib",
+                "engine",
+                "LUA",
+                "description",
+                None,
+                "functions",
+                [["name", "myfunc", "description", None]],
+            ],
+        ]
+        assert r.function_list() == res
+        assert r.function_list(library="*lib") == res
+        assert r.function_list(withcode=True)[0][9] == function
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/tests/test_function.py" startline="68" endline="90" pcid="331">
+    def test_function_list_on_cluster(self, r):
+        r.function_load("Lua", "mylib", function)
+        function_list = [
+            [
+                "library_name",
+                "mylib",
+                "engine",
+                "LUA",
+                "description",
+                None,
+                "functions",
+                [["name", "myfunc", "description", None]],
+            ],
+        ]
+        primaries = r.get_primaries()
+        res = {}
+        for node in primaries:
+            res[node.name] = function_list
+        assert r.function_list() == res
+        assert r.function_list(library="*lib") == res
+        node = primaries[0].name
+        assert r.function_list(withcode=True)[node][0][9] == function
+
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="20" similarity="73">
+<source file="systems/redis-py-4.2.0rc2/tests/test_timeseries.py" startline="211" endline="233" pcid="347">
+def test_range_advanced(client):
+    for i in range(100):
+        client.ts().add(1, i, i % 7)
+        client.ts().add(1, i + 200, i % 7)
+
+    assert 2 == len(
+        client.ts().range(
+            1,
+            0,
+            500,
+            filter_by_ts=[i for i in range(10, 20)],
+            filter_by_min_value=1,
+            filter_by_max_value=2,
+        )
+    )
+    assert [(0, 10.0), (10, 1.0)] == client.ts().range(
+        1, 0, 10, aggregation_type="count", bucket_size_msec=10, align="+"
+    )
+    assert [(0, 5.0), (5, 6.0)] == client.ts().range(
+        1, 0, 10, aggregation_type="count", bucket_size_msec=10, align=5
+    )
+
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/tests/test_timeseries.py" startline="236" endline="265" pcid="348">
+def test_rev_range(client):
+    for i in range(100):
+        client.ts().add(1, i, i % 7)
+    assert 100 == len(client.ts().range(1, 0, 200))
+    for i in range(100):
+        client.ts().add(1, i + 200, i % 7)
+    assert 200 == len(client.ts().range(1, 0, 500))
+    # first sample isn't returned
+    assert 20 == len(
+        client.ts().revrange(1, 0, 500, aggregation_type="avg", bucket_size_msec=10)
+    )
+    assert 10 == len(client.ts().revrange(1, 0, 500, count=10))
+    assert 2 == len(
+        client.ts().revrange(
+            1,
+            0,
+            500,
+            filter_by_ts=[i for i in range(10, 20)],
+            filter_by_min_value=1,
+            filter_by_max_value=2,
+        )
+    )
+    assert [(10, 1.0), (0, 10.0)] == client.ts().revrange(
+        1, 0, 10, aggregation_type="count", bucket_size_msec=10, align="+"
+    )
+    assert [(1, 10.0), (0, 1.0)] == client.ts().revrange(
+        1, 0, 10, aggregation_type="count", bucket_size_msec=10, align=1
+    )
+
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="14" similarity="85">
+<source file="systems/redis-py-4.2.0rc2/tests/test_ssl.py" startline="56" endline="69" pcid="362">
+    def test_validating_self_signed_certificate(self, request):
+        ssl_url = request.config.option.redis_ssl_url
+        p = urlparse(ssl_url)[1].split(":")
+        r = redis.Redis(
+            host=p[0],
+            port=p[1],
+            ssl=True,
+            ssl_certfile=self.SERVER_CERT,
+            ssl_keyfile=self.SERVER_KEY,
+            ssl_cert_reqs="required",
+            ssl_ca_certs=self.SERVER_CERT,
+        )
+        assert r.ping()
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/tests/test_ssl.py" startline="70" endline="84" pcid="363">
+    def _create_oscp_conn(self, request):
+        ssl_url = request.config.option.redis_ssl_url
+        p = urlparse(ssl_url)[1].split(":")
+        r = redis.Redis(
+            host=p[0],
+            port=p[1],
+            ssl=True,
+            ssl_certfile=self.SERVER_CERT,
+            ssl_keyfile=self.SERVER_KEY,
+            ssl_cert_reqs="required",
+            ssl_ca_certs=self.SERVER_CERT,
+            ssl_validate_ocsp=True,
+        )
+        return r
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="10" similarity="100">
+<source file="systems/redis-py-4.2.0rc2/tests/test_ssl.py" startline="119" endline="130" pcid="367">
+    def test_revoked_ocsp_certificate(self):
+        from redis.ocsp import OCSPVerifier
+
+        context = ssl.create_default_context()
+        hostname = "revoked.badssl.com"
+        with socket.create_connection((hostname, 443)) as sock:
+            with context.wrap_socket(sock, server_hostname=hostname) as wrapped:
+                ocsp = OCSPVerifier(wrapped, hostname, 443)
+                with pytest.raises(ConnectionError) as e:
+                    assert ocsp.is_valid()
+                    assert "REVOKED" in str(e)
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/tests/test_ssl.py" startline="144" endline="155" pcid="369">
+    def test_ocsp_not_present_in_response(self):
+        from redis.ocsp import OCSPVerifier
+
+        context = ssl.create_default_context()
+        hostname = "google.co.il"
+        with socket.create_connection((hostname, 443)) as sock:
+            with context.wrap_socket(sock, server_hostname=hostname) as wrapped:
+                ocsp = OCSPVerifier(wrapped, hostname, 443)
+                with pytest.raises(ConnectionError) as e:
+                    assert ocsp.is_valid()
+                    assert "from the" in str(e)
+
+</source>
+</class>
+
+<class classid="11" nclones="2" nlines="10" similarity="80">
+<source file="systems/redis-py-4.2.0rc2/tests/test_pipeline.py" startline="121" endline="134" pcid="445">
+    def test_exec_error_raised(self, r):
+        r["c"] = "a"
+        with r.pipeline() as pipe:
+            pipe.set("a", 1).set("b", 2).lpush("c", 3).set("d", 4)
+            with pytest.raises(redis.ResponseError) as ex:
+                pipe.execute()
+            assert str(ex.value).startswith(
+                "Command # 3 (LPUSH c 3) of " "pipeline caused error: "
+            )
+
+            # make sure the pipe was restored to a working state
+            assert pipe.set("z", "zzz").execute() == [True]
+            assert r["z"] == b"zzz"
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/tests/test_pipeline.py" startline="181" endline="196" pcid="449">
+    def test_parse_error_raised_transaction(self, r):
+        with r.pipeline() as pipe:
+            pipe.multi()
+            # the zrem is invalid because we don't pass any keys to it
+            pipe.set("a", 1).zrem("b").set("b", 2)
+            with pytest.raises(redis.ResponseError) as ex:
+                pipe.execute()
+
+            assert str(ex.value).startswith(
+                "Command # 2 (ZREM b) of " "pipeline caused error: "
+            )
+
+            # make sure the pipe was restored to a working state
+            assert pipe.set("z", "zzz").execute() == [True]
+            assert r["z"] == b"zzz"
+
+</source>
+</class>
+
+<class classid="12" nclones="2" nlines="16" similarity="82">
+<source file="systems/redis-py-4.2.0rc2/tests/test_pipeline.py" startline="198" endline="214" pcid="450">
+    def test_watch_succeed(self, r):
+        r["a"] = 1
+        r["b"] = 2
+
+        with r.pipeline() as pipe:
+            pipe.watch("a", "b")
+            assert pipe.watching
+            a_value = pipe.get("a")
+            b_value = pipe.get("b")
+            assert a_value == b"1"
+            assert b_value == b"2"
+            pipe.multi()
+
+            pipe.set("c", 3)
+            assert pipe.execute() == [True]
+            assert not pipe.watching
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/tests/test_pipeline.py" startline="258" endline="277" pcid="454">
+    def test_watch_exec_no_unwatch(self, r):
+        r["a"] = 1
+        r["b"] = 2
+
+        with r.monitor() as m:
+            with r.pipeline() as pipe:
+                pipe.watch("a", "b")
+                assert pipe.watching
+                a_value = pipe.get("a")
+                b_value = pipe.get("b")
+                assert a_value == b"1"
+                assert b_value == b"2"
+                pipe.multi()
+                pipe.set("c", 3)
+                assert pipe.execute() == [True]
+                assert not pipe.watching
+
+            unwatch_command = wait_for_command(r, m, "UNWATCH")
+            assert unwatch_command is None, "should not send UNWATCH"
+
+</source>
+</class>
+
+<class classid="13" nclones="3" nlines="11" similarity="72">
+<source file="systems/redis-py-4.2.0rc2/tests/test_pipeline.py" startline="216" endline="229" pcid="451">
+    def test_watch_failure(self, r):
+        r["a"] = 1
+        r["b"] = 2
+
+        with r.pipeline() as pipe:
+            pipe.watch("a", "b")
+            r["b"] = 3
+            pipe.multi()
+            pipe.get("a")
+            with pytest.raises(redis.WatchError):
+                pipe.execute()
+
+            assert not pipe.watching
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/tests/test_pipeline.py" startline="245" endline="256" pcid="453">
+    def test_unwatch(self, r):
+        r["a"] = 1
+        r["b"] = 2
+
+        with r.pipeline() as pipe:
+            pipe.watch("a", "b")
+            r["b"] = 3
+            pipe.unwatch()
+            assert not pipe.watching
+            pipe.get("a")
+            assert pipe.execute() == [b"1"]
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/tests/test_pipeline.py" startline="231" endline="243" pcid="452">
+    def test_watch_failure_in_empty_transaction(self, r):
+        r["a"] = 1
+        r["b"] = 2
+
+        with r.pipeline() as pipe:
+            pipe.watch("a", "b")
+            r["b"] = 3
+            pipe.multi()
+            with pytest.raises(redis.WatchError):
+                pipe.execute()
+
+            assert not pipe.watching
+
+</source>
+</class>
+
+<class classid="14" nclones="4" nlines="10" similarity="90">
+<source file="systems/redis-py-4.2.0rc2/benchmarks/basic_operations.py" startline="65" endline="78" pcid="473">
+def set_str(conn, num, pipeline_size, data_size):
+    if pipeline_size > 1:
+        conn = conn.pipeline()
+
+    set_data = "a".ljust(data_size, "0")
+    for i in range(num):
+        conn.set(f"set_str:{i}", set_data)
+        if pipeline_size > 1 and i % pipeline_size == 0:
+            conn.execute()
+
+    if pipeline_size > 1:
+        conn.execute()
+
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/benchmarks/basic_operations.py" startline="137" endline="150" pcid="478">
+def lpush(conn, num, pipeline_size, data_size):
+    if pipeline_size > 1:
+        conn = conn.pipeline()
+
+    set_data = 10 ** (data_size - 1)
+    for i in range(num):
+        conn.lpush("lpush_key", set_data)
+        if pipeline_size > 1 and i % pipeline_size == 0:
+            conn.execute()
+
+    if pipeline_size > 1:
+        conn.execute()
+
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/benchmarks/basic_operations.py" startline="178" endline="191" pcid="481">
+def hmset(conn, num, pipeline_size, data_size):
+    if pipeline_size > 1:
+        conn = conn.pipeline()
+
+    set_data = {"str_value": "string", "int_value": 123456, "float_value": 123456.0}
+    for i in range(num):
+        conn.hmset("hmset_key", set_data)
+        if pipeline_size > 1 and i % pipeline_size == 0:
+            conn.execute()
+
+    if pipeline_size > 1:
+        conn.execute()
+
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/benchmarks/basic_operations.py" startline="80" endline="93" pcid="474">
+def set_int(conn, num, pipeline_size, data_size):
+    if pipeline_size > 1:
+        conn = conn.pipeline()
+
+    set_data = 10 ** (data_size - 1)
+    for i in range(num):
+        conn.set(f"set_int:{i}", set_data)
+        if pipeline_size > 1 and i % pipeline_size == 0:
+            conn.execute()
+
+    if pipeline_size > 1:
+        conn.execute()
+
+
+</source>
+</class>
+
+<class classid="15" nclones="2" nlines="17" similarity="83">
+<source file="systems/redis-py-4.2.0rc2/benchmarks/command_packer_benchmark.py" startline="7" endline="23" pcid="484">
+    def send_packed_command(self, command, check_health=True):
+        "Send an already packed command to the Redis server"
+        if not self._sock:
+            self.connect()
+        try:
+            self._sock.sendall(command)
+        except OSError as e:
+            self.disconnect()
+            if len(e.args) == 1:
+                _errno, errmsg = "UNKNOWN", e.args[0]
+            else:
+                _errno, errmsg = e.args
+            raise ConnectionError(f"Error {_errno} while writing to socket. {errmsg}.")
+        except Exception:
+            self.disconnect()
+            raise
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/benchmarks/command_packer_benchmark.py" startline="41" endline="59" pcid="486">
+    def send_packed_command(self, command, check_health=True):
+        if not self._sock:
+            self.connect()
+        try:
+            if isinstance(command, str):
+                command = [command]
+            for item in command:
+                self._sock.sendall(item)
+        except OSError as e:
+            self.disconnect()
+            if len(e.args) == 1:
+                _errno, errmsg = "UNKNOWN", e.args[0]
+            else:
+                _errno, errmsg = e.args
+            raise ConnectionError(f"Error {_errno} while writing to socket. {errmsg}.")
+        except Exception:
+            self.disconnect()
+            raise
+
+</source>
+</class>
+
+<class classid="16" nclones="2" nlines="21" similarity="90">
+<source file="systems/redis-py-4.2.0rc2/redis/commands/json/__init__.py" startline="94" endline="130" pcid="562">
+    def pipeline(self, transaction=True, shard_hint=None):
+        """Creates a pipeline for the JSON module, that can be used for executing
+        JSON commands, as well as classic core commands.
+
+        Usage example:
+
+        r = redis.Redis()
+        pipe = r.json().pipeline()
+        pipe.jsonset('foo', '.', {'hello!': 'world'})
+        pipe.jsonget('foo')
+        pipe.jsonget('notakey')
+        """
+        if isinstance(self.client, redis.RedisCluster):
+            p = ClusterPipeline(
+                nodes_manager=self.client.nodes_manager,
+                commands_parser=self.client.commands_parser,
+                startup_nodes=self.client.nodes_manager.startup_nodes,
+                result_callbacks=self.client.result_callbacks,
+                cluster_response_callbacks=self.client.cluster_response_callbacks,
+                cluster_error_retry_attempts=self.client.cluster_error_retry_attempts,
+                read_from_replicas=self.client.read_from_replicas,
+                reinitialize_steps=self.client.reinitialize_steps,
+            )
+
+        else:
+            p = Pipeline(
+                connection_pool=self.client.connection_pool,
+                response_callbacks=self.MODULE_CALLBACKS,
+                transaction=transaction,
+                shard_hint=shard_hint,
+            )
+
+        p._encode = self._encode
+        p._decode = self._decode
+        return p
+
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/redis/commands/timeseries/__init__.py" startline="57" endline="91" pcid="575">
+    def pipeline(self, transaction=True, shard_hint=None):
+        """Creates a pipeline for the TimeSeries module, that can be used
+        for executing only TimeSeries commands and core commands.
+
+        Usage example:
+
+        r = redis.Redis()
+        pipe = r.ts().pipeline()
+        for i in range(100):
+            pipeline.add("with_pipeline", i, 1.1 * i)
+        pipeline.execute()
+
+        """
+        if isinstance(self.client, redis.RedisCluster):
+            p = ClusterPipeline(
+                nodes_manager=self.client.nodes_manager,
+                commands_parser=self.client.commands_parser,
+                startup_nodes=self.client.nodes_manager.startup_nodes,
+                result_callbacks=self.client.result_callbacks,
+                cluster_response_callbacks=self.client.cluster_response_callbacks,
+                cluster_error_retry_attempts=self.client.cluster_error_retry_attempts,
+                read_from_replicas=self.client.read_from_replicas,
+                reinitialize_steps=self.client.reinitialize_steps,
+            )
+
+        else:
+            p = Pipeline(
+                connection_pool=self.client.connection_pool,
+                response_callbacks=self.MODULE_CALLBACKS,
+                transaction=transaction,
+                shard_hint=shard_hint,
+            )
+        return p
+
+
+</source>
+</class>
+
+<class classid="17" nclones="5" nlines="11" similarity="81">
+<source file="systems/redis-py-4.2.0rc2/redis/commands/bf/__init__.py" startline="91" endline="110" pcid="643">
+    def __init__(self, client, **kwargs):
+        """Create a new RedisBloom client."""
+        # Set the module commands' callbacks
+        MODULE_CALLBACKS = {
+            CMS_INITBYDIM: bool_ok,
+            CMS_INITBYPROB: bool_ok,
+            # CMS_INCRBY: spaceHolder,
+            # CMS_QUERY: spaceHolder,
+            CMS_MERGE: bool_ok,
+            CMS_INFO: CMSInfo,
+        }
+
+        self.client = client
+        self.commandmixin = CMSCommands
+        self.execute_command = client.execute_command
+
+        for k, v in MODULE_CALLBACKS.items():
+            self.client.set_response_callback(k, v)
+
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/redis/commands/bf/__init__.py" startline="184" endline="204" pcid="647">
+    def __init__(self, client, **kwargs):
+        """Create a new RedisBloom client."""
+        # Set the module commands' callbacks
+        MODULE_CALLBACKS = {
+            BF_RESERVE: bool_ok,
+            # BF_ADD: spaceHolder,
+            # BF_MADD: spaceHolder,
+            # BF_INSERT: spaceHolder,
+            # BF_EXISTS: spaceHolder,
+            # BF_MEXISTS: spaceHolder,
+            # BF_SCANDUMP: spaceHolder,
+            # BF_LOADCHUNK: spaceHolder,
+            BF_INFO: BFInfo,
+        }
+
+        self.client = client
+        self.commandmixin = BFCommands
+        self.execute_command = client.execute_command
+
+        for k, v in MODULE_CALLBACKS.items():
+            self.client.set_response_callback(k, v)
+</source>
+<source file="systems/redis-py-4.2.0rc2/redis/commands/bf/__init__.py" startline="160" endline="182" pcid="646">
+    def __init__(self, client, **kwargs):
+        """Create a new RedisBloom client."""
+        # Set the module commands' callbacks
+        MODULE_CALLBACKS = {
+            TDIGEST_CREATE: bool_ok,
+            # TDIGEST_RESET: bool_ok,
+            # TDIGEST_ADD: spaceHolder,
+            # TDIGEST_MERGE: spaceHolder,
+            TDIGEST_CDF: float,
+            TDIGEST_QUANTILE: float,
+            TDIGEST_MIN: float,
+            TDIGEST_MAX: float,
+            TDIGEST_INFO: TDigestInfo,
+        }
+
+        self.client = client
+        self.commandmixin = TDigestCommands
+        self.execute_command = client.execute_command
+
+        for k, v in MODULE_CALLBACKS.items():
+            self.client.set_response_callback(k, v)
+
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/redis/commands/bf/__init__.py" startline="134" endline="158" pcid="645">
+    def __init__(self, client, **kwargs):
+        """Create a new RedisBloom client."""
+        # Set the module commands' callbacks
+        MODULE_CALLBACKS = {
+            CF_RESERVE: bool_ok,
+            # CF_ADD: spaceHolder,
+            # CF_ADDNX: spaceHolder,
+            # CF_INSERT: spaceHolder,
+            # CF_INSERTNX: spaceHolder,
+            # CF_EXISTS: spaceHolder,
+            # CF_DEL: spaceHolder,
+            # CF_COUNT: spaceHolder,
+            # CF_SCANDUMP: spaceHolder,
+            # CF_LOADCHUNK: spaceHolder,
+            CF_INFO: CFInfo,
+        }
+
+        self.client = client
+        self.commandmixin = CFCommands
+        self.execute_command = client.execute_command
+
+        for k, v in MODULE_CALLBACKS.items():
+            self.client.set_response_callback(k, v)
+
+
+</source>
+<source file="systems/redis-py-4.2.0rc2/redis/commands/bf/__init__.py" startline="112" endline="132" pcid="644">
+    def __init__(self, client, **kwargs):
+        """Create a new RedisBloom client."""
+        # Set the module commands' callbacks
+        MODULE_CALLBACKS = {
+            TOPK_RESERVE: bool_ok,
+            TOPK_ADD: parse_to_list,
+            TOPK_INCRBY: parse_to_list,
+            # TOPK_QUERY: spaceHolder,
+            # TOPK_COUNT: spaceHolder,
+            TOPK_LIST: parse_to_list,
+            TOPK_INFO: TopKInfo,
+        }
+
+        self.client = client
+        self.commandmixin = TOPKCommands
+        self.execute_command = client.execute_command
+
+        for k, v in MODULE_CALLBACKS.items():
+            self.client.set_response_callback(k, v)
+
+
+</source>
+</class>
+
+</clones>

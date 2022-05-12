@@ -1,0 +1,1188 @@
+<clones>
+<systeminfo processor="nicad6" system="powerline-2.8.2" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="1580" npairs="60"/>
+<runinfo ncompares="44227" cputime="83390"/>
+<classinfo nclasses="18"/>
+
+<class classid="1" nclones="2" nlines="13" similarity="76">
+<source file="systems/powerline-2.8.2/powerline/lint/markedjson/composer.py" startline="88" endline="101" pcid="177">
+	def compose_sequence_node(self):
+		start_event = self.get_event()
+		tag = start_event.tag
+		if tag is None or tag == '!':
+			tag = self.resolve(nodes.SequenceNode, None, start_event.implicit)
+		node = nodes.SequenceNode(tag, [], start_event.start_mark, None, flow_style=start_event.flow_style)
+		index = 0
+		while not self.check_event(events.SequenceEndEvent):
+			node.value.append(self.compose_node(node, index))
+			index += 1
+		end_event = self.get_event()
+		node.end_mark = end_event.end_mark
+		return node
+
+</source>
+<source file="systems/powerline-2.8.2/powerline/lint/markedjson/composer.py" startline="102" endline="119" pcid="178">
+	def compose_mapping_node(self):
+		start_event = self.get_event()
+		tag = start_event.tag
+		if tag is None or tag == '!':
+			tag = self.resolve(nodes.MappingNode, None, start_event.implicit)
+		node = nodes.MappingNode(tag, [], start_event.start_mark, None, flow_style=start_event.flow_style)
+		while not self.check_event(events.MappingEndEvent):
+			# key_event = self.peek_event()
+			item_key = self.compose_node(node, None)
+			# if item_key in node.value:
+			# 	 raise ComposerError('while composing a mapping', start_event.start_mark,
+			# 			 'found duplicate key', key_event.start_mark)
+			item_value = self.compose_node(node, item_key)
+			# node.value[item_key] = item_value
+			node.value.append((item_key, item_value))
+		end_event = self.get_event()
+		node.end_mark = end_event.end_mark
+		return node
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="10" similarity="80">
+<source file="systems/powerline-2.8.2/powerline/segments/i3wm.py" startline="13" endline="24" pcid="322">
+def workspace_groups(w):
+	group = []
+	if w.focused:
+		group.append('w_focused')
+	if w.urgent:
+		group.append('w_urgent')
+	if w.visible:
+		group.append('w_visible')
+	group.append('workspace')
+	return group
+
+
+</source>
+<source file="systems/powerline-2.8.2/powerline/segments/i3wm.py" startline="120" endline="131" pcid="327">
+def scratchpad_groups(w):
+	group = []
+	if w.urgent:
+		group.append('scratchpad:urgent')
+	if w.nodes[0].focused:
+		group.append('scratchpad:focused')
+	if w.workspace().name != '__i3_scratch':
+		group.append('scratchpad:visible')
+	group.append('scratchpad')
+	return group
+
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="20" similarity="75">
+<source file="systems/powerline-2.8.2/powerline/segments/common/players.py" startline="486" endline="523" pcid="426">
+	def get_player_status(self, pl):
+		status_delimiter = '-~`/='
+		ascript = '''
+			tell application "System Events"
+				set rdio_active to the count(every process whose name is "Rdio")
+				if rdio_active is 0 then
+					return
+				end if
+			end tell
+			tell application "Rdio"
+				set rdio_name to the name of the current track
+				set rdio_artist to the artist of the current track
+				set rdio_album to the album of the current track
+				set rdio_duration to the duration of the current track
+				set rdio_state to the player state
+				set rdio_elapsed to the player position
+				return rdio_name & "{0}" & rdio_artist & "{0}" & rdio_album & "{0}" & rdio_elapsed & "{0}" & rdio_duration & "{0}" & rdio_state
+			end tell
+		'''.format(status_delimiter)
+		now_playing = asrun(pl, ascript)
+		if not now_playing:
+			return
+		now_playing = now_playing.split(status_delimiter)
+		if len(now_playing) != 6:
+			return
+		state = _convert_state(now_playing[5])
+		total = _convert_seconds(now_playing[4])
+		elapsed = _convert_seconds(float(now_playing[3]) * float(now_playing[4]) / 100)
+		return {
+			'title': now_playing[0],
+			'artist': now_playing[1],
+			'album': now_playing[2],
+			'elapsed': elapsed,
+			'total': total,
+			'state': state,
+		}
+
+
+</source>
+<source file="systems/powerline-2.8.2/powerline/segments/common/players.py" startline="534" endline="574" pcid="427">
+	def get_player_status(self, pl):
+		status_delimiter = '-~`/='
+		ascript = '''
+			tell application "System Events"
+				set process_list to (name of every process)
+			end tell
+
+			if process_list contains "iTunes" then
+				tell application "iTunes"
+					if player state is playing then
+						set t_title to name of current track
+						set t_artist to artist of current track
+						set t_album to album of current track
+						set t_duration to duration of current track
+						set t_elapsed to player position
+						set t_state to player state
+						return t_title & "{0}" & t_artist & "{0}" & t_album & "{0}" & t_elapsed & "{0}" & t_duration & "{0}" & t_state
+					end if
+				end tell
+			end if
+		'''.format(status_delimiter)
+		now_playing = asrun(pl, ascript)
+		if not now_playing:
+			return
+		now_playing = now_playing.split(status_delimiter)
+		if len(now_playing) != 6:
+			return
+		title, artist, album = now_playing[0], now_playing[1], now_playing[2]
+		state = _convert_state(now_playing[5])
+		total = _convert_seconds(now_playing[4])
+		elapsed = _convert_seconds(now_playing[3])
+		return {
+			'title': title,
+			'artist': artist,
+			'album': album,
+			'total': total,
+			'elapsed': elapsed,
+			'state': state
+		}
+
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="23" similarity="100">
+<source file="systems/powerline-2.8.2/powerline/bindings/ipython/since_7.py" startline="23" endline="56" pcid="598">
+    def do_setup(self, ip, prompts, shutdown_hook):
+        prompts.powerline = self
+
+        msfn_missing = ()
+        saved_msfn = getattr(ip, '_make_style_from_name', msfn_missing)
+
+        if hasattr(saved_msfn, 'powerline_original'):
+            saved_msfn = saved_msfn.powerline_original
+
+        def _make_style_from_name(ip, name):
+            prev_style = saved_msfn(name)
+            new_style = PowerlinePromptStyle(lambda: prev_style)
+            return new_style
+
+        _make_style_from_name.powerline_original = saved_msfn
+
+        if not isinstance(ip._style, PowerlinePromptStyle):
+            prev_style = ip._style
+            ip._style = PowerlinePromptStyle(lambda: prev_style)
+
+        if not isinstance(saved_msfn, type(self.init)):
+            _saved_msfn = saved_msfn
+            saved_msfn = lambda: _saved_msfn(ip)
+
+        if saved_msfn is not msfn_missing:
+            ip._make_style_from_name = _make_style_from_name
+
+        magics = PowerlineMagics(ip, self)
+        ip.register_magics(magics)
+
+        if shutdown_hook:
+            shutdown_hook.powerline = ref(self)
+
+
+</source>
+<source file="systems/powerline-2.8.2/powerline/bindings/ipython/since_5.py" startline="23" endline="56" pcid="602">
+	def do_setup(self, ip, prompts, shutdown_hook):
+		prompts.powerline = self
+
+		msfn_missing = ()
+		saved_msfn = getattr(ip, '_make_style_from_name', msfn_missing)
+
+		if hasattr(saved_msfn, 'powerline_original'):
+			saved_msfn = saved_msfn.powerline_original
+
+		def _make_style_from_name(ip, name):
+			prev_style = saved_msfn(name)
+			new_style = PowerlinePromptStyle(lambda: prev_style)
+			return new_style
+
+		_make_style_from_name.powerline_original = saved_msfn
+
+		if not isinstance(ip._style, PowerlinePromptStyle):
+			prev_style = ip._style
+			ip._style = PowerlinePromptStyle(lambda: prev_style)
+
+		if not isinstance(saved_msfn, type(self.init)):
+			_saved_msfn = saved_msfn
+			saved_msfn = lambda: _saved_msfn(ip)
+
+		if saved_msfn is not msfn_missing:
+			ip._make_style_from_name = _make_style_from_name
+
+		magics = PowerlineMagics(ip, self)
+		ip.register_magics(magics)
+
+		if shutdown_hook:
+			shutdown_hook.powerline = ref(self)
+
+
+</source>
+</class>
+
+<class classid="5" nclones="3" nlines="12" similarity="84">
+<source file="systems/powerline-2.8.2/powerline/renderers/lemonbar.py" startline="45" endline="60" pcid="676">
+	def get_theme(self, matcher_info):
+		if not matcher_info or matcher_info not in self.local_themes:
+			return self.theme
+		match = self.local_themes[matcher_info]
+
+		try:
+			return match['theme']
+		except KeyError:
+			match['theme'] = Theme(
+				theme_config=match['config'],
+				main_theme_config=self.theme_config,
+				**self.theme_kwargs
+			)
+			return match['theme']
+
+
+</source>
+<source file="systems/powerline-2.8.2/powerline/renderers/shell/__init__.py" startline="167" endline="181" pcid="716">
+	def get_theme(self, matcher_info):
+		if not matcher_info:
+			return self.theme
+		match = self.local_themes[matcher_info]
+		try:
+			return match['theme']
+		except KeyError:
+			match['theme'] = Theme(
+				theme_config=match['config'],
+				main_theme_config=self.theme_config,
+				**self.theme_kwargs
+			)
+			return match['theme']
+
+
+</source>
+<source file="systems/powerline-2.8.2/powerline/renderers/ipython/__init__.py" startline="15" endline="29" pcid="704">
+	def get_theme(self, matcher_info):
+		if matcher_info == 'in':
+			return self.theme
+		else:
+			match = self.local_themes[matcher_info]
+			try:
+				return match['theme']
+			except KeyError:
+				match['theme'] = Theme(
+					theme_config=match['config'],
+					main_theme_config=self.theme_config,
+					**self.theme_kwargs
+				)
+				return match['theme']
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="10" similarity="100">
+<source file="systems/powerline-2.8.2/powerline/lib/encoding.py" startline="39" endline="58" pcid="859">
+def get_preferred_output_encoding():
+	'''Get encoding that should be used for printing strings
+
+	.. warning::
+		Falls back to ASCII, so that output is most likely to be displayed 
+		correctly.
+	'''
+	if hasattr(locale, 'LC_MESSAGES'):
+		return (
+			locale.getlocale(locale.LC_MESSAGES)[1]
+			or locale.getdefaultlocale()[1]
+			or 'ascii'
+		)
+
+	return (
+		locale.getdefaultlocale()[1]
+		or 'ascii'
+	)
+
+
+</source>
+<source file="systems/powerline-2.8.2/powerline/lib/encoding.py" startline="59" endline="78" pcid="860">
+def get_preferred_input_encoding():
+	'''Get encoding that should be used for reading shell command output
+
+	.. warning::
+		Falls back to latin1 so that function is less likely to throw as decoded 
+		output is primary searched for ASCII values.
+	'''
+	if hasattr(locale, 'LC_MESSAGES'):
+		return (
+			locale.getlocale(locale.LC_MESSAGES)[1]
+			or locale.getdefaultlocale()[1]
+			or 'latin1'
+		)
+
+	return (
+		locale.getdefaultlocale()[1]
+		or 'latin1'
+	)
+
+
+</source>
+</class>
+
+<class classid="7" nclones="3" nlines="12" similarity="78">
+<source file="systems/powerline-2.8.2/powerline/lib/vcs/mercurial.py" startline="41" endline="64" pcid="867">
+	def status(self, path=None):
+		'''Return status of repository or file.
+
+		Without file argument: returns status of the repository:
+
+		:'D?': dirty (tracked modified files: added, removed, deleted, modified),
+		:'?U': untracked-dirty (added, but not tracked files)
+		:None: clean (status is empty)
+
+		With file argument: returns status of this file: `M`odified, `A`dded,
+		`R`emoved, `D`eleted (removed from filesystem, but still tracked),
+		`U`nknown, `I`gnored, (None)Clean.
+		'''
+		if path:
+			return get_file_status(
+				directory=self.directory,
+				dirstate_file=join(self.directory, '.hg', 'dirstate'),
+				file_path=path,
+				ignore_file_name='.hgignore',
+				get_func=self.do_status,
+				create_watcher=self.create_watcher,
+			)
+		return self.do_status(self.directory, path)
+
+</source>
+<source file="systems/powerline-2.8.2/powerline/lib/vcs/git.py" startline="56" endline="85" pcid="873">
+	def status(self, path=None):
+		'''Return status of repository or file.
+
+		Without file argument: returns status of the repository:
+
+		:First column: working directory status (D: dirty / space)
+		:Second column: index status (I: index dirty / space)
+		:Third column: presence of untracked files (U: untracked files / space)
+		:None: repository clean
+
+		With file argument: returns status of this file. Output is
+		equivalent to the first two columns of ``git status --porcelain``
+		(except for merge statuses as they are not supported by libgit2).
+		'''
+		if path:
+			gitd = git_directory(self.directory)
+			# We need HEAD as without it using fugitive to commit causes the
+			# current file’s status (and only the current file) to not be updated
+			# for some reason I cannot be bothered to figure out.
+			return get_file_status(
+				directory=self.directory,
+				dirstate_file=join(gitd, 'index'),
+				file_path=path,
+				ignore_file_name='.gitignore',
+				get_func=self.do_status,
+				create_watcher=self.create_watcher,
+				extra_ignore_files=tuple(join(gitd, x) for x in ('logs/HEAD', 'info/exclude')),
+			)
+		return self.do_status(self.directory, path)
+
+</source>
+<source file="systems/powerline-2.8.2/powerline/lib/vcs/bzr.py" startline="48" endline="70" pcid="886">
+	def status(self, path=None):
+		'''Return status of repository or file.
+
+		Without file argument: returns status of the repository:
+
+		:'D?': dirty (tracked modified files: added, removed, deleted, modified),
+		:'?U': untracked-dirty (added, but not tracked files)
+		:None: clean (status is empty)
+
+		With file argument: returns status of this file: The status codes are
+		those returned by bzr status -S
+		'''
+		if path is not None:
+			return get_file_status(
+				directory=self.directory,
+				dirstate_file=join(self.directory, '.bzr', 'checkout', 'dirstate'),
+				file_path=path,
+				ignore_file_name='.bzrignore',
+				get_func=self.do_status,
+				create_watcher=self.create_watcher,
+			)
+		return self.do_status(self.directory, path)
+
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="11" similarity="81">
+<source file="systems/powerline-2.8.2/tests/test_python/test_config_reload.py" startline="290" endline="302" pcid="1093">
+	def test_reload_theme_main(self, config):
+		config['config']['common']['interval'] = None
+		with get_powerline(config, run_once=False) as p:
+			self.assertEqual(p.render(), '<1 2 1> s<2 4 False>>><3 4 4>g<4 False False>>><None None None>')
+			self.assertAccessEvents(p, 'config', 'colors', 'check:colorschemes/default', 'check:colorschemes/test/__main__', 'colorschemes/test/default', 'themes/test/default', 'themes/' + UT, 'check:themes/test/__main__')
+
+			config['themes/test/default']['segments']['left'][0]['contents'] = 'col3'
+			add_watcher_events(p, 'themes/test/default', wait=False)
+			self.assertEqual(p.render(), '<1 2 1> col3<2 4 False>>><3 4 4>g<4 False False>>><None None None>')
+			self.assertAccessEvents(p, 'themes/test/default', 'themes/' + UT, 'check:themes/test/__main__')
+			self.assertEqual(p.logger._pop_msgs(), [])
+			self.assertTrue(p._watcher._calls)
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_config_reload.py" startline="304" endline="316" pcid="1094">
+	def test_run_once_no_theme_reload(self, config):
+		config['config']['common']['interval'] = None
+		with get_powerline(config, run_once=True) as p:
+			self.assertEqual(p.render(), '<1 2 1> s<2 4 False>>><3 4 4>g<4 False False>>><None None None>')
+			self.assertAccessEvents(p, 'config', 'colors', 'check:colorschemes/default', 'check:colorschemes/test/__main__', 'colorschemes/test/default', 'themes/test/default', 'themes/' + UT, 'check:themes/test/__main__')
+
+			config['themes/test/default']['segments']['left'][0]['contents'] = 'col3'
+			add_watcher_events(p, 'themes/test/default', wait=False)
+			self.assertEqual(p.render(), '<1 2 1> s<2 4 False>>><3 4 4>g<4 False False>>><None None None>')
+			self.assertAccessEvents(p)
+			self.assertEqual(p.logger._pop_msgs(), [])
+
+
+</source>
+</class>
+
+<class classid="9" nclones="6" nlines="14" similarity="71">
+<source file="systems/powerline-2.8.2/tests/test_python/test_configuration.py" startline="241" endline="258" pcid="1125">
+	def test_group_redirects(self, p, config):
+		config['themes/test/default']['segments'] = {
+			'left': [
+				highlighted_string('a', 'd1', draw_hard_divider=False),
+				highlighted_string('b', 'd2', draw_hard_divider=False),
+				highlighted_string('c', 'd3', draw_hard_divider=False),
+				highlighted_string('A', 'm1', draw_hard_divider=False),
+				highlighted_string('B', 'm2', draw_hard_divider=False),
+				highlighted_string('C', 'm3', draw_hard_divider=False),
+				highlighted_string('1', 'g1', draw_hard_divider=False),
+				highlighted_string('2', 'g2', draw_hard_divider=False),
+				highlighted_string('3', 'g3', draw_hard_divider=False),
+			],
+			'right': [],
+		}
+		self.assertRenderEqual(p, '{78} a{910}b{1112}c{56}A{910}B{1112}C{56}1{78}2{910}3{--}')
+		self.assertEqual(p.logger._pop_msgs(), [])
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_configuration.py" startline="288" endline="303" pcid="1128">
+	def test_group_redirects_no_test_default(self, p, config):
+		del config['colorschemes/test/default']
+		config['themes/test/default']['segments'] = {
+			'left': [
+				highlighted_string('A', 'm1', draw_hard_divider=False),
+				highlighted_string('B', 'm2', draw_hard_divider=False),
+				highlighted_string('C', 'm3', draw_hard_divider=False),
+				highlighted_string('1', 'g1', draw_hard_divider=False),
+				highlighted_string('2', 'g2', draw_hard_divider=False),
+				highlighted_string('3', 'g3', draw_hard_divider=False),
+			],
+			'right': [],
+		}
+		self.assertRenderEqual(p, '{56} A{910}B{1112}C{56}1{78}2{910}3{--}')
+		self.assertEqual(p.logger._pop_msgs(), [])
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_configuration.py" startline="275" endline="286" pcid="1127">
+	def test_group_redirects_no_top_default(self, p, config):
+		del config['colorschemes/default']
+		config['themes/test/default']['segments'] = {
+			'left': [
+				highlighted_string('c', 'd3', draw_soft_divider=False),
+				highlighted_string('C', 'm3', draw_hard_divider=False),
+			],
+			'right': [],
+		}
+		self.assertRenderEqual(p, '{1112} c{1112}C{--}')
+		self.assertEqual(p.logger._pop_msgs(), [])
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_configuration.py" startline="260" endline="273" pcid="1126">
+	def test_group_redirects_no_main(self, p, config):
+		del config['colorschemes/test/__main__']
+		config['themes/test/default']['segments'] = {
+			'left': [
+				highlighted_string('a', 'd1', draw_hard_divider=False),
+				highlighted_string('1', 'g1', draw_hard_divider=False),
+				highlighted_string('2', 'g2', draw_hard_divider=False),
+				highlighted_string('3', 'g3', draw_hard_divider=False),
+			],
+			'right': [],
+		}
+		self.assertRenderEqual(p, '{78} a{56}1{78}2{910}3{--}')
+		self.assertEqual(p.logger._pop_msgs(), [])
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_configuration.py" startline="325" endline="338" pcid="1130">
+	def test_group_redirects_only_top_default(self, p, config):
+		del config['colorschemes/test/__main__']
+		del config['colorschemes/test/default']
+		config['themes/test/default']['segments'] = {
+			'left': [
+				highlighted_string('1', 'g1', draw_hard_divider=False),
+				highlighted_string('2', 'g2', draw_hard_divider=False),
+				highlighted_string('3', 'g3', draw_hard_divider=False),
+			],
+			'right': [],
+		}
+		self.assertRenderEqual(p, '{56} 1{78}2{910}3{--}')
+		self.assertEqual(p.logger._pop_msgs(), [])
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_configuration.py" startline="340" endline="352" pcid="1131">
+	def test_group_redirects_only_test_default(self, p, config):
+		del config['colorschemes/default']
+		del config['colorschemes/test/__main__']
+		config['themes/test/default']['segments'] = {
+			'left': [
+				highlighted_string('s', 'str1', draw_hard_divider=False),
+			],
+			'right': [],
+		}
+		self.assertRenderEqual(p, '{121} s{--}')
+		self.assertEqual(p.logger._pop_msgs(), [])
+
+
+</source>
+</class>
+
+<class classid="10" nclones="3" nlines="10" similarity="80">
+<source file="systems/powerline-2.8.2/tests/test_python/test_configuration.py" startline="391" endline="401" pcid="1137">
+	def test_only_main(self, p, config):
+		del config['themes/test/default']
+		del config['themes/' + UT]
+		self.assertRenderEqual(p, 'themes/test/default')
+		self.assertEqual(p.logger._pop_msgs(), [
+			'exception:test:powerline:Failed to load theme: themes/' + UT,
+			'exception:test:powerline:Failed to load theme: themes/test/default',
+			'exception:test:powerline:Failed to create renderer: themes/test/default',
+			'exception:test:powerline:Failed to render: themes/test/default',
+		])
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_configuration.py" startline="415" endline="428" pcid="1139">
+	def test_nothing(self, p, config):
+		del config['themes/test/default']
+		del config['themes/' + UT]
+		del config['themes/test/__main__']
+		self.assertRenderEqual(p, 'themes/test/default')
+		self.assertEqual(p.logger._pop_msgs(), [
+			'exception:test:powerline:Failed to load theme: themes/' + UT,
+			'exception:test:powerline:Failed to load theme: themes/test/__main__',
+			'exception:test:powerline:Failed to load theme: themes/test/default',
+			'exception:test:powerline:Failed to create renderer: themes/test/default',
+			'exception:test:powerline:Failed to render: themes/test/default',
+		])
+
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_configuration.py" startline="403" endline="413" pcid="1138">
+	def test_only_powerline(self, p, config):
+		del config['themes/test/default']
+		del config['themes/test/__main__']
+		self.assertRenderEqual(p, 'themes/test/default')
+		self.assertEqual(p.logger._pop_msgs(), [
+			'exception:test:powerline:Failed to load theme: themes/test/__main__',
+			'exception:test:powerline:Failed to load theme: themes/test/default',
+			'exception:test:powerline:Failed to create renderer: themes/test/default',
+			'exception:test:powerline:Failed to render: themes/test/default',
+		])
+
+</source>
+</class>
+
+<class classid="11" nclones="3" nlines="11" similarity="72">
+<source file="systems/powerline-2.8.2/tests/test_python/test_configuration.py" startline="431" endline="443" pcid="1140">
+	def test_include_modes(self, p, config):
+		config['themes/test/default']['segments'] = {
+			'left': [
+				highlighted_string('s1', 'g1', include_modes=['m1']),
+				highlighted_string('s2', 'g1', include_modes=['m1', 'm2']),
+				highlighted_string('s3', 'g1', include_modes=['m3']),
+			]
+		}
+		self.assertRenderEqual(p, '{--}')
+		self.assertRenderEqual(p, '{56} s1{56}>{56}s2{6-}>>{--}', mode='m1')
+		self.assertRenderEqual(p, '{56} s2{6-}>>{--}', mode='m2')
+		self.assertRenderEqual(p, '{56} s3{6-}>>{--}', mode='m3')
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_configuration.py" startline="445" endline="457" pcid="1141">
+	def test_exclude_modes(self, p, config):
+		config['themes/test/default']['segments'] = {
+			'left': [
+				highlighted_string('s1', 'g1', exclude_modes=['m1']),
+				highlighted_string('s2', 'g1', exclude_modes=['m1', 'm2']),
+				highlighted_string('s3', 'g1', exclude_modes=['m3']),
+			]
+		}
+		self.assertRenderEqual(p, '{56} s1{56}>{56}s2{56}>{56}s3{6-}>>{--}')
+		self.assertRenderEqual(p, '{56} s3{6-}>>{--}', mode='m1')
+		self.assertRenderEqual(p, '{56} s1{56}>{56}s3{6-}>>{--}', mode='m2')
+		self.assertRenderEqual(p, '{56} s1{56}>{56}s2{6-}>>{--}', mode='m3')
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_configuration.py" startline="459" endline="471" pcid="1142">
+	def test_exinclude_modes(self, p, config):
+		config['themes/test/default']['segments'] = {
+			'left': [
+				highlighted_string('s1', 'g1', exclude_modes=['m1'], include_modes=['m2']),
+				highlighted_string('s2', 'g1', exclude_modes=['m1', 'm2'], include_modes=['m3']),
+				highlighted_string('s3', 'g1', exclude_modes=['m3'], include_modes=['m3']),
+			]
+		}
+		self.assertRenderEqual(p, '{--}')
+		self.assertRenderEqual(p, '{--}', mode='m1')
+		self.assertRenderEqual(p, '{56} s1{6-}>>{--}', mode='m2')
+		self.assertRenderEqual(p, '{56} s2{6-}>>{--}', mode='m3')
+
+</source>
+</class>
+
+<class classid="12" nclones="2" nlines="13" similarity="84">
+<source file="systems/powerline-2.8.2/tests/test_python/test_configuration.py" startline="618" endline="636" pcid="1157">
+	def test_expand(self, p, config):
+		def m1(divider=',', **kwargs):
+			return divider.join(kwargs.keys()) + divider
+
+		def expand(pl, amount, segment, **kwargs):
+			return ('-' * amount) + segment['contents']
+
+		m1.expand = expand
+		config['themes/test/default']['segments'] = {
+			'left': [
+				{
+					'function': 'bar.m1',
+					'width': 'auto'
+				}
+			]
+		}
+		with replace_item(sys.modules, 'bar', Args(m1=m1)):
+			self.assertRenderEqual(p, '{56} ----pl,{6-}>>{--}', width=10)
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_configuration.py" startline="638" endline="656" pcid="1160">
+	def test_truncate(self, p, config):
+		def m1(divider=',', **kwargs):
+			return divider.join(kwargs.keys()) + divider
+
+		def truncate(pl, amount, segment, **kwargs):
+			return segment['contents'][:-amount]
+
+		m1.truncate = truncate
+		config['themes/test/default']['segments'] = {
+			'left': [
+				{
+					'function': 'bar.m1'
+				}
+			]
+		}
+		with replace_item(sys.modules, 'bar', Args(m1=m1)):
+			self.assertRenderEqual(p, '{56} p{6-}>>{--}', width=4)
+
+
+</source>
+</class>
+
+<class classid="13" nclones="5" nlines="11" similarity="75">
+<source file="systems/powerline-2.8.2/tests/test_python/test_logging.py" startline="38" endline="49" pcid="1199">
+	def test_stderr_handler_is_default(self):
+		out = StringIO()
+		err = StringIO()
+
+		with replace_attr(sys, 'stdout', out, 'stderr', err):
+			common_config = finish_common_config('utf-8', {})
+			logger, pl, get_module_attr = create_logger(common_config)
+			pl.error('Foo')
+			close_handlers(logger)
+			self.assertMatches(err.getvalue(), '^' + TIMESTAMP_RE + ':ERROR:__unknown__:Foo\n$')
+			self.assertEqual(out.getvalue(), '')
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_logging.py" startline="50" endline="63" pcid="1200">
+	def test_stream_override(self):
+		out = StringIO()
+		err = StringIO()
+		stream = StringIO()
+
+		with replace_attr(sys, 'stdout', out, 'stderr', err):
+			common_config = finish_common_config('utf-8', {})
+			logger, pl, get_module_attr = create_logger(common_config, stream=stream)
+			pl.error('Foo')
+			close_handlers(logger)
+			self.assertMatches(stream.getvalue(), '^' + TIMESTAMP_RE + ':ERROR:__unknown__:Foo\n$')
+			self.assertEqual(err.getvalue(), '')
+			self.assertEqual(out.getvalue(), '')
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_logging.py" startline="92" endline="105" pcid="1203">
+	def test_explicit_stream_handler_implicit_stream(self):
+		out = StringIO()
+		err = StringIO()
+		stream = StringIO()
+
+		with replace_attr(sys, 'stdout', out, 'stderr', err):
+			common_config = finish_common_config('utf-8', {'log_file': [['logging.StreamHandler', []]]})
+			logger, pl, get_module_attr = create_logger(common_config, stream=stream)
+			pl.error('Foo')
+			close_handlers(logger)
+			self.assertMatches(stream.getvalue(), '^' + TIMESTAMP_RE + ':ERROR:__unknown__:Foo\n$')
+			self.assertEqual(err.getvalue(), '')
+			self.assertEqual(out.getvalue(), '')
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_logging.py" startline="64" endline="77" pcid="1201">
+	def test_explicit_none(self):
+		out = StringIO()
+		err = StringIO()
+		stream = StringIO()
+
+		with replace_attr(sys, 'stdout', out, 'stderr', err):
+			common_config = finish_common_config('utf-8', {'log_file': [None]})
+			logger, pl, get_module_attr = create_logger(common_config, stream=stream)
+			pl.error('Foo')
+			close_handlers(logger)
+			self.assertMatches(stream.getvalue(), '^' + TIMESTAMP_RE + ':ERROR:__unknown__:Foo\n$')
+			self.assertEqual(err.getvalue(), '')
+			self.assertEqual(out.getvalue(), '')
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_logging.py" startline="78" endline="91" pcid="1202">
+	def test_explicit_stream_handler(self):
+		out = StringIO()
+		err = StringIO()
+		stream = StringIO()
+
+		with replace_attr(sys, 'stdout', out, 'stderr', err):
+			common_config = finish_common_config('utf-8', {'log_file': [['logging.StreamHandler', [[]]]]})
+			logger, pl, get_module_attr = create_logger(common_config, stream=stream)
+			pl.error('Foo')
+			close_handlers(logger)
+			self.assertEqual(stream.getvalue(), '')
+			self.assertMatches(err.getvalue(), '^' + TIMESTAMP_RE + ':ERROR:__unknown__:Foo\n$')
+			self.assertEqual(out.getvalue(), '')
+
+</source>
+</class>
+
+<class classid="14" nclones="6" nlines="20" similarity="72">
+<source file="systems/powerline-2.8.2/tests/test_python/test_logging.py" startline="106" endline="125" pcid="1204">
+	def test_file_handler(self):
+		out = StringIO()
+		err = StringIO()
+		stream = StringIO()
+		file_name = 'test_logging-test_file_handler'
+
+		with replace_attr(sys, 'stdout', out, 'stderr', err):
+			common_config = finish_common_config('utf-8', {'log_file': file_name})
+			try:
+				logger, pl, get_module_attr = create_logger(common_config, stream=stream)
+				pl.error('Foo')
+				close_handlers(logger)
+				with codecs.open(file_name, encoding='utf-8') as fp:
+					self.assertMatches(fp.read(), '^' + TIMESTAMP_RE + ':ERROR:__unknown__:Foo\n$')
+			finally:
+				os.unlink(file_name)
+			self.assertEqual(stream.getvalue(), '')
+			self.assertEqual(err.getvalue(), '')
+			self.assertEqual(out.getvalue(), '')
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_logging.py" startline="199" endline="220" pcid="1208">
+	def test_handler_args(self):
+		out = StringIO()
+		err = StringIO()
+		stream = StringIO()
+		file_name = 'test_logging-test_handler_args'
+
+		with replace_attr(sys, 'stdout', out, 'stderr', err):
+			common_config = finish_common_config('utf-8', {'log_file': [
+				['RotatingFileHandler', [[file_name]]]
+			]})
+			try:
+				logger, pl, get_module_attr = create_logger(common_config, stream=stream)
+				pl.error('Foo')
+				close_handlers(logger)
+				with codecs.open(file_name, encoding='utf-8') as fp:
+					self.assertMatches(fp.read(), '^' + TIMESTAMP_RE + ':ERROR:__unknown__:Foo\n$')
+			finally:
+				os.unlink(file_name)
+			self.assertEqual(stream.getvalue(), '')
+			self.assertEqual(err.getvalue(), '')
+			self.assertEqual(out.getvalue(), '')
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_logging.py" startline="149" endline="173" pcid="1206">
+	def test_multiple_files(self):
+		out = StringIO()
+		err = StringIO()
+		stream = StringIO()
+		file_name_1 = 'test_logging-test_multiple_files-1'
+		file_name_2 = file_name_1[:-1] + '2'
+
+		with replace_attr(sys, 'stdout', out, 'stderr', err):
+			common_config = finish_common_config('utf-8', {'log_file': [file_name_1, file_name_2]})
+			try:
+				try:
+					logger, pl, get_module_attr = create_logger(common_config, stream=stream)
+					pl.error('Foo')
+					close_handlers(logger)
+					for file_name in (file_name_1, file_name_2):
+						with codecs.open(file_name, encoding='utf-8') as fp:
+							self.assertMatches(fp.read(), '^' + TIMESTAMP_RE + ':ERROR:__unknown__:Foo\n$')
+				finally:
+					os.unlink(file_name_1)
+			finally:
+				os.unlink(file_name_2)
+			self.assertEqual(stream.getvalue(), '')
+			self.assertEqual(err.getvalue(), '')
+			self.assertEqual(out.getvalue(), '')
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_logging.py" startline="126" endline="148" pcid="1205">
+	def test_file_handler_create_dir(self):
+		out = StringIO()
+		err = StringIO()
+		stream = StringIO()
+		file_name = 'test_logging-test_file_handler_create_dir/file'
+
+		self.assertFalse(os.path.isdir(os.path.dirname(file_name)))
+
+		with replace_attr(sys, 'stdout', out, 'stderr', err):
+			common_config = finish_common_config('utf-8', {'log_file': file_name})
+			try:
+				logger, pl, get_module_attr = create_logger(common_config, stream=stream)
+				pl.error('Foo')
+				close_handlers(logger)
+				self.assertTrue(os.path.isdir(os.path.dirname(file_name)))
+				with codecs.open(file_name, encoding='utf-8') as fp:
+					self.assertMatches(fp.read(), '^' + TIMESTAMP_RE + ':ERROR:__unknown__:Foo\n$')
+			finally:
+				rmtree(os.path.dirname(file_name))
+			self.assertEqual(stream.getvalue(), '')
+			self.assertEqual(err.getvalue(), '')
+			self.assertEqual(out.getvalue(), '')
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_logging.py" startline="221" endline="248" pcid="1209">
+	def test_handler_args_kwargs(self):
+		out = StringIO()
+		err = StringIO()
+		stream = StringIO()
+		file_name = 'test_logging-test_handler_args_kwargs'
+
+		with replace_attr(sys, 'stdout', out, 'stderr', err):
+			common_config = finish_common_config('utf-8', {'log_file': [
+				['RotatingFileHandler', [[file_name], {'maxBytes': 1, 'backupCount': 1}]]
+			]})
+			try:
+				try:
+					logger, pl, get_module_attr = create_logger(common_config, stream=stream)
+					pl.error('Foo')
+					pl.error('Bar')
+					close_handlers(logger)
+					with codecs.open(file_name, encoding='utf-8') as fp:
+						self.assertMatches(fp.read(), '^' + TIMESTAMP_RE + ':ERROR:__unknown__:Bar\n$')
+					with codecs.open(file_name + '.1', encoding='utf-8') as fp:
+						self.assertMatches(fp.read(), '^' + TIMESTAMP_RE + ':ERROR:__unknown__:Foo\n$')
+				finally:
+					os.unlink(file_name + '.1')
+			finally:
+				os.unlink(file_name)
+			self.assertEqual(stream.getvalue(), '')
+			self.assertEqual(err.getvalue(), '')
+			self.assertEqual(out.getvalue(), '')
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_logging.py" startline="174" endline="198" pcid="1207">
+	def test_multiple_files_and_stream(self):
+		out = StringIO()
+		err = StringIO()
+		stream = StringIO()
+		file_name_1 = 'test_logging-test_multiple_files_and_stream-1'
+		file_name_2 = file_name_1[:-1] + '2'
+
+		with replace_attr(sys, 'stdout', out, 'stderr', err):
+			common_config = finish_common_config('utf-8', {'log_file': [file_name_1, file_name_2, None]})
+			try:
+				try:
+					logger, pl, get_module_attr = create_logger(common_config, stream=stream)
+					pl.error('Foo')
+					close_handlers(logger)
+					for file_name in (file_name_1, file_name_2):
+						with codecs.open(file_name, encoding='utf-8') as fp:
+							self.assertMatches(fp.read(), '^' + TIMESTAMP_RE + ':ERROR:__unknown__:Foo\n$')
+				finally:
+					os.unlink(file_name_1)
+			finally:
+				os.unlink(file_name_2)
+			self.assertMatches(stream.getvalue(), '^' + TIMESTAMP_RE + ':ERROR:__unknown__:Foo\n$')
+			self.assertEqual(err.getvalue(), '')
+			self.assertEqual(out.getvalue(), '')
+
+</source>
+</class>
+
+<class classid="15" nclones="5" nlines="19" similarity="72">
+<source file="systems/powerline-2.8.2/tests/test_python/test_logging.py" startline="249" endline="273" pcid="1210">
+	def test_logger_level(self):
+		out = StringIO()
+		err = StringIO()
+		stream = StringIO()
+		stream1 = StringIO()
+		stream2 = StringIO()
+
+		with replace_attr(sys, 'stdout', out, 'stderr', err):
+			common_config = finish_common_config('utf-8', {'log_file': [
+				['logging.StreamHandler', [[stream1]], 'WARNING'],
+				['logging.StreamHandler', [[stream2]], 'ERROR'],
+			]})
+			logger, pl, get_module_attr = create_logger(common_config, stream=stream)
+			pl.warn('Foo')
+			pl.error('Bar')
+			close_handlers(logger)
+			self.assertMatches(stream1.getvalue(), (
+				'^' + TIMESTAMP_RE + ':WARNING:__unknown__:Foo\n'
+				+ TIMESTAMP_RE + ':ERROR:__unknown__:Bar\n$'
+			))
+			self.assertMatches(stream2.getvalue(), '^' + TIMESTAMP_RE + ':ERROR:__unknown__:Bar\n$')
+			self.assertEqual(stream.getvalue(), '')
+			self.assertEqual(err.getvalue(), '')
+			self.assertEqual(out.getvalue(), '')
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_logging.py" startline="274" endline="292" pcid="1211">
+	def test_logger_level_not_overriding_default(self):
+		out = StringIO()
+		err = StringIO()
+		stream = StringIO()
+		stream1 = StringIO()
+
+		with replace_attr(sys, 'stdout', out, 'stderr', err):
+			common_config = finish_common_config('utf-8', {'log_file': [
+				['logging.StreamHandler', [[stream1]], 'DEBUG'],
+			]})
+			logger, pl, get_module_attr = create_logger(common_config, stream=stream)
+			pl.debug('Foo')
+			pl.error('Bar')
+			close_handlers(logger)
+			self.assertMatches(stream1.getvalue(), '^' + TIMESTAMP_RE + ':ERROR:__unknown__:Bar\n$')
+			self.assertEqual(stream.getvalue(), '')
+			self.assertEqual(err.getvalue(), '')
+			self.assertEqual(out.getvalue(), '')
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_logging.py" startline="334" endline="356" pcid="1214">
+	def test_top_log_format(self):
+		out = StringIO()
+		err = StringIO()
+		stream = StringIO()
+		stream1 = StringIO()
+		stream2 = StringIO()
+
+		with replace_attr(sys, 'stdout', out, 'stderr', err):
+			common_config = finish_common_config('utf-8', {'log_file': [
+				['logging.StreamHandler', [[stream1]], 'WARNING', 'FOO'],
+				['logging.StreamHandler', [[stream2]], 'WARNING'],
+			], 'log_format': 'BAR'})
+			logger, pl, get_module_attr = create_logger(common_config, stream=stream)
+			pl.warn('Foo')
+			pl.error('Bar')
+			close_handlers(logger)
+			self.assertEqual(stream2.getvalue(), 'BAR\nBAR\n')
+			self.assertEqual(stream1.getvalue(), 'FOO\nFOO\n')
+			self.assertEqual(stream.getvalue(), '')
+			self.assertEqual(err.getvalue(), '')
+			self.assertEqual(out.getvalue(), '')
+
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_logging.py" startline="293" endline="314" pcid="1212">
+	def test_top_log_level(self):
+		out = StringIO()
+		err = StringIO()
+		stream = StringIO()
+		stream1 = StringIO()
+
+		with replace_attr(sys, 'stdout', out, 'stderr', err):
+			common_config = finish_common_config('utf-8', {'log_file': [
+				['logging.StreamHandler', [[stream1]], 'DEBUG'],
+			], 'log_level': 'DEBUG'})
+			logger, pl, get_module_attr = create_logger(common_config, stream=stream)
+			pl.debug('Foo')
+			pl.error('Bar')
+			close_handlers(logger)
+			self.assertMatches(stream1.getvalue(), (
+				'^' + TIMESTAMP_RE + ':DEBUG:__unknown__:Foo\n'
+				+ TIMESTAMP_RE + ':ERROR:__unknown__:Bar\n$'
+			))
+			self.assertEqual(stream.getvalue(), '')
+			self.assertEqual(err.getvalue(), '')
+			self.assertEqual(out.getvalue(), '')
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_logging.py" startline="315" endline="333" pcid="1213">
+	def test_logger_format(self):
+		out = StringIO()
+		err = StringIO()
+		stream = StringIO()
+		stream1 = StringIO()
+
+		with replace_attr(sys, 'stdout', out, 'stderr', err):
+			common_config = finish_common_config('utf-8', {'log_file': [
+				['logging.StreamHandler', [[stream1]], 'WARNING', 'FOO'],
+			]})
+			logger, pl, get_module_attr = create_logger(common_config, stream=stream)
+			pl.warn('Foo')
+			pl.error('Bar')
+			close_handlers(logger)
+			self.assertEqual(stream1.getvalue(), 'FOO\nFOO\n')
+			self.assertEqual(stream.getvalue(), '')
+			self.assertEqual(err.getvalue(), '')
+			self.assertEqual(out.getvalue(), '')
+
+</source>
+</class>
+
+<class classid="16" nclones="3" nlines="10" similarity="80">
+<source file="systems/powerline-2.8.2/tests/test_python/test_logging.py" startline="358" endline="370" pcid="1215">
+	def test_args_formatting(self):
+		stream = StringIO()
+
+		common_config = finish_common_config('utf-8', {})
+		logger, pl, get_module_attr = create_logger(common_config, stream=stream)
+		pl.warn('foo {0}', 'Test')
+		pl.warn('bar {0!r}', 'Test')
+		close_handlers(logger)
+		self.assertMatches(stream.getvalue(), (
+			'^' + TIMESTAMP_RE + ':WARNING:__unknown__:foo Test\n'
+			+ TIMESTAMP_RE + ':WARNING:__unknown__:bar u?\'Test\'\n$'
+		))
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_logging.py" startline="399" endline="411" pcid="1218">
+	def test_args_kwargs_formatting(self):
+		stream = StringIO()
+
+		common_config = finish_common_config('utf-8', {})
+		logger, pl, get_module_attr = create_logger(common_config, stream=stream)
+		pl.warn('foo {0!r} {arg}', 'Test0', arg='Test')
+		pl.warn('bar {0} {arg!r}', 'Test0', arg='Test')
+		close_handlers(logger)
+		self.assertMatches(stream.getvalue(), (
+			'^' + TIMESTAMP_RE + ':WARNING:__unknown__:foo u?\'Test0\' Test\n'
+			+ TIMESTAMP_RE + ':WARNING:__unknown__:bar Test0 u?\'Test\'\n$'
+		))
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_logging.py" startline="386" endline="398" pcid="1217">
+	def test_kwargs_formatting(self):
+		stream = StringIO()
+
+		common_config = finish_common_config('utf-8', {})
+		logger, pl, get_module_attr = create_logger(common_config, stream=stream)
+		pl.warn('foo {arg}', arg='Test')
+		pl.warn('bar {arg!r}', arg='Test')
+		close_handlers(logger)
+		self.assertMatches(stream.getvalue(), (
+			'^' + TIMESTAMP_RE + ':WARNING:__unknown__:foo Test\n'
+			+ TIMESTAMP_RE + ':WARNING:__unknown__:bar u?\'Test\'\n$'
+		))
+
+</source>
+</class>
+
+<class classid="17" nclones="2" nlines="11" similarity="100">
+<source file="systems/powerline-2.8.2/tests/test_python/test_segments.py" startline="1213" endline="1226" pcid="1267">
+	def test_battery_with_ac_online(self):
+		pl = Pl()
+
+		def _get_battery_status(pl):
+			return 86, True
+
+		with replace_attr(self.module, '_get_battery_status', _get_battery_status):
+			self.assertEqual(self.module.battery(pl=pl, online='C', offline=' '), [
+				{
+					'contents': 'C 86%',
+					'highlight_groups': ['battery_gradient', 'battery'],
+					'gradient_level': 14,
+				}])
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_segments.py" startline="1227" endline="1241" pcid="1269">
+	def test_battery_with_ac_offline(self):
+		pl = Pl()
+
+		def _get_battery_status(pl):
+			return 86, False
+
+		with replace_attr(self.module, '_get_battery_status', _get_battery_status):
+			self.assertEqual(self.module.battery(pl=pl, online='C', offline=' '), [
+				{
+					'contents': '  86%',
+					'highlight_groups': ['battery_gradient', 'battery'],
+					'gradient_level': 14,
+				}])
+
+
+</source>
+</class>
+
+<class classid="18" nclones="3" nlines="10" similarity="70">
+<source file="systems/powerline-2.8.2/tests/test_python/test_segments.py" startline="1303" endline="1313" pcid="1273">
+	def test_modified_indicator(self):
+		pl = Pl()
+		segment_info = vim_module._get_segment_info()
+		self.assertEqual(self.vim.modified_indicator(pl=pl, segment_info=segment_info), None)
+		segment_info['buffer'][0] = 'abc'
+		try:
+			self.assertEqual(self.vim.modified_indicator(pl=pl, segment_info=segment_info), '+')
+			self.assertEqual(self.vim.modified_indicator(pl=pl, segment_info=segment_info, text='-'), '-')
+		finally:
+			vim_module._bw(segment_info['bufnr'])
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_segments.py" startline="1425" endline="1435" pcid="1283">
+	def test_line_count(self):
+		pl = Pl()
+		segment_info = vim_module._get_segment_info()
+		segment_info['buffer'][0:-1] = [str(i) for i in range(99)]
+		try:
+			self.assertEqual(self.vim.line_count(pl=pl, segment_info=segment_info), '100')
+			vim_module._set_cursor(50, 0)
+			self.assertEqual(self.vim.line_count(pl=pl, segment_info=segment_info), '100')
+		finally:
+			vim_module._bw(segment_info['bufnr'])
+
+</source>
+<source file="systems/powerline-2.8.2/tests/test_python/test_segments.py" startline="1411" endline="1424" pcid="1282">
+	def test_line_percent(self):
+		pl = Pl()
+		segment_info = vim_module._get_segment_info()
+		segment_info['buffer'][0:-1] = [str(i) for i in range(100)]
+		try:
+			self.assertEqual(self.vim.line_percent(pl=pl, segment_info=segment_info), '1')
+			vim_module._set_cursor(50, 0)
+			self.assertEqual(self.vim.line_percent(pl=pl, segment_info=segment_info), '50')
+			self.assertEqual(self.vim.line_percent(pl=pl, segment_info=segment_info, gradient=True), [
+				{'contents': '50', 'highlight_groups': ['line_percent_gradient', 'line_percent'], 'gradient_level': 50 * 100.0 / 101}
+			])
+		finally:
+			vim_module._bw(segment_info['bufnr'])
+
+</source>
+</class>
+
+</clones>

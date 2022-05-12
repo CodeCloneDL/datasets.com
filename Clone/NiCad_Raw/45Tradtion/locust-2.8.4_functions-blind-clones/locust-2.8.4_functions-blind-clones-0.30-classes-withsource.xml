@@ -1,0 +1,627 @@
+<clones>
+<systeminfo processor="nicad6" system="locust-2.8.4" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="414" npairs="26"/>
+<runinfo ncompares="3227" cputime="43026"/>
+<classinfo nclasses="10"/>
+
+<class classid="1" nclones="2" nlines="22" similarity="76">
+<source file="systems/locust-2.8.4/examples/custom_xmlrpc_client/xmlrpc_locustfile.py" startline="18" endline="42" pcid="16">
+    def __getattr__(self, name):
+        func = ServerProxy.__getattr__(self, name)
+
+        def wrapper(*args, **kwargs):
+            request_meta = {
+                "request_type": "xmlrpc",
+                "name": name,
+                "start_time": time.time(),
+                "response_length": 0,  # calculating this for an xmlrpc.client response would be too hard
+                "response": None,
+                "context": {},  # see HttpUser if you actually want to implement contexts
+                "exception": None,
+            }
+            start_perf_counter = time.perf_counter()
+            try:
+                request_meta["response"] = func(*args, **kwargs)
+            except Fault as e:
+                request_meta["exception"] = e
+            request_meta["response_time"] = (time.perf_counter() - start_perf_counter) * 1000
+            self._request_event.fire(**request_meta)  # This is what makes the request actually get logged in Locust
+            return request_meta["response"]
+
+        return wrapper
+
+
+</source>
+<source file="systems/locust-2.8.4/examples/grpc/locustfile.py" startline="31" endline="56" pcid="41">
+    def __getattr__(self, name):
+        func = self._stub_class.__getattribute__(self._stub, name)
+
+        def wrapper(*args, **kwargs):
+            request_meta = {
+                "request_type": "grpc",
+                "name": name,
+                "start_time": time.time(),
+                "response_length": 0,
+                "exception": None,
+                "context": None,
+                "response": None,
+            }
+            start_perf_counter = time.perf_counter()
+            try:
+                request_meta["response"] = func(*args, **kwargs)
+                request_meta["response_length"] = len(request_meta["response"].message)
+            except grpc.RpcError as e:
+                request_meta["exception"] = e
+            request_meta["response_time"] = (time.perf_counter() - start_perf_counter) * 1000
+            self.env.events.request.fire(**request_meta)
+            return request_meta["response"]
+
+        return wrapper
+
+
+</source>
+</class>
+
+<class classid="2" nclones="3" nlines="16" similarity="73">
+<source file="systems/locust-2.8.4/locust/test/test_env.py" startline="16" endline="34" pcid="147">
+    def test_user_classes_count(self):
+        class MyUser1(User):
+            wait_time = constant(0)
+
+            @task
+            def my_task(self):
+                pass
+
+        class MyUser2(User):
+            wait_time = constant(0)
+
+            @task
+            def my_task(self):
+                pass
+
+        environment = Environment(user_classes=[MyUser1, MyUser2])
+
+        self.assertDictEqual({"MyUser1": MyUser1, "MyUser2": MyUser2}, environment.user_classes_by_name)
+
+</source>
+<source file="systems/locust-2.8.4/locust/test/test_env.py" startline="147" endline="168" pcid="163">
+    def test_user_classes_with_zero_weight_are_removed(self):
+        class MyUser1(User):
+            wait_time = constant(0)
+            weight = 0
+
+            @task
+            def my_task(self):
+                pass
+
+        class MyUser2(User):
+            wait_time = constant(0)
+            weight = 1
+
+            @task
+            def my_task(self):
+                pass
+
+        environment = Environment(user_classes=[MyUser1, MyUser2])
+
+        self.assertEqual(len(environment.user_classes), 1)
+        self.assertIs(environment.user_classes[0], MyUser2)
+
+</source>
+<source file="systems/locust-2.8.4/locust/test/test_env.py" startline="169" endline="193" pcid="166">
+    def test_all_user_classes_with_zero_weight_raises_exception(self):
+        class MyUser1(User):
+            wait_time = constant(0)
+            weight = 0
+
+            @task
+            def my_task(self):
+                pass
+
+        class MyUser2(User):
+            wait_time = constant(0)
+            weight = 0
+
+            @task
+            def my_task(self):
+                pass
+
+        with self.assertRaises(ValueError) as e:
+            environment = Environment(user_classes=[MyUser1, MyUser2])
+
+        self.assertEqual(
+            e.exception.args[0],
+            "There are no users with weight > 0.",
+        )
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="12" similarity="84">
+<source file="systems/locust-2.8.4/locust/test/test_locust_class.py" startline="85" endline="98" pcid="188">
+    def test_tasks_on_locust(self):
+        class MyUser(User):
+            @task(2)
+            def t1(self):
+                pass
+
+            @task(3)
+            def t2(self):
+                pass
+
+        l = MyUser(self.environment)
+        self.assertEqual(2, len([t for t in l.tasks if t.__name__ == MyUser.t1.__name__]))
+        self.assertEqual(3, len([t for t in l.tasks if t.__name__ == MyUser.t2.__name__]))
+
+</source>
+<source file="systems/locust-2.8.4/locust/test/test_locust_class.py" startline="99" endline="115" pcid="191">
+    def test_tasks_on_abstract_locust(self):
+        class AbstractUser(User):
+            abstract = True
+
+            @task(2)
+            def t1(self):
+                pass
+
+        class MyUser(AbstractUser):
+            @task(3)
+            def t2(self):
+                pass
+
+        l = MyUser(self.environment)
+        self.assertEqual(2, len([t for t in l.tasks if t.__name__ == MyUser.t1.__name__]))
+        self.assertEqual(3, len([t for t in l.tasks if t.__name__ == MyUser.t2.__name__]))
+
+</source>
+</class>
+
+<class classid="4" nclones="5" nlines="15" similarity="75">
+<source file="systems/locust-2.8.4/locust/test/test_locust_class.py" startline="156" endline="176" pcid="199">
+    def test_on_start(self):
+        class MyTasks(TaskSet):
+            t1_executed = False
+            t2_executed = False
+
+            def on_start(self):
+                self.t1()
+
+            def t1(self):
+                self.t1_executed = True
+
+            @task
+            def t2(self):
+                self.t2_executed = True
+                raise InterruptTaskSet(reschedule=False)
+
+        l = MyTasks(self.locust)
+        self.assertRaises(RescheduleTask, lambda: l.run())
+        self.assertTrue(l.t1_executed)
+        self.assertTrue(l.t2_executed)
+
+</source>
+<source file="systems/locust-2.8.4/locust/test/test_locust_class.py" startline="453" endline="473" pcid="241">
+    def test_locust_on_start(self):
+        class MyUser(User):
+            t1_executed = False
+            t2_executed = False
+
+            def on_start(self):
+                self.t1()
+
+            def t1(self):
+                self.t1_executed = True
+
+            @task
+            def t2(self):
+                self.t2_executed = True
+                raise StopUser()
+
+        l = MyUser(self.environment)
+        l.run()
+        self.assertTrue(l.t1_executed)
+        self.assertTrue(l.t2_executed)
+
+</source>
+<source file="systems/locust-2.8.4/locust/test/test_locust_class.py" startline="177" endline="194" pcid="203">
+    def test_on_stop_interrupt(self):
+        class MyTasks(TaskSet):
+            t2_executed = False
+            on_stop_executed = False
+
+            def on_stop(self):
+                self.on_stop_executed = True
+
+            @task
+            def t2(self):
+                self.t2_executed = True
+                self.interrupt(reschedule=False)
+
+        ts = MyTasks(self.locust)
+        self.assertRaises(RescheduleTask, lambda: ts.run())
+        self.assertTrue(ts.t2_executed)
+        self.assertTrue(ts.on_stop_executed)
+
+</source>
+<source file="systems/locust-2.8.4/locust/test/test_locust_class.py" startline="474" endline="491" pcid="245">
+    def test_locust_on_stop(self):
+        class MyUser(User):
+            on_stop_executed = False
+            t2_executed = True
+
+            def on_stop(self):
+                self.on_stop_executed = True
+
+            @task
+            def t2(self):
+                self.t2_executed = True
+                raise StopUser()
+
+        l = MyUser(self.environment)
+        l.run()
+        self.assertTrue(l.on_stop_executed)
+        self.assertTrue(l.t2_executed)
+
+</source>
+<source file="systems/locust-2.8.4/locust/test/test_locust_class.py" startline="195" endline="212" pcid="206">
+    def test_on_stop_interrupt_reschedule(self):
+        class MyTasks(TaskSet):
+            t2_executed = False
+            on_stop_executed = False
+
+            def on_stop(self):
+                self.on_stop_executed = True
+
+            @task
+            def t2(self):
+                self.t2_executed = True
+                self.interrupt(reschedule=True)
+
+        ts = MyTasks(self.locust)
+        self.assertRaises(RescheduleTaskImmediately, lambda: ts.run())
+        self.assertTrue(ts.t2_executed)
+        self.assertTrue(ts.on_stop_executed)
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="14" similarity="78">
+<source file="systems/locust-2.8.4/locust/test/test_locust_class.py" startline="331" endline="348" pcid="226">
+    def test_sub_taskset(self):
+        class MySubTaskSet(TaskSet):
+            constant(1)
+
+            @task()
+            def a_task(self):
+                self.user.sub_locust_task_executed = True
+                self.interrupt()
+
+        class MyTaskSet(TaskSet):
+            tasks = [MySubTaskSet]
+
+        self.sub_locust_task_executed = False
+        loc = MyTaskSet(self.locust)
+        loc.schedule_task(loc.get_next_task())
+        self.assertRaises(RescheduleTaskImmediately, lambda: loc.execute_next_task())
+        self.assertTrue(self.locust.sub_locust_task_executed)
+
+</source>
+<source file="systems/locust-2.8.4/locust/test/test_locust_class.py" startline="349" endline="365" pcid="228">
+    def test_sub_taskset_tasks_decorator(self):
+        class MyTaskSet(TaskSet):
+            @task
+            class MySubTaskSet(TaskSet):
+                wait_time = constant(0.001)
+
+                @task()
+                def a_task(self):
+                    self.user.sub_locust_task_executed = True
+                    self.interrupt()
+
+        self.sub_locust_task_executed = False
+        loc = MyTaskSet(self.locust)
+        loc.schedule_task(loc.get_next_task())
+        self.assertRaises(RescheduleTaskImmediately, lambda: loc.execute_next_task())
+        self.assertTrue(self.locust.sub_locust_task_executed)
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="19" similarity="85">
+<source file="systems/locust-2.8.4/locust/test/test_locust_class.py" startline="515" endline="541" pcid="250">
+    def test_locust_graceful_stop(self):
+        class TestUser(User):
+            test_state = 0
+
+            @task
+            def t(self):
+                self.test_state = 1
+                sleep(0.1)
+                self.test_state = 2
+
+        group = Group()
+        user = TestUser(self.environment)
+        greenlet = user.start(group)
+        sleep(0)
+        self.assertEqual(1, user.test_state)
+
+        # stop User gracefully
+        user.stop(force=False)
+        sleep(0)
+        # make sure instance is not killed right away
+        self.assertIn(greenlet, group)
+        self.assertEqual(1, user.test_state)
+        sleep(0.2)
+        # check that locust instance has now died and that the task got to finish
+        self.assertEqual(0, len(group))
+        self.assertEqual(2, user.test_state)
+
+</source>
+<source file="systems/locust-2.8.4/locust/test/test_locust_class.py" startline="542" endline="565" pcid="252">
+    def test_locust_forced_stop(self):
+        class TestUser(User):
+            test_state = 0
+
+            @task
+            def t(self):
+                self.test_state = 1
+                sleep(0.1)
+                self.test_state = 2
+
+        group = Group()
+        user = TestUser(self.environment)
+        greenlet = user.start(group)
+        sleep(0)
+        self.assertIn(greenlet, group)
+        self.assertEqual(1, user.test_state)
+
+        # stop User gracefully
+        user.stop(force=True)
+        sleep(0)
+        # make sure instance is killed right away, and that the task did NOT get to finish
+        self.assertEqual(0, len(group))
+        self.assertEqual(1, user.test_state)
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="10" similarity="90">
+<source file="systems/locust-2.8.4/locust/test/test_locust_class.py" startline="799" endline="810" pcid="281">
+    def test_catch_response_connection_error_success(self):
+        class MyUser(HttpUser):
+            host = "http://127.0.0.1:1"
+
+        l = MyUser(self.environment)
+        with l.client.get("/", catch_response=True) as r:
+            self.assertEqual(r.status_code, 0)
+            self.assertEqual(None, r.content)
+            r.success()
+        self.assertEqual(1, self.num_success)
+        self.assertEqual(0, self.num_failures)
+
+</source>
+<source file="systems/locust-2.8.4/locust/test/test_locust_class.py" startline="811" endline="821" pcid="282">
+    def test_catch_response_connection_error_fail(self):
+        class MyUser(HttpUser):
+            host = "http://127.0.0.1:1"
+
+        l = MyUser(self.environment)
+        with l.client.get("/", catch_response=True) as r:
+            self.assertEqual(r.status_code, 0)
+            self.assertEqual(None, r.content)
+            r.failure("Manual fail")
+        self.assertEqual(0, self.num_success)
+        self.assertEqual(1, self.num_failures)
+</source>
+</class>
+
+<class classid="8" nclones="5" nlines="17" similarity="70">
+<source file="systems/locust-2.8.4/locust/test/test_sequential_taskset.py" startline="16" endline="35" pcid="300">
+    def test_task_sequence_with_list(self):
+        log = []
+
+        def t1(ts):
+            log.append(1)
+
+        def t2(ts):
+            log.append(2)
+
+        def t3(ts):
+            log.append(3)
+            ts.interrupt(reschedule=False)
+
+        class MyTaskSequence(SequentialTaskSet):
+            tasks = [t1, t2, t3]
+
+        l = MyTaskSequence(self.locust)
+        self.assertRaises(RescheduleTask, lambda: l.run())
+        self.assertEqual([1, 2, 3], log)
+
+</source>
+<source file="systems/locust-2.8.4/locust/test/test_sequential_taskset.py" startline="36" endline="56" pcid="304">
+    def test_task_sequence_with_methods(self):
+        log = []
+
+        class MyTaskSequence(SequentialTaskSet):
+            @task
+            def t1(self):
+                log.append(1)
+
+            @task
+            def t2(self):
+                log.append(2)
+
+            @task(1)
+            def t3(self):
+                log.append(3)
+                self.interrupt(reschedule=False)
+
+        l = MyTaskSequence(self.locust)
+        self.assertRaises(RescheduleTask, lambda: l.run())
+        self.assertEqual([1, 2, 3], log)
+
+</source>
+<source file="systems/locust-2.8.4/locust/test/test_sequential_taskset.py" startline="113" endline="136" pcid="318">
+    def test_task_sequence_multiple_iterations(self):
+        log = []
+
+        class TS(SequentialTaskSet):
+            iteration_count = 0
+
+            @task
+            def t1(self):
+                log.append(1)
+
+            @task
+            def t2(self):
+                log.append(2)
+
+            @task(1)
+            def t3(self):
+                log.append(3)
+                self.iteration_count += 1
+                if self.iteration_count == 3:
+                    self.interrupt(reschedule=False)
+
+        l = TS(self.locust)
+        self.assertRaises(RescheduleTask, lambda: l.run())
+        self.assertEqual([1, 2, 3, 1, 2, 3, 1, 2, 3], log)
+</source>
+<source file="systems/locust-2.8.4/locust/test/test_sequential_taskset.py" startline="86" endline="112" pcid="314">
+    def test_task_sequence_with_inheritance(self):
+        log = []
+
+        class TS1(SequentialTaskSet):
+            @task
+            def t1(self):
+                log.append(1)
+
+            tasks = [lambda ts: log.append(30)]
+
+        class TS2(TS1):
+            tasks = [lambda ts: log.append(20)]
+
+            @task
+            def t2(self):
+                log.append(2)
+
+        class TS3(TS2):
+            @task
+            def t3(self):
+                log.append(3)
+                self.interrupt(reschedule=False)
+
+        l = TS3(self.locust)
+        self.assertRaises(RescheduleTask, lambda: l.run())
+        self.assertEqual([1, 30, 20, 2, 3], log)
+
+</source>
+<source file="systems/locust-2.8.4/locust/test/test_sequential_taskset.py" startline="57" endline="85" pcid="308">
+    def test_task_sequence_with_methods_and_list(self):
+        log = []
+
+        def func_t1(ts):
+            log.append(101)
+
+        def func_t2(ts):
+            log.append(102)
+
+        class MyTaskSequence(SequentialTaskSet):
+            @task
+            def t1(self):
+                log.append(1)
+
+            @task
+            def t2(self):
+                log.append(2)
+
+            tasks = [func_t1, func_t2]
+
+            @task(1)
+            def t3(self):
+                log.append(3)
+                self.interrupt(reschedule=False)
+
+        l = MyTaskSequence(self.locust)
+        self.assertRaises(RescheduleTask, lambda: l.run())
+        self.assertEqual([1, 2, 101, 102, 3], log)
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="12" similarity="75">
+<source file="systems/locust-2.8.4/locust/test/test_web.py" startline="191" endline="205" pcid="365">
+    def test_exceptions(self):
+        try:
+            raise Exception("A cool test exception")
+        except Exception as e:
+            tb = e.__traceback__
+            self.runner.log_exception("local", str(e), "".join(traceback.format_tb(tb)))
+            self.runner.log_exception("local", str(e), "".join(traceback.format_tb(tb)))
+
+        response = requests.get("http://127.0.0.1:%i/exceptions" % self.web_port)
+        self.assertEqual(200, response.status_code)
+        self.assertIn("A cool test exception", response.text)
+
+        response = requests.get("http://127.0.0.1:%i/stats/requests" % self.web_port)
+        self.assertEqual(200, response.status_code)
+
+</source>
+<source file="systems/locust-2.8.4/locust/test/test_web.py" startline="383" endline="403" pcid="383">
+    def test_report_exceptions(self):
+        try:
+            raise Exception("Test exception")
+        except Exception as e:
+            tb = e.__traceback__
+            self.runner.log_exception("local", str(e), "".join(traceback.format_tb(tb)))
+            self.runner.log_exception("local", str(e), "".join(traceback.format_tb(tb)))
+        self.stats.log_request("GET", "/test", 120, 5612)
+        r = requests.get("http://127.0.0.1:%i/stats/report" % self.web_port)
+        # self.assertEqual(200, r.status_code)
+        self.assertIn("<h2>Exceptions Statistics</h2>", r.text)
+
+        # Prior to 088a98bf8ff4035a0de3becc8cd4e887d618af53, the "nodes" field for each exception in
+        # "self.runner.exceptions" was accidentally mutated in "get_html_report" to a string.
+        # This assertion reproduces the issue and it is left there to make sure there's no
+        # regression in the future.
+        self.assertTrue(
+            isinstance(next(iter(self.runner.exceptions.values()))["nodes"], set), "exception object has been mutated"
+        )
+
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="10" similarity="90">
+<source file="systems/locust-2.8.4/locust/test/test_web.py" startline="309" endline="321" pcid="375">
+    def test_host_value_from_multiple_user_classes(self):
+        class MyUser(User):
+            host = "http://example.com"
+
+        class MyUser2(User):
+            host = "http://example.com"
+
+        self.environment.user_classes = [MyUser, MyUser2]
+        response = requests.get("http://127.0.0.1:%i/" % self.web_port)
+        self.assertEqual(200, response.status_code)
+        self.assertIn("http://example.com", response.content.decode("utf-8"))
+        self.assertNotIn("setting this will override the host on all User classes", response.content.decode("utf-8"))
+
+</source>
+<source file="systems/locust-2.8.4/locust/test/test_web.py" startline="322" endline="334" pcid="376">
+    def test_host_value_from_multiple_user_classes_different_hosts(self):
+        class MyUser(User):
+            host = None
+
+        class MyUser2(User):
+            host = "http://example.com"
+
+        self.environment.user_classes = [MyUser, MyUser2]
+        response = requests.get("http://127.0.0.1:%i/" % self.web_port)
+        self.assertEqual(200, response.status_code)
+        self.assertNotIn("http://example.com", response.content.decode("utf-8"))
+        self.assertIn("setting this will override the host on all User classes", response.content.decode("utf-8"))
+
+</source>
+</class>
+
+</clones>

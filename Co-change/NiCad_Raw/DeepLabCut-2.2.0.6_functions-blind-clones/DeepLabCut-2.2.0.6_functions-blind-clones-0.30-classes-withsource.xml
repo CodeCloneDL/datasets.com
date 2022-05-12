@@ -1,0 +1,2943 @@
+<clones>
+<systeminfo processor="nicad6" system="DeepLabCut-2.2.0.6" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="662" npairs="102"/>
+<runinfo ncompares="16400" cputime="72139"/>
+<classinfo nclasses="28"/>
+
+<class classid="1" nclones="2" nlines="61" similarity="83">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/refine_training_dataset/outlier_frames.py" startline="781" endline="847" pcid="28">
+def PlottingSingleFrame(
+    clip,
+    Dataframe,
+    bodyparts2plot,
+    tmpfolder,
+    index,
+    dotsize,
+    pcutoff,
+    alphavalue,
+    colors,
+    strwidth=4,
+    savelabeled=True,
+):
+    """Label frame and save under imagename / this is already cropped (for clip)"""
+    from skimage import io
+
+    imagename1 = os.path.join(tmpfolder, "img" + str(index).zfill(strwidth) + ".png")
+    imagename2 = os.path.join(
+        tmpfolder, "img" + str(index).zfill(strwidth) + "labeled.png"
+    )
+
+    if not os.path.isfile(
+        os.path.join(tmpfolder, "img" + str(index).zfill(strwidth) + ".png")
+    ):
+        plt.axis("off")
+        image = img_as_ubyte(clip.get_frame(index * 1.0 / clip.fps))
+        io.imsave(imagename1, image)
+
+        if savelabeled:
+            if np.ndim(image) > 2:
+                h, w, nc = np.shape(image)
+            else:
+                h, w = np.shape(image)
+
+            bpts = Dataframe.columns.get_level_values("bodyparts")
+            all_bpts = bpts.values[::3]
+            df_x, df_y, df_likelihood = Dataframe.values.reshape(
+                (Dataframe.shape[0], -1, 3)
+            ).T
+            bplist = bpts.unique().to_list()
+            if Dataframe.columns.nlevels == 3:
+                map2bp = list(range(len(all_bpts)))
+            else:
+                map2bp = [bplist.index(bp) for bp in all_bpts]
+            keep = np.flatnonzero(np.isin(all_bpts, bodyparts2plot))
+
+            plt.figure(frameon=False, figsize=(w * 1.0 / 100, h * 1.0 / 100))
+            plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
+            plt.imshow(image)
+            for i, ind in enumerate(keep):
+                if df_likelihood[ind, index] > pcutoff:
+                    plt.scatter(
+                        df_x[ind, index],
+                        df_y[ind, index],
+                        s=dotsize ** 2,
+                        color=colors(map2bp[i]),
+                        alpha=alphavalue,
+                    )
+            plt.xlim(0, w)
+            plt.ylim(0, h)
+            plt.axis("off")
+            plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
+            plt.gca().invert_yaxis()
+            plt.savefig(imagename2)
+            plt.close("all")
+
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/refine_training_dataset/outlier_frames.py" startline="848" endline="926" pcid="29">
+def PlottingSingleFramecv2(
+    cap,
+    crop,
+    coords,
+    Dataframe,
+    bodyparts2plot,
+    tmpfolder,
+    index,
+    dotsize,
+    pcutoff,
+    alphavalue,
+    colors,
+    strwidth=4,
+    savelabeled=True,
+):
+    """Label frame and save under imagename / cap is not already cropped."""
+    from skimage import io
+
+    imagename1 = os.path.join(tmpfolder, "img" + str(index).zfill(strwidth) + ".png")
+    imagename2 = os.path.join(
+        tmpfolder, "img" + str(index).zfill(strwidth) + "labeled.png"
+    )
+
+    if not os.path.isfile(
+        os.path.join(tmpfolder, "img" + str(index).zfill(strwidth) + ".png")
+    ):
+        plt.axis("off")
+        cap.set_to_frame(index)
+        frame = cap.read_frame()
+        if frame is None:
+            print("Frame could not be read.")
+            return
+        image = img_as_ubyte(frame)
+        if crop:
+            image = image[
+                int(coords[2]) : int(coords[3]), int(coords[0]) : int(coords[1]), :
+            ]
+
+        io.imsave(imagename1, image)
+
+        if savelabeled:
+            if np.ndim(image) > 2:
+                h, w, nc = np.shape(image)
+            else:
+                h, w = np.shape(image)
+
+            bpts = Dataframe.columns.get_level_values("bodyparts")
+            all_bpts = bpts.values[::3]
+            df_x, df_y, df_likelihood = Dataframe.values.reshape(
+                (Dataframe.shape[0], -1, 3)
+            ).T
+            bplist = bpts.unique().to_list()
+            if Dataframe.columns.nlevels == 3:
+                map2bp = list(range(len(all_bpts)))
+            else:
+                map2bp = [bplist.index(bp) for bp in all_bpts]
+            keep = np.flatnonzero(np.isin(all_bpts, bodyparts2plot))
+
+            plt.figure(frameon=False, figsize=(w * 1.0 / 100, h * 1.0 / 100))
+            plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
+            plt.imshow(image)
+            for i, ind in enumerate(keep):
+                if df_likelihood[ind, index] > pcutoff:
+                    plt.scatter(
+                        df_x[ind, index],
+                        df_y[ind, index],
+                        s=dotsize ** 2,
+                        color=colors(map2bp[i]),
+                        alpha=alphavalue,
+                    )
+            plt.xlim(0, w)
+            plt.ylim(0, h)
+            plt.axis("off")
+            plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
+            plt.gca().invert_yaxis()
+            plt.savefig(imagename2)
+            plt.close("all")
+
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="10" similarity="80">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/utils/auxiliaryfunctions.py" startline="196" endline="213" pcid="140">
+def write_config(configname, cfg):
+    """
+    Write structured config file.
+    """
+    with open(configname, "w") as cf:
+        cfg_file, ruamelFile = create_config_template(
+            cfg.get("multianimalproject", False)
+        )
+        for key in cfg.keys():
+            cfg_file[key] = cfg[key]
+
+        # Adding default value for variable skeleton and skeleton_color for backward compatibility.
+        if not "skeleton" in cfg.keys():
+            cfg_file["skeleton"] = []
+            cfg_file["skeleton_color"] = "black"
+        ruamelFile.dump(cfg_file, cf)
+
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/pose_estimation_tensorflow/export.py" startline="59" endline="79" pcid="255">
+def write_deploy_config(configname, cfg):
+    """
+
+    CURRENTLY NOT IMPLEMENTED
+
+    Write structured config file.
+    """
+
+    with open(configname, "w") as cf:
+        ruamelFile = ruamel.yaml.YAML()
+        cfg_file, ruamelFile = create_deploy_config_template()
+        for key in cfg.keys():
+            cfg_file[key] = cfg[key]
+
+        # Adding default value for variable skeleton and skeleton_color for backward compatibility.
+        if not "skeleton" in cfg.keys():
+            cfg_file["skeleton"] = []
+            cfg_file["skeleton_color"] = "black"
+        ruamelFile.dump(cfg_file, cf)
+
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="17" similarity="73">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/utils/auxiliaryfunctions.py" startline="463" endline="479" pcid="158">
+def GetModelFolder(trainFraction, shuffle, cfg, modelprefix=""):
+    Task = cfg["Task"]
+    date = cfg["date"]
+    iterate = "iteration-" + str(cfg["iteration"])
+    return Path(
+        modelprefix,
+        "dlc-models",
+        iterate,
+        Task
+        + date
+        + "-trainset"
+        + str(int(trainFraction * 100))
+        + "shuffle"
+        + str(shuffle),
+    )
+
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/utils/auxiliaryfunctions.py" startline="480" endline="500" pcid="159">
+def GetEvaluationFolder(trainFraction, shuffle, cfg, modelprefix=""):
+    Task = cfg["Task"]
+    date = cfg["date"]
+    iterate = "iteration-" + str(cfg["iteration"])
+    if "eval_prefix" in cfg:
+        eval_prefix = cfg["eval_prefix"]
+    else:
+        eval_prefix = "evaluation-results"
+    return Path(
+        modelprefix,
+        eval_prefix,
+        iterate,
+        Task
+        + date
+        + "-trainset"
+        + str(int(trainFraction * 100))
+        + "shuffle"
+        + str(shuffle),
+    )
+
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="46" similarity="77">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/pose_estimation_tensorflow/predict_videos.py" startline="430" endline="481" pcid="184">
+def GetPoseF(cfg, dlc_cfg, sess, inputs, outputs, cap, nframes, batchsize):
+    """Batchwise prediction of pose"""
+    PredictedData = np.zeros(
+        (nframes, dlc_cfg["num_outputs"] * 3 * len(dlc_cfg["all_joints_names"]))
+    )
+    batch_ind = 0  # keeps track of which image within a batch should be written to
+    batch_num = 0  # keeps track of which batch you are at
+    ny, nx = int(cap.get(4)), int(cap.get(3))
+    if cfg["cropping"]:
+        ny, nx = checkcropping(cfg, cap)
+
+    frames = np.empty(
+        (batchsize, ny, nx, 3), dtype="ubyte"
+    )  # this keeps all frames in a batch
+    pbar = tqdm(total=nframes)
+    counter = 0
+    step = max(10, int(nframes / 100))
+    inds = []
+    while cap.isOpened():
+        if counter % step == 0:
+            pbar.update(step)
+        ret, frame = cap.read()
+        if ret:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            if cfg["cropping"]:
+                frames[batch_ind] = img_as_ubyte(
+                    frame[cfg["y1"] : cfg["y2"], cfg["x1"] : cfg["x2"]]
+                )
+            else:
+                frames[batch_ind] = img_as_ubyte(frame)
+            inds.append(counter)
+            if batch_ind == batchsize - 1:
+                pose = predict.getposeNP(frames, dlc_cfg, sess, inputs, outputs)
+                PredictedData[inds] = pose
+                batch_ind = 0
+                inds.clear()
+                batch_num += 1
+            else:
+                batch_ind += 1
+        elif counter >= nframes:
+            if batch_ind > 0:
+                pose = predict.getposeNP(
+                    frames, dlc_cfg, sess, inputs, outputs
+                )  # process the whole batch (some frames might be from previous batch!)
+                PredictedData[inds[:batch_ind]] = pose[:batch_ind]
+            break
+        counter += 1
+
+    pbar.close()
+    return PredictedData, nframes
+
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/pose_estimation_tensorflow/predict_videos.py" startline="565" endline="625" pcid="187">
+def GetPoseF_GTF(cfg, dlc_cfg, sess, inputs, outputs, cap, nframes, batchsize):
+    """Batchwise prediction of pose"""
+    PredictedData = np.zeros((nframes, 3 * len(dlc_cfg["all_joints_names"])))
+    batch_ind = 0  # keeps track of which image within a batch should be written to
+    batch_num = 0  # keeps track of which batch you are at
+    ny, nx = int(cap.get(4)), int(cap.get(3))
+    if cfg["cropping"]:
+        ny, nx = checkcropping(cfg, cap)
+
+    pose_tensor = predict.extract_GPUprediction(
+        outputs, dlc_cfg
+    )  # extract_output_tensor(outputs, dlc_cfg)
+    frames = np.empty(
+        (batchsize, ny, nx, 3), dtype="ubyte"
+    )  # this keeps all frames in a batch
+    pbar = tqdm(total=nframes)
+    counter = 0
+    step = max(10, int(nframes / 100))
+    inds = []
+    while cap.isOpened():
+        if counter % step == 0:
+            pbar.update(step)
+        ret, frame = cap.read()
+        if ret:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            if cfg["cropping"]:
+                frames[batch_ind] = img_as_ubyte(
+                    frame[cfg["y1"] : cfg["y2"], cfg["x1"] : cfg["x2"]]
+                )
+            else:
+                frames[batch_ind] = img_as_ubyte(frame)
+            inds.append(counter)
+            if batch_ind == batchsize - 1:
+                # pose = predict.getposeNP(frames,dlc_cfg, sess, inputs, outputs)
+                pose = sess.run(pose_tensor, feed_dict={inputs: frames})
+                pose[:, [0, 1, 2]] = pose[
+                    :, [1, 0, 2]
+                ]  # change order to have x,y,confidence
+                pose = np.reshape(
+                    pose, (batchsize, -1)
+                )  # bring into batchsize times x,y,conf etc.
+                PredictedData[inds] = pose
+                batch_ind = 0
+                inds.clear()
+                batch_num += 1
+            else:
+                batch_ind += 1
+        elif counter >= nframes:
+            if batch_ind > 0:
+                # pose = predict.getposeNP(frames, dlc_cfg, sess, inputs, outputs) #process the whole batch (some frames might be from previous batch!)
+                pose = sess.run(pose_tensor, feed_dict={inputs: frames})
+                pose[:, [0, 1, 2]] = pose[:, [1, 0, 2]]
+                pose = np.reshape(pose, (batchsize, -1))
+                PredictedData[inds[:batch_ind]] = pose[:batch_ind]
+            break
+        counter += 1
+
+    pbar.close()
+    return PredictedData, nframes
+
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="31" similarity="78">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/pose_estimation_tensorflow/predict_videos.py" startline="482" endline="519" pcid="185">
+def GetPoseS(cfg, dlc_cfg, sess, inputs, outputs, cap, nframes):
+    """Non batch wise pose estimation for video cap."""
+    if cfg["cropping"]:
+        ny, nx = checkcropping(cfg, cap)
+
+    PredictedData = np.zeros(
+        (nframes, dlc_cfg["num_outputs"] * 3 * len(dlc_cfg["all_joints_names"]))
+    )
+    pbar = tqdm(total=nframes)
+    counter = 0
+    step = max(10, int(nframes / 100))
+    while cap.isOpened():
+        if counter % step == 0:
+            pbar.update(step)
+
+        ret, frame = cap.read()
+        if ret:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            if cfg["cropping"]:
+                frame = img_as_ubyte(
+                    frame[cfg["y1"] : cfg["y2"], cfg["x1"] : cfg["x2"]]
+                )
+            else:
+                frame = img_as_ubyte(frame)
+            pose = predict.getpose(frame, dlc_cfg, sess, inputs, outputs)
+            PredictedData[
+                counter, :
+            ] = (
+                pose.flatten()
+            )  # NOTE: thereby cfg['all_joints_names'] should be same order as bodyparts!
+        elif counter >= nframes:
+            break
+        counter += 1
+
+    pbar.close()
+    return PredictedData, nframes
+
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/pose_estimation_tensorflow/predict_videos.py" startline="520" endline="564" pcid="186">
+def GetPoseS_GTF(cfg, dlc_cfg, sess, inputs, outputs, cap, nframes):
+    """Non batch wise pose estimation for video cap."""
+    if cfg["cropping"]:
+        ny, nx = checkcropping(cfg, cap)
+
+    pose_tensor = predict.extract_GPUprediction(
+        outputs, dlc_cfg
+    )  # extract_output_tensor(outputs, dlc_cfg)
+    PredictedData = np.zeros((nframes, 3 * len(dlc_cfg["all_joints_names"])))
+    pbar = tqdm(total=nframes)
+    counter = 0
+    step = max(10, int(nframes / 100))
+    while cap.isOpened():
+        if counter % step == 0:
+            pbar.update(step)
+
+        ret, frame = cap.read()
+        if ret:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            if cfg["cropping"]:
+                frame = img_as_ubyte(
+                    frame[cfg["y1"] : cfg["y2"], cfg["x1"] : cfg["x2"]]
+                )
+            else:
+                frame = img_as_ubyte(frame)
+
+            pose = sess.run(
+                pose_tensor,
+                feed_dict={inputs: np.expand_dims(frame, axis=0).astype(float)},
+            )
+            pose[:, [0, 1, 2]] = pose[:, [1, 0, 2]]
+            # pose = predict.getpose(frame, dlc_cfg, sess, inputs, outputs)
+            PredictedData[
+                counter, :
+            ] = (
+                pose.flatten()
+            )  # NOTE: thereby cfg['all_joints_names'] should be same order as bodyparts!
+        elif counter >= nframes:
+            break
+        counter += 1
+
+    pbar.close()
+    return PredictedData, nframes
+
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="16" similarity="100">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/pose_estimation_tensorflow/nnets/layers.py" startline="50" endline="65" pcid="220">
+def prediction_layer_stage(cfg, input, name, num_outputs):
+    with slim.arg_scope(
+        [slim.conv2d, slim.conv2d_transpose],
+        padding="SAME",
+        activation_fn=None,
+        normalizer_fn=None,
+        weights_regularizer=slim.l2_regularizer(cfg["weight_decay"]),
+    ):
+        with tf.compat.v1.variable_scope(name):
+            pred = slim.conv2d(
+                input,
+                num_outputs,
+                kernel_size=[3, 3],
+                stride=1,
+            )
+            return pred
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/pose_estimation_tensorflow/nnets/multi.py" startline="90" endline="107" pcid="231">
+def prediction_layer(cfg, input, name, num_outputs):
+    with slim.arg_scope(
+        [slim.conv2d, slim.conv2d_transpose],
+        padding="SAME",
+        activation_fn=None,
+        normalizer_fn=None,
+        weights_regularizer=slim.l2_regularizer(cfg["weight_decay"]),
+    ):
+        with tf.compat.v1.variable_scope(name):
+            pred = slim.conv2d_transpose(
+                input,
+                num_outputs,
+                kernel_size=[3, 3],
+                stride=2,
+            )
+            return pred
+
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="24" similarity="76">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/pose_estimation_tensorflow/nnets/mobilenet.py" startline="71" endline="92" pcid="238">
+    def prediction_layers(
+        self,
+        features,
+        end_points,
+        scope="pose",
+        reuse=None,
+    ):
+        out = super(PoseMobileNet, self).prediction_layers(
+            features,
+            scope,
+            reuse,
+        )
+        with tf.compat.v1.variable_scope(scope, reuse=reuse):
+            if self.cfg["intermediate_supervision"]:
+                out["part_pred_interm"] = prediction_layer(
+                    self.cfg,
+                    end_points[f"layer_{self.cfg['intermediate_supervision_layer']}"],
+                    "intermediate_supervision",
+                    self.cfg["num_joints"] + self.cfg.get("num_idchannel", 0),
+                )
+        return out
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/pose_estimation_tensorflow/nnets/resnet.py" startline="47" endline="74" pcid="246">
+    def prediction_layers(
+        self,
+        features,
+        end_points,
+        scope="pose",
+        reuse=None,
+    ):
+        out = super(PoseResnet, self).prediction_layers(
+            features,
+            scope,
+            reuse,
+        )
+        with tf.compat.v1.variable_scope(scope, reuse=reuse):
+            if self.cfg["intermediate_supervision"]:
+                layer_name = "resnet_v1_{}/block{}/unit_{}/bottleneck_v1"
+                num_layers = re.findall("resnet_([0-9]*)", self.cfg["net_type"])[0]
+                interm_name = layer_name.format(
+                    num_layers, 3, self.cfg["intermediate_supervision_layer"]
+                )
+                block_interm_out = end_points[interm_name]
+                out["part_pred_interm"] = prediction_layer(
+                    self.cfg,
+                    block_interm_out,
+                    "intermediate_supervision",
+                    self.cfg["num_joints"] + self.cfg.get("num_idchannel", 0),
+                )
+        return out
+
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="20" similarity="73">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/pose_estimation_tensorflow/core/predict.py" startline="30" endline="62" pcid="283">
+def setup_pose_prediction(cfg, allow_growth=False):
+    tf.compat.v1.reset_default_graph()
+    inputs = tf.compat.v1.placeholder(
+        tf.float32, shape=[cfg["batch_size"], None, None, 3]
+    )
+    net_heads = PoseNetFactory.create(cfg).test(inputs)
+    outputs = [net_heads["part_prob"]]
+    if cfg["location_refinement"]:
+        outputs.append(net_heads["locref"])
+
+    if ("multi-animal" in cfg["dataset_type"]) and cfg["partaffinityfield_predict"]:
+        print("Activating extracting of PAFs")
+        outputs.append(net_heads["pairwise_pred"])
+
+    outputs.append(net_heads["peak_inds"])
+
+    restorer = tf.compat.v1.train.Saver()
+
+    if allow_growth:
+        config = tf.compat.v1.ConfigProto()
+        config.gpu_options.allow_growth = True
+        sess = tf.compat.v1.Session(config=config)
+    else:
+        sess = tf.compat.v1.Session()
+    sess.run(tf.compat.v1.global_variables_initializer())
+    sess.run(tf.compat.v1.local_variables_initializer())
+
+    # Restore variables from disk.
+    restorer.restore(sess, cfg["init_weights"])
+
+    return sess, inputs, outputs
+
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/pose_estimation_tensorflow/core/predict.py" startline="209" endline="234" pcid="291">
+def setup_GPUpose_prediction(cfg, allow_growth=False):
+    tf.compat.v1.reset_default_graph()
+    inputs = tf.compat.v1.placeholder(
+        tf.float32, shape=[cfg["batch_size"], None, None, 3]
+    )
+    net_heads = PoseNetFactory.create(cfg).inference(inputs)
+    outputs = [net_heads["pose"]]
+
+    restorer = tf.compat.v1.train.Saver()
+
+    if allow_growth:
+        config = tf.compat.v1.ConfigProto()
+        config.gpu_options.allow_growth = True
+        sess = tf.compat.v1.Session(config=config)
+    else:
+        sess = tf.compat.v1.Session()
+
+    sess.run(tf.compat.v1.global_variables_initializer())
+    sess.run(tf.compat.v1.local_variables_initializer())
+
+    # Restore variables from disk.
+    restorer.restore(sess, cfg["init_weights"])
+
+    return sess, inputs, outputs
+
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="12" similarity="75">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/pose_estimation_tensorflow/core/predict.py" startline="63" endline="77" pcid="284">
+def extract_cnn_output(outputs_np, cfg):
+    """extract locref + scmap from network"""
+    scmap = outputs_np[0]
+    scmap = np.squeeze(scmap)
+    locref = None
+    if cfg["location_refinement"]:
+        locref = np.squeeze(outputs_np[1])
+        shape = locref.shape
+        locref = np.reshape(locref, (shape[0], shape[1], -1, 2))
+        locref *= cfg["locref_stdev"]
+    if len(scmap.shape) == 2:  # for single body part!
+        scmap = np.expand_dims(scmap, axis=2)
+    return scmap, locref
+
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/pose_estimation_tensorflow/core/predict.py" startline="133" endline="147" pcid="288">
+def extract_cnn_outputmulti(outputs_np, cfg):
+    """extract locref + scmap from network
+    Dimensions: image batch x imagedim1 x imagedim2 x bodypart"""
+    scmap = outputs_np[0]
+    locref = None
+    if cfg["location_refinement"]:
+        locref = outputs_np[1]
+        shape = locref.shape
+        locref = np.reshape(locref, (shape[0], shape[1], shape[2], -1, 2))
+        locref *= cfg["locref_stdev"]
+    if len(scmap.shape) == 2:  # for single body part!
+        scmap = np.expand_dims(scmap, axis=2)
+    return scmap, locref
+
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="25" similarity="81">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/pose_estimation_tensorflow/backbones/efficientnet_model.py" startline="266" endline="310" pcid="301">
+    def call(
+        self, inputs, use_batch_norm=False, drop_out=False, drop_connect_rate=None
+    ):
+        """Implementation of call().
+        Args:
+          inputs: the inputs tensor.
+          training: boolean, whether the model is constructed for training.
+          drop_connect_rate: float, between 0 to 1, drop connect rate.
+        Returns:
+          A output tensor.
+        """
+        tf.compat.v1.logging.info(
+            "Block input: %s shape: %s" % (inputs.name, inputs.shape)
+        )
+        if self._block_args.expand_ratio != 1:
+            x = self._relu_fn(
+                self._bn0(self._expand_conv(inputs), training=use_batch_norm)
+            )
+        else:
+            x = inputs
+        tf.compat.v1.logging.info("Expand: %s shape: %s" % (x.name, x.shape))
+
+        x = self._relu_fn(self._bn1(self._depthwise_conv(x), training=use_batch_norm))
+        tf.compat.v1.logging.info("DWConv: %s shape: %s" % (x.name, x.shape))
+
+        if self._has_se:
+            with tf.compat.v1.variable_scope("se"):
+                x = self._call_se(x)
+
+        self.endpoints = {"expansion_output": x}
+
+        x = self._bn2(self._project_conv(x), training=use_batch_norm)
+        if self._block_args.id_skip:
+            if (
+                all(s == 1 for s in self._block_args.strides)
+                and self._block_args.input_filters == self._block_args.output_filters
+            ):
+                # only apply drop_connect if skip presents.
+                if drop_connect_rate:
+                    x = utils.drop_connect(x, drop_out, drop_connect_rate)
+                x = tf.add(x, inputs)
+        tf.compat.v1.logging.info("Project: %s shape: %s" % (x.name, x.shape))
+        return x
+
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/pose_estimation_tensorflow/backbones/efficientnet_model.py" startline="349" endline="386" pcid="303">
+    def call(
+        self, inputs, use_batch_norm=False, drop_out=False, drop_connect_rate=None
+    ):
+        """Implementation of call().
+        Args:
+          inputs: the inputs tensor.
+          training: boolean, whether the model is constructed for training.
+          drop_connect_rate: float, between 0 to 1, drop connect rate.
+        Returns:
+          A output tensor.
+        """
+        tf.compat.v1.logging.info(
+            "Block input: %s shape: %s" % (inputs.name, inputs.shape)
+        )
+        if self._block_args.expand_ratio != 1:
+            x = self._relu_fn(
+                self._bn0(self._expand_conv(inputs), training=use_batch_norm)
+            )
+        else:
+            x = inputs
+        tf.compat.v1.logging.info("Expand: %s shape: %s" % (x.name, x.shape))
+
+        self.endpoints = {"expansion_output": x}
+
+        x = self._bn1(self._project_conv(x), training=use_batch_norm)
+        if self._block_args.id_skip:
+            if (
+                all(s == 1 for s in self._block_args.strides)
+                and self._block_args.input_filters == self._block_args.output_filters
+            ):
+                # only apply drop_connect if skip presents.
+                if drop_connect_rate:
+                    x = utils.drop_connect(x, drop_out, drop_connect_rate)
+                x = tf.add(x, inputs)
+        tf.compat.v1.logging.info("Project: %s shape: %s" % (x.name, x.shape))
+        return x
+
+
+</source>
+</class>
+
+<class classid="11" nclones="12" nlines="13" similarity="92">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/evaluate_network.py" startline="189" endline="203" pcid="361">
+    def help_function(self, event):
+
+        filepath = "help.txt"
+        f = open(filepath, "w")
+        sys.stdout = f
+        fnc_name = "deeplabcut.evaluate_network"
+        pydoc.help(fnc_name)
+        f.close()
+        sys.stdout = sys.__stdout__
+        help_file = open("help.txt", "r+")
+        help_text = help_file.read()
+        wx.MessageBox(help_text, "Help", wx.OK | wx.ICON_INFORMATION)
+        help_file.close()
+        os.remove("help.txt")
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/create_new_project.py" startline="219" endline="233" pcid="575">
+    def help_function(self, event):
+
+        filepath = "help.txt"
+        f = open(filepath, "w")
+        sys.stdout = f
+        fnc_name = "deeplabcut.create_new_project"
+        pydoc.help(fnc_name)
+        f.close()
+        sys.stdout = sys.__stdout__
+        help_file = open("help.txt", "r+")
+        help_text = help_file.read()
+        wx.MessageBox(help_text, "Help", wx.OK | wx.ICON_INFORMATION)
+        help_file.close()
+        os.remove("help.txt")
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/train_network.py" startline="200" endline="214" pcid="441">
+    def help_function(self, event):
+
+        filepath = "help.txt"
+        f = open(filepath, "w")
+        sys.stdout = f
+        fnc_name = "deeplabcut.train_network"
+        pydoc.help(fnc_name)
+        f.close()
+        sys.stdout = sys.__stdout__
+        help_file = open("help.txt", "r+")
+        help_text = help_file.read()
+        wx.MessageBox(help_text, "Help", wx.OK | wx.ICON_INFORMATION)
+        help_file.close()
+        os.remove("help.txt")
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/refine_labels.py" startline="136" endline="150" pcid="587">
+    def help_function(self, event):
+
+        filepath = "help.txt"
+        f = open(filepath, "w")
+        sys.stdout = f
+        fnc_name = "deeplabcut.refine_labels"
+        pydoc.help(fnc_name)
+        f.close()
+        sys.stdout = sys.__stdout__
+        help_file = open("help.txt", "r+")
+        help_text = help_file.read()
+        wx.MessageBox(help_text, "Help", wx.OK | wx.ICON_INFORMATION)
+        help_file.close()
+        os.remove("help.txt")
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/analyze_videos.py" startline="389" endline="402" pcid="596">
+    def help_function(self, event):
+
+        filepath = "help.txt"
+        f = open(filepath, "w")
+        sys.stdout = f
+        fnc_name = "deeplabcut.analyze_videos"
+        pydoc.help(fnc_name)
+        f.close()
+        sys.stdout = sys.__stdout__
+        help_file = open("help.txt", "r+")
+        help_text = help_file.read()
+        wx.MessageBox(help_text, "Help", wx.OK | wx.ICON_INFORMATION)
+        os.remove("help.txt")
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/extract_frames.py" startline="173" endline="187" pcid="394">
+    def help_function(self, event):
+
+        filepath = "help.txt"
+        f = open(filepath, "w")
+        sys.stdout = f
+        fnc_name = "deeplabcut.extract_frames"
+        pydoc.help(fnc_name)
+        f.close()
+        sys.stdout = sys.__stdout__
+        help_file = open("help.txt", "r+")
+        help_text = help_file.read()
+        wx.MessageBox(help_text, "Help", wx.OK | wx.ICON_INFORMATION)
+        help_file.close()
+        os.remove("help.txt")
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/create_videos.py" startline="365" endline="378" pcid="530">
+    def help_function(self, event):
+
+        filepath = "help.txt"
+        f = open(filepath, "w")
+        sys.stdout = f
+        fnc_name = "deeplabcut.create_labeled_video"
+        pydoc.help(fnc_name)
+        f.close()
+        sys.stdout = sys.__stdout__
+        help_file = open("help.txt", "r+")
+        help_text = help_file.read()
+        wx.MessageBox(help_text, "Help", wx.OK | wx.ICON_INFORMATION)
+        os.remove("help.txt")
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/video_editing.py" startline="233" endline="246" pcid="611">
+    def help_function(self, event):
+
+        filepath = "help.txt"
+        f = open(filepath, "w")
+        sys.stdout = f
+        fnc_name = "deeplabcut.DownSampleVideo"
+        pydoc.help(fnc_name)
+        f.close()
+        sys.stdout = sys.__stdout__
+        help_file = open("help.txt", "r+")
+        help_text = help_file.read()
+        wx.MessageBox(help_text, "Help", wx.OK | wx.ICON_INFORMATION)
+        os.remove("help.txt")
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/label_frames.py" startline="171" endline="185" pcid="377">
+    def help_function(self, event):
+
+        filepath = "help.txt"
+        f = open(filepath, "w")
+        sys.stdout = f
+        fnc_name = "deeplabcut.label_frames"
+        pydoc.help(fnc_name)
+        f.close()
+        sys.stdout = sys.__stdout__
+        help_file = open("help.txt", "r+")
+        help_text = help_file.read()
+        wx.MessageBox(help_text, "Help", wx.OK | wx.ICON_INFORMATION)
+        help_file.close()
+        os.remove("help.txt")
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/refine_tracklets.py" startline="270" endline="284" pcid="460">
+    def help_function(self, event):
+
+        filepath = "help.txt"
+        f = open(filepath, "w")
+        sys.stdout = f
+        fnc_name = "deeplabcut.refine_tracklets"
+        pydoc.help(fnc_name)
+        f.close()
+        sys.stdout = sys.__stdout__
+        help_file = open("help.txt", "r+")
+        help_text = help_file.read()
+        wx.MessageBox(help_text, "Help", wx.OK | wx.ICON_INFORMATION)
+        help_file.close()
+        os.remove("help.txt")
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/create_training_dataset.py" startline="264" endline="278" pcid="496">
+    def help_function(self, event):
+
+        filepath = "help.txt"
+        f = open(filepath, "w")
+        sys.stdout = f
+        fnc_name = "deeplabcut.create_training_dataset"
+        pydoc.help(fnc_name)
+        f.close()
+        sys.stdout = sys.__stdout__
+        help_file = open("help.txt", "r+")
+        help_text = help_file.read()
+        wx.MessageBox(help_text, "Help", wx.OK | wx.ICON_INFORMATION)
+        help_file.close()
+        os.remove("help.txt")
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/extract_outlier_frames.py" startline="156" endline="170" pcid="384">
+    def help_function(self, event):
+
+        filepath = "help.txt"
+        f = open(filepath, "w")
+        sys.stdout = f
+        fnc_name = "deeplabcut.extract_outlier_frames"
+        pydoc.help(fnc_name)
+        f.close()
+        sys.stdout = sys.__stdout__
+        help_file = open("help.txt", "r+")
+        help_text = help_file.read()
+        wx.MessageBox(help_text, "Help", wx.OK | wx.ICON_INFORMATION)
+        help_file.close()
+        os.remove("help.txt")
+
+</source>
+</class>
+
+<class classid="12" nclones="2" nlines="11" similarity="100">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/evaluate_network.py" startline="204" endline="215" pcid="362">
+    def chooseOption(self, event):
+        if self.bodypart_choice.GetStringSelection() == "No":
+            self.bodyparts_to_compare.Show()
+            self.getbp(event)
+            self.SetSizer(self.sizer)
+            self.sizer.Fit(self)
+        if self.bodypart_choice.GetStringSelection() == "Yes":
+            self.bodyparts_to_compare.Hide()
+            self.SetSizer(self.sizer)
+            self.sizer.Fit(self)
+            self.bodyparts = "all"
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/create_videos.py" startline="280" endline="291" pcid="527">
+    def chooseOption(self, event):
+        if self.bodypart_choice.GetStringSelection() == "No":
+            self.bodyparts_to_compare.Show()
+            self.getbp(event)
+            self.SetSizer(self.sizer)
+            self.sizer.Fit(self)  # this sets location.
+        if self.bodypart_choice.GetStringSelection() == "Yes":
+            self.bodyparts_to_compare.Hide()
+            self.SetSizer(self.sizer)
+            self.sizer.Fit(self)
+            self.bodyparts = "all"
+
+</source>
+</class>
+
+<class classid="13" nclones="4" nlines="19" similarity="78">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/evaluate_network.py" startline="229" endline="252" pcid="366">
+    def edit_inf_config(self, event):
+        # Read the infer config file
+        cfg = auxiliaryfunctions.read_config(self.config)
+        #trainingsetindex = self.trainingset.GetValue()
+        trainFraction = cfg["TrainingFraction"]
+        self.inf_cfg_path = os.path.join(
+            cfg["project_path"],
+            auxiliaryfunctions.GetModelFolder(
+                trainFraction[-1], self.shuffles.GetValue(), cfg
+            ),
+            "test",
+            "inference_cfg.yaml",
+        )
+        # let the user open the file with default text editor. Also make it mac compatible
+        if sys.platform == "darwin":
+            self.file_open_bool = subprocess.call(["open", self.inf_cfg_path])
+            self.file_open_bool = True
+        else:
+            self.file_open_bool = webbrowser.open(self.inf_cfg_path)
+        if self.file_open_bool:
+            self.inf_cfg = auxiliaryfunctions.read_config(self.inf_cfg_path)
+        else:
+            raise FileNotFoundError("File not found!")
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/analyze_videos.py" startline="356" endline="378" pcid="594">
+    def edit_inf_config(self, event):
+        # Read the infer config file
+        cfg = auxiliaryfunctions.read_config(self.config)
+        #trainFraction = cfg["TrainingFraction"][trainingsetindex]
+        self.inf_cfg_path = os.path.join(
+            cfg["project_path"],
+            auxiliaryfunctions.GetModelFolder(
+                trainFraction, self.shuffle.GetValue(), cfg
+            ),
+            "test",
+            "inference_cfg.yaml",
+        )
+        # let the user open the file with default text editor. Also make it mac compatible
+        if sys.platform == "darwin":
+            self.file_open_bool = subprocess.call(["open", self.inf_cfg_path])
+            self.file_open_bool = True
+        else:
+            self.file_open_bool = webbrowser.open(self.inf_cfg_path)
+        if self.file_open_bool:
+            self.inf_cfg = auxiliaryfunctions.read_config(self.inf_cfg_path)
+        else:
+            raise FileNotFoundError("File not found!")
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/train_network.py" startline="236" endline="269" pcid="444">
+    def edit_pose_config(self, event):
+        """
+        """
+        self.shuffles.Enable(True)
+        #self.trainingindex.Enable(True)
+        self.display_iters.Enable(True)
+        self.save_iters.Enable(True)
+        self.max_iters.Enable(True)
+        self.snapshots.Enable(True)
+        # Read the pose config file
+
+        cfg = auxiliaryfunctions.read_config(self.config)
+        trainFraction = cfg["TrainingFraction"]
+        #print(trainFraction[-1])
+        #        print(os.path.join(cfg['project_path'],auxiliaryfunctions.GetModelFolder(trainFraction, self.shuffles.GetValue(),cfg),'train','pose_cfg.yaml'))
+        self.pose_cfg_path = os.path.join(
+            cfg["project_path"],
+            auxiliaryfunctions.GetModelFolder(
+                trainFraction[-1], self.shuffles.GetValue(), cfg
+            ),
+            "train",
+            "pose_cfg.yaml",
+        )
+        # let the user open the file with default text editor. Also make it mac compatible
+        if sys.platform == "darwin":
+            self.file_open_bool = subprocess.call(["open", self.pose_cfg_path])
+            self.file_open_bool = True
+        else:
+            self.file_open_bool = webbrowser.open(self.pose_cfg_path)
+        if self.file_open_bool:
+            self.pose_cfg = auxiliaryfunctions.read_plainconfig(self.pose_cfg_path)
+        else:
+            raise FileNotFoundError("File not found!")
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/refine_tracklets.py" startline="224" endline="248" pcid="457">
+    def edit_inf_config(self, event):
+        # Read the infer config file
+        #trainingsetindex = self.trainingset.GetValue()
+        trainFraction = self.cfg["TrainingFraction"]
+        self.inf_cfg_path = os.path.join(
+            self.cfg["project_path"],
+            auxiliaryfunctions.GetModelFolder(
+                trainFraction[-1], self.shuffle.GetValue(), self.cfg
+            ),
+            "test",
+            "inference_cfg.yaml",
+        )
+        # let the user open the file with default text editor. Also make it mac compatible
+        if sys.platform == "darwin":
+            self.file_open_bool = subprocess.call(["open", self.inf_cfg_path])
+            self.file_open_bool = True
+        else:
+            import webbrowser
+
+            self.file_open_bool = webbrowser.open(self.inf_cfg_path)
+        if self.file_open_bool:
+            self.inf_cfg = auxiliaryfunctions.read_config(self.inf_cfg_path)
+        else:
+            raise FileNotFoundError("File not found!")
+
+</source>
+</class>
+
+<class classid="14" nclones="2" nlines="53" similarity="82">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/label_frames.py" startline="89" endline="170" pcid="376">
+    def __init__(self, parent, gui_size, cfg):
+        """Constructor"""
+        wx.Panel.__init__(self, parent=parent)
+
+        # variable initilization
+        self.method = "automatic"
+        self.config = cfg
+        # design the panel
+        sizer = wx.GridBagSizer(5, 5)
+
+        text = wx.StaticText(self, label="DeepLabCut - Step 3. Label Frames")
+        sizer.Add(text, pos=(0, 0), flag=wx.TOP | wx.LEFT | wx.BOTTOM, border=15)
+        # Add logo of DLC
+        icon = wx.StaticBitmap(self, bitmap=wx.Bitmap(LOGO_PATH))
+        sizer.Add(icon, pos=(0, 4), flag=wx.TOP | wx.RIGHT | wx.ALIGN_RIGHT, border=5)
+
+        line1 = wx.StaticLine(self)
+        sizer.Add(line1, pos=(1, 0), span=(1, 5), flag=wx.EXPAND | wx.BOTTOM, border=10)
+
+        self.cfg_text = wx.StaticText(self, label="Select the config file")
+        sizer.Add(self.cfg_text, pos=(2, 0), flag=wx.TOP | wx.LEFT, border=5)
+
+        if sys.platform == "darwin":
+            self.sel_config = wx.FilePickerCtrl(
+                self,
+                path="",
+                style=wx.FLP_USE_TEXTCTRL,
+                message="Choose the config.yaml file",
+                wildcard="*.yaml",
+            )
+        else:
+            self.sel_config = wx.FilePickerCtrl(
+                self,
+                path="",
+                style=wx.FLP_USE_TEXTCTRL,
+                message="Choose the config.yaml file",
+                wildcard="config.yaml",
+            )
+        # self.sel_config = wx.FilePickerCtrl(self, path="",style=wx.FLP_USE_TEXTCTRL,message="Choose the config.yaml file", wildcard="config.yaml")
+        sizer.Add(
+            self.sel_config, pos=(2, 1), span=(1, 3), flag=wx.TOP | wx.EXPAND, border=5
+        )
+        self.sel_config.SetPath(self.config)
+        self.sel_config.Bind(wx.EVT_BUTTON, self.select_config)
+
+        self.help_button = wx.Button(self, label="Help")
+        sizer.Add(self.help_button, pos=(4, 0), flag=wx.LEFT, border=10)
+        self.help_button.Bind(wx.EVT_BUTTON, self.help_function)
+
+        self.check = wx.Button(self, label="Check Labels!")
+        sizer.Add(self.check, pos=(5, 4), flag=wx.BOTTOM | wx.RIGHT, border=10)
+        self.check.Bind(wx.EVT_BUTTON, self.check_labelF)
+        self.check.Enable(True)
+
+        # self.build = wx.Button(self, label="Build skeleton")
+        # sizer.Add(self.build, pos=(4, 3), flag=wx.BOTTOM | wx.RIGHT, border=10)
+        # self.build.Bind(wx.EVT_BUTTON, self.build_skeleton)
+        # self.build.Enable(True)
+
+        self.cfg = auxiliaryfunctions.read_config(self.config)
+        if self.cfg.get("multianimalproject", False):
+
+            self.check = wx.Button(self, label="Check Labels Individuals")
+            sizer.Add(self.check, pos=(5, 3), flag=wx.BOTTOM | wx.RIGHT, border=10)
+            self.check.Bind(wx.EVT_BUTTON, self.check_labelInd)
+            self.check.Enable(True)
+
+        self.ok = wx.Button(self, label="Label Frames")
+        sizer.Add(self.ok, pos=(4, 4))
+        self.ok.Bind(wx.EVT_BUTTON, self.label_frames)
+
+        self.reset = wx.Button(self, label="Reset")
+        sizer.Add(
+            self.reset, pos=(4, 1), span=(1, 1), flag=wx.BOTTOM | wx.RIGHT, border=10
+        )
+        self.reset.Bind(wx.EVT_BUTTON, self.reset_label_frames)
+
+        sizer.AddGrowableCol(2)
+
+        self.SetSizer(sizer)
+        sizer.Fit(self)
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/refine_labels.py" startline="68" endline="135" pcid="586">
+    def __init__(self, parent, gui_size, cfg, page):
+        """Constructor"""
+        wx.Panel.__init__(self, parent=parent)
+
+        # variable initilization
+        self.method = "automatic"
+        self.config = cfg
+        self.page = page
+        # design the panel
+        sizer = wx.GridBagSizer(5, 5)
+
+        text = wx.StaticText(self, label="DeepLabCut - Step 9. Refine labels")
+        sizer.Add(text, pos=(0, 0), flag=wx.TOP | wx.LEFT | wx.BOTTOM, border=15)
+        # Add logo of DLC
+        icon = wx.StaticBitmap(self, bitmap=wx.Bitmap(LOGO_PATH))
+        sizer.Add(icon, pos=(0, 4), flag=wx.TOP | wx.RIGHT | wx.ALIGN_RIGHT, border=5)
+
+        line1 = wx.StaticLine(self)
+        sizer.Add(line1, pos=(1, 0), span=(1, 5), flag=wx.EXPAND | wx.BOTTOM, border=10)
+
+        self.cfg_text = wx.StaticText(self, label="Select the config file")
+        sizer.Add(self.cfg_text, pos=(2, 0), flag=wx.TOP | wx.LEFT, border=5)
+
+        if sys.platform == "darwin":
+            self.sel_config = wx.FilePickerCtrl(
+                self,
+                path="",
+                style=wx.FLP_USE_TEXTCTRL,
+                message="Choose the config.yaml file",
+                wildcard="*.yaml",
+            )
+        else:
+            self.sel_config = wx.FilePickerCtrl(
+                self,
+                path="",
+                style=wx.FLP_USE_TEXTCTRL,
+                message="Choose the config.yaml file",
+                wildcard="config.yaml",
+            )
+
+        sizer.Add(
+            self.sel_config, pos=(2, 1), span=(1, 3), flag=wx.TOP | wx.EXPAND, border=5
+        )
+        self.sel_config.SetPath(self.config)
+        self.sel_config.Bind(wx.EVT_FILEPICKER_CHANGED, self.select_config)
+
+        self.help_button = wx.Button(self, label="Help")
+        sizer.Add(self.help_button, pos=(4, 0), flag=wx.LEFT, border=10)
+        self.help_button.Bind(wx.EVT_BUTTON, self.help_function)
+
+        self.ok = wx.Button(self, label="LAUNCH")
+        sizer.Add(self.ok, pos=(4, 4))
+        self.ok.Bind(wx.EVT_BUTTON, self.refine_labels)
+
+        self.merge = wx.Button(self, label="Merge dataset")
+        sizer.Add(self.merge, pos=(4, 3), flag=wx.BOTTOM | wx.RIGHT, border=10)
+        self.merge.Bind(wx.EVT_BUTTON, self.merge_dataset)
+        self.merge.Enable(False)
+
+        self.reset = wx.Button(self, label="Reset")
+        sizer.Add(self.reset, pos=(4, 1), flag=wx.BOTTOM | wx.RIGHT, border=10)
+        self.reset.Bind(wx.EVT_BUTTON, self.reset_refine_labels)
+
+        sizer.AddGrowableCol(2)
+
+        self.SetSizer(sizer)
+        sizer.Fit(self)
+
+</source>
+</class>
+
+<class classid="15" nclones="2" nlines="12" similarity="100">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/extract_outlier_frames.py" startline="214" endline="226" pcid="390">
+    def merge_dataset(self, event):
+        dlg = wx.MessageDialog(
+            None,
+            "1. Make sure that you have refined all the labels before merging the dataset.\n\n2. If you merge the dataset, you need to re-create the training dataset before you start the training.\n\n3. Are you ready to merge the dataset?",
+            "Warning",
+            wx.YES_NO | wx.ICON_WARNING,
+        )
+        result = dlg.ShowModal()
+        if result == wx.ID_YES:
+            notebook = self.GetParent()
+            notebook.SetSelection(4)
+            deeplabcut.merge_datasets(self.config, forceiterate=None)
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/refine_labels.py" startline="160" endline="172" pcid="590">
+    def merge_dataset(self, event):
+        dlg = wx.MessageDialog(
+            None,
+            "1. Make sure that you have refined all the labels before merging the dataset.\n\n2. If you merge the dataset, you need to re-create the training dataset before you start the training.\n\n3. Are you ready to merge the dataset?",
+            "Warning",
+            wx.YES_NO | wx.ICON_WARNING,
+        )
+        result = dlg.ShowModal()
+        if result == wx.ID_YES:
+            notebook = self.GetParent()
+            notebook.SetSelection(4)
+            deeplabcut.merge_datasets(self.config, forceiterate=None)
+
+</source>
+</class>
+
+<class classid="16" nclones="2" nlines="15" similarity="100">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/outlier_frame_extraction_toolbox.py" startline="295" endline="313" pcid="408">
+    def activate_frame_range(self, event):
+        """
+        Activates the frame range boxes
+        """
+        self.checkSlider = event.GetEventObject()
+        if self.checkSlider.GetValue():
+            self.extract_range_frame = True
+            self.startFrame.Enable(True)
+            self.startFrame.SetValue(self.slider.GetValue())
+            self.endFrame.Enable(True)
+            self.updateFrame.Enable(True)
+            self.grab.Enable(False)
+        else:
+            self.extract_range_frame = False
+            self.startFrame.Enable(False)
+            self.endFrame.Enable(False)
+            self.updateFrame.Enable(False)
+            self.grab.Enable(True)
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/frame_extraction_toolbox.py" startline="195" endline="213" pcid="507">
+    def activate_frame_range(self, event):
+        """
+        Activates the frame range boxes
+        """
+        self.checkSlider = event.GetEventObject()
+        if self.checkSlider.GetValue():
+            self.extract_range_frame = True
+            self.startFrame.Enable(True)
+            self.startFrame.SetValue(self.slider.GetValue())
+            self.endFrame.Enable(True)
+            self.updateFrame.Enable(True)
+            self.grab.Enable(False)
+        else:
+            self.extract_range_frame = False
+            self.startFrame.Enable(False)
+            self.endFrame.Enable(False)
+            self.updateFrame.Enable(False)
+            self.grab.Enable(True)
+
+</source>
+</class>
+
+<class classid="17" nclones="3" nlines="90" similarity="79">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/refinement.py" startline="147" endline="269" pcid="424">
+    def __init__(self, parent, config):
+        super(MainFrame, self).__init__("DeepLabCut2.0 - Refinement ToolBox", parent)
+        self.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPressed)
+
+        ###################################################################################################################################################
+
+        # Spliting the frame into top and bottom panels. Bottom panels contains the widgets. The top panel is for showing images and plotting!
+
+        topSplitter = wx.SplitterWindow(self)
+        vSplitter = wx.SplitterWindow(topSplitter)
+
+        self.image_panel = ImagePanel(vSplitter, config, self.gui_size)
+        self.choice_panel = ScrollPanel(vSplitter)
+        # self.choice_panel.SetupScrolling(scroll_x=True, scroll_y=True, scrollToTop=False)
+        # self.choice_panel.SetupScrolling(scroll_x=True, scrollToTop=False)
+        vSplitter.SplitVertically(
+            self.image_panel, self.choice_panel, sashPosition=self.gui_size[0] * 0.8
+        )
+        vSplitter.SetSashGravity(1)
+        self.widget_panel = WidgetPanel(topSplitter)
+        topSplitter.SplitHorizontally(
+            vSplitter, self.widget_panel, sashPosition=self.gui_size[1] * 0.83
+        )  # 0.9
+        topSplitter.SetSashGravity(1)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(topSplitter, 1, wx.EXPAND)
+        self.SetSizer(sizer)
+
+        ###################################################################################################################################################
+        # Add Buttons to the WidgetPanel and bind them to their respective functions.
+
+        widgetsizer = wx.WrapSizer(orient=wx.HORIZONTAL)
+        self.load = wx.Button(self.widget_panel, id=wx.ID_ANY, label="Load labels")
+        widgetsizer.Add(self.load, 1, wx.ALL, 15)
+        self.load.Bind(wx.EVT_BUTTON, self.browseDir)
+
+        self.prev = wx.Button(self.widget_panel, id=wx.ID_ANY, label="<<Previous")
+        widgetsizer.Add(self.prev, 1, wx.ALL, 15)
+        self.prev.Bind(wx.EVT_BUTTON, self.prevImage)
+        self.prev.Enable(False)
+
+        self.next = wx.Button(self.widget_panel, id=wx.ID_ANY, label="Next>>")
+        widgetsizer.Add(self.next, 1, wx.ALL, 15)
+        self.next.Bind(wx.EVT_BUTTON, self.nextImage)
+        self.next.Enable(False)
+
+        self.help = wx.Button(self.widget_panel, id=wx.ID_ANY, label="Help")
+        widgetsizer.Add(self.help, 1, wx.ALL, 15)
+        self.help.Bind(wx.EVT_BUTTON, self.helpButton)
+        self.help.Enable(True)
+
+        self.zoom = wx.ToggleButton(self.widget_panel, label="Zoom")
+        widgetsizer.Add(self.zoom, 1, wx.ALL, 15)
+        self.zoom.Bind(wx.EVT_TOGGLEBUTTON, self.zoomButton)
+        self.widget_panel.SetSizer(widgetsizer)
+        self.zoom.Enable(False)
+
+        self.home = wx.Button(self.widget_panel, id=wx.ID_ANY, label="Home")
+        widgetsizer.Add(self.home, 1, wx.ALL, 15)
+        self.home.Bind(wx.EVT_BUTTON, self.homeButton)
+        self.widget_panel.SetSizer(widgetsizer)
+        self.home.Enable(False)
+
+        self.pan = wx.ToggleButton(self.widget_panel, id=wx.ID_ANY, label="Pan")
+        widgetsizer.Add(self.pan, 1, wx.ALL, 15)
+        self.pan.Bind(wx.EVT_TOGGLEBUTTON, self.panButton)
+        self.widget_panel.SetSizer(widgetsizer)
+        self.pan.Enable(False)
+
+        self.lock = wx.CheckBox(self.widget_panel, id=wx.ID_ANY, label="Lock View")
+        widgetsizer.Add(self.lock, 1, wx.ALL, 15)
+        self.lock.Bind(wx.EVT_CHECKBOX, self.lockChecked)
+        self.widget_panel.SetSizer(widgetsizer)
+        self.lock.Enable(False)
+
+        self.save = wx.Button(self.widget_panel, id=wx.ID_ANY, label="Save")
+        widgetsizer.Add(self.save, 1, wx.ALL, 15)
+        self.save.Bind(wx.EVT_BUTTON, self.saveDataSet)
+        self.save.Enable(False)
+
+        widgetsizer.AddStretchSpacer(15)
+        self.quit = wx.Button(self.widget_panel, id=wx.ID_ANY, label="Quit")
+        widgetsizer.Add(self.quit, 1, wx.ALL, 15)
+        self.quit.Bind(wx.EVT_BUTTON, self.quitButton)
+
+        self.widget_panel.SetSizer(widgetsizer)
+        self.widget_panel.SetSizerAndFit(widgetsizer)
+        self.widget_panel.Layout()
+
+        ###############################################################################################################################
+        # Variable initialization
+        self.currentDirectory = os.getcwd()
+        self.index = []
+        self.iter = []
+        self.threshold = []
+        self.file = 0
+        self.updatedCoords = []
+        self.dataFrame = None
+        self.drs = []
+        cfg = auxiliaryfunctions.read_config(config)
+        self.humanscorer = cfg["scorer"]
+        self.move2corner = cfg["move2corner"]
+        self.center = cfg["corner2move2"]
+        self.colormap = plt.get_cmap(cfg["colormap"])
+        self.colormap = self.colormap.reversed()
+        self.markerSize = cfg["dotsize"]
+        self.alpha = cfg["alphavalue"]
+        self.iterationindex = cfg["iteration"]
+        self.project_path = cfg["project_path"]
+        self.bodyparts = cfg["bodyparts"]
+        self.threshold = 0.4
+        self.img_size = (10, 6)  # (imgW, imgH)  # width, height in inches.
+        self.preview = False
+        self.view_locked = False
+        # Workaround for MAC - xlim and ylim changed events seem to be triggered too often so need to make sure that the
+        # xlim and ylim have actually changed before turning zoom off
+        self.prezoom_xlim = []
+        self.prezoom_ylim = []
+
+    # ###########################################################################
+    # functions for button responses
+    # ###########################################################################
+    # BUTTONS FUNCTIONS FOR HOTKEYS
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/multiple_individuals_refinement_toolbox.py" startline="143" endline="275" pcid="476">
+    def __init__(self, parent, config):
+        super(MainFrame, self).__init__("DeepLabCut - Refinement ToolBox", parent)
+        self.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPressed)
+
+        ###################################################################################################################################################
+
+        # Spliting the frame into top and bottom panels. Bottom panels contains the widgets. The top panel is for showing images and plotting!
+
+        topSplitter = wx.SplitterWindow(self)
+        vSplitter = wx.SplitterWindow(topSplitter)
+
+        self.image_panel = ImagePanel(vSplitter, config, self.gui_size)
+        self.choice_panel = ScrollPanel(vSplitter)
+        # self.choice_panel.SetupScrolling(scroll_x=True, scroll_y=True, scrollToTop=False)
+        # self.choice_panel.SetupScrolling(scroll_x=True, scrollToTop=False)
+        vSplitter.SplitVertically(
+            self.image_panel, self.choice_panel, sashPosition=self.gui_size[0] * 0.8
+        )
+        vSplitter.SetSashGravity(1)
+        self.widget_panel = WidgetPanel(topSplitter)
+        topSplitter.SplitHorizontally(
+            vSplitter, self.widget_panel, sashPosition=self.gui_size[1] * 0.83
+        )  # 0.9
+        topSplitter.SetSashGravity(1)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(topSplitter, 1, wx.EXPAND)
+        self.SetSizer(sizer)
+
+        ###################################################################################################################################################
+        # Add Buttons to the WidgetPanel and bind them to their respective functions.
+
+        widgetsizer = wx.WrapSizer(orient=wx.HORIZONTAL)
+        self.load = wx.Button(self.widget_panel, id=wx.ID_ANY, label="Load labels")
+        widgetsizer.Add(self.load, 1, wx.ALL, 15)
+        self.load.Bind(wx.EVT_BUTTON, self.browseDir)
+
+        self.prev = wx.Button(self.widget_panel, id=wx.ID_ANY, label="<<Previous")
+        widgetsizer.Add(self.prev, 1, wx.ALL, 15)
+        self.prev.Bind(wx.EVT_BUTTON, self.prevImage)
+        self.prev.Enable(False)
+
+        self.next = wx.Button(self.widget_panel, id=wx.ID_ANY, label="Next>>")
+        widgetsizer.Add(self.next, 1, wx.ALL, 15)
+        self.next.Bind(wx.EVT_BUTTON, self.nextImage)
+        self.next.Enable(False)
+
+        self.help = wx.Button(self.widget_panel, id=wx.ID_ANY, label="Help")
+        widgetsizer.Add(self.help, 1, wx.ALL, 15)
+        self.help.Bind(wx.EVT_BUTTON, self.helpButton)
+        self.help.Enable(True)
+
+        self.zoom = wx.ToggleButton(self.widget_panel, label="Zoom")
+        widgetsizer.Add(self.zoom, 1, wx.ALL, 15)
+        self.zoom.Bind(wx.EVT_TOGGLEBUTTON, self.zoomButton)
+        self.widget_panel.SetSizer(widgetsizer)
+        self.zoom.Enable(False)
+
+        self.home = wx.Button(self.widget_panel, id=wx.ID_ANY, label="Home")
+        widgetsizer.Add(self.home, 1, wx.ALL, 15)
+        self.home.Bind(wx.EVT_BUTTON, self.homeButton)
+        self.widget_panel.SetSizer(widgetsizer)
+        self.home.Enable(False)
+
+        self.pan = wx.ToggleButton(self.widget_panel, id=wx.ID_ANY, label="Pan")
+        widgetsizer.Add(self.pan, 1, wx.ALL, 15)
+        self.pan.Bind(wx.EVT_TOGGLEBUTTON, self.panButton)
+        self.widget_panel.SetSizer(widgetsizer)
+        self.pan.Enable(False)
+
+        self.lock = wx.CheckBox(self.widget_panel, id=wx.ID_ANY, label="Lock View")
+        widgetsizer.Add(self.lock, 1, wx.ALL, 15)
+        self.lock.Bind(wx.EVT_CHECKBOX, self.lockChecked)
+        self.widget_panel.SetSizer(widgetsizer)
+        self.lock.Enable(False)
+
+        self.save = wx.Button(self.widget_panel, id=wx.ID_ANY, label="Save")
+        widgetsizer.Add(self.save, 1, wx.ALL, 15)
+        self.save.Bind(wx.EVT_BUTTON, self.saveDataSet)
+        self.save.Enable(False)
+
+        widgetsizer.AddStretchSpacer(15)
+        self.quit = wx.Button(self.widget_panel, id=wx.ID_ANY, label="Quit")
+        widgetsizer.Add(self.quit, 1, wx.ALL, 15)
+        self.quit.Bind(wx.EVT_BUTTON, self.quitButton)
+
+        self.widget_panel.SetSizer(widgetsizer)
+        self.widget_panel.SetSizerAndFit(widgetsizer)
+        self.widget_panel.Layout()
+
+        ###############################################################################################################################
+        # Variable initialization
+        self.currentDirectory = os.getcwd()
+        self.index = []
+        self.iter = []
+        self.threshold = []
+        self.file = 0
+        self.updatedCoords = []
+        self.drs = []
+        self.cfg = auxiliaryfunctions.read_config(config)
+        self.humanscorer = self.cfg["scorer"]
+        self.move2corner = self.cfg["move2corner"]
+        self.center = self.cfg["corner2move2"]
+        self.colormap = plt.get_cmap(self.cfg["colormap"])
+        self.colormap = self.colormap.reversed()
+        self.markerSize = self.cfg["dotsize"]
+        self.alpha = self.cfg["alphavalue"]
+        self.iterationindex = self.cfg["iteration"]
+        self.project_path = self.cfg["project_path"]
+        self.bodyparts = self.cfg["bodyparts"]
+        self.threshold = 0.1
+        self.img_size = (10, 6)  # (imgW, imgH)  # width, height in inches.
+        self.preview = False
+        self.view_locked = False
+        # Workaround for MAC - xlim and ylim changed events seem to be triggered too often so need to make sure that the
+        # xlim and ylim have actually changed before turning zoom off
+        self.prezoom_xlim = []
+        self.prezoom_ylim = []
+        from deeplabcut.utils import auxfun_multianimal
+
+        (
+            self.individual_names,
+            self.uniquebodyparts,
+            self.multianimalbodyparts,
+        ) = auxfun_multianimal.extractindividualsandbodyparts(self.cfg)
+        # self.choiceBox,self.visualization_rdb = self.choice_panel.addRadioButtons()
+        self.Colorscheme = visualization.get_cmap(
+            len(self.individual_names), self.cfg["colormap"]
+        )
+
+    # ###########################################################################
+    # functions for button responses
+    # ###########################################################################
+    # BUTTONS FUNCTIONS FOR HOTKEYS
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/labeling_toolbox.py" startline="250" endline="366" pcid="553">
+    def __init__(self, parent, config, imtypes, config3d, sourceCam):
+        super(MainFrame, self).__init__(
+            "DeepLabCut2.0 - Labeling ToolBox", parent, imtypes
+        )
+
+        self.statusbar.SetStatusText(
+            "Looking for a folder to start labeling. Click 'Load frames' to begin."
+        )
+        self.Bind(wx.EVT_CHAR_HOOK, self.OnKeyPressed)
+        ###################################################################################################################################################
+
+        # Spliting the frame into top and bottom panels. Bottom panels contains the widgets. The top panel is for showing images and plotting!
+
+        topSplitter = wx.SplitterWindow(self)
+        vSplitter = wx.SplitterWindow(topSplitter)
+
+        self.image_panel = ImagePanel(
+            vSplitter, config, config3d, sourceCam, self.gui_size
+        )
+        self.choice_panel = ScrollPanel(vSplitter)
+        vSplitter.SplitVertically(
+            self.image_panel, self.choice_panel, sashPosition=self.gui_size[0] * 0.8
+        )
+        vSplitter.SetSashGravity(1)
+        self.widget_panel = WidgetPanel(topSplitter)
+        topSplitter.SplitHorizontally(
+            vSplitter, self.widget_panel, sashPosition=self.gui_size[1] * 0.83
+        )  # 0.9
+        topSplitter.SetSashGravity(1)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(topSplitter, 1, wx.EXPAND)
+        self.SetSizer(sizer)
+
+        ###################################################################################################################################################
+        # Add Buttons to the WidgetPanel and bind them to their respective functions.
+
+        widgetsizer = wx.WrapSizer(orient=wx.HORIZONTAL)
+        self.load = wx.Button(self.widget_panel, id=wx.ID_ANY, label="Load frames")
+        widgetsizer.Add(self.load, 1, wx.ALL, 15)
+        self.load.Bind(wx.EVT_BUTTON, self.browseDir)
+
+        self.prev = wx.Button(self.widget_panel, id=wx.ID_ANY, label="<<Previous")
+        widgetsizer.Add(self.prev, 1, wx.ALL, 15)
+        self.prev.Bind(wx.EVT_BUTTON, self.prevImage)
+        self.prev.Enable(False)
+
+        self.next = wx.Button(self.widget_panel, id=wx.ID_ANY, label="Next>>")
+        widgetsizer.Add(self.next, 1, wx.ALL, 15)
+        self.next.Bind(wx.EVT_BUTTON, self.nextImage)
+        self.next.Enable(False)
+
+        self.help = wx.Button(self.widget_panel, id=wx.ID_ANY, label="Help")
+        widgetsizer.Add(self.help, 1, wx.ALL, 15)
+        self.help.Bind(wx.EVT_BUTTON, self.helpButton)
+        self.help.Enable(True)
+        #
+        self.zoom = wx.ToggleButton(self.widget_panel, label="Zoom")
+        widgetsizer.Add(self.zoom, 1, wx.ALL, 15)
+        self.zoom.Bind(wx.EVT_TOGGLEBUTTON, self.zoomButton)
+        self.widget_panel.SetSizer(widgetsizer)
+        self.zoom.Enable(False)
+
+        self.home = wx.Button(self.widget_panel, id=wx.ID_ANY, label="Home")
+        widgetsizer.Add(self.home, 1, wx.ALL, 15)
+        self.home.Bind(wx.EVT_BUTTON, self.homeButton)
+        self.widget_panel.SetSizer(widgetsizer)
+        self.home.Enable(False)
+
+        self.pan = wx.ToggleButton(self.widget_panel, id=wx.ID_ANY, label="Pan")
+        widgetsizer.Add(self.pan, 1, wx.ALL, 15)
+        self.pan.Bind(wx.EVT_TOGGLEBUTTON, self.panButton)
+        self.widget_panel.SetSizer(widgetsizer)
+        self.pan.Enable(False)
+
+        self.lock = wx.CheckBox(self.widget_panel, id=wx.ID_ANY, label="Lock View")
+        widgetsizer.Add(self.lock, 1, wx.ALL, 15)
+        self.lock.Bind(wx.EVT_CHECKBOX, self.lockChecked)
+        self.widget_panel.SetSizer(widgetsizer)
+        self.lock.Enable(False)
+
+        self.save = wx.Button(self.widget_panel, id=wx.ID_ANY, label="Save")
+        widgetsizer.Add(self.save, 1, wx.ALL, 15)
+        self.save.Bind(wx.EVT_BUTTON, self.saveDataSet)
+        self.save.Enable(False)
+
+        widgetsizer.AddStretchSpacer(15)
+        self.quit = wx.Button(self.widget_panel, id=wx.ID_ANY, label="Quit")
+        widgetsizer.Add(self.quit, 1, wx.ALL, 15)
+        self.quit.Bind(wx.EVT_BUTTON, self.quitButton)
+
+        self.widget_panel.SetSizer(widgetsizer)
+        self.widget_panel.SetSizerAndFit(widgetsizer)
+        self.widget_panel.Layout()
+
+        ###############################################################################################################################
+        # Variables initialization
+
+        self.currentDirectory = os.getcwd()
+        self.index = []
+        self.iter = []
+        self.file = 0
+        self.updatedCoords = []
+        self.dataFrame = None
+        self.config_file = config
+        self.new_labels = False
+        self.buttonCounter = []
+        self.bodyparts2plot = []
+        self.drs = []
+        self.num = []
+        self.view_locked = False
+        # Workaround for MAC - xlim and ylim changed events seem to be triggered too often so need to make sure that the
+        # xlim and ylim have actually changed before turning zoom off
+        self.prezoom_xlim = []
+        self.prezoom_ylim = []
+
+    ###############################################################################################################################
+    # BUTTONS FUNCTIONS FOR HOTKEYS
+</source>
+</class>
+
+<class classid="18" nclones="3" nlines="22" similarity="75">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/refinement.py" startline="270" endline="292" pcid="425">
+    def OnKeyPressed(self, event=None):
+        if event.GetKeyCode() == wx.WXK_RIGHT:
+            self.nextImage(event=None)
+        elif event.GetKeyCode() == wx.WXK_LEFT:
+            self.prevImage(event=None)
+        elif event.GetKeyCode() == wx.WXK_BACK:
+            pos_abs = event.GetPosition()
+            inv = self.axes.transData.inverted()
+            pos_rel = list(inv.transform(pos_abs))
+            y1, y2 = self.axes.get_ylim()
+            pos_rel[1] = y1 - pos_rel[1] + y2  # Recall y-axis is inverted
+            i = np.nanargmin(
+                [self.calc_distance(*dp.point.center, *pos_rel) for dp in self.drs]
+            )
+            closest_dp = self.drs[i]
+            msg = wx.MessageBox(
+                "Do you want to remove the label %s ?" % closest_dp.bodyParts,
+                "Remove!",
+                wx.YES_NO | wx.ICON_WARNING,
+            )
+            if msg == 2:
+                closest_dp.delete_data()
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/multiple_individuals_refinement_toolbox.py" startline="276" endline="298" pcid="477">
+    def OnKeyPressed(self, event=None):
+        if event.GetKeyCode() == wx.WXK_RIGHT:
+            self.nextImage(event=None)
+        elif event.GetKeyCode() == wx.WXK_LEFT:
+            self.prevImage(event=None)
+        elif event.GetKeyCode() == wx.WXK_BACK:
+            pos_abs = event.GetPosition()
+            inv = self.axes.transData.inverted()
+            pos_rel = list(inv.transform(pos_abs))
+            y1, y2 = self.axes.get_ylim()
+            pos_rel[1] = y1 - pos_rel[1] + y2  # Recall y-axis is inverted
+            i = np.nanargmin(
+                [self.calc_distance(*dp.point.center, *pos_rel) for dp in self.drs]
+            )
+            closest_dp = self.drs[i]
+            msg = wx.MessageBox(
+                f"Do you want to remove the label {closest_dp.individual_name}:{closest_dp.bodyParts}?",
+                "Remove!",
+                wx.YES_NO | wx.ICON_WARNING,
+            )
+            if msg == 2:
+                closest_dp.delete_data()
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/labeling_toolbox.py" startline="367" endline="396" pcid="554">
+    def OnKeyPressed(self, event=None):
+        if event.GetKeyCode() == wx.WXK_RIGHT:
+            self.nextImage(event=None)
+        elif event.GetKeyCode() == wx.WXK_LEFT:
+            self.prevImage(event=None)
+        elif event.GetKeyCode() == wx.WXK_DOWN:
+            self.nextLabel(event=None)
+        elif event.GetKeyCode() == wx.WXK_UP:
+            self.previousLabel(event=None)
+        elif event.GetKeyCode() == wx.WXK_BACK:
+            pos_abs = event.GetPosition()
+            inv = self.axes.transData.inverted()
+            pos_rel = list(inv.transform(pos_abs))
+            y1, y2 = self.axes.get_ylim()
+            pos_rel[1] = y1 - pos_rel[1] + y2  # Recall y-axis is inverted
+            i = np.nanargmin(
+                [self.calc_distance(*dp.point.center, *pos_rel) for dp in self.drs]
+            )
+            closest_dp = self.drs[i]
+            msg = wx.MessageBox(
+                "Do you want to remove the label %s ?" % closest_dp.bodyParts,
+                "Remove!",
+                wx.YES_NO | wx.ICON_WARNING,
+            )
+            if msg == 2:
+                closest_dp.delete_data()
+                self.buttonCounter.remove(self.bodyparts.index(closest_dp.bodyParts))
+        elif event.ControlDown() and event.GetKeyCode() == 67:
+            self.duplicate_labels()
+
+</source>
+</class>
+
+<class classid="19" nclones="3" nlines="22" similarity="73">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/refinement.py" startline="305" endline="332" pcid="427">
+    def OnSliderScroll(self, event):
+        """
+        Adjust marker size for plotting the annotations
+        """
+        self.markerSize = self.slider.GetValue()
+        MainFrame.saveEachImage(self)
+        MainFrame.updateZoomPan(self)
+        self.updatedCoords = []
+
+        img_name = Path(*self.index[self.iter]).name
+        #        self.axes.clear()
+        self.figure.delaxes(self.figure.axes[1])
+        self.figure, self.axes, self.canvas, self.toolbar = self.image_panel.drawplot(
+            self.img,
+            img_name,
+            self.iter,
+            self.index,
+            self.threshold,
+            self.bodyparts,
+            self.colormap,
+            self.preview,
+            keep_view=True,
+        )
+        self.axes.callbacks.connect("xlim_changed", self.onZoom)
+        self.axes.callbacks.connect("ylim_changed", self.onZoom)
+
+        MainFrame.plot(self, self.img)
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/multiple_individuals_refinement_toolbox.py" startline="311" endline="343" pcid="479">
+    def OnSliderScroll(self, event):
+        """
+        Adjust marker size for plotting the annotations
+        """
+        self.markerSize = self.slider.GetValue()
+        MainFrame.saveEachImage(self)
+        MainFrame.updateZoomPan(self)
+        self.updatedCoords = []
+
+        img_name = Path(*self.index[self.iter]).name
+        #        self.axes.clear()
+        self.figure.delaxes(self.figure.axes[1])
+        (
+            self.figure,
+            self.axes,
+            self.canvas,
+            self.toolbar,
+            self.ax,
+        ) = self.image_panel.drawplot(
+            self.img,
+            img_name,
+            self.iter,
+            self.index,
+            self.threshold,
+            self.colormap,
+            self.preview,
+            keep_view=True,
+        )
+        self.axes.callbacks.connect("xlim_changed", self.onZoom)
+        self.axes.callbacks.connect("ylim_changed", self.onZoom)
+
+        MainFrame.plot(self, self.img)
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/labeling_toolbox.py" startline="431" endline="454" pcid="557">
+    def OnSliderScroll(self, event):
+        """
+        Adjust marker size for plotting the annotations
+        """
+        MainFrame.saveEachImage(self)
+        MainFrame.updateZoomPan(self)
+        self.buttonCounter = []
+        self.markerSize = self.slider.GetValue()
+        img_name = Path(self.index[self.iter]).name
+        self.figure.delaxes(self.figure.axes[1])
+        self.figure, self.axes, self.canvas, self.toolbar = self.image_panel.drawplot(
+            self.img,
+            img_name,
+            self.iter,
+            self.index,
+            self.bodyparts,
+            self.colormap,
+            keep_view=True,
+        )
+
+        self.axes.callbacks.connect("xlim_changed", self.onZoom)
+        self.axes.callbacks.connect("ylim_changed", self.onZoom)
+        self.buttonCounter = MainFrame.plot(self, self.img)
+
+</source>
+</class>
+
+<class classid="20" nclones="2" nlines="163" similarity="92">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/refinement.py" startline="333" endline="521" pcid="428">
+    def browseDir(self, event):
+        """
+        Show the DirDialog and ask the user to change the directory where machine labels are stored
+        """
+
+        fname = str("machinelabels-iter" + str(self.iterationindex) + ".h5")
+        self.statusbar.SetStatusText("Looking for a folder to start refining...")
+        cwd = os.path.join(os.getcwd(), "labeled-data")
+        #        dlg = wx.FileDialog(self, "Choose the machinelabels file for current iteration.",cwd, "",wildcard=fname,style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+        platform.system()
+        if platform.system() == "Darwin":
+            dlg = wx.FileDialog(
+                self,
+                "Select the machinelabels-iterX.h5 file.",
+                cwd,
+                fname,
+                wildcard="(*.h5)|*.h5",
+                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+            )
+        else:
+            dlg = wx.FileDialog(
+                self,
+                "Select the machinelabels-iterX.h5 file.",
+                cwd,
+                "",
+                wildcard=fname,
+                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+            )
+
+        if dlg.ShowModal() == wx.ID_OK:
+            self.data_file = dlg.GetPath()
+            self.dir = str(Path(self.data_file).parents[0])
+            self.fileName = str(Path(self.data_file).stem)
+            self.load.Enable(False)
+            self.next.Enable(True)
+            self.save.Enable(True)
+            self.zoom.Enable(True)
+            self.pan.Enable(True)
+            self.home.Enable(True)
+            self.quit.Enable(True)
+            self.lock.Enable(True)
+        else:
+            dlg.Destroy()
+            self.Destroy()
+            return
+        dlg.Destroy()
+
+        try:
+            self.dataname = str(self.data_file)
+
+        except:
+            print("No machinelabels file found!")
+            self.Destroy()
+        self.statusbar.SetStatusText(
+            "Working on folder: {}".format(os.path.split(str(self.dir))[-1])
+        )
+        self.preview = True
+        self.iter = 0
+
+        if os.path.isfile(self.dataname):
+            self.Dataframe = pd.read_hdf(self.dataname)
+            conversioncode.guarantee_multiindex_rows(self.Dataframe)
+            self.Dataframe.sort_index(inplace=True)
+            self.scorer = self.Dataframe.columns.get_level_values(0)[0]
+
+            # bodyParts = self.Dataframe.columns.get_level_values(1)
+            # _, idx = np.unique(bodyParts, return_index=True)
+            # self.num_joints = len(self.bodyparts)
+            # self.bodyparts =  bodyParts[np.sort(idx)]
+            self.index = list(self.Dataframe.iloc[:, 0].index)
+            # Reading images
+
+            self.img = os.path.join(self.project_path, *self.index[self.iter])
+            img_name = Path(self.img).name
+            self.norm, self.colorIndex = self.image_panel.getColorIndices(
+                self.img, self.bodyparts
+            )
+            # Adding Slider and Checkbox
+
+            (
+                self.choiceBox,
+                self.slider,
+                self.checkBox,
+            ) = self.choice_panel.addCheckBoxSlider(
+                self.bodyparts, self.file, self.markerSize
+            )
+            self.slider.Bind(wx.EVT_SLIDER, self.OnSliderScroll)
+            self.checkBox.Bind(wx.EVT_CHECKBOX, self.activateSlider)
+            self.slider.Enable(False)
+            # Show image
+            # Setting axis title:dont want to show the threshold as it is not selected yet.
+            (
+                self.figure,
+                self.axes,
+                self.canvas,
+                self.toolbar,
+            ) = self.image_panel.drawplot(
+                self.img,
+                img_name,
+                self.iter,
+                self.index,
+                self.threshold,
+                self.bodyparts,
+                self.colormap,
+                self.preview,
+            )
+            self.axes.callbacks.connect("xlim_changed", self.onZoom)
+            self.axes.callbacks.connect("ylim_changed", self.onZoom)
+
+            instruction = wx.MessageBox(
+                "1. Enter the likelihood threshold. \n\n2. Each prediction will be shown with a unique color. \n All the data points above the threshold will be marked as circle filled with a unique color. All the data points below the threshold will be marked with a hollow circle. \n\n3. Enable the checkbox to adjust the marker size. \n\n4.  Hover your mouse over data points to see the labels and their likelihood. \n\n5. Left click and drag to move the data points. \n\n6. Middle click on any data point to remove it. Be careful, you cannot undo this step. \n Click once on the zoom button to zoom-in the image.The cursor will become cross, click and drag over a point to zoom in. \n Click on the zoom button again to disable the zooming function and recover the cursor. \n Use pan button to pan across the image while zoomed in. Use home button to go back to the full;default view. \n\n7. When finished click 'Save' to save all the changes. \n\n8. Click OK to continue",
+                "User instructions",
+                wx.OK | wx.ICON_INFORMATION,
+            )
+
+            if instruction == 4:
+                """
+                If ok is selected then the image is updated with the thresholded value of the likelihood
+                """
+                textBox = wx.TextEntryDialog(
+                    self,
+                    "Select the likelihood threshold",
+                    caption="Enter the threshold",
+                    value="0.4",
+                )
+                textBox.ShowModal()
+                self.threshold = float(textBox.GetValue())
+                textBox.Destroy()
+                self.img = os.path.join(self.project_path, *self.index[self.iter])
+                img_name = Path(self.img).name
+                self.axes.clear()
+                self.preview = False
+                self.figure.delaxes(
+                    self.figure.axes[1]
+                )  # Removes the axes corresponding to the colorbar
+                (
+                    self.figure,
+                    self.axes,
+                    self.canvas,
+                    self.toolbar,
+                ) = self.image_panel.drawplot(
+                    self.img,
+                    img_name,
+                    self.iter,
+                    self.index,
+                    self.threshold,
+                    self.bodyparts,
+                    self.colormap,
+                    self.preview,
+                )
+                self.axes.callbacks.connect("xlim_changed", self.onZoom)
+                self.axes.callbacks.connect("ylim_changed", self.onZoom)
+                MainFrame.plot(self, self.img)
+                MainFrame.saveEachImage(self)
+            else:
+                self.figure.delaxes(
+                    self.figure.axes[1]
+                )  # Removes the axes corresponding to the colorbar
+                (
+                    self.figure,
+                    self.axes,
+                    self.canvas,
+                    self.toolbar,
+                ) = self.image_panel.drawplot(
+                    self.img,
+                    img_name,
+                    self.iter,
+                    self.index,
+                    self.threshold,
+                    self.bodyparts,
+                    self.colormap,
+                    self.preview,
+                )
+                self.axes.callbacks.connect("xlim_changed", self.onZoom)
+                self.axes.callbacks.connect("ylim_changed", self.onZoom)
+                MainFrame.plot(self, self.img)
+                MainFrame.saveEachImage(self)
+
+        else:
+            msg = wx.MessageBox(
+                "No Machinelabels file found! Want to retry?",
+                "Error!",
+                wx.YES_NO | wx.ICON_WARNING,
+            )
+            if msg == 2:
+                self.load.Enable(True)
+                self.next.Enable(False)
+                self.save.Enable(False)
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/multiple_individuals_refinement_toolbox.py" startline="344" endline="545" pcid="480">
+    def browseDir(self, event):
+        """
+        Show the DirDialog and ask the user to change the directory where machine labels are stored
+        """
+
+        fname = str("machinelabels-iter" + str(self.iterationindex) + ".h5")
+        self.statusbar.SetStatusText("Looking for a folder to start refining...")
+        cwd = os.path.join(os.getcwd(), "labeled-data")
+        #        dlg = wx.FileDialog(self, "Choose the machinelabels file for current iteration.",cwd, "",wildcard=fname,style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+        if platform.system() == "Darwin":
+            dlg = wx.FileDialog(
+                self,
+                "Choose the machinelabels file for current iteration.",
+                cwd,
+                fname,
+                wildcard="(*.h5)|*.h5",
+                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+            )
+        else:
+            dlg = wx.FileDialog(
+                self,
+                "Choose the machinelabels file for current iteration.",
+                cwd,
+                "",
+                wildcard=fname,
+                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+            )
+
+        if dlg.ShowModal() == wx.ID_OK:
+            self.data_file = dlg.GetPath()
+            self.dir = str(Path(self.data_file).parents[0])
+            self.fileName = str(Path(self.data_file).stem)
+            self.load.Enable(False)
+            self.next.Enable(True)
+            self.save.Enable(True)
+            self.zoom.Enable(True)
+            self.pan.Enable(True)
+            self.home.Enable(True)
+            self.quit.Enable(True)
+            self.lock.Enable(True)
+        else:
+            dlg.Destroy()
+            self.Destroy()
+            return
+        dlg.Destroy()
+
+        try:
+            self.dataname = str(self.data_file)
+
+        except:
+            print("No machinelabels file found!")
+            self.Destroy()
+        self.statusbar.SetStatusText(
+            "Working on folder: {}".format(os.path.split(str(self.dir))[-1])
+        )
+        self.preview = True
+        self.iter = 0
+
+        if os.path.isfile(self.dataname):
+            self.Dataframe = pd.read_hdf(self.dataname)
+            # Overwrite the config-defined individual names
+            # with those actually present in the annotated data
+            self.individual_names = (
+                self.Dataframe.columns.get_level_values("individuals")
+                .unique()
+                .to_list()
+            )
+            conversioncode.guarantee_multiindex_rows(self.Dataframe)
+            self.Dataframe.sort_index(inplace=True)
+            self.scorer = self.Dataframe.columns.get_level_values(0)[0]
+
+            # bodyParts = self.Dataframe.columns.get_level_values(1)
+            # _, idx = np.unique(bodyParts, return_index=True)
+            # self.num_joints = len(self.bodyparts)
+            # self.bodyparts =  bodyParts[np.sort(idx)]
+            self.index = list(self.Dataframe.iloc[:, 0].index)
+            # Reading images
+
+            self.img = os.path.join(self.project_path, *self.index[self.iter])
+            img_name = Path(self.img).name
+            self.norm, self.colorIndex = self.image_panel.getColorIndices(
+                self.img, self.bodyparts
+            )
+            # Adding Slider and Checkbox
+
+            (
+                self.choiceBox,
+                self.slider,
+                self.checkBox,
+                self.visualization_rdb,
+            ) = self.choice_panel.addCheckBoxSlider(
+                self.bodyparts, self.file, self.markerSize
+            )
+            self.slider.Bind(wx.EVT_SLIDER, self.OnSliderScroll)
+            self.checkBox.Bind(wx.EVT_CHECKBOX, self.activateSlider)
+            self.visualization_rdb.Bind(wx.EVT_RADIOBOX, self.clear_plot)
+            self.slider.Enable(False)
+
+            # take into account of all the bodyparts for the colorscheme. Sort the bodyparts to have same order as in the config file
+            self.all_bodyparts = np.array(
+                self.multianimalbodyparts + self.uniquebodyparts
+            )
+            _, return_idx = np.unique(self.all_bodyparts, return_index=True)
+            self.all_bodyparts = list(self.all_bodyparts[np.sort(return_idx)])
+
+            # Show image
+            # Setting axis title:dont want to show the threshold as it is not selected yet.
+
+            (
+                self.figure,
+                self.axes,
+                self.canvas,
+                self.toolbar,
+                self.ax,
+            ) = self.image_panel.drawplot(
+                self.img,
+                img_name,
+                self.iter,
+                self.index,
+                self.threshold,
+                self.colormap,
+                self.preview,
+            )
+            self.axes.callbacks.connect("xlim_changed", self.onZoom)
+            self.axes.callbacks.connect("ylim_changed", self.onZoom)
+
+            instruction = wx.MessageBox(
+                "1. Enter the likelihood threshold. \n\n2. Each prediction will be shown with a unique color. \n All the data points above the threshold will be marked as circle filled with a unique color. All the data points below the threshold will be marked with a hollow circle. \n\n3. Enable the checkbox to adjust the marker size. \n\n4.  Hover your mouse over data points to see the labels and their likelihood. \n\n5. Left click and drag to move the data points. \n\n6. Middle click on any data point to remove it. Be careful, you cannot undo this step. \n Click once on the zoom button to zoom-in the image.The cursor will become cross, click and drag over a point to zoom in. \n Click on the zoom button again to disable the zooming function and recover the cursor. \n Use pan button to pan across the image while zoomed in. Use home button to go back to the full;default view. \n\n7. When finished click 'Save' to save all the changes. \n\n8. Click OK to continue",
+                "User instructions",
+                wx.OK | wx.ICON_INFORMATION,
+            )
+
+            if instruction == 4:
+                """
+                If ok is selected then the image is updated with the thresholded value of the likelihood
+                """
+                textBox = wx.TextEntryDialog(
+                    self,
+                    "Select the likelihood threshold",
+                    caption="Enter the threshold",
+                    value="0.1",
+                )
+                textBox.ShowModal()
+                self.threshold = float(textBox.GetValue())
+                textBox.Destroy()
+                self.img = os.path.join(self.project_path, *self.index[self.iter])
+                img_name = Path(self.img).name
+                self.axes.clear()
+                self.preview = False
+                # self.figure.delaxes(self.figure.axes[1]) # Removes the axes corresponding to the colorbar
+                (
+                    self.figure,
+                    self.axes,
+                    self.canvas,
+                    self.toolbar,
+                    self.ax,
+                ) = self.image_panel.drawplot(
+                    self.img,
+                    img_name,
+                    self.iter,
+                    self.index,
+                    self.threshold,
+                    self.colormap,
+                    self.preview,
+                )
+                self.axes.callbacks.connect("xlim_changed", self.onZoom)
+                self.axes.callbacks.connect("ylim_changed", self.onZoom)
+                MainFrame.plot(self, self.img)
+                MainFrame.saveEachImage(self)
+            else:
+                # self.figure.delaxes(self.figure.axes[1]) # Removes the axes corresponding to the colorbar
+                (
+                    self.figure,
+                    self.axes,
+                    self.canvas,
+                    self.toolbar,
+                    self.ax,
+                ) = self.image_panel.drawplot(
+                    self.img,
+                    img_name,
+                    self.iter,
+                    self.index,
+                    self.threshold,
+                    self.colormap,
+                    self.preview,
+                )
+                self.axes.callbacks.connect("xlim_changed", self.onZoom)
+                self.axes.callbacks.connect("ylim_changed", self.onZoom)
+                MainFrame.plot(self, self.img)
+                MainFrame.saveEachImage(self)
+
+        else:
+            msg = wx.MessageBox(
+                "No Machinelabels file found! Want to retry?",
+                "Error!",
+                wx.YES_NO | wx.ICON_WARNING,
+            )
+            if msg == 2:
+                self.load.Enable(True)
+                self.next.Enable(False)
+                self.save.Enable(False)
+
+</source>
+</class>
+
+<class classid="21" nclones="2" nlines="78" similarity="78">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/refinement.py" startline="522" endline="606" pcid="429">
+    def nextImage(self, event):
+        """
+        Reads the next image and enables the user to move the annotations
+        """
+        #  Checks for the last image and disables the Next button
+        if len(self.index) - self.iter == 1:
+            self.next.Enable(False)
+            return
+        self.prev.Enable(True)
+
+        # Checks if zoom/pan button is ON
+        MainFrame.updateZoomPan(self)
+
+        MainFrame.saveEachImage(self)
+        self.statusbar.SetStatusText(
+            "Working on folder: {}".format(os.path.split(str(self.dir))[-1])
+        )
+
+        self.iter = self.iter + 1
+
+        if len(self.index) > self.iter:
+            self.updatedCoords = []
+            self.img = os.path.join(self.project_path, *self.index[self.iter])
+            img_name = Path(self.img).name
+
+            # Plotting
+            self.figure.delaxes(
+                self.figure.axes[1]
+            )  # Removes the axes corresponding to the colorbar
+            (
+                self.figure,
+                self.axes,
+                self.canvas,
+                self.toolbar,
+            ) = self.image_panel.drawplot(
+                self.img,
+                img_name,
+                self.iter,
+                self.index,
+                self.threshold,
+                self.bodyparts,
+                self.colormap,
+                self.preview,
+                keep_view=self.view_locked,
+            )
+            im = io.imread(self.img)
+            self.axes.callbacks.connect("xlim_changed", self.onZoom)
+            self.axes.callbacks.connect("ylim_changed", self.onZoom)
+            if np.max(im) == 0:
+                msg = wx.MessageBox(
+                    "Invalid image. Click Yes to remove",
+                    "Error!",
+                    wx.YES_NO | wx.ICON_WARNING,
+                )
+                if msg == 2:
+                    self.Dataframe = self.Dataframe.drop(self.index[self.iter])
+                    self.index = list(self.Dataframe.iloc[:, 0].index)
+                self.iter = self.iter - 1
+
+                self.img = os.path.join(self.project_path, *self.index[self.iter])
+                img_name = Path(self.img).name
+
+                (
+                    self.figure,
+                    self.axes,
+                    self.canvas,
+                    self.toolbar,
+                ) = self.image_panel.drawplot(
+                    self.img,
+                    img_name,
+                    self.iter,
+                    self.index,
+                    self.threshold,
+                    self.bodyparts,
+                    self.colormap,
+                    self.preview,
+                    keep_view=self.view_locked,
+                )
+                self.axes.callbacks.connect("xlim_changed", self.onZoom)
+                self.axes.callbacks.connect("ylim_changed", self.onZoom)
+            MainFrame.plot(self, self.img)
+        else:
+            self.next.Enable(False)
+        MainFrame.saveEachImage(self)
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/multiple_individuals_refinement_toolbox.py" startline="552" endline="655" pcid="482">
+    def nextImage(self, event):
+        """
+        Reads the next image and enables the user to move the annotations
+        """
+        #  Checks for the last image and disables the Next button
+        if len(self.index) - self.iter == 1:
+            self.next.Enable(False)
+            return
+        self.prev.Enable(True)
+
+        # Checks if zoom/pan button is ON
+        MainFrame.updateZoomPan(self)
+
+        MainFrame.saveEachImage(self)
+        # print(self.Dataframe.head())
+        self.statusbar.SetStatusText(
+            "Working on folder: {}".format(os.path.split(str(self.dir))[-1])
+        )
+
+        self.iter = self.iter + 1
+
+        if len(self.index) > self.iter:
+            self.updatedCoords = []
+            self.img = os.path.join(self.project_path, *self.index[self.iter])
+            img_name = Path(self.img).name
+
+            # Plotting
+            self.figure.delaxes(
+                self.figure.axes[1]
+            )  # Removes the axes corresponding to the colorbar
+            if self.visualization_rdb.GetSelection() == 0:
+                (
+                    self.figure,
+                    self.axes,
+                    self.canvas,
+                    self.toolbar,
+                    self.ax,
+                ) = self.image_panel.drawplot(
+                    self.img,
+                    img_name,
+                    self.iter,
+                    self.index,
+                    self.threshold,
+                    self.colormap,
+                    self.preview,
+                    keep_view=self.view_locked,
+                )
+            else:
+                (
+                    self.figure,
+                    self.axes,
+                    self.canvas,
+                    self.toolbar,
+                    self.ax,
+                ) = self.image_panel.drawplot(
+                    self.img,
+                    img_name,
+                    self.iter,
+                    self.index,
+                    self.threshold,
+                    self.colormap,
+                    self.preview,
+                    keep_view=self.view_locked,
+                )
+            im = io.imread(self.img)
+            self.axes.callbacks.connect("xlim_changed", self.onZoom)
+            self.axes.callbacks.connect("ylim_changed", self.onZoom)
+            if np.max(im) == 0:
+                msg = wx.MessageBox(
+                    "Invalid image. Click Yes to remove",
+                    "Error!",
+                    wx.YES_NO | wx.ICON_WARNING,
+                )
+                if msg == 2:
+                    self.Dataframe = self.Dataframe.drop(self.index[self.iter])
+                    self.index = list(self.Dataframe.iloc[:, 0].index)
+                self.iter = self.iter - 1
+
+                self.img = os.path.join(self.project_path, *self.index[self.iter])
+                img_name = Path(self.img).name
+
+                (
+                    self.figure,
+                    self.axes,
+                    self.canvas,
+                    self.toolbar,
+                    self.ax,
+                ) = self.image_panel.drawplot(
+                    self.img,
+                    img_name,
+                    self.iter,
+                    self.index,
+                    self.threshold,
+                    self.colormap,
+                    self.preview,
+                    keep_view=self.view_locked,
+                )
+                self.axes.callbacks.connect("xlim_changed", self.onZoom)
+                self.axes.callbacks.connect("ylim_changed", self.onZoom)
+            MainFrame.plot(self, self.img)
+        else:
+            self.next.Enable(False)
+        MainFrame.saveEachImage(self)
+
+</source>
+</class>
+
+<class classid="22" nclones="2" nlines="11" similarity="100">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/refinement.py" startline="660" endline="676" pcid="431">
+    def quitButton(self, event):
+        """
+        Quits the GUI
+        """
+        self.statusbar.SetStatusText("")
+        dlg = wx.MessageDialog(
+            None, "Are you sure?", "Quit!", wx.YES_NO | wx.ICON_WARNING
+        )
+        result = dlg.ShowModal()
+        if result == wx.ID_YES:
+            print(
+                "Closing... The refined labels are stored in a subdirectory under labeled-data. Use the function 'merge_datasets' to augment the training dataset, and then re-train a network using create_training_dataset followed by train_network!"
+            )
+            self.Destroy()
+        else:
+            self.save.Enable(True)
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/multiple_individuals_refinement_toolbox.py" startline="727" endline="743" pcid="484">
+    def quitButton(self, event):
+        """
+        Quits the GUI
+        """
+        self.statusbar.SetStatusText("")
+        dlg = wx.MessageDialog(
+            None, "Are you sure?", "Quit!", wx.YES_NO | wx.ICON_WARNING
+        )
+        result = dlg.ShowModal()
+        if result == wx.ID_YES:
+            print(
+                "Closing... The refined labels are stored in a subdirectory under labeled-data. Use the function 'merge_datasets' to augment the training dataset, and then re-train a network using create_training_dataset followed by train_network!"
+            )
+            self.Destroy()
+        else:
+            self.save.Enable(True)
+
+</source>
+</class>
+
+<class classid="23" nclones="2" nlines="52" similarity="92">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/refinement.py" startline="717" endline="797" pcid="435">
+    def saveDataSet(self, event):
+
+        MainFrame.saveEachImage(self)
+
+        # Checks if zoom/pan button is ON
+        MainFrame.updateZoomPan(self)
+        self.statusbar.SetStatusText("File saved")
+
+        self.Dataframe = MainFrame.check_labels(self)
+        # Overwrite machine label file
+        self.Dataframe.to_hdf(self.dataname, key="df_with_missing", mode="w")
+
+        self.Dataframe.columns.set_levels(
+            [self.scorer.replace(self.scorer, self.humanscorer)], level=0, inplace=True
+        )
+        self.Dataframe = self.Dataframe.drop("likelihood", axis=1, level=2)
+
+        if Path(self.dir, "CollectedData_" + self.humanscorer + ".h5").is_file():
+            print(
+                "A training dataset file is already found for this video. The refined machine labels are merged to this data!"
+            )
+            DataU1 = pd.read_hdf(
+                os.path.join(self.dir, "CollectedData_" + self.humanscorer + ".h5")
+            )
+            # combine datasets Original Col. + corrected machinefiles:
+            DataCombined = pd.concat([self.Dataframe, DataU1])
+            # Now drop redundant ones keeping the first one [this will make sure that the refined machine file gets preference]
+            DataCombined = DataCombined[~DataCombined.index.duplicated(keep="first")]
+            """
+            if len(self.droppedframes)>0: #i.e. frames were dropped/corrupt. also remove them from original file (if they exist!)
+                for fn in self.droppedframes:
+                    try:
+                        DataCombined.drop(fn,inplace=True)
+                    except KeyError:
+                        pass
+            """
+            DataCombined.sort_index(inplace=True)
+            DataCombined.to_hdf(
+                os.path.join(self.dir, "CollectedData_" + self.humanscorer + ".h5"),
+                key="df_with_missing",
+                mode="w",
+            )
+            DataCombined.to_csv(
+                os.path.join(self.dir, "CollectedData_" + self.humanscorer + ".csv")
+            )
+        else:
+            self.Dataframe.sort_index(inplace=True)
+            self.Dataframe.to_hdf(
+                os.path.join(self.dir, "CollectedData_" + self.humanscorer + ".h5"),
+                key="df_with_missing",
+                mode="w",
+            )
+            self.Dataframe.to_csv(
+                os.path.join(self.dir, "CollectedData_" + self.humanscorer + ".csv")
+            )
+            self.next.Enable(False)
+            self.prev.Enable(False)
+            self.slider.Enable(False)
+            self.checkBox.Enable(False)
+
+        nextFilemsg = wx.MessageBox(
+            "File saved. Do you want to refine another file?",
+            "Repeat?",
+            wx.YES_NO | wx.ICON_INFORMATION,
+        )
+        if nextFilemsg == 2:
+            self.file = 1
+            # self.buttonCounter = []
+            self.updatedCoords = []
+            self.dataFrame = None
+            self.prev.Enable(False)
+            # self.bodyparts = []
+            self.figure.delaxes(self.figure.axes[1])
+            self.axes.clear()
+            self.choiceBox.Clear(True)
+            MainFrame.updateZoomPan(self)
+            MainFrame.browseDir(self, event)
+
+    # ###########################################################################
+    # Other functions
+    # ###########################################################################
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/multiple_individuals_refinement_toolbox.py" startline="799" endline="875" pcid="489">
+    def saveDataSet(self, event):
+
+        MainFrame.saveEachImage(self)
+
+        # Checks if zoom/pan button is ON
+        MainFrame.updateZoomPan(self)
+        self.statusbar.SetStatusText("File saved")
+
+        self.Dataframe = MainFrame.check_labels(self)
+        # Overwrite machine label file
+        self.Dataframe.to_hdf(self.dataname, key="df_with_missing", mode="w")
+
+        self.Dataframe.columns.set_levels(
+            [self.scorer.replace(self.scorer, self.humanscorer)], level=0, inplace=True
+        )
+        self.Dataframe = self.Dataframe.drop("likelihood", axis=1, level=3)
+
+        if Path(self.dir, "CollectedData_" + self.humanscorer + ".h5").is_file():
+            print(
+                "A training dataset file is already found for this video. The refined machine labels are merged to this data!"
+            )
+            DataU1 = pd.read_hdf(
+                os.path.join(self.dir, "CollectedData_" + self.humanscorer + ".h5")
+            )
+            # combine datasets Original Col. + corrected machinefiles:
+            DataCombined = pd.concat([self.Dataframe, DataU1])
+            # Now drop redundant ones keeping the first one [this will make sure that the refined machine file gets preference]
+            DataCombined = DataCombined[~DataCombined.index.duplicated(keep="first")]
+            """
+            if len(self.droppedframes)>0: #i.e. frames were dropped/corrupt. also remove them from original file (if they exist!)
+                for fn in self.droppedframes:
+                    try:
+                        DataCombined.drop(fn,inplace=True)
+                    except KeyError:
+                        pass
+            """
+            DataCombined.sort_index(inplace=True)
+            DataCombined.to_hdf(
+                os.path.join(self.dir, "CollectedData_" + self.humanscorer + ".h5"),
+                key="df_with_missing",
+                mode="w",
+            )
+            DataCombined.to_csv(
+                os.path.join(self.dir, "CollectedData_" + self.humanscorer + ".csv")
+            )
+        else:
+            self.Dataframe.sort_index(inplace=True)
+            self.Dataframe.to_hdf(
+                os.path.join(self.dir, "CollectedData_" + self.humanscorer + ".h5"),
+                key="df_with_missing",
+                mode="w",
+            )
+            self.Dataframe.to_csv(
+                os.path.join(self.dir, "CollectedData_" + self.humanscorer + ".csv")
+            )
+            self.next.Enable(False)
+            self.prev.Enable(False)
+            self.slider.Enable(False)
+            self.checkBox.Enable(False)
+
+        nextFilemsg = wx.MessageBox(
+            "File saved. Do you want to refine another file?",
+            "Repeat?",
+            wx.YES_NO | wx.ICON_INFORMATION,
+        )
+        if nextFilemsg == 2:
+            self.file = 1
+            self.axes.clear()
+            self.figure.delaxes(self.figure.axes[1])
+            self.choiceBox.Clear(True)
+            MainFrame.updateZoomPan(self)
+            self.load.Enable(True)
+            MainFrame.browseDir(self, event)
+
+    # ###########################################################################
+    # Other functions
+    # ###########################################################################
+</source>
+</class>
+
+<class classid="24" nclones="2" nlines="12" similarity="100">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/refinement.py" startline="811" endline="827" pcid="437">
+    def getLabels(self, img_index):
+        """
+        Returns a list of x and y labels of the corresponding image index
+        """
+        self.previous_image_points = []
+        for bpindex, bp in enumerate(self.bodyparts):
+            image_points = [
+                [
+                    self.Dataframe[self.scorer][bp]["x"].values[self.iter],
+                    self.Dataframe[self.scorer][bp]["y"].values[self.iter],
+                    bp,
+                    bpindex,
+                ]
+            ]
+            self.previous_image_points.append(image_points)
+        return self.previous_image_points
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/labeling_toolbox.py" startline="866" endline="882" pcid="567">
+    def getLabels(self, img_index):
+        """
+        Returns a list of x and y labels of the corresponding image index
+        """
+        self.previous_image_points = []
+        for bpindex, bp in enumerate(self.bodyparts):
+            image_points = [
+                [
+                    self.dataFrame[self.scorer][bp]["x"].values[self.iter],
+                    self.dataFrame[self.scorer][bp]["y"].values[self.iter],
+                    bp,
+                    bpindex,
+                ]
+            ]
+            self.previous_image_points.append(image_points)
+        return self.previous_image_points
+
+</source>
+</class>
+
+<class classid="25" nclones="2" nlines="27" similarity="70">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/multiple_individuals_refinement_toolbox.py" startline="105" endline="137" pcid="474">
+    def addCheckBoxSlider(self, bodyparts, fileIndex, markersize):
+        """
+        Adds checkbox and a slider
+        """
+        self.choiceBox = wx.BoxSizer(wx.VERTICAL)
+
+        self.slider = wx.Slider(
+            self,
+            -1,
+            markersize,
+            1,
+            markersize * 3,
+            size=(250, -1),
+            style=wx.SL_HORIZONTAL | wx.SL_AUTOTICKS | wx.SL_LABELS,
+        )
+        self.slider.Enable(False)
+        self.checkBox = wx.CheckBox(self, id=wx.ID_ANY, label="Adjust marker size.")
+        self.choiceBox.Add(self.slider, 0, wx.ALL, 5)
+        self.choiceBox.Add(self.checkBox, 0, wx.ALL, 5)
+        names = ["Color individuals", "Color bodyparts"]
+        self.visualization_radiobox = wx.RadioBox(
+            self,
+            label="Select the visualization scheme",
+            majorDimension=1,
+            style=wx.RA_SPECIFY_COLS,
+            choices=names,
+        )
+        self.choiceBox.Add(self.visualization_radiobox, 0, wx.EXPAND | wx.ALL, 10)
+
+        self.SetSizerAndFit(self.choiceBox)
+        self.Layout()
+        return (self.choiceBox, self.slider, self.checkBox, self.visualization_radiobox)
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/labeling_toolbox.py" startline="215" endline="244" pcid="551">
+    def addRadioButtons(self, bodyparts, fileIndex, markersize):
+        """
+        Adds radio buttons for each bodypart on the right panel
+        """
+        self.choiceBox = wx.BoxSizer(wx.VERTICAL)
+        choices = [l for l in bodyparts]
+        self.fieldradiobox = wx.RadioBox(
+            self,
+            label="Select a bodypart to label",
+            style=wx.RA_SPECIFY_ROWS,
+            choices=choices,
+        )
+        self.slider = wx.Slider(
+            self,
+            -1,
+            markersize,
+            1,
+            markersize * 3,
+            size=(250, -1),
+            style=wx.SL_HORIZONTAL | wx.SL_AUTOTICKS | wx.SL_LABELS,
+        )
+        self.slider.Enable(False)
+        self.checkBox = wx.CheckBox(self, id=wx.ID_ANY, label="Adjust marker size.")
+        self.choiceBox.Add(self.slider, 0, wx.ALL, 5)
+        self.choiceBox.Add(self.checkBox, 0, wx.ALL, 5)
+        self.choiceBox.Add(self.fieldradiobox, 0, wx.EXPAND | wx.ALL, 10)
+        self.SetSizerAndFit(self.choiceBox)
+        self.Layout()
+        return (self.choiceBox, self.fieldradiobox, self.slider, self.checkBox)
+
+</source>
+</class>
+
+<class classid="26" nclones="2" nlines="11" similarity="81">
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/create_new_project.py" startline="275" endline="290" pcid="577">
+    def edit_config(self, event):
+        """
+        """
+        if self.cfg != "":
+            # For mac compatibility
+            if platform.system() == "Darwin":
+                self.file_open_bool = subprocess.call(["open", self.cfg])
+                self.file_open_bool = True
+            else:
+                self.file_open_bool = webbrowser.open(self.cfg)
+
+            if self.file_open_bool:
+                pass
+            else:
+                raise FileNotFoundError("File not found!")
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/deeplabcut/gui/analyze_videos.py" startline="343" endline="355" pcid="593">
+    def edit_config(self, event):
+        """
+        """
+        if platform.system() == "Darwin":
+            self.file_open_bool = subprocess.call(["open", self.config])
+            self.file_open_bool = True
+        else:
+            self.file_open_bool = webbrowser.open(self.config)
+        if self.file_open_bool:
+            self.pose_cfg = auxiliaryfunctions.read_config(self.config)
+        else:
+            raise FileNotFoundError("File not found!")
+
+</source>
+</class>
+
+<class classid="27" nclones="2" nlines="18" similarity="70">
+<source file="systems/DeepLabCut-2.2.0.6/tests/test_dataset_augmentation.py" startline="7" endline="26" pcid="624">
+def test_keypoint_aware_cropping(
+    sample_image, sample_keypoints, width, height,
+):
+    aug = augmentation.KeypointAwareCropToFixedSize(width=width, height=height,)
+    images_aug, keypoints_aug = aug(
+        images=[sample_image], keypoints=[sample_keypoints],
+    )
+    assert len(images_aug) == len(keypoints_aug) == 1
+    assert all(im.shape[:2] == (height, width) for im in images_aug)
+    # Ensure at least a keypoint is visible in each crop
+    assert all(len(kpts) for kpts in keypoints_aug)
+
+    # Test passing in a batch of frames
+    n_samples = 8
+    images_aug, keypoints_aug = aug(
+        images=[sample_image] * n_samples, keypoints=[sample_keypoints] * n_samples,
+    )
+    assert len(images_aug) == len(keypoints_aug) == n_samples
+
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/tests/test_dataset_augmentation.py" startline="28" endline="52" pcid="625">
+def test_sequential(
+    sample_image, sample_keypoints, width, height,
+):
+    # Guarantee that images smaller than crop size are handled fine
+    very_small_image = sample_image[:50, :50]
+    aug = iaa.Sequential(
+        [
+            iaa.PadToFixedSize(width, height),
+            augmentation.KeypointAwareCropToFixedSize(width, height),
+        ]
+    )
+    images_aug, keypoints_aug = aug(
+        images=[very_small_image], keypoints=[sample_keypoints],
+    )
+    assert len(images_aug) == len(keypoints_aug) == 1
+    assert all(im.shape[:2] == (height, width) for im in images_aug)
+    # Ensure at least a keypoint is visible in each crop
+    assert all(len(kpts) for kpts in keypoints_aug)
+
+    # Test passing in a batch of frames
+    n_samples = 8
+    images_aug, keypoints_aug = aug(
+        images=[very_small_image] * n_samples, keypoints=[sample_keypoints] * n_samples,
+    )
+    assert len(images_aug) == len(keypoints_aug) == n_samples
+</source>
+</class>
+
+<class classid="28" nclones="2" nlines="17" similarity="88">
+<source file="systems/DeepLabCut-2.2.0.6/tests/test_trackingutils.py" startline="57" endline="74" pcid="640">
+def test_tracking_ellipse(real_assemblies, real_tracklets):
+    tracklets_ref = real_tracklets.copy()
+    _ = tracklets_ref.pop("header", None)
+    tracklets = dict()
+    mot_tracker = trackingutils.SORTEllipse(1, 1, 0.6)
+    for ind, assemblies in real_assemblies.items():
+        animals = np.stack([ass.data for ass in assemblies])
+        trackers = mot_tracker.track(animals[..., :2])
+        trackingutils.fill_tracklets(tracklets, trackers, animals, ind)
+    assert len(tracklets) == len(tracklets_ref)
+    assert [len(tracklet) for tracklet in tracklets.values()] == [
+        len(tracklet) for tracklet in tracklets_ref.values()
+    ]
+    assert all(
+        t.shape[1] == 4 for tracklet in tracklets.values() for t in tracklet.values()
+    )
+
+
+</source>
+<source file="systems/DeepLabCut-2.2.0.6/tests/test_trackingutils.py" startline="89" endline="107" pcid="642">
+def test_tracking_box(real_assemblies, real_tracklets):
+    tracklets_ref = real_tracklets.copy()
+    _ = tracklets_ref.pop("header", None)
+    tracklets = dict()
+    mot_tracker = trackingutils.SORTBox(1, 1, 0.1)
+    for ind, assemblies in real_assemblies.items():
+        animals = np.stack([ass.data for ass in assemblies])
+        bboxes = trackingutils.calc_bboxes_from_keypoints(animals)
+        trackers = mot_tracker.track(bboxes)
+        trackingutils.fill_tracklets(tracklets, trackers, animals, ind)
+    assert len(tracklets) == len(tracklets_ref)
+    assert [len(tracklet) for tracklet in tracklets.values()] == [
+        len(tracklet) for tracklet in tracklets_ref.values()
+    ]
+    assert all(
+        t.shape[1] == 4 for tracklet in tracklets.values() for t in tracklet.values()
+    )
+
+
+</source>
+</class>
+
+</clones>

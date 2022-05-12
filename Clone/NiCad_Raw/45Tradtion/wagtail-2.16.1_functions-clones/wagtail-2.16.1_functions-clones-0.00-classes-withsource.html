@@ -1,0 +1,1784 @@
+<html>
+<head>
+    <title>NiCad6 Clone Report</title>
+    <style type="text/css">
+        body {font-family:sans-serif;}
+        table {background-color:white; border:0px; padding:0px; border-spacing:4px; width:auto; margin-left:30px; margin-right:auto;}
+        td {background-color:rgba(192,212,238,0.8); border:0px; padding:8px; width:auto; vertical-align:top; border-radius:8px}
+        pre {background-color:white; padding:4px;}
+        a {color:darkblue;}
+    </style>
+</head>
+<body>
+<h2>NiCad6 Clone Report</h2>
+<table>
+<tr style="font-size:14pt">
+<td><b>System:</b> &nbsp; wagtail-2.16.1</td>
+<td><b>Clone pairs:</b> &nbsp; 35</td>
+<td><b>Clone classes:</b> &nbsp; 21</td>
+</tr>
+<tr style="font-size:12pt">
+<td style="background-color:white">Clone type: &nbsp; 1</td>
+<td style="background-color:white">Granularity: &nbsp; functions</td>
+<td style="background-color:white">Max diff threshold: &nbsp; 0%</td>
+<td style="background-color:white">Clone size: &nbsp; 10 - 2500 lines</td>
+<td style="background-color:white">Total functions: &nbsp; 5932</td>
+</tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 1:</b> &nbsp; 2 fragments, nominal size 15 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag231')" href="javascript:;">
+wagtail-2.16.1/wagtail/contrib/postgres_search/tests/test_stemming.py: 22-43
+</a>
+<div class="mid" id="frag231" style="display:none"><pre>
+    def test_ru_stemming(self):
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SET default_text_search_config TO 'pg_catalog.russian'"
+            )
+
+        ru_book = models.Book.objects.create(
+            title="Голубое сало", publication_date="1999-05-01",
+            number_of_pages=352
+        )
+        self.backend.add(ru_book)
+
+        results = self.backend.search("Голубое", models.Book)
+        self.assertEqual(list(results), [ru_book])
+
+        results = self.backend.search("Голубая", models.Book)
+        self.assertEqual(list(results), [ru_book])
+
+        results = self.backend.search("Голубой", models.Book)
+        self.assertEqual(list(results), [ru_book])
+
+        ru_book.delete()
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5664')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_postgres_stemming.py: 22-43
+</a>
+<div class="mid" id="frag5664" style="display:none"><pre>
+    def test_ru_stemming(self):
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SET default_text_search_config TO 'pg_catalog.russian'"
+            )
+
+        ru_book = models.Book.objects.create(
+            title="Голубое сало", publication_date="1999-05-01",
+            number_of_pages=352
+        )
+        self.backend.add(ru_book)
+
+        results = self.backend.search("Голубое", models.Book)
+        self.assertEqual(list(results), [ru_book])
+
+        results = self.backend.search("Голубая", models.Book)
+        self.assertEqual(list(results), [ru_book])
+
+        results = self.backend.search("Голубой", models.Book)
+        self.assertEqual(list(results), [ru_book])
+
+        ru_book.delete()
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 2:</b> &nbsp; 2 fragments, nominal size 30 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag233')" href="javascript:;">
+wagtail-2.16.1/wagtail/contrib/postgres_search/tests/test_backend.py: 40-86
+</a>
+<div class="mid" id="frag233" style="display:none"><pre>
+    def test_search_tsquery_chars(self):
+        """
+        Checks that tsquery characters are correctly escaped
+        and do not generate a PostgreSQL syntax error.
+        """
+
+        # Simple quote should be escaped inside each tsquery term.
+        results = self.backend.search("L'amour piqué par une abeille",
+                                      models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.search("'starting quote",
+                                      models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.search("ending quote'",
+                                      models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.search("double quo''te",
+                                      models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.search("triple quo'''te",
+                                      models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+        # Now suffixes.
+        results = self.backend.search("Something:B", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.search("Something:*", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.search("Something:A*BCD", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+        # Now the AND operator.
+        results = self.backend.search("first &amp; second", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+        # Now the OR operator.
+        results = self.backend.search("first | second", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+        # Now the NOT operator.
+        results = self.backend.search("first &amp; !second", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+        # Now the phrase operator.
+        results = self.backend.search("first &lt;-&gt; second", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5680')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_postgres_backend.py: 50-96
+</a>
+<div class="mid" id="frag5680" style="display:none"><pre>
+    def test_search_tsquery_chars(self):
+        """
+        Checks that tsquery characters are correctly escaped
+        and do not generate a PostgreSQL syntax error.
+        """
+
+        # Simple quote should be escaped inside each tsquery term.
+        results = self.backend.search("L'amour piqué par une abeille",
+                                      models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.search("'starting quote",
+                                      models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.search("ending quote'",
+                                      models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.search("double quo''te",
+                                      models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.search("triple quo'''te",
+                                      models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+        # Now suffixes.
+        results = self.backend.search("Something:B", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.search("Something:*", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.search("Something:A*BCD", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+        # Now the AND operator.
+        results = self.backend.search("first &amp; second", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+        # Now the OR operator.
+        results = self.backend.search("first | second", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+        # Now the NOT operator.
+        results = self.backend.search("first &amp; !second", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+        # Now the phrase operator.
+        results = self.backend.search("first &lt;-&gt; second", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 3:</b> &nbsp; 2 fragments, nominal size 33 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag234')" href="javascript:;">
+wagtail-2.16.1/wagtail/contrib/postgres_search/tests/test_backend.py: 87-138
+</a>
+<div class="mid" id="frag234" style="display:none"><pre>
+    def test_autocomplete_tsquery_chars(self):
+        """
+        Checks that tsquery characters are correctly escaped
+        and do not generate a PostgreSQL syntax error.
+        """
+
+        # Simple quote should be escaped inside each tsquery term.
+        results = self.backend.autocomplete("L'amour piqué par une abeille",
+                                            models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.autocomplete("'starting quote",
+                                            models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.autocomplete("ending quote'",
+                                            models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.autocomplete("double quo''te",
+                                            models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.autocomplete("triple quo'''te",
+                                            models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+        # Backslashes should be escaped inside each tsquery term.
+        results = self.backend.autocomplete("backslash\\",
+                                            models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+        # Now suffixes.
+        results = self.backend.autocomplete("Something:B", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.autocomplete("Something:*", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.autocomplete("Something:A*BCD", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+        # Now the AND operator.
+        results = self.backend.autocomplete("first &amp; second", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+        # Now the OR operator.
+        results = self.backend.autocomplete("first | second", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+        # Now the NOT operator.
+        results = self.backend.autocomplete("first &amp; !second", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+        # Now the phrase operator.
+        results = self.backend.autocomplete("first &lt;-&gt; second", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5681')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_postgres_backend.py: 97-148
+</a>
+<div class="mid" id="frag5681" style="display:none"><pre>
+    def test_autocomplete_tsquery_chars(self):
+        """
+        Checks that tsquery characters are correctly escaped
+        and do not generate a PostgreSQL syntax error.
+        """
+
+        # Simple quote should be escaped inside each tsquery term.
+        results = self.backend.autocomplete("L'amour piqué par une abeille",
+                                            models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.autocomplete("'starting quote",
+                                            models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.autocomplete("ending quote'",
+                                            models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.autocomplete("double quo''te",
+                                            models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.autocomplete("triple quo'''te",
+                                            models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+        # Backslashes should be escaped inside each tsquery term.
+        results = self.backend.autocomplete("backslash\\",
+                                            models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+        # Now suffixes.
+        results = self.backend.autocomplete("Something:B", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.autocomplete("Something:*", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+        results = self.backend.autocomplete("Something:A*BCD", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+        # Now the AND operator.
+        results = self.backend.autocomplete("first &amp; second", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+        # Now the OR operator.
+        results = self.backend.autocomplete("first | second", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+        # Now the NOT operator.
+        results = self.backend.autocomplete("first &amp; !second", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+        # Now the phrase operator.
+        results = self.backend.autocomplete("first &lt;-&gt; second", models.Book)
+        self.assertUnsortedListEqual([r.title for r in results], [])
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 4:</b> &nbsp; 3 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag631')" href="javascript:;">
+wagtail-2.16.1/wagtail/contrib/simple_translation/tests/test_views.py: 112-126
+</a>
+<div class="mid" id="frag631" style="display:none"><pre>
+    def setUp(self):
+        self.en_locale = Locale.objects.first()
+        self.fr_locale = Locale.objects.create(language_code="fr")
+        self.de_locale = Locale.objects.create(language_code="de")
+
+        self.en_homepage = Page.objects.get(depth=2)
+        self.fr_homepage = self.en_homepage.copy_for_translation(self.fr_locale)
+        self.de_homepage = self.en_homepage.copy_for_translation(self.de_locale)
+
+        self.en_blog_index = TestPage(title="Blog", slug="blog")
+        self.en_homepage.add_child(instance=self.en_blog_index)
+
+        self.en_blog_post = TestPage(title="Blog post", slug="blog-post")
+        self.en_blog_index.add_child(instance=self.en_blog_post)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag649')" href="javascript:;">
+wagtail-2.16.1/wagtail/contrib/simple_translation/tests/test_forms.py: 23-37
+</a>
+<div class="mid" id="frag649" style="display:none"><pre>
+    def setUp(self):
+        self.en_locale = Locale.objects.first()
+        self.fr_locale = Locale.objects.create(language_code="fr")
+        self.de_locale = Locale.objects.create(language_code="de")
+
+        self.en_homepage = Page.objects.get(depth=2)
+        self.fr_homepage = self.en_homepage.copy_for_translation(self.fr_locale)
+        self.de_homepage = self.en_homepage.copy_for_translation(self.de_locale)
+
+        self.en_blog_index = TestPage(title="Blog", slug="blog")
+        self.en_homepage.add_child(instance=self.en_blog_index)
+
+        self.en_blog_post = TestPage(title="Blog post", slug="blog-post")
+        self.en_blog_index.add_child(instance=self.en_blog_post)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag656')" href="javascript:;">
+wagtail-2.16.1/wagtail/contrib/simple_translation/tests/test_wagtail_hooks.py: 15-30
+</a>
+<div class="mid" id="frag656" style="display:none"><pre>
+    def setUp(self):
+        self.en_locale = Locale.objects.first()
+        self.fr_locale = Locale.objects.create(language_code="fr")
+        self.de_locale = Locale.objects.create(language_code="de")
+
+        self.en_homepage = Page.objects.get(depth=2)
+        self.fr_homepage = self.en_homepage.copy_for_translation(self.fr_locale)
+        self.de_homepage = self.en_homepage.copy_for_translation(self.de_locale)
+
+        self.en_blog_index = TestPage(title="Blog", slug="blog")
+        self.en_homepage.add_child(instance=self.en_blog_index)
+
+        self.en_blog_post = TestPage(title="Blog post", slug="blog-post")
+        self.en_blog_index.add_child(instance=self.en_blog_post)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 5:</b> &nbsp; 2 fragments, nominal size 19 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1338')" href="javascript:;">
+wagtail-2.16.1/wagtail/admin/action_menu.py: 93-116
+</a>
+<div class="mid" id="frag1338" style="display:none"><pre>
+    def get_context_data(self, parent_context):
+        """Defines context for the template, overridable to use more data"""
+        context = parent_context.copy()
+
+        if requires_request_arg(self.get_url):
+            warn(
+                "%s.get_url should no longer take a 'request' argument. "
+                "See https://docs.wagtail.org/en/stable/releases/2.15.html#template-components-2-15" % type(self).__name__,
+                category=RemovedInWagtail217Warning
+            )
+            url = self.get_url(parent_context['request'], parent_context)
+        else:
+            url = self.get_url(parent_context)
+
+        context.update({
+            'label': self.label,
+            'url': url,
+            'name': self.name,
+            'classname': self.classname,
+            'icon_name': self.icon_name,
+            'request': parent_context['request'],
+        })
+        return context
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2869')" href="javascript:;">
+wagtail-2.16.1/wagtail/snippets/action_menu.py: 79-102
+</a>
+<div class="mid" id="frag2869" style="display:none"><pre>
+    def get_context_data(self, parent_context):
+        """Defines context for the template, overridable to use more data"""
+        context = parent_context.copy()
+
+        if requires_request_arg(self.get_url):
+            warn(
+                "%s.get_url should no longer take a 'request' argument. "
+                "See https://docs.wagtail.org/en/stable/releases/2.15.html#template-components-2-15" % type(self).__name__,
+                category=RemovedInWagtail217Warning
+            )
+            url = self.get_url(parent_context['request'], parent_context)
+        else:
+            url = self.get_url(parent_context)
+
+        context.update({
+            'label': self.label,
+            'url': url,
+            'name': self.name,
+            'classname': self.classname,
+            'icon_name': self.icon_name,
+            'request': parent_context['request'],
+        })
+        return context
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 6:</b> &nbsp; 2 fragments, nominal size 24 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1364')" href="javascript:;">
+wagtail-2.16.1/wagtail/admin/action_menu.py: 482-510
+</a>
+<div class="mid" id="frag1364" style="display:none"><pre>
+    def render_html(self):
+        rendered_menu_items = []
+        for menu_item in self.menu_items:
+            if requires_request_arg(menu_item.render_html):
+                warn(
+                    "%s.render_html should no longer take a 'request' argument. "
+                    "See https://docs.wagtail.org/en/stable/releases/2.15.html#template-components-2-15" % type(menu_item).__name__,
+                    category=RemovedInWagtail217Warning
+                )
+                rendered_menu_items.append(menu_item.render_html(self.request, self.context))
+            else:
+                rendered_menu_items.append(menu_item.render_html(self.context))
+
+        if requires_request_arg(self.default_item.render_html):
+            warn(
+                "%s.render_html should no longer take a 'request' argument. "
+                "See https://docs.wagtail.org/en/stable/releases/2.15.html#template-components-2-15" % type(self.default_item).__name__,
+                category=RemovedInWagtail217Warning
+            )
+            rendered_default_item = self.default_item.render_html(self.request, self.context)
+        else:
+            rendered_default_item = self.default_item.render_html(self.context)
+
+        return render_to_string(self.template, {
+            'default_menu_item': rendered_default_item,
+            'show_menu': bool(self.menu_items),
+            'rendered_menu_items': rendered_menu_items,
+        }, request=self.request)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2876')" href="javascript:;">
+wagtail-2.16.1/wagtail/snippets/action_menu.py: 234-262
+</a>
+<div class="mid" id="frag2876" style="display:none"><pre>
+    def render_html(self):
+        rendered_menu_items = []
+        for menu_item in self.menu_items:
+            if requires_request_arg(menu_item.render_html):
+                warn(
+                    "%s.render_html should no longer take a 'request' argument. "
+                    "See https://docs.wagtail.org/en/stable/releases/2.15.html#template-components-2-15" % type(menu_item).__name__,
+                    category=RemovedInWagtail217Warning
+                )
+                rendered_menu_items.append(menu_item.render_html(self.request, self.context))
+            else:
+                rendered_menu_items.append(menu_item.render_html(self.context))
+
+        if requires_request_arg(self.default_item.render_html):
+            warn(
+                "%s.render_html should no longer take a 'request' argument. "
+                "See https://docs.wagtail.org/en/stable/releases/2.15.html#template-components-2-15" % type(self.default_item).__name__,
+                category=RemovedInWagtail217Warning
+            )
+            rendered_default_item = self.default_item.render_html(self.request, self.context)
+        else:
+            rendered_default_item = self.default_item.render_html(self.context)
+
+        return render_to_string(self.template, {
+            'default_menu_item': rendered_default_item,
+            'show_menu': bool(self.menu_items),
+            'rendered_menu_items': rendered_menu_items,
+        }, request=self.request)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 7:</b> &nbsp; 2 fragments, nominal size 19 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1860')" href="javascript:;">
+wagtail-2.16.1/wagtail/admin/tests/pages/test_revisions.py: 17-40
+</a>
+<div class="mid" id="frag1860" style="display:none"><pre>
+    def setUp(self):
+        self.christmas_event = EventPage.objects.get(url_path='/home/events/christmas/')
+        self.christmas_event.title = "Last Christmas"
+        self.christmas_event.date_from = '2013-12-25'
+        self.christmas_event.body = (
+            "&lt;p&gt;Last Christmas I gave you my heart, "
+            "but the very next day you gave it away&lt;/p&gt;"
+        )
+        self.last_christmas_revision = self.christmas_event.save_revision()
+        self.last_christmas_revision.created_at = local_datetime(2013, 12, 25)
+        self.last_christmas_revision.save()
+
+        self.christmas_event.title = "This Christmas"
+        self.christmas_event.date_from = '2014-12-25'
+        self.christmas_event.body = (
+            "&lt;p&gt;This year, to save me from tears, "
+            "I'll give it to someone special&lt;/p&gt;"
+        )
+        self.this_christmas_revision = self.christmas_event.save_revision()
+        self.this_christmas_revision.created_at = local_datetime(2014, 12, 25)
+        self.this_christmas_revision.save()
+
+        self.login()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1868')" href="javascript:;">
+wagtail-2.16.1/wagtail/admin/tests/pages/test_revisions.py: 146-169
+</a>
+<div class="mid" id="frag1868" style="display:none"><pre>
+    def setUp(self):
+        self.christmas_event = EventPage.objects.get(url_path='/home/events/christmas/')
+        self.christmas_event.title = "Last Christmas"
+        self.christmas_event.date_from = '2013-12-25'
+        self.christmas_event.body = (
+            "&lt;p&gt;Last Christmas I gave you my heart, "
+            "but the very next day you gave it away&lt;/p&gt;"
+        )
+        self.last_christmas_revision = self.christmas_event.save_revision()
+        self.last_christmas_revision.created_at = local_datetime(2013, 12, 25)
+        self.last_christmas_revision.save()
+
+        self.christmas_event.title = "This Christmas"
+        self.christmas_event.date_from = '2014-12-25'
+        self.christmas_event.body = (
+            "&lt;p&gt;This year, to save me from tears, "
+            "I'll give it to someone special&lt;/p&gt;"
+        )
+        self.this_christmas_revision = self.christmas_event.save_revision()
+        self.this_christmas_revision.created_at = local_datetime(2014, 12, 25)
+        self.this_christmas_revision.save()
+
+        self.login()
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 8:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2016')" href="javascript:;">
+wagtail-2.16.1/wagtail/admin/tests/pages/test_preview.py: 64-78
+</a>
+<div class="mid" id="frag2016" style="display:none"><pre>
+def clear_edit_handler(page_cls):
+    def decorator(fn):
+        @wraps(fn)
+        def decorated(*args, **kwargs):
+            # Clear any old EditHandlers generated
+            page_cls.get_edit_handler.cache_clear()
+            try:
+                fn(*args, **kwargs)
+            finally:
+                # Clear the bad EditHandler generated just now
+                page_cls.get_edit_handler.cache_clear()
+        return decorated
+    return decorator
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2499')" href="javascript:;">
+wagtail-2.16.1/wagtail/admin/tests/test_edit_handlers.py: 151-165
+</a>
+<div class="mid" id="frag2499" style="display:none"><pre>
+def clear_edit_handler(page_cls):
+    def decorator(fn):
+        @wraps(fn)
+        def decorated(*args, **kwargs):
+            # Clear any old EditHandlers generated
+            page_cls.get_edit_handler.cache_clear()
+            try:
+                fn(*args, **kwargs)
+            finally:
+                # Clear the bad EditHandler generated just now
+                page_cls.get_edit_handler.cache_clear()
+        return decorated
+    return decorator
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 9:</b> &nbsp; 2 fragments, nominal size 15 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2924')" href="javascript:;">
+wagtail-2.16.1/wagtail/snippets/tests.py: 416-437
+</a>
+<div class="mid" id="frag2924" style="display:none"><pre>
+    def test_register_snippet_action_menu_item(self):
+        class TestSnippetActionMenuItem(ActionMenuItem):
+            label = "Test"
+            name = "test"
+            icon_name = "undo"
+            classname = 'action-secondary'
+
+            def is_shown(self, context):
+                return True
+
+        def hook_func(model):
+            return TestSnippetActionMenuItem(order=0)
+
+        with self.register_hook('register_snippet_action_menu_item', hook_func):
+            get_base_snippet_action_menu_items.cache_clear()
+
+            response = self.get()
+
+        get_base_snippet_action_menu_items.cache_clear()
+
+        self.assertContains(response, '&lt;button type="submit" name="test" value="Test" class="button action-secondary"&gt;&lt;svg class="icon icon-undo icon" aria-hidden="true" focusable="false"&gt;&lt;use href="#icon-undo"&gt;&lt;/use&gt;&lt;/svg&gt;Test&lt;/button&gt;', html=True)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2954')" href="javascript:;">
+wagtail-2.16.1/wagtail/snippets/tests.py: 674-695
+</a>
+<div class="mid" id="frag2954" style="display:none"><pre>
+    def test_register_snippet_action_menu_item(self):
+        class TestSnippetActionMenuItem(ActionMenuItem):
+            label = "Test"
+            name = "test"
+            icon_name = "undo"
+            classname = 'action-secondary'
+
+            def is_shown(self, context):
+                return True
+
+        def hook_func(model):
+            return TestSnippetActionMenuItem(order=0)
+
+        with self.register_hook('register_snippet_action_menu_item', hook_func):
+            get_base_snippet_action_menu_items.cache_clear()
+
+            response = self.get()
+
+        get_base_snippet_action_menu_items.cache_clear()
+
+        self.assertContains(response, '&lt;button type="submit" name="test" value="Test" class="button action-secondary"&gt;&lt;svg class="icon icon-undo icon" aria-hidden="true" focusable="false"&gt;&lt;use href="#icon-undo"&gt;&lt;/use&gt;&lt;/svg&gt;Test&lt;/button&gt;', html=True)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 10:</b> &nbsp; 2 fragments, nominal size 12 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag4673')" href="javascript:;">
+wagtail-2.16.1/wagtail/documents/migrations/0011_add_choose_permissions.py: 60-76
+</a>
+<div class="mid" id="frag4673" style="display:none"><pre>
+def copy_choose_permission_to_collections(apps, _schema_editor):
+    Collection = apps.get_model('wagtailcore.Collection')
+    Group = apps.get_model('auth.Group')
+    GroupCollectionPermission = apps.get_model('wagtailcore.GroupCollectionPermission')
+
+    root_collection = Collection.objects.get(depth=1)
+
+    permission = get_choose_permission(apps)
+    if permission:
+        for group in Group.objects.filter(permissions=permission):
+            GroupCollectionPermission.objects.create(
+                group=group,
+                collection=root_collection,
+                permission=permission
+            )
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag4919')" href="javascript:;">
+wagtail-2.16.1/wagtail/images/migrations/0023_add_choose_permissions.py: 60-76
+</a>
+<div class="mid" id="frag4919" style="display:none"><pre>
+def copy_choose_permission_to_collections(apps, _schema_editor):
+    Collection = apps.get_model('wagtailcore.Collection')
+    Group = apps.get_model('auth.Group')
+    GroupCollectionPermission = apps.get_model('wagtailcore.GroupCollectionPermission')
+
+    root_collection = Collection.objects.get(depth=1)
+
+    permission = get_choose_permission(apps)
+    if permission:
+        for group in Group.objects.filter(permissions=permission):
+            GroupCollectionPermission.objects.create(
+                group=group,
+                collection=root_collection,
+                permission=permission
+            )
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 11:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag4686')" href="javascript:;">
+wagtail-2.16.1/wagtail/documents/views/multiple.py: 113-130
+</a>
+<div class="mid" id="frag4686" style="display:none"><pre>
+
+    def save_object(self, form):
+        # assign the file content from uploaded_doc to the image object, to ensure it gets saved to
+        # Document's storage
+
+        self.object.file.save(os.path.basename(self.upload.file.name), self.upload.file.file, save=False)
+        self.object.uploaded_by_user = self.request.user
+        self.object.file_size = self.object.file.size
+        self.object.file.open()
+        self.object.file.seek(0)
+        self.object._set_file_hash(self.object.file.read())
+        self.object.file.seek(0)
+        form.save()
+
+        # Reindex the document to make sure all tags are indexed
+        for backend in get_search_backends():
+            backend.add(self.object)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag4939')" href="javascript:;">
+wagtail-2.16.1/wagtail/images/views/multiple.py: 113-130
+</a>
+<div class="mid" id="frag4939" style="display:none"><pre>
+
+    def save_object(self, form):
+        # assign the file content from uploaded_image to the image object, to ensure it gets saved to
+        # Image's storage
+
+        self.object.file.save(os.path.basename(self.upload.file.name), self.upload.file.file, save=False)
+        self.object.uploaded_by_user = self.request.user
+        self.object.file_size = self.object.file.size
+        self.object.file.open()
+        self.object.file.seek(0)
+        self.object._set_file_hash(self.object.file.read())
+        self.object.file.seek(0)
+        form.save()
+
+        # Reindex the image to make sure all tags are indexed
+        for backend in get_search_backends():
+            backend.add(self.object)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 12:</b> &nbsp; 2 fragments, nominal size 19 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5147')" href="javascript:;">
+wagtail-2.16.1/wagtail/images/tests/test_admin_views.py: 399-426
+</a>
+<div class="mid" id="frag5147" style="display:none"><pre>
+    def setUp(self):
+        add_image_permission = Permission.objects.get(
+            content_type__app_label='wagtailimages', codename='add_image'
+        )
+        admin_permission = Permission.objects.get(
+            content_type__app_label='wagtailadmin', codename='access_admin'
+        )
+
+        root_collection = Collection.get_first_root_node()
+        self.evil_plans_collection = root_collection.add_child(name="Evil plans")
+
+        conspirators_group = Group.objects.create(name="Evil conspirators")
+        conspirators_group.permissions.add(admin_permission)
+        GroupCollectionPermission.objects.create(
+            group=conspirators_group,
+            collection=self.evil_plans_collection,
+            permission=add_image_permission
+        )
+
+        user = self.create_user(
+            username='moriarty',
+            email='moriarty@example.com',
+            password='password'
+        )
+        user.groups.add(conspirators_group)
+
+        self.login(username='moriarty', password='password')
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5220')" href="javascript:;">
+wagtail-2.16.1/wagtail/images/tests/test_admin_views.py: 1280-1307
+</a>
+<div class="mid" id="frag5220" style="display:none"><pre>
+    def setUp(self):
+        add_image_permission = Permission.objects.get(
+            content_type__app_label='wagtailimages', codename='add_image'
+        )
+        admin_permission = Permission.objects.get(
+            content_type__app_label='wagtailadmin', codename='access_admin'
+        )
+
+        root_collection = Collection.get_first_root_node()
+        self.evil_plans_collection = root_collection.add_child(name="Evil plans")
+
+        conspirators_group = Group.objects.create(name="Evil conspirators")
+        conspirators_group.permissions.add(admin_permission)
+        GroupCollectionPermission.objects.create(
+            group=conspirators_group,
+            collection=self.evil_plans_collection,
+            permission=add_image_permission
+        )
+
+        user = self.create_user(
+            username='moriarty',
+            email='moriarty@example.com',
+            password='password'
+        )
+        user.groups.add(conspirators_group)
+
+        self.login(username='moriarty', password='password')
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 13:</b> &nbsp; 2 fragments, nominal size 14 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5232')" href="javascript:;">
+wagtail-2.16.1/wagtail/images/tests/test_admin_views.py: 1513-1535
+</a>
+<div class="mid" id="frag5232" style="display:none"><pre>
+    def test_add_post_badfile(self):
+        """
+        The add view must check that the uploaded file is a valid image
+        """
+        response = self.client.post(reverse('wagtailimages:add_multiple'), {
+            'files[]': SimpleUploadedFile('test.png', b"This is not an image!"),
+        })
+
+        # Check response
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/json')
+
+        # Check JSON
+        response_json = json.loads(response.content.decode())
+        self.assertNotIn('image_id', response_json)
+        self.assertNotIn('form', response_json)
+        self.assertIn('success', response_json)
+        self.assertIn('error_message', response_json)
+        self.assertFalse(response_json['success'])
+        self.assertEqual(
+            response_json['error_message'], 'Upload a valid image. The file you uploaded was either not an image or a corrupted image.'
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5242')" href="javascript:;">
+wagtail-2.16.1/wagtail/images/tests/test_admin_views.py: 1719-1741
+</a>
+<div class="mid" id="frag5242" style="display:none"><pre>
+    def test_add_post_badfile(self):
+        """
+        The add view must check that the uploaded file is a valid image
+        """
+        response = self.client.post(reverse('wagtailimages:add_multiple'), {
+            'files[]': SimpleUploadedFile('test.png', b"This is not an image!"),
+        })
+
+        # Check response
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/json')
+
+        # Check JSON
+        response_json = json.loads(response.content.decode())
+        self.assertNotIn('image_id', response_json)
+        self.assertNotIn('form', response_json)
+        self.assertIn('success', response_json)
+        self.assertIn('error_message', response_json)
+        self.assertFalse(response_json['success'])
+        self.assertEqual(
+            response_json['error_message'], 'Upload a valid image. The file you uploaded was either not an image or a corrupted image.'
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 14:</b> &nbsp; 3 fragments, nominal size 18 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5636')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_elasticsearch5_backend.py: 365-387
+</a>
+<div class="mid" id="frag5636" style="display:none"><pre>
+    def construct_search_response(self, results):
+        return {
+            '_shards': {'failed': 0, 'successful': 5, 'total': 5},
+            'hits': {
+                'hits': [
+                    {
+                        '_id': 'searchtests_book:' + str(result),
+                        '_index': 'wagtail',
+                        '_score': 1,
+                        '_type': 'searchtests_book',
+                        'fields': {
+                            'pk': [str(result)],
+                        }
+                    }
+                    for result in results
+                ],
+                'max_score': 1,
+                'total': len(results)
+            },
+            'timed_out': False,
+            'took': 2
+        }
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5780')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_elasticsearch6_backend.py: 365-387
+</a>
+<div class="mid" id="frag5780" style="display:none"><pre>
+    def construct_search_response(self, results):
+        return {
+            '_shards': {'failed': 0, 'successful': 5, 'total': 5},
+            'hits': {
+                'hits': [
+                    {
+                        '_id': 'searchtests_book:' + str(result),
+                        '_index': 'wagtail',
+                        '_score': 1,
+                        '_type': 'searchtests_book',
+                        'fields': {
+                            'pk': [str(result)],
+                        }
+                    }
+                    for result in results
+                ],
+                'max_score': 1,
+                'total': len(results)
+            },
+            'timed_out': False,
+            'took': 2
+        }
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5713')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_elasticsearch7_backend.py: 365-387
+</a>
+<div class="mid" id="frag5713" style="display:none"><pre>
+    def construct_search_response(self, results):
+        return {
+            '_shards': {'failed': 0, 'successful': 5, 'total': 5},
+            'hits': {
+                'hits': [
+                    {
+                        '_id': 'searchtests_book:' + str(result),
+                        '_index': 'wagtail',
+                        '_score': 1,
+                        '_type': 'searchtests_book',
+                        'fields': {
+                            'pk': [str(result)],
+                        }
+                    }
+                    for result in results
+                ],
+                'max_score': 1,
+                'total': len(results)
+            },
+            'timed_out': False,
+            'took': 2
+        }
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 15:</b> &nbsp; 3 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5637')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_elasticsearch5_backend.py: 389-403
+</a>
+<div class="mid" id="frag5637" style="display:none"><pre>
+    def test_basic_search(self, search):
+        search.return_value = self.construct_search_response([])
+        results = self.get_results()
+
+        list(results)  # Performs search
+
+        search.assert_any_call(
+            body={'query': 'QUERY'},
+            _source=False,
+            stored_fields='pk',
+            index='wagtail__searchtests_book',
+            scroll='2m',
+            size=100
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5714')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_elasticsearch7_backend.py: 389-403
+</a>
+<div class="mid" id="frag5714" style="display:none"><pre>
+    def test_basic_search(self, search):
+        search.return_value = self.construct_search_response([])
+        results = self.get_results()
+
+        list(results)  # Performs search
+
+        search.assert_any_call(
+            body={'query': 'QUERY'},
+            _source=False,
+            stored_fields='pk',
+            index='wagtail__searchtests_book',
+            scroll='2m',
+            size=100
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5781')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_elasticsearch6_backend.py: 389-403
+</a>
+<div class="mid" id="frag5781" style="display:none"><pre>
+    def test_basic_search(self, search):
+        search.return_value = self.construct_search_response([])
+        results = self.get_results()
+
+        list(results)  # Performs search
+
+        search.assert_any_call(
+            body={'query': 'QUERY'},
+            _source=False,
+            stored_fields='pk',
+            index='wagtail__searchtests_book',
+            scroll='2m',
+            size=100
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 16:</b> &nbsp; 3 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5638')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_elasticsearch5_backend.py: 405-420
+</a>
+<div class="mid" id="frag5638" style="display:none"><pre>
+    def test_get_single_item(self, search):
+        # Need to return something to prevent index error
+        search.return_value = self.construct_search_response([1])
+        results = self.get_results()
+
+        results[10]  # Performs search
+
+        search.assert_any_call(
+            from_=10,
+            body={'query': 'QUERY'},
+            _source=False,
+            stored_fields='pk',
+            index='wagtail__searchtests_book',
+            size=1
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5715')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_elasticsearch7_backend.py: 405-420
+</a>
+<div class="mid" id="frag5715" style="display:none"><pre>
+    def test_get_single_item(self, search):
+        # Need to return something to prevent index error
+        search.return_value = self.construct_search_response([1])
+        results = self.get_results()
+
+        results[10]  # Performs search
+
+        search.assert_any_call(
+            from_=10,
+            body={'query': 'QUERY'},
+            _source=False,
+            stored_fields='pk',
+            index='wagtail__searchtests_book',
+            size=1
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5782')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_elasticsearch6_backend.py: 405-420
+</a>
+<div class="mid" id="frag5782" style="display:none"><pre>
+    def test_get_single_item(self, search):
+        # Need to return something to prevent index error
+        search.return_value = self.construct_search_response([1])
+        results = self.get_results()
+
+        results[10]  # Performs search
+
+        search.assert_any_call(
+            from_=10,
+            body={'query': 'QUERY'},
+            _source=False,
+            stored_fields='pk',
+            index='wagtail__searchtests_book',
+            size=1
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 17:</b> &nbsp; 3 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5639')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_elasticsearch5_backend.py: 422-436
+</a>
+<div class="mid" id="frag5639" style="display:none"><pre>
+    def test_slice_results(self, search):
+        search.return_value = self.construct_search_response([])
+        results = self.get_results()[1:4]
+
+        list(results)  # Performs search
+
+        search.assert_any_call(
+            from_=1,
+            body={'query': 'QUERY'},
+            _source=False,
+            stored_fields='pk',
+            index='wagtail__searchtests_book',
+            size=3
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5716')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_elasticsearch7_backend.py: 422-436
+</a>
+<div class="mid" id="frag5716" style="display:none"><pre>
+    def test_slice_results(self, search):
+        search.return_value = self.construct_search_response([])
+        results = self.get_results()[1:4]
+
+        list(results)  # Performs search
+
+        search.assert_any_call(
+            from_=1,
+            body={'query': 'QUERY'},
+            _source=False,
+            stored_fields='pk',
+            index='wagtail__searchtests_book',
+            size=3
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5783')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_elasticsearch6_backend.py: 422-436
+</a>
+<div class="mid" id="frag5783" style="display:none"><pre>
+    def test_slice_results(self, search):
+        search.return_value = self.construct_search_response([])
+        results = self.get_results()[1:4]
+
+        list(results)  # Performs search
+
+        search.assert_any_call(
+            from_=1,
+            body={'query': 'QUERY'},
+            _source=False,
+            stored_fields='pk',
+            index='wagtail__searchtests_book',
+            size=3
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 18:</b> &nbsp; 3 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5640')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_elasticsearch5_backend.py: 438-452
+</a>
+<div class="mid" id="frag5640" style="display:none"><pre>
+    def test_slice_results_multiple_times(self, search):
+        search.return_value = self.construct_search_response([])
+        results = self.get_results()[10:][:10]
+
+        list(results)  # Performs search
+
+        search.assert_any_call(
+            from_=10,
+            body={'query': 'QUERY'},
+            _source=False,
+            stored_fields='pk',
+            index='wagtail__searchtests_book',
+            size=10
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5784')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_elasticsearch6_backend.py: 438-452
+</a>
+<div class="mid" id="frag5784" style="display:none"><pre>
+    def test_slice_results_multiple_times(self, search):
+        search.return_value = self.construct_search_response([])
+        results = self.get_results()[10:][:10]
+
+        list(results)  # Performs search
+
+        search.assert_any_call(
+            from_=10,
+            body={'query': 'QUERY'},
+            _source=False,
+            stored_fields='pk',
+            index='wagtail__searchtests_book',
+            size=10
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5717')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_elasticsearch7_backend.py: 438-452
+</a>
+<div class="mid" id="frag5717" style="display:none"><pre>
+    def test_slice_results_multiple_times(self, search):
+        search.return_value = self.construct_search_response([])
+        results = self.get_results()[10:][:10]
+
+        list(results)  # Performs search
+
+        search.assert_any_call(
+            from_=10,
+            body={'query': 'QUERY'},
+            _source=False,
+            stored_fields='pk',
+            index='wagtail__searchtests_book',
+            size=10
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 19:</b> &nbsp; 3 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5641')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_elasticsearch5_backend.py: 454-469
+</a>
+<div class="mid" id="frag5641" style="display:none"><pre>
+    def test_slice_results_and_get_item(self, search):
+        # Need to return something to prevent index error
+        search.return_value = self.construct_search_response([1])
+        results = self.get_results()[10:]
+
+        results[10]  # Performs search
+
+        search.assert_any_call(
+            from_=20,
+            body={'query': 'QUERY'},
+            _source=False,
+            stored_fields='pk',
+            index='wagtail__searchtests_book',
+            size=1
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5785')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_elasticsearch6_backend.py: 454-469
+</a>
+<div class="mid" id="frag5785" style="display:none"><pre>
+    def test_slice_results_and_get_item(self, search):
+        # Need to return something to prevent index error
+        search.return_value = self.construct_search_response([1])
+        results = self.get_results()[10:]
+
+        results[10]  # Performs search
+
+        search.assert_any_call(
+            from_=20,
+            body={'query': 'QUERY'},
+            _source=False,
+            stored_fields='pk',
+            index='wagtail__searchtests_book',
+            size=1
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5718')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_elasticsearch7_backend.py: 454-469
+</a>
+<div class="mid" id="frag5718" style="display:none"><pre>
+    def test_slice_results_and_get_item(self, search):
+        # Need to return something to prevent index error
+        search.return_value = self.construct_search_response([1])
+        results = self.get_results()[10:]
+
+        results[10]  # Performs search
+
+        search.assert_any_call(
+            from_=20,
+            body={'query': 'QUERY'},
+            _source=False,
+            stored_fields='pk',
+            index='wagtail__searchtests_book',
+            size=1
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 20:</b> &nbsp; 2 fragments, nominal size 22 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5730')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_elasticsearch7_backend.py: 583-615
+</a>
+<div class="mid" id="frag5730" style="display:none"><pre>
+    def test_get_document(self):
+        # Get document
+        document = self.es_mapping.get_document(self.obj)
+
+        # Sort edgengrams
+        if '_edgengrams' in document:
+            document['_edgengrams'].sort()
+
+        # Check
+        expected_result = {
+            'pk': '4',
+            'content_type': ["searchtests.Book"],
+            '_edgengrams': ['J. R. R. Tolkien', 'The Fellowship of the Ring', 'The Fellowship of the Ring'],
+            'title': 'The Fellowship of the Ring',
+            'title_edgengrams': 'The Fellowship of the Ring',
+            'title_filter': 'The Fellowship of the Ring',
+            'authors': [
+                {
+                    'name': 'J. R. R. Tolkien',
+                    'name_edgengrams': 'J. R. R. Tolkien',
+                    'date_of_birth_filter': datetime.date(1892, 1, 3)
+                }
+            ],
+            'authors_filter': [2],
+            'publication_date_filter': datetime.date(1954, 7, 29),
+            'number_of_pages_filter': 423,
+            'tags': [],
+            'tags_filter': []
+        }
+
+        self.assertDictEqual(document, expected_result)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5797')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_elasticsearch6_backend.py: 585-617
+</a>
+<div class="mid" id="frag5797" style="display:none"><pre>
+    def test_get_document(self):
+        # Get document
+        document = self.es_mapping.get_document(self.obj)
+
+        # Sort edgengrams
+        if '_edgengrams' in document:
+            document['_edgengrams'].sort()
+
+        # Check
+        expected_result = {
+            'pk': '4',
+            'content_type': ["searchtests.Book"],
+            '_edgengrams': ['J. R. R. Tolkien', 'The Fellowship of the Ring', 'The Fellowship of the Ring'],
+            'title': 'The Fellowship of the Ring',
+            'title_edgengrams': 'The Fellowship of the Ring',
+            'title_filter': 'The Fellowship of the Ring',
+            'authors': [
+                {
+                    'name': 'J. R. R. Tolkien',
+                    'name_edgengrams': 'J. R. R. Tolkien',
+                    'date_of_birth_filter': datetime.date(1892, 1, 3)
+                }
+            ],
+            'authors_filter': [2],
+            'publication_date_filter': datetime.date(1954, 7, 29),
+            'number_of_pages_filter': 423,
+            'tags': [],
+            'tags_filter': []
+        }
+
+        self.assertDictEqual(document, expected_result)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 21:</b> &nbsp; 2 fragments, nominal size 36 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5736')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_elasticsearch7_backend.py: 696-754
+</a>
+<div class="mid" id="frag5736" style="display:none"><pre>
+    def test_get_document(self):
+        # Build document
+        document = self.es_mapping.get_document(self.obj)
+
+        # Sort edgengrams
+        if '_edgengrams' in document:
+            document['_edgengrams'].sort()
+
+        # Sort characters
+        if 'searchtests_novel__characters' in document:
+            document['searchtests_novel__characters'].sort(key=lambda c: c['name'])
+
+        # Check
+        expected_result = {
+            # New
+            'searchtests_novel__setting': "Middle Earth",
+            'searchtests_novel__protagonist': {
+                'name': "Frodo Baggins",
+                'novel_id_filter': 4
+            },
+            'searchtests_novel__protagonist_id_filter': 8,
+            'searchtests_novel__characters': [
+                {
+                    'name': "Bilbo Baggins"
+                },
+                {
+                    'name': "Frodo Baggins"
+                },
+                {
+                    'name': "Gandalf"
+                }
+            ],
+
+            # Changed
+            'content_type': ["searchtests.Novel", "searchtests.Book"],
+            '_edgengrams': ['J. R. R. Tolkien', 'Middle Earth', 'The Fellowship of the Ring', 'The Fellowship of the Ring'],
+
+            # Inherited
+            'pk': '4',
+            'title': 'The Fellowship of the Ring',
+            'title_edgengrams': 'The Fellowship of the Ring',
+            'title_filter': 'The Fellowship of the Ring',
+            'authors': [
+                {
+                    'name': 'J. R. R. Tolkien',
+                    'name_edgengrams': 'J. R. R. Tolkien',
+                    'date_of_birth_filter': datetime.date(1892, 1, 3)
+                }
+            ],
+            'authors_filter': [2],
+            'publication_date_filter': datetime.date(1954, 7, 29),
+            'number_of_pages_filter': 423,
+            'tags': [],
+            'tags_filter': []
+        }
+
+        self.assertDictEqual(document, expected_result)
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag5803')" href="javascript:;">
+wagtail-2.16.1/wagtail/search/tests/test_elasticsearch6_backend.py: 700-758
+</a>
+<div class="mid" id="frag5803" style="display:none"><pre>
+    def test_get_document(self):
+        # Build document
+        document = self.es_mapping.get_document(self.obj)
+
+        # Sort edgengrams
+        if '_edgengrams' in document:
+            document['_edgengrams'].sort()
+
+        # Sort characters
+        if 'searchtests_novel__characters' in document:
+            document['searchtests_novel__characters'].sort(key=lambda c: c['name'])
+
+        # Check
+        expected_result = {
+            # New
+            'searchtests_novel__setting': "Middle Earth",
+            'searchtests_novel__protagonist': {
+                'name': "Frodo Baggins",
+                'novel_id_filter': 4
+            },
+            'searchtests_novel__protagonist_id_filter': 8,
+            'searchtests_novel__characters': [
+                {
+                    'name': "Bilbo Baggins"
+                },
+                {
+                    'name': "Frodo Baggins"
+                },
+                {
+                    'name': "Gandalf"
+                }
+            ],
+
+            # Changed
+            'content_type': ["searchtests.Novel", "searchtests.Book"],
+            '_edgengrams': ['J. R. R. Tolkien', 'Middle Earth', 'The Fellowship of the Ring', 'The Fellowship of the Ring'],
+
+            # Inherited
+            'pk': '4',
+            'title': 'The Fellowship of the Ring',
+            'title_edgengrams': 'The Fellowship of the Ring',
+            'title_filter': 'The Fellowship of the Ring',
+            'authors': [
+                {
+                    'name': 'J. R. R. Tolkien',
+                    'name_edgengrams': 'J. R. R. Tolkien',
+                    'date_of_birth_filter': datetime.date(1892, 1, 3)
+                }
+            ],
+            'authors_filter': [2],
+            'publication_date_filter': datetime.date(1954, 7, 29),
+            'number_of_pages_filter': 423,
+            'tags': [],
+            'tags_filter': []
+        }
+
+        self.assertDictEqual(document, expected_result)
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<script language="JavaScript">
+function ShowHide(divId) { 
+    if(document.getElementById(divId).style.display == 'none') {
+        document.getElementById(divId).style.display='block';
+    } else { 
+        document.getElementById(divId).style.display = 'none';
+    } 
+}
+</script>
+</body>
+</html>

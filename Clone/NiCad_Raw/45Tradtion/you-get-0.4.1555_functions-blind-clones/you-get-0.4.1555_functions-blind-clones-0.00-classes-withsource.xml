@@ -1,0 +1,254 @@
+<clones>
+<systeminfo processor="nicad6" system="you-get-0.4.1555" granularity="functions-blind" threshold="0%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="488" npairs="6"/>
+<runinfo ncompares="917" cputime="42470"/>
+<classinfo nclasses="4"/>
+
+<class classid="1" nclones="3" nlines="21" similarity="100">
+<source file="systems/you-get-0.4.1555/src/you_get/processor/join_flv.py" startline="341" endline="363" pcid="38">
+def main():
+    import sys, getopt
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "ho:", ["help", "output="])
+    except getopt.GetoptError as err:
+        usage()
+        sys.exit(1)
+    output = None
+    for o, a in opts:
+        if o in ("-h", "--help"):
+            usage()
+            sys.exit()
+        elif o in ("-o", "--output"):
+            output = a
+        else:
+            usage()
+            sys.exit(1)
+    if not args:
+        usage()
+        sys.exit(1)
+    
+    concat_flv(args, output)
+
+</source>
+<source file="systems/you-get-0.4.1555/src/you_get/processor/join_ts.py" startline="41" endline="63" pcid="140">
+def main():
+    import sys, getopt
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "ho:", ["help", "output="])
+    except getopt.GetoptError as err:
+        usage()
+        sys.exit(1)
+    output = None
+    for o, a in opts:
+        if o in ("-h", "--help"):
+            usage()
+            sys.exit()
+        elif o in ("-o", "--output"):
+            output = a
+        else:
+            usage()
+            sys.exit(1)
+    if not args:
+        usage()
+        sys.exit(1)
+    
+    concat_ts(args, output)
+
+</source>
+<source file="systems/you-get-0.4.1555/src/you_get/processor/join_mp4.py" startline="921" endline="943" pcid="136">
+def main():
+    import sys, getopt
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "ho:", ["help", "output="])
+    except getopt.GetoptError as err:
+        usage()
+        sys.exit(1)
+    output = None
+    for o, a in opts:
+        if o in ("-h", "--help"):
+            usage()
+            sys.exit()
+        elif o in ("-o", "--output"):
+            output = a
+        else:
+            usage()
+            sys.exit(1)
+    if not args:
+        usage()
+        sys.exit(1)
+    
+    concat_mp4(args, output)
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="26" similarity="100">
+<source file="systems/you-get-0.4.1555/src/you_get/processor/join_mp4.py" startline="355" endline="388" pcid="83">
+def read_stts(stream, size, left, type):
+    value = read_full_atom(stream)
+    left -= 4
+    
+    entry_count = read_uint(stream)
+    #assert entry_count == 1
+    left -= 4
+    
+    samples = []
+    for i in range(entry_count):
+        sample_count = read_uint(stream)
+        sample_duration = read_uint(stream)
+        samples.append((sample_count, sample_duration))
+        left -= 8
+
+    assert left == 0
+    #return Atom('stts', size, None)
+    class stts_atom(Atom):
+        def __init__(self, type, size, body):
+            Atom.__init__(self, type, size, body)
+        def write(self, stream):
+            self.write1(stream)
+            write_uint(stream, self.body[0])
+            write_uint(stream, len(self.body[1]))
+            for sample_count, sample_duration in self.body[1]:
+                write_uint(stream, sample_count)
+                write_uint(stream, sample_duration)
+        def calsize(self):
+            #oldsize = self.size # TODO: remove
+            self.size = 8 + 4 + 4 + len(self.body[1]) * 8
+            #assert oldsize == self.size, '%s: %d, %d' % (self.type, oldsize, self.size) # TODO: remove
+            return self.size
+    return stts_atom(b'stts', size, (value, samples))
+
+</source>
+<source file="systems/you-get-0.4.1555/src/you_get/processor/join_mp4.py" startline="521" endline="550" pcid="103">
+def read_ctts(stream, size, left, type):
+    value = read_full_atom(stream)
+    left -= 4
+    
+    entry_count = read_uint(stream)
+    left -= 4
+    
+    samples = []
+    for i in range(entry_count):
+        sample_count = read_uint(stream)
+        sample_offset = read_uint(stream)
+        samples.append((sample_count, sample_offset))
+        left -= 8
+    
+    assert left == 0
+    class ctts_atom(Atom):
+        def __init__(self, type, size, body):
+            Atom.__init__(self, type, size, body)
+        def write(self, stream):
+            self.write1(stream)
+            write_uint(stream, self.body[0])
+            write_uint(stream, len(self.body[1]))
+            for sample_count, sample_offset in self.body[1]:
+                write_uint(stream, sample_count)
+                write_uint(stream, sample_offset)
+        def calsize(self):
+            self.size = 8 + 4 + 4 + len(self.body[1]) * 8
+            return self.size
+    return ctts_atom(b'ctts', size, (value, samples))
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="24" similarity="100">
+<source file="systems/you-get-0.4.1555/src/you_get/processor/join_mp4.py" startline="389" endline="417" pcid="87">
+def read_stss(stream, size, left, type):
+    value = read_full_atom(stream)
+    left -= 4
+    
+    entry_count = read_uint(stream)
+    left -= 4
+    
+    samples = []
+    for i in range(entry_count):
+            sample = read_uint(stream)
+            samples.append(sample)
+            left -= 4
+    
+    assert left == 0
+    #return Atom('stss', size, None)
+    class stss_atom(Atom):
+        def __init__(self, type, size, body):
+            Atom.__init__(self, type, size, body)
+        def write(self, stream):
+            self.write1(stream)
+            write_uint(stream, self.body[0])
+            write_uint(stream, len(self.body[1]))
+            for sample in self.body[1]:
+                write_uint(stream, sample)
+        def calsize(self):
+            self.size = 8 + 4 + 4 + len(self.body[1]) * 4
+            return self.size
+    return stss_atom(b'stss', size, (value, samples))
+
+</source>
+<source file="systems/you-get-0.4.1555/src/you_get/processor/join_mp4.py" startline="492" endline="520" pcid="99">
+def read_stco(stream, size, left, type):
+    value = read_full_atom(stream)
+    left -= 4
+    
+    entry_count = read_uint(stream)
+    left -= 4
+    
+    offsets = []
+    for i in range(entry_count):
+        chunk_offset = read_uint(stream)
+        offsets.append(chunk_offset)
+        left -= 4
+    
+    assert left == 0
+    #return Atom('stco', size, None)
+    class stco_atom(Atom):
+        def __init__(self, type, size, body):
+            Atom.__init__(self, type, size, body)
+        def write(self, stream):
+            self.write1(stream)
+            write_uint(stream, self.body[0])
+            write_uint(stream, len(self.body[1]))
+            for chunk_offset in self.body[1]:
+                write_uint(stream, chunk_offset)
+        def calsize(self):
+            self.size = 8 + 4 + 4 + len(self.body[1]) * 4
+            return self.size
+    return stco_atom(b'stco', size, (value, offsets))
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="11" similarity="100">
+<source file="systems/you-get-0.4.1555/src/you_get/extractors/ckplayer.py" startline="44" endline="56" pcid="401">
+def dictify(r,root=True):
+    if root:
+        return {r.tag : dictify(r, False)}
+    d=copy(r.attrib)
+    if r.text:
+        d["_text"]=r.text
+    for x in r.findall("./*"):
+        if x.tag not in d:
+            d[x.tag]=[]
+        d[x.tag].append(dictify(x,False))
+    return d
+
+#----------------------------------------------------------------------
+</source>
+<source file="systems/you-get-0.4.1555/src/you_get/extractors/ucas.py" startline="18" endline="30" pcid="419">
+def dictify(r,root=True):
+    """http://stackoverflow.com/a/30923963/2946714"""
+    if root:
+        return {r.tag : dictify(r, False)}
+    d=copy(r.attrib)
+    if r.text:
+        d["_text"]=r.text
+    for x in r.findall("./*"):
+        if x.tag not in d:
+            d[x.tag]=[]
+        d[x.tag].append(dictify(x,False))
+    return d
+
+</source>
+</class>
+
+</clones>

@@ -1,0 +1,1038 @@
+<clones>
+<systeminfo processor="nicad6" system="horovod-0.24.2" granularity="functions" threshold="0%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="1597" npairs="22"/>
+<runinfo ncompares="5388" cputime="52248"/>
+<classinfo nclasses="20"/>
+
+<class classid="1" nclones="2" nlines="10" similarity="100">
+<source file="systems/horovod-0.24.2/.buildkite/get_changed_code_files.py" startline="24" endline="38" pcid="11">
+def get_changed_files(base, head):
+    response = requests.get(
+        'https://api.github.com/repos/horovod/horovod/compare/{base}...{head}'.format(
+            base=base, head=head
+        )
+    )
+    if response.status_code != 200:
+        logging.error('Request failed: {}'.format(json.loads(response.text).get('message')))
+        return []
+
+    compare_json = response.text
+    compare = json.loads(compare_json)
+    return [file.get('filename') for file in compare.get('files')]
+
+
+</source>
+<source file="systems/horovod-0.24.2/.github/get-changed-code-files.py" startline="24" endline="38" pcid="14">
+def get_changed_files(base, head):
+    response = requests.get(
+        'https://api.github.com/repos/horovod/horovod/compare/{base}...{head}'.format(
+            base=base, head=head
+        )
+    )
+    if response.status_code != 200:
+        logging.error('Request failed: {}'.format(json.loads(response.text).get('message')))
+        return []
+
+    compare_json = response.text
+    compare = json.loads(compare_json)
+    return [file.get('filename') for file in compare.get('files')]
+
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="24" similarity="100">
+<source file="systems/horovod-0.24.2/test/parallel/test_tensorflow_keras.py" startline="122" endline="152" pcid="349">
+    def test_load_model(self):
+        with self.test_session(config=self.config) as sess:
+            K.set_session(sess)
+
+            opt = keras.optimizers.RMSprop(lr=0.0001)
+            opt = hvd.DistributedOptimizer(opt)
+
+            model = keras.models.Sequential()
+            model.add(keras.layers.Dense(2, input_shape=(3,)))
+            model.add(keras.layers.RepeatVector(3))
+            model.add(keras.layers.TimeDistributed(keras.layers.Dense(3)))
+            model.compile(loss=keras.losses.MSE,
+                          optimizer=opt,
+                          metrics=[keras.metrics.categorical_accuracy],
+                          sample_weight_mode='temporal')
+
+            x = np.random.random((1, 3))
+            y = np.random.random((1, 3, 3))
+            model.train_on_batch(x, y)
+
+            with temppath() as fname:
+                model.save(fname)
+
+                new_model = hvd.load_model(fname)
+                new_opt = new_model.optimizer
+
+            self.assertEqual(type(new_opt).__module__, 'horovod._keras')
+            self.assertEqual(type(new_opt).__name__, 'RMSprop')
+            self.assertEqual(K.get_value(opt.lr), K.get_value(new_opt.lr))
+            self._check_optimizer_weights(opt, new_opt)
+
+</source>
+<source file="systems/horovod-0.24.2/test/parallel/test_keras.py" startline="73" endline="103" pcid="369">
+    def test_load_model(self):
+        with self.test_session(config=self.config) as sess:
+            K.set_session(sess)
+
+            opt = keras.optimizers.RMSprop(lr=0.0001)
+            opt = hvd.DistributedOptimizer(opt)
+
+            model = keras.models.Sequential()
+            model.add(keras.layers.Dense(2, input_shape=(3,)))
+            model.add(keras.layers.RepeatVector(3))
+            model.add(keras.layers.TimeDistributed(keras.layers.Dense(3)))
+            model.compile(loss=keras.losses.MSE,
+                          optimizer=opt,
+                          metrics=[keras.metrics.categorical_accuracy],
+                          sample_weight_mode='temporal')
+
+            x = np.random.random((1, 3))
+            y = np.random.random((1, 3, 3))
+            model.train_on_batch(x, y)
+
+            with temppath() as fname:
+                model.save(fname)
+
+                new_model = hvd.load_model(fname)
+                new_opt = new_model.optimizer
+
+            self.assertEqual(type(new_opt).__module__, 'horovod._keras')
+            self.assertEqual(type(new_opt).__name__, 'RMSprop')
+            self.assertEqual(K.get_value(opt.lr), K.get_value(new_opt.lr))
+            self._check_optimizer_weights(opt, new_opt)
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="27" similarity="100">
+<source file="systems/horovod-0.24.2/test/parallel/test_tensorflow_keras.py" startline="153" endline="187" pcid="350">
+    def test_load_model_custom_optimizers(self):
+        class TestOptimizer(keras.optimizers.RMSprop):
+            def __init__(self, **kwargs):
+                super(TestOptimizer, self).__init__(**kwargs)
+
+        with self.test_session(config=self.config) as sess:
+            K.set_session(sess)
+
+            opt = TestOptimizer(lr=0.0001)
+            opt = hvd.DistributedOptimizer(opt)
+
+            model = keras.models.Sequential()
+            model.add(keras.layers.Dense(2, input_shape=(3,)))
+            model.add(keras.layers.RepeatVector(3))
+            model.add(keras.layers.TimeDistributed(keras.layers.Dense(3)))
+            model.compile(loss=keras.losses.MSE,
+                          optimizer=opt,
+                          metrics=[keras.metrics.categorical_accuracy],
+                          sample_weight_mode='temporal')
+
+            x = np.random.random((1, 3))
+            y = np.random.random((1, 3, 3))
+            model.train_on_batch(x, y)
+
+            with temppath() as fname:
+                model.save(fname)
+
+                custom_optimizers = [TestOptimizer]
+                new_model = hvd.load_model(fname, custom_optimizers=custom_optimizers)
+                new_opt = new_model.optimizer
+
+            self.assertEqual(type(new_opt).__module__, 'horovod._keras')
+            self.assertEqual(type(new_opt).__name__, 'TestOptimizer')
+            self._check_optimizer_weights(opt, new_opt)
+
+</source>
+<source file="systems/horovod-0.24.2/test/parallel/test_keras.py" startline="104" endline="138" pcid="370">
+    def test_load_model_custom_optimizers(self):
+        class TestOptimizer(keras.optimizers.RMSprop):
+            def __init__(self, **kwargs):
+                super(TestOptimizer, self).__init__(**kwargs)
+
+        with self.test_session(config=self.config) as sess:
+            K.set_session(sess)
+
+            opt = TestOptimizer(lr=0.0001)
+            opt = hvd.DistributedOptimizer(opt)
+
+            model = keras.models.Sequential()
+            model.add(keras.layers.Dense(2, input_shape=(3,)))
+            model.add(keras.layers.RepeatVector(3))
+            model.add(keras.layers.TimeDistributed(keras.layers.Dense(3)))
+            model.compile(loss=keras.losses.MSE,
+                          optimizer=opt,
+                          metrics=[keras.metrics.categorical_accuracy],
+                          sample_weight_mode='temporal')
+
+            x = np.random.random((1, 3))
+            y = np.random.random((1, 3, 3))
+            model.train_on_batch(x, y)
+
+            with temppath() as fname:
+                model.save(fname)
+
+                custom_optimizers = [TestOptimizer]
+                new_model = hvd.load_model(fname, custom_optimizers=custom_optimizers)
+                new_opt = new_model.optimizer
+
+            self.assertEqual(type(new_opt).__module__, 'horovod._keras')
+            self.assertEqual(type(new_opt).__name__, 'TestOptimizer')
+            self._check_optimizer_weights(opt, new_opt)
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="30" similarity="100">
+<source file="systems/horovod-0.24.2/test/parallel/test_tensorflow_keras.py" startline="188" endline="226" pcid="352">
+    def test_load_model_custom_objects(self):
+        class TestOptimizer(keras.optimizers.RMSprop):
+            def __init__(self, **kwargs):
+                super(TestOptimizer, self).__init__(**kwargs)
+
+        with self.test_session(config=self.config) as sess:
+            K.set_session(sess)
+
+            opt = TestOptimizer(lr=0.0001)
+            opt = hvd.DistributedOptimizer(opt)
+
+            model = keras.models.Sequential()
+            model.add(keras.layers.Dense(2, input_shape=(3,)))
+            model.add(keras.layers.RepeatVector(3))
+            model.add(keras.layers.TimeDistributed(keras.layers.Dense(3)))
+            model.compile(loss=keras.losses.MSE,
+                          optimizer=opt,
+                          metrics=[keras.metrics.categorical_accuracy],
+                          sample_weight_mode='temporal')
+
+            x = np.random.random((1, 3))
+            y = np.random.random((1, 3, 3))
+            model.train_on_batch(x, y)
+
+            with temppath() as fname:
+                model.save(fname)
+
+                custom_objects = {
+                    'TestOptimizer': lambda **kwargs: hvd.DistributedOptimizer(
+                        TestOptimizer(**kwargs))
+                }
+                new_model = hvd.load_model(fname, custom_objects=custom_objects)
+                new_opt = new_model.optimizer
+
+            self.assertEqual(type(new_opt).__module__, 'horovod._keras')
+            self.assertEqual(type(new_opt).__name__, 'TestOptimizer')
+            self.assertEqual(K.get_value(opt.lr), K.get_value(new_opt.lr))
+            self._check_optimizer_weights(opt, new_opt)
+
+</source>
+<source file="systems/horovod-0.24.2/test/parallel/test_keras.py" startline="139" endline="177" pcid="372">
+    def test_load_model_custom_objects(self):
+        class TestOptimizer(keras.optimizers.RMSprop):
+            def __init__(self, **kwargs):
+                super(TestOptimizer, self).__init__(**kwargs)
+
+        with self.test_session(config=self.config) as sess:
+            K.set_session(sess)
+
+            opt = TestOptimizer(lr=0.0001)
+            opt = hvd.DistributedOptimizer(opt)
+
+            model = keras.models.Sequential()
+            model.add(keras.layers.Dense(2, input_shape=(3,)))
+            model.add(keras.layers.RepeatVector(3))
+            model.add(keras.layers.TimeDistributed(keras.layers.Dense(3)))
+            model.compile(loss=keras.losses.MSE,
+                          optimizer=opt,
+                          metrics=[keras.metrics.categorical_accuracy],
+                          sample_weight_mode='temporal')
+
+            x = np.random.random((1, 3))
+            y = np.random.random((1, 3, 3))
+            model.train_on_batch(x, y)
+
+            with temppath() as fname:
+                model.save(fname)
+
+                custom_objects = {
+                    'TestOptimizer': lambda **kwargs: hvd.DistributedOptimizer(
+                        TestOptimizer(**kwargs))
+                }
+                new_model = hvd.load_model(fname, custom_objects=custom_objects)
+                new_opt = new_model.optimizer
+
+            self.assertEqual(type(new_opt).__module__, 'horovod._keras')
+            self.assertEqual(type(new_opt).__name__, 'TestOptimizer')
+            self.assertEqual(K.get_value(opt.lr), K.get_value(new_opt.lr))
+            self._check_optimizer_weights(opt, new_opt)
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="12" similarity="100">
+<source file="systems/horovod-0.24.2/test/parallel/test_tensorflow_keras.py" startline="228" endline="242" pcid="355">
+        def create_model():
+            opt = keras.optimizers.SGD(lr=0.01 * hvd.size(), momentum=0.9)
+            opt = hvd.DistributedOptimizer(opt)
+
+            model = keras.models.Sequential()
+            model.add(keras.layers.Dense(2, input_shape=(3,)))
+            model.add(keras.layers.RepeatVector(3))
+            model.add(keras.layers.TimeDistributed(keras.layers.Dense(3)))
+            model.compile(loss=keras.losses.MSE,
+                          optimizer=opt,
+                          metrics=[keras.metrics.categorical_accuracy],
+                          sample_weight_mode='temporal')
+
+            return model
+
+</source>
+<source file="systems/horovod-0.24.2/test/parallel/test_keras.py" startline="179" endline="193" pcid="375">
+        def create_model():
+            opt = keras.optimizers.SGD(lr=0.01 * hvd.size(), momentum=0.9)
+            opt = hvd.DistributedOptimizer(opt)
+
+            model = keras.models.Sequential()
+            model.add(keras.layers.Dense(2, input_shape=(3,)))
+            model.add(keras.layers.RepeatVector(3))
+            model.add(keras.layers.TimeDistributed(keras.layers.Dense(3)))
+            model.compile(loss=keras.losses.MSE,
+                          optimizer=opt,
+                          metrics=[keras.metrics.categorical_accuracy],
+                          sample_weight_mode='temporal')
+
+            return model
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="10" similarity="100">
+<source file="systems/horovod-0.24.2/test/parallel/test_tensorflow_keras.py" startline="297" endline="310" pcid="358">
+    def test_from_config(self):
+        with self.test_session(config=self.config) as sess:
+            K.set_session(sess)
+
+            opt = keras.optimizers.Adam()
+            hopt = hvd.DistributedOptimizer(opt)
+            cfg = hopt.get_config()
+
+            hopt_copy1 = hopt.from_config(cfg)
+            self.assertEqual(cfg, hopt_copy1.get_config())
+
+            hopt_copy2 = hopt.__class__.from_config(cfg)
+            self.assertEqual(cfg, hopt_copy2.get_config())
+
+</source>
+<source file="systems/horovod-0.24.2/test/parallel/test_keras.py" startline="246" endline="259" pcid="378">
+    def test_from_config(self):
+        with self.test_session(config=self.config) as sess:
+            K.set_session(sess)
+
+            opt = keras.optimizers.Adam()
+            hopt = hvd.DistributedOptimizer(opt)
+            cfg = hopt.get_config()
+
+            hopt_copy1 = hopt.from_config(cfg)
+            self.assertEqual(cfg, hopt_copy1.get_config())
+
+            hopt_copy2 = hopt.__class__.from_config(cfg)
+            self.assertEqual(cfg, hopt_copy2.get_config())
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="20" similarity="100">
+<source file="systems/horovod-0.24.2/examples/pytorch/pytorch_imagenet_resnet50.py" startline="96" endline="124" pcid="451">
+def validate(epoch):
+    model.eval()
+    val_loss = Metric('val_loss')
+    val_accuracy = Metric('val_accuracy')
+
+    with tqdm(total=len(val_loader),
+              desc='Validate Epoch  #{}'.format(epoch + 1),
+              disable=not verbose) as t:
+        with torch.no_grad():
+            for data, target in val_loader:
+                if args.cuda:
+                    data, target = data.cuda(), target.cuda()
+                output = model(data)
+
+                val_loss.update(F.cross_entropy(output, target))
+                val_accuracy.update(accuracy(output, target))
+                t.set_postfix({'loss': val_loss.avg.item(),
+                               'accuracy': 100. * val_accuracy.avg.item()})
+                t.update(1)
+
+    if log_writer:
+        log_writer.add_scalar('val/loss', val_loss.avg, epoch)
+        log_writer.add_scalar('val/accuracy', val_accuracy.avg, epoch)
+
+
+# Horovod: using `lr = base_lr * hvd.size()` from the very beginning leads to worse final
+# accuracy. Scale the learning rate `lr = base_lr` ---> `lr = base_lr * hvd.size()` during
+# the first five epochs. See https://arxiv.org/abs/1706.02677 for details.
+# After the warmup reduce learning rate by 10 on the 30th, 60th and 80th epochs.
+</source>
+<source file="systems/horovod-0.24.2/examples/elastic/pytorch/pytorch_imagenet_resnet50_elastic.py" startline="127" endline="155" pcid="518">
+
+
+def validate(epoch):
+    model.eval()
+    val_loss = Metric('val_loss')
+    val_accuracy = Metric('val_accuracy')
+
+    with tqdm(total=len(val_loader),
+              desc='Validate Epoch  #{}'.format(epoch + 1),
+              disable=not verbose) as t:
+        with torch.no_grad():
+            for data, target in val_loader:
+                if args.cuda:
+                    data, target = data.cuda(), target.cuda()
+                output = model(data)
+
+                val_loss.update(F.cross_entropy(output, target))
+                val_accuracy.update(accuracy(output, target))
+                t.set_postfix({'loss': val_loss.avg.item(),
+                               'accuracy': 100. * val_accuracy.avg.item()})
+                t.update(1)
+
+    if log_writer:
+        log_writer.add_scalar('val/loss', val_loss.avg, epoch)
+        log_writer.add_scalar('val/accuracy', val_accuracy.avg, epoch)
+
+
+# Horovod: using `lr = base_lr * hvd.size()` from the very beginning leads to worse final
+# accuracy. Scale the learning rate `lr = base_lr` ---> `lr = base_lr * hvd.size()` during
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="14" similarity="100">
+<source file="systems/horovod-0.24.2/examples/pytorch/pytorch_imagenet_resnet50.py" startline="125" endline="140" pcid="452">
+def adjust_learning_rate(epoch, batch_idx):
+    if epoch < args.warmup_epochs:
+        epoch += float(batch_idx + 1) / len(train_loader)
+        lr_adj = 1. / hvd.size() * (epoch * (hvd.size() - 1) / args.warmup_epochs + 1)
+    elif epoch < 30:
+        lr_adj = 1.
+    elif epoch < 60:
+        lr_adj = 1e-1
+    elif epoch < 80:
+        lr_adj = 1e-2
+    else:
+        lr_adj = 1e-3
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = args.base_lr * hvd.size() * args.batches_per_allreduce * lr_adj
+
+
+</source>
+<source file="systems/horovod-0.24.2/examples/elastic/pytorch/pytorch_imagenet_resnet50_elastic.py" startline="156" endline="171" pcid="519">
+# the first five epochs. See https://arxiv.org/abs/1706.02677 for details.
+# After the warmup reduce learning rate by 10 on the 30th, 60th and 80th epochs.
+def adjust_learning_rate(epoch, batch_idx):
+    if epoch < args.warmup_epochs:
+        epoch += float(batch_idx + 1) / len(train_loader)
+        lr_adj = 1. / hvd.size() * (epoch * (hvd.size() - 1) / args.warmup_epochs + 1)
+    elif epoch < 30:
+        lr_adj = 1.
+    elif epoch < 60:
+        lr_adj = 1e-1
+    elif epoch < 80:
+        lr_adj = 1e-2
+    else:
+        lr_adj = 1e-3
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = args.base_lr * hvd.size() * args.batches_per_allreduce * lr_adj
+</source>
+</class>
+
+<class classid="9" nclones="3" nlines="18" similarity="100">
+<source file="systems/horovod-0.24.2/examples/pytorch/pytorch_lightning_mnist.py" startline="82" endline="110" pcid="465">
+def test():
+    model.eval()
+    test_loss = 0.
+    test_accuracy = 0.
+    for data, target in test_loader:
+        if args.cuda:
+            data, target = data.cuda(), target.cuda()
+        output = model(data)
+        # sum up batch loss
+        test_loss += F.nll_loss(output, target, size_average=False).item()
+        # get the index of the max log-probability
+        pred = output.data.max(1, keepdim=True)[1]
+        test_accuracy += pred.eq(target.data.view_as(pred)).cpu().float().sum()
+
+    # Horovod: use test_sampler to determine the number of examples in
+    # this worker's partition.
+    test_loss /= len(test_sampler)
+    test_accuracy /= len(test_sampler)
+
+    # Horovod: average metric values across workers.
+    test_loss = metric_average(test_loss, 'avg_loss')
+    test_accuracy = metric_average(test_accuracy, 'avg_accuracy')
+
+    # Horovod: print output only on first rank.
+    if hvd.rank() == 0:
+        print('\nTest set: Average loss: {:.4f}, Accuracy: {:.2f}%\n'.format(
+            test_loss, 100. * test_accuracy))
+
+
+</source>
+<source file="systems/horovod-0.24.2/examples/elastic/pytorch/pytorch_mnist_elastic.py" startline="153" endline="182" pcid="515">
+
+
+def test():
+    model.eval()
+    test_loss = 0.
+    test_accuracy = 0.
+    for data, target in test_loader:
+        if args.cuda:
+            data, target = data.cuda(), target.cuda()
+        output = model(data)
+        # sum up batch loss
+        test_loss += F.nll_loss(output, target, size_average=False).item()
+        # get the index of the max log-probability
+        pred = output.data.max(1, keepdim=True)[1]
+        test_accuracy += pred.eq(target.data.view_as(pred)).cpu().float().sum()
+
+    # Horovod: use test_sampler to determine the number of examples in
+    # this worker's partition.
+    test_loss /= len(test_sampler)
+    test_accuracy /= len(test_sampler)
+
+    # Horovod: average metric values across workers.
+    test_loss = metric_average(test_loss, 'avg_loss')
+    test_accuracy = metric_average(test_accuracy, 'avg_accuracy')
+
+    # Horovod: print output only on first rank.
+    if hvd.rank() == 0:
+        print('\nTest set: Average loss: {:.4f}, Accuracy: {:.2f}%\n'.format(
+            test_loss, 100. * test_accuracy))
+
+</source>
+<source file="systems/horovod-0.24.2/examples/pytorch/pytorch_mnist.py" startline="117" endline="145" pcid="479">
+def test():
+    model.eval()
+    test_loss = 0.
+    test_accuracy = 0.
+    for data, target in test_loader:
+        if args.cuda:
+            data, target = data.cuda(), target.cuda()
+        output = model(data)
+        # sum up batch loss
+        test_loss += F.nll_loss(output, target, size_average=False).item()
+        # get the index of the max log-probability
+        pred = output.data.max(1, keepdim=True)[1]
+        test_accuracy += pred.eq(target.data.view_as(pred)).cpu().float().sum()
+
+    # Horovod: use test_sampler to determine the number of examples in
+    # this worker's partition.
+    test_loss /= len(test_sampler)
+    test_accuracy /= len(test_sampler)
+
+    # Horovod: average metric values across workers.
+    test_loss = metric_average(test_loss, 'avg_loss')
+    test_accuracy = metric_average(test_accuracy, 'avg_accuracy')
+
+    # Horovod: print output only on first rank.
+    if hvd.rank() == 0:
+        print('\nTest set: Average loss: {:.4f}, Accuracy: {:.2f}%\n'.format(
+            test_loss, 100. * test_accuracy))
+
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="27" similarity="100">
+<source file="systems/horovod-0.24.2/examples/mxnet/mxnet_mnist.py" startline="43" endline="77" pcid="488">
+def get_mnist_iterator(rank):
+    data_dir = "data-%d" % rank
+    if not os.path.isdir(data_dir):
+        os.makedirs(data_dir)
+    zip_file_path = download('http://data.mxnet.io/mxnet/data/mnist.zip',
+                             dirname=data_dir)
+    with zipfile.ZipFile(zip_file_path) as zf:
+        zf.extractall(data_dir)
+
+    input_shape = (1, 28, 28)
+    batch_size = args.batch_size
+
+    train_iter = mx.io.MNISTIter(
+        image="%s/train-images-idx3-ubyte" % data_dir,
+        label="%s/train-labels-idx1-ubyte" % data_dir,
+        input_shape=input_shape,
+        batch_size=batch_size,
+        shuffle=True,
+        flat=False,
+        num_parts=hvd.size(),
+        part_index=hvd.rank()
+    )
+
+    val_iter = mx.io.MNISTIter(
+        image="%s/t10k-images-idx3-ubyte" % data_dir,
+        label="%s/t10k-labels-idx1-ubyte" % data_dir,
+        input_shape=input_shape,
+        batch_size=batch_size,
+        flat=False,
+    )
+
+    return train_iter, val_iter
+
+
+# Function to define neural network
+</source>
+<source file="systems/horovod-0.24.2/examples/mxnet/mxnet2_mnist.py" startline="39" endline="73" pcid="503">
+def get_mnist_iterator(rank):
+    data_dir = "data-%d" % rank
+    if not os.path.isdir(data_dir):
+        os.makedirs(data_dir)
+    zip_file_path = download('http://data.mxnet.io/mxnet/data/mnist.zip',
+                             dirname=data_dir)
+    with zipfile.ZipFile(zip_file_path) as zf:
+        zf.extractall(data_dir)
+
+    input_shape = (1, 28, 28)
+    batch_size = args.batch_size
+
+    train_iter = mx.io.MNISTIter(
+        image="%s/train-images-idx3-ubyte" % data_dir,
+        label="%s/train-labels-idx1-ubyte" % data_dir,
+        input_shape=input_shape,
+        batch_size=batch_size,
+        shuffle=True,
+        flat=False,
+        num_parts=hvd.size(),
+        part_index=hvd.rank()
+    )
+
+    val_iter = mx.io.MNISTIter(
+        image="%s/t10k-images-idx3-ubyte" % data_dir,
+        label="%s/t10k-labels-idx1-ubyte" % data_dir,
+        input_shape=input_shape,
+        batch_size=batch_size,
+        flat=False,
+    )
+
+    return train_iter, val_iter
+
+
+# Function to define neural network
+</source>
+</class>
+
+<class classid="11" nclones="2" nlines="13" similarity="100">
+<source file="systems/horovod-0.24.2/horovod/runner/launch.py" startline="186" endline="199" pcid="946">
+    class StoreOverrideBoolAction(argparse.Action):
+        def __init__(self,
+                     option_strings,
+                     dest,
+                     required=False,
+                     help=None):
+            super(StoreOverrideBoolAction, self).__init__(
+                option_strings=option_strings,
+                dest=dest,
+                const=bool_value,
+                nargs=0,
+                default=None,
+                required=required,
+                help=help)
+</source>
+<source file="systems/horovod-0.24.2/horovod/runner/launch.py" startline="217" endline="230" pcid="951">
+    class StoreOverrideBoolAction(argparse.Action):
+        def __init__(self,
+                     option_strings,
+                     dest,
+                     required=False,
+                     help=None):
+            super(StoreOverrideBoolAction, self).__init__(
+                option_strings=option_strings,
+                dest=dest,
+                const=bool_value,
+                nargs=0,
+                default=None,
+                required=required,
+                help=help)
+</source>
+</class>
+
+<class classid="12" nclones="2" nlines="11" similarity="100">
+<source file="systems/horovod-0.24.2/horovod/spark/torch/estimator.py" startline="70" endline="82" pcid="1172">
+
+class TorchEstimatorParamsReader(HorovodParamsReader):
+    def _deserialize_dict(self, dict_values):
+        deserialized_dict = dict()
+        for key, val in dict_values.items():
+            if val is None:
+                deserialized_dict[key] = None
+            elif key == EstimatorParams.model.name:
+                deserialize = deserialize_fn()
+                deserialized_dict[key] = deserialize(val)
+            else:
+                deserialized_dict[key] = codec.loads_base64(val)
+        return deserialized_dict
+</source>
+<source file="systems/horovod-0.24.2/horovod/spark/lightning/estimator.py" startline="78" endline="90" pcid="1288">
+
+class TorchEstimatorParamsReader(HorovodParamsReader):
+    def _deserialize_dict(self, dict_values):
+        deserialized_dict = dict()
+        for key, val in dict_values.items():
+            if val is None:
+                deserialized_dict[key] = None
+            elif key == EstimatorParams.model.name:
+                deserialize = deserialize_fn()
+                deserialized_dict[key] = deserialize(val)
+            else:
+                deserialized_dict[key] = codec.loads_base64(val)
+        return deserialized_dict
+</source>
+</class>
+
+<class classid="13" nclones="2" nlines="11" similarity="100">
+<source file="systems/horovod-0.24.2/horovod/spark/torch/estimator.py" startline="236" endline="247" pcid="1184">
+
+    # Overwrites Model's getOptimizer method
+    def getOptimizer(self):
+        model = self.getModel()
+        if model:
+            optimizer = self._get_optimizer()
+            optimizer_cls = optimizer.__class__
+            optimizer_state = optimizer.state_dict()
+            optimzer = optimizer_cls(model.parameters(), lr=1)
+            optimzer.load_state_dict(optimizer_state)
+            return optimzer
+        else:
+</source>
+<source file="systems/horovod-0.24.2/horovod/spark/lightning/estimator.py" startline="387" endline="398" pcid="1321">
+
+    # Overwrites Model's getOptimizer method
+    def getOptimizer(self):
+        model = self.getModel()
+        if model:
+            optimizer = self._get_optimizer()
+            optimizer_cls = optimizer.__class__
+            optimizer_state = optimizer.state_dict()
+            optimzer = optimizer_cls(model.parameters(), lr=1)
+            optimzer.load_state_dict(optimizer_state)
+            return optimzer
+        else:
+</source>
+</class>
+
+<class classid="14" nclones="2" nlines="11" similarity="100">
+<source file="systems/horovod-0.24.2/horovod/spark/torch/estimator.py" startline="318" endline="330" pcid="1190">
+    def get_model_class(self):
+        return TorchModel
+
+    def _get_model_kwargs(self, model, history, optimizer, run_id, metadata):
+        return dict(history=history,
+                    model=model,
+                    optimizer=optimizer,
+                    feature_columns=self.getFeatureCols(),
+                    input_shapes=self.getInputShapes(),
+                    label_columns=self.getLabelCols(),
+                    run_id=run_id,
+                    _metadata=metadata,
+                    loss=self.getLoss(),
+</source>
+<source file="systems/horovod-0.24.2/horovod/spark/lightning/estimator.py" startline="497" endline="509" pcid="1328">
+        return TorchModel
+
+    def _get_model_kwargs(self, model, history, optimizer, run_id, metadata):
+        return dict(history=history,
+                    model=model,
+                    optimizer=optimizer,
+                    feature_columns=self.getFeatureCols(),
+                    input_shapes=self.getInputShapes(),
+                    label_columns=self.getLabelCols(),
+                    run_id=run_id,
+                    _metadata=metadata,
+                    loss=self.getLoss(),
+                    loss_constructors=self.getLossConstructors())
+</source>
+</class>
+
+<class classid="15" nclones="2" nlines="20" similarity="100">
+<source file="systems/horovod-0.24.2/horovod/spark/torch/estimator.py" startline="354" endline="377" pcid="1191">
+                              'functions that construct the loss')
+
+    @keyword_only
+    def __init__(self,
+                 history=None,
+                 model=None,
+                 feature_columns=None,
+                 input_shapes=None,
+                 label_columns=None,
+                 optimizer=None,
+                 run_id=None,
+                 _metadata=None,
+                 loss=None,
+                 loss_constructors=None):
+        super(TorchModel, self).__init__()
+
+        if label_columns:
+            self.setOutputCols([col + '__output' for col in label_columns])
+
+        self._setDefault(optimizer=None,
+                         loss=None,
+                         loss_constructors=None,
+                         input_shapes=None)
+
+</source>
+<source file="systems/horovod-0.24.2/horovod/spark/lightning/estimator.py" startline="533" endline="556" pcid="1329">
+
+    @keyword_only
+    def __init__(self,
+                 history=None,
+                 model=None,
+                 feature_columns=None,
+                 input_shapes=None,
+                 label_columns=None,
+                 optimizer=None,
+                 run_id=None,
+                 _metadata=None,
+                 loss=None,
+                 loss_constructors=None):
+        super(TorchModel, self).__init__()
+
+        if label_columns:
+            self.setOutputCols([col + '__output' for col in label_columns])
+
+        self._setDefault(optimizer=None,
+                         loss=None,
+                         loss_constructors=None,
+                         input_shapes=None)
+
+        kwargs = self._input_kwargs
+</source>
+</class>
+
+<class classid="16" nclones="2" nlines="11" similarity="100">
+<source file="systems/horovod-0.24.2/horovod/spark/torch/estimator.py" startline="402" endline="414" pcid="1200">
+    def _get_optimizer(self):
+        return self.getOrDefault(self.optimizer)
+
+    def getOptimizer(self):
+        model = self.getModel()
+        if model:
+            _optimizer = self._get_optimizer()
+            optimizer_cls = _optimizer.__class__
+            optimizer_state = _optimizer.state_dict()
+            optimzer = optimizer_cls(model.parameters(), lr=1)
+            optimzer.load_state_dict(optimizer_state)
+            return optimzer
+        else:
+</source>
+<source file="systems/horovod-0.24.2/horovod/spark/lightning/estimator.py" startline="581" endline="592" pcid="1338">
+        return self.getOrDefault(self.optimizer)
+
+    def getOptimizer(self):
+        model = self.getModel()
+        if model:
+            _optimizer = self._get_optimizer()
+            optimizer_cls = _optimizer.__class__
+            optimizer_state = _optimizer.state_dict()
+            optimzer = optimizer_cls(model.parameters(), lr=1)
+            optimzer.load_state_dict(optimizer_state)
+            return optimzer
+        else:
+</source>
+</class>
+
+<class classid="17" nclones="2" nlines="12" similarity="100">
+<source file="systems/horovod-0.24.2/horovod/spark/torch/util.py" startline="28" endline="45" pcid="1204">
+def is_module_available_fn():
+    def _is_module_available(module_name):
+        if sys.version_info <= (3, 3):
+            # python 3.0 to 3.3
+            import pkgutil
+            torch_loader = pkgutil.find_loader(module_name)
+        elif sys.version_info >= (3, 4):
+            # python 3.4 and above
+            import importlib
+            torch_loader = importlib.util.find_spec(module_name)
+        else:
+            raise RuntimeError('Unsupported version of Python: {}'.format(platform.python_version()))
+
+        return torch_loader is not None
+
+    return _is_module_available
+
+
+</source>
+<source file="systems/horovod-0.24.2/horovod/spark/lightning/util.py" startline="28" endline="45" pcid="1351">
+def is_module_available_fn():
+    def _is_module_available(module_name):
+        if sys.version_info <= (3, 3):
+            # python 3.0 to 3.3
+            import pkgutil
+            torch_loader = pkgutil.find_loader(module_name)
+        elif sys.version_info >= (3, 4):
+            # python 3.4 and above
+            import importlib
+            torch_loader = importlib.util.find_spec(module_name)
+        else:
+            raise RuntimeError('Unsupported version of Python: {}'.format(platform.python_version()))
+
+        return torch_loader is not None
+
+    return _is_module_available
+
+
+</source>
+</class>
+
+<class classid="18" nclones="2" nlines="11" similarity="100">
+<source file="systems/horovod-0.24.2/horovod/spark/torch/util.py" startline="46" endline="64" pcid="1206">
+def serialize_fn():
+    is_module_available = is_module_available_fn()
+
+    def _serialize(model):
+        """Serialize model into byte array encoded into base 64."""
+        if is_module_available('torch'):
+            import torch
+            sys.modules["torch._C._nn"] = torch.nn.functional
+
+        if isinstance(model, torch.jit.ScriptModule):
+            # If torch model is converted to torchScript
+            model = save_into_bio(model, torch.jit.save)
+
+        serialized_obj = codec.dumps_base64(model)
+        return serialized_obj
+
+    return _serialize
+
+
+</source>
+<source file="systems/horovod-0.24.2/horovod/spark/lightning/util.py" startline="46" endline="64" pcid="1353">
+def serialize_fn():
+    is_module_available = is_module_available_fn()
+
+    def _serialize(model):
+        """Serialize model into byte array encoded into base 64."""
+        if is_module_available('torch'):
+            import torch
+            sys.modules["torch._C._nn"] = torch.nn.functional
+
+        if isinstance(model, torch.jit.ScriptModule):
+            # If torch model is converted to torchScript
+            model = save_into_bio(model, torch.jit.save)
+
+        serialized_obj = codec.dumps_base64(model)
+        return serialized_obj
+
+    return _serialize
+
+
+</source>
+</class>
+
+<class classid="19" nclones="2" nlines="13" similarity="100">
+<source file="systems/horovod-0.24.2/horovod/spark/torch/util.py" startline="65" endline="85" pcid="1208">
+def deserialize_fn():
+    is_module_available = is_module_available_fn()
+
+    def _deserialize(model_bytes_base64):
+        """Deserialize model from byte array encoded in base 64."""
+        if is_module_available('torch'):
+            import torch
+            sys.modules["torch._C._nn"] = torch.nn.functional
+
+        obj = codec.loads_base64(model_bytes_base64)
+
+        if not isinstance(obj, torch.nn.Module):
+            obj.seek(0)
+            bio = io.BytesIO(obj.read())
+            obj = torch.jit.load(bio)
+
+        return obj
+
+    return _deserialize
+
+
+</source>
+<source file="systems/horovod-0.24.2/horovod/spark/lightning/util.py" startline="65" endline="85" pcid="1355">
+def deserialize_fn():
+    is_module_available = is_module_available_fn()
+
+    def _deserialize(model_bytes_base64):
+        """Deserialize model from byte array encoded in base 64."""
+        if is_module_available('torch'):
+            import torch
+            sys.modules["torch._C._nn"] = torch.nn.functional
+
+        obj = codec.loads_base64(model_bytes_base64)
+
+        if not isinstance(obj, torch.nn.Module):
+            obj.seek(0)
+            bio = io.BytesIO(obj.read())
+            obj = torch.jit.load(bio)
+
+        return obj
+
+    return _deserialize
+
+
+</source>
+</class>
+
+<class classid="20" nclones="2" nlines="14" similarity="100">
+<source file="systems/horovod-0.24.2/horovod/spark/keras/tensorflow.py" startline="80" endline="104" pcid="1269">
+    def convert_custom_objects(obj):
+        """Handles custom object lookup.
+
+        Arguments:
+            obj: object, dict, or list.
+
+        Returns:
+            The same structure, where occurrences
+                of a custom object name have been replaced
+                with the custom object.
+        """
+        if isinstance(obj, list):
+            deserialized = []
+            for value in obj:
+                deserialized.append(convert_custom_objects(value))
+            return deserialized
+        if isinstance(obj, dict):
+            deserialized = {}
+            for key, value in obj.items():
+                deserialized[key] = convert_custom_objects(value)
+            return deserialized
+        if obj in custom_objects:
+            return custom_objects[obj]
+        return obj
+
+</source>
+<source file="systems/horovod-0.24.2/horovod/spark/keras/bare.py" startline="107" endline="131" pcid="1273">
+    def convert_custom_objects(obj):
+        """Handles custom object lookup.
+
+        Arguments:
+            obj: object, dict, or list.
+
+        Returns:
+            The same structure, where occurrences
+                of a custom object name have been replaced
+                with the custom object.
+        """
+        if isinstance(obj, list):
+            deserialized = []
+            for value in obj:
+                deserialized.append(convert_custom_objects(value))
+            return deserialized
+        if isinstance(obj, dict):
+            deserialized = {}
+            for key, value in obj.items():
+                deserialized[key] = convert_custom_objects(value)
+            return deserialized
+        if obj in custom_objects:
+            return custom_objects[obj]
+        return obj
+
+</source>
+</class>
+
+</clones>

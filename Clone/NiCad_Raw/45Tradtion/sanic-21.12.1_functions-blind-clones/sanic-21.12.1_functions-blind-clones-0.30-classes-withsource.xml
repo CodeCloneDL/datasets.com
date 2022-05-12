@@ -1,0 +1,1433 @@
+<clones>
+<systeminfo processor="nicad6" system="sanic-21.12.1" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="615" npairs="44"/>
+<runinfo ncompares="4999" cputime="43920"/>
+<classinfo nclasses="18"/>
+
+<class classid="1" nclones="4" nlines="13" similarity="76">
+<source file="systems/sanic-21.12.1/tests/test_blueprints.py" startline="122" endline="141" pcid="100">
+def test_bp_strict_slash_default_value(app):
+    bp = Blueprint("test_text", strict_slashes=True)
+
+    @bp.get("/get")
+    def get_handler(request):
+        return text("OK")
+
+    @bp.post("/post/")
+    def post_handler(request):
+        return text("OK")
+
+    app.blueprint(bp)
+
+    request, response = app.test_client.get("/get/")
+    assert response.status == 404
+
+    request, response = app.test_client.post("/post")
+    assert response.status == 404
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_blueprints.py" startline="142" endline="161" pcid="103">
+def test_bp_strict_slash_without_passing_default_value(app):
+    bp = Blueprint("test_text")
+
+    @bp.get("/get")
+    def get_handler(request):
+        return text("OK")
+
+    @bp.post("/post/")
+    def post_handler(request):
+        return text("OK")
+
+    app.blueprint(bp)
+
+    request, response = app.test_client.get("/get/")
+    assert response.text == "OK"
+
+    request, response = app.test_client.post("/post")
+    assert response.text == "OK"
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_blueprints.py" startline="195" endline="215" pcid="111">
+def test_several_bp_with_url_prefix(app):
+    bp = Blueprint("test_text", url_prefix="/test1")
+    bp2 = Blueprint("test_text2", url_prefix="/test2")
+
+    @bp.route("/")
+    def handler(request):
+        return text("Hello")
+
+    @bp2.route("/")
+    def handler2(request):
+        return text("Hello2")
+
+    app.blueprint(bp)
+    app.blueprint(bp2)
+    request, response = app.test_client.get("/test1/")
+    assert response.text == "Hello"
+
+    request, response = app.test_client.get("/test2/")
+    assert response.text == "Hello2"
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_blueprints.py" startline="162" endline="181" pcid="106">
+def test_bp_strict_slash_default_value_can_be_overwritten(app):
+    bp = Blueprint("test_text", strict_slashes=True)
+
+    @bp.get("/get", strict_slashes=False)
+    def get_handler(request):
+        return text("OK")
+
+    @bp.post("/post/", strict_slashes=False)
+    def post_handler(request):
+        return text("OK")
+
+    app.blueprint(bp)
+
+    request, response = app.test_client.get("/get/")
+    assert response.text == "OK"
+
+    request, response = app.test_client.post("/post")
+    assert response.text == "OK"
+
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="38" similarity="71">
+<source file="systems/sanic-21.12.1/tests/test_blueprints.py" startline="238" endline="281" pcid="117">
+def test_several_bp_with_host(app):
+    bp = Blueprint(
+        "test_text",
+        url_prefix="/test",
+        host="example.com",
+        strict_slashes=True,
+    )
+    bp2 = Blueprint(
+        "test_text2",
+        url_prefix="/test",
+        host="sub.example.com",
+        strict_slashes=True,
+    )
+
+    @bp.route("/")
+    def handler(request):
+        return text("Hello")
+
+    @bp2.route("/")
+    def handler1(request):
+        return text("Hello2")
+
+    @bp2.route("/other/")
+    def handler2(request):
+        return text("Hello3")
+
+    app.blueprint(bp)
+    app.blueprint(bp2)
+
+    assert bp.host == "example.com"
+    headers = {"Host": "example.com"}
+    request, response = app.test_client.get("/test/", headers=headers)
+
+    assert response.text == "Hello"
+
+    assert bp2.host == "sub.example.com"
+    headers = {"Host": "sub.example.com"}
+    request, response = app.test_client.get("/test/", headers=headers)
+
+    assert response.text == "Hello2"
+    request, response = app.test_client.get("/test/other/", headers=headers)
+    assert response.text == "Hello3"
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_blueprints.py" startline="312" endline="363" pcid="124">
+def test_several_bp_with_host_list(app):
+    bp = Blueprint(
+        "test_text",
+        url_prefix="/test",
+        host=["example.com", "sub.example.com"],
+    )
+    bp2 = Blueprint(
+        "test_text2",
+        url_prefix="/test",
+        host=["sub1.example.com", "sub2.example.com"],
+    )
+
+    @bp.route("/")
+    def handler(request):
+        return text("Hello")
+
+    @bp2.route("/")
+    def handler1(request):
+        return text("Hello2")
+
+    @bp2.route("/other/")
+    def handler2(request):
+        return text("Hello3")
+
+    app.blueprint(bp)
+    app.blueprint(bp2)
+
+    assert bp.host == ["example.com", "sub.example.com"]
+    headers = {"Host": "example.com"}
+    request, response = app.test_client.get("/test/", headers=headers)
+    assert response.text == "Hello"
+
+    assert bp.host == ["example.com", "sub.example.com"]
+    headers = {"Host": "sub.example.com"}
+    request, response = app.test_client.get("/test/", headers=headers)
+    assert response.text == "Hello"
+
+    assert bp2.host == ["sub1.example.com", "sub2.example.com"]
+    headers = {"Host": "sub1.example.com"}
+    request, response = app.test_client.get("/test/", headers=headers)
+    assert response.text == "Hello2"
+    request, response = app.test_client.get("/test/other/", headers=headers)
+    assert response.text == "Hello3"
+
+    assert bp2.host == ["sub1.example.com", "sub2.example.com"]
+    headers = {"Host": "sub2.example.com"}
+    request, response = app.test_client.get("/test/", headers=headers)
+    assert response.text == "Hello2"
+    request, response = app.test_client.get("/test/other/", headers=headers)
+    assert response.text == "Hello3"
+
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="14" similarity="80">
+<source file="systems/sanic-21.12.1/tests/test_blueprints.py" startline="364" endline="382" pcid="128">
+def test_bp_middleware(app):
+    blueprint = Blueprint("test_bp_middleware")
+
+    @blueprint.middleware("response")
+    async def process_response(request, response):
+        return text("OK")
+
+    @app.route("/")
+    async def handler(request):
+        return text("FAIL")
+
+    app.blueprint(blueprint)
+
+    request, response = app.test_client.get("/")
+
+    assert response.status == 200
+    assert response.text == "FAIL"
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_blueprints.py" startline="383" endline="405" pcid="131">
+def test_bp_middleware_with_route(app):
+    blueprint = Blueprint("test_bp_middleware")
+
+    @blueprint.middleware("response")
+    async def process_response(request, response):
+        return text("OK")
+
+    @app.route("/")
+    async def handler(request):
+        return text("FAIL")
+
+    @blueprint.route("/bp")
+    async def bp_handler(request):
+        return text("FAIL")
+
+    app.blueprint(blueprint)
+
+    request, response = app.test_client.get("/bp")
+
+    assert response.status == 200
+    assert response.text == "OK"
+
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="27" similarity="72">
+<source file="systems/sanic-21.12.1/tests/test_blueprints.py" startline="406" endline="445" pcid="135">
+def test_bp_middleware_order(app):
+    blueprint = Blueprint("test_bp_middleware_order")
+    order = []
+
+    @blueprint.middleware("request")
+    def mw_1(request):
+        order.append(1)
+
+    @blueprint.middleware("request")
+    def mw_2(request):
+        order.append(2)
+
+    @blueprint.middleware("request")
+    def mw_3(request):
+        order.append(3)
+
+    @blueprint.middleware("response")
+    def mw_4(request, response):
+        order.append(6)
+
+    @blueprint.middleware("response")
+    def mw_5(request, response):
+        order.append(5)
+
+    @blueprint.middleware("response")
+    def mw_6(request, response):
+        order.append(4)
+
+    @blueprint.route("/")
+    def process_response(request):
+        return text("OK")
+
+    app.blueprint(blueprint)
+    order.clear()
+    request, response = app.test_client.get("/")
+
+    assert response.status == 200
+    assert order == [1, 2, 3, 4, 5, 6]
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_blueprints.py" startline="530" endline="566" pcid="155">
+def test_bp_listeners(app):
+    app.route("/")(lambda x: x)
+    blueprint = Blueprint("test_middleware")
+
+    order = []
+
+    @blueprint.listener("before_server_start")
+    def handler_1(sanic, loop):
+        order.append(1)
+
+    @blueprint.listener("after_server_start")
+    def handler_2(sanic, loop):
+        order.append(2)
+
+    @blueprint.listener("after_server_start")
+    def handler_3(sanic, loop):
+        order.append(3)
+
+    @blueprint.listener("before_server_stop")
+    def handler_4(sanic, loop):
+        order.append(5)
+
+    @blueprint.listener("before_server_stop")
+    def handler_5(sanic, loop):
+        order.append(4)
+
+    @blueprint.listener("after_server_stop")
+    def handler_6(sanic, loop):
+        order.append(6)
+
+    app.blueprint(blueprint)
+
+    request, response = app.test_client.get("/")
+
+    assert order == [1, 2, 3, 4, 5, 6]
+
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="18" similarity="71">
+<source file="systems/sanic-21.12.1/tests/test_blueprints.py" startline="478" endline="507" pcid="148">
+def test_bp_exception_handler_applied(app):
+    class Error(Exception):
+        pass
+
+    handled = Blueprint("handled")
+    nothandled = Blueprint("nothandled")
+
+    @handled.exception(Error)
+    def handle_error(req, e):
+        return text("handled {}".format(e))
+
+    @handled.route("/ok")
+    def ok(request):
+        raise Error("uh oh")
+
+    @nothandled.route("/notok")
+    def notok(request):
+        raise Error("uh oh")
+
+    app.blueprint(handled)
+    app.blueprint(nothandled)
+
+    _, response = app.test_client.get("/ok")
+    assert response.status == 200
+    assert response.text == "handled uh oh"
+
+    _, response = app.test_client.get("/notok")
+    assert response.status == 500
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_blueprints.py" startline="508" endline="529" pcid="152">
+def test_bp_exception_handler_not_applied(app):
+    class Error(Exception):
+        pass
+
+    handled = Blueprint("handled")
+    nothandled = Blueprint("nothandled")
+
+    @handled.exception(Error)
+    def handle_error(req, e):
+        return text("handled {}".format(e))
+
+    @nothandled.route("/notok")
+    def notok(request):
+        raise Error("uh oh")
+
+    app.blueprint(handled)
+    app.blueprint(nothandled)
+
+    _, response = app.test_client.get("/notok")
+    assert response.status == 500
+
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="16" similarity="75">
+<source file="systems/sanic-21.12.1/tests/test_keep_alive_timeout.py" startline="68" endline="90" pcid="236">
+def test_keep_alive_timeout_reuse():
+    """If the server keep-alive timeout and client keep-alive timeout are
+    both longer than the delay, the client _and_ server will successfully
+    reuse the existing connection."""
+    port = get_port()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    client = ReusableClient(keep_alive_timeout_app_reuse, loop=loop, port=port)
+    with client:
+        headers = {"Connection": "keep-alive"}
+        request, response = client.get("/1", headers=headers)
+        assert response.status == 200
+        assert response.text == "OK"
+        assert request.protocol.state["requests_count"] == 1
+
+        loop.run_until_complete(aio_sleep(1))
+
+        request, response = client.get("/1")
+        assert response.status == 200
+        assert response.text == "OK"
+        assert request.protocol.state["requests_count"] == 2
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_keep_alive_timeout.py" startline="152" endline="169" pcid="239">
+def test_keep_alive_connection_context():
+    port = get_port()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    client = ReusableClient(keep_alive_app_context, loop=loop, port=port)
+    with client:
+        headers = {"Connection": "keep-alive"}
+        request1, _ = client.post("/ctx", headers=headers)
+
+        loop.run_until_complete(aio_sleep(1))
+        request2, response = client.get("/ctx")
+
+        assert response.text == "hello"
+        assert id(request1.conn_info.ctx) == id(request2.conn_info.ctx)
+        assert (
+            request1.conn_info.ctx.foo == request2.conn_info.ctx.foo == "hello"
+        )
+        assert request2.protocol.state["requests_count"] == 2
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="15" similarity="100">
+<source file="systems/sanic-21.12.1/tests/test_keep_alive_timeout.py" startline="97" endline="118" pcid="237">
+def test_keep_alive_client_timeout():
+    """If the server keep-alive timeout is longer than the client
+    keep-alive timeout, client will try to create a new connection here."""
+    port = get_port()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    client = ReusableClient(
+        keep_alive_app_client_timeout, loop=loop, port=port
+    )
+    with client:
+        headers = {"Connection": "keep-alive"}
+        request, response = client.get("/1", headers=headers, timeout=1)
+
+        assert response.status == 200
+        assert response.text == "OK"
+        assert request.protocol.state["requests_count"] == 1
+
+        loop.run_until_complete(aio_sleep(2))
+        request, response = client.get("/1", timeout=1)
+        assert request.protocol.state["requests_count"] == 1
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_keep_alive_timeout.py" startline="123" endline="147" pcid="238">
+def test_keep_alive_server_timeout():
+    """If the client keep-alive timeout is longer than the server
+    keep-alive timeout, the client will either a 'Connection reset' error
+    _or_ a new connection. Depending on how the event-loop handles the
+    broken server connection."""
+    port = get_port()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    client = ReusableClient(
+        keep_alive_app_server_timeout, loop=loop, port=port
+    )
+    with client:
+        headers = {"Connection": "keep-alive"}
+        request, response = client.get("/1", headers=headers, timeout=60)
+
+        assert response.status == 200
+        assert response.text == "OK"
+        assert request.protocol.state["requests_count"] == 1
+
+        loop.run_until_complete(aio_sleep(3))
+        request, response = client.get("/1", timeout=60)
+
+        assert request.protocol.state["requests_count"] == 1
+
+
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="18" similarity="88">
+<source file="systems/sanic-21.12.1/tests/test_named_routes.py" startline="200" endline="223" pcid="299">
+def test_named_static_routes():
+    app = Sanic("app")
+
+    @app.route("/test", name="route_test")
+    async def handler1(request):
+        return text("OK1")
+
+    @app.route("/pizazz", name="route_pizazz")
+    async def handler2(request):
+        return text("OK2")
+
+    assert app.router.routes_all[("test",)].name == "app.route_test"
+    assert app.router.routes_static[("test",)][0].name == "app.route_test"
+    assert app.url_for("route_test") == "/test"
+    with pytest.raises(URLBuildError):
+        app.url_for("handler1")
+
+    assert app.router.routes_all[("pizazz",)].name == "app.route_pizazz"
+    assert app.router.routes_static[("pizazz",)][0].name == "app.route_pizazz"
+    assert app.url_for("route_pizazz") == "/pizazz"
+    with pytest.raises(URLBuildError):
+        app.url_for("handler2")
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_named_routes.py" startline="337" endline="361" pcid="314">
+def test_static_add_named_route():
+    app = Sanic("app")
+
+    async def handler1(request):
+        return text("OK1")
+
+    async def handler2(request):
+        return text("OK2")
+
+    app.add_route(handler1, "/test", name="route_test")
+    app.add_route(handler2, "/test2", name="route_test2")
+
+    assert app.router.routes_all[("test",)].name == "app.route_test"
+    assert app.router.routes_static[("test",)][0].name == "app.route_test"
+    assert app.url_for("route_test") == "/test"
+    with pytest.raises(URLBuildError):
+        app.url_for("handler1")
+
+    assert app.router.routes_all[("test2",)].name == "app.route_test2"
+    assert app.router.routes_static[("test2",)][0].name == "app.route_test2"
+    assert app.url_for("route_test2") == "/test2"
+    with pytest.raises(URLBuildError):
+        app.url_for("handler2")
+
+
+</source>
+</class>
+
+<class classid="9" nclones="4" nlines="16" similarity="70">
+<source file="systems/sanic-21.12.1/tests/test_named_routes.py" startline="247" endline="265" pcid="304">
+def test_dynamic_named_route_regex():
+    app = Sanic("app")
+
+    @app.route("/folder/<folder_id:[A-Za-z0-9]{0,4}>", name="route_re")
+    async def handler(request, folder_id):
+        return text("OK")
+
+    route = app.router.routes_all[
+        (
+            "folder",
+            "<folder_id:[A-Za-z0-9]{0,4}>",
+        )
+    ]
+    assert route.name == "app.route_re"
+    assert app.url_for("route_re", folder_id="test") == "/folder/test"
+    with pytest.raises(URLBuildError):
+        app.url_for("handler")
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_named_routes.py" startline="285" endline="307" pcid="308">
+def test_dynamic_named_route_unhashable():
+    app = Sanic("app")
+
+    @app.route(
+        "/folder/<unhashable:[A-Za-z0-9/]+>/end/", name="route_unhashable"
+    )
+    async def handler(request, unhashable):
+        return text("OK")
+
+    route = app.router.routes_all[
+        (
+            "folder",
+            "<unhashable:[A-Za-z0-9/]+>",
+            "end",
+        )
+    ]
+    assert route.name == "app.route_unhashable"
+    url = app.url_for("route_unhashable", unhashable="test/asdf")
+    assert url == "/folder/test/asdf/end"
+    with pytest.raises(URLBuildError):
+        app.url_for("handler")
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_named_routes.py" startline="266" endline="284" pcid="306">
+def test_dynamic_named_route_path():
+    app = Sanic("app")
+
+    @app.route("/<path:path>/info", name="route_dynamic_path")
+    async def handler(request, path):
+        return text("OK")
+
+    route = app.router.routes_all[
+        (
+            "<path:path>",
+            "info",
+        )
+    ]
+    assert route.name == "app.route_dynamic_path"
+    assert app.url_for("route_dynamic_path", path="path/1") == "/path/1/info"
+    with pytest.raises(URLBuildError):
+        app.url_for("handler")
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_named_routes.py" startline="380" endline="404" pcid="319">
+def test_dynamic_add_named_route_unhashable():
+    app = Sanic("app")
+
+    async def handler(request, unhashable):
+        return text("OK")
+
+    app.add_route(
+        handler,
+        "/folder/<unhashable:[A-Za-z0-9/]+>/end/",
+        name="route_unhashable",
+    )
+    route = app.router.routes_all[
+        (
+            "folder",
+            "<unhashable:[A-Za-z0-9/]+>",
+            "end",
+        )
+    ]
+    assert route.name == "app.route_unhashable"
+    url = app.url_for("route_unhashable", unhashable="folder1")
+    assert url == "/folder/folder1/end"
+    with pytest.raises(URLBuildError):
+        app.url_for("handler")
+
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="12" similarity="84">
+<source file="systems/sanic-21.12.1/tests/test_multiprocessing.py" startline="21" endline="38" pcid="332">
+def test_multiprocessing(app):
+    """Tests that the number of children we produce is correct"""
+    # Selects a number at random so we can spot check
+    num_workers = random.choice(range(2, multiprocessing.cpu_count() * 2 + 1))
+    process_list = set()
+
+    def stop_on_alarm(*args):
+        for process in multiprocessing.active_children():
+            process_list.add(process.pid)
+            process.terminate()
+
+    signal.signal(signal.SIGALRM, stop_on_alarm)
+    signal.alarm(3)
+    app.run(HOST, PORT, workers=num_workers)
+
+    assert len(process_list) == num_workers
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_multiprocessing.py" startline="43" endline="62" pcid="334">
+def test_multiprocessing_with_blueprint(app):
+    # Selects a number at random so we can spot check
+    num_workers = random.choice(range(2, multiprocessing.cpu_count() * 2 + 1))
+    process_list = set()
+
+    def stop_on_alarm(*args):
+        for process in multiprocessing.active_children():
+            process_list.add(process.pid)
+            process.terminate()
+
+    signal.signal(signal.SIGALRM, stop_on_alarm)
+    signal.alarm(3)
+
+    bp = Blueprint("test_text")
+    app.blueprint(bp)
+    app.run(HOST, PORT, workers=num_workers)
+
+    assert len(process_list) == num_workers
+
+
+</source>
+</class>
+
+<class classid="11" nclones="3" nlines="12" similarity="83">
+<source file="systems/sanic-21.12.1/tests/test_multiprocessing.py" startline="71" endline="83" pcid="337">
+def test_pickle_app(app, protocol):
+    app.route("/")(handler)
+    app.router.finalize()
+    app.router.reset()
+    p_app = pickle.dumps(app, protocol=protocol)
+    del app
+    up_p_app = pickle.loads(p_app)
+    up_p_app.router.finalize()
+    assert up_p_app
+    request, response = up_p_app.test_client.get("/")
+    assert response.text == "Hello"
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_multiprocessing.py" startline="101" endline="114" pcid="339">
+def test_pickle_app_with_static(app, protocol):
+    app.route("/")(handler)
+    app.static("/static", "/tmp/static")
+    app.router.finalize()
+    app.router.reset()
+    p_app = pickle.dumps(app, protocol=protocol)
+    del app
+    up_p_app = pickle.loads(p_app)
+    up_p_app.router.finalize()
+    assert up_p_app
+    request, response = up_p_app.test_client.get("/static/missing.txt")
+    assert response.status == 404
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_multiprocessing.py" startline="85" endline="99" pcid="338">
+def test_pickle_app_with_bp(app, protocol):
+    bp = Blueprint("test_text")
+    bp.route("/")(handler)
+    app.blueprint(bp)
+    app.router.finalize()
+    app.router.reset()
+    p_app = pickle.dumps(app, protocol=protocol)
+    del app
+    up_p_app = pickle.loads(p_app)
+    up_p_app.router.finalize()
+    assert up_p_app
+    request, response = up_p_app.test_client.get("/")
+    assert response.text == "Hello"
+
+
+</source>
+</class>
+
+<class classid="12" nclones="2" nlines="16" similarity="82">
+<source file="systems/sanic-21.12.1/tests/test_tls.py" startline="63" endline="86" pcid="348">
+def test_url_attributes_with_ssl_context(app, path, query, expected_url):
+    context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
+    context.load_cert_chain(localhost_cert, localhost_key)
+
+    async def handler(request):
+        return text("OK")
+
+    app.add_route(handler, path)
+
+    port = app.test_client.port
+    request, response = app.test_client.get(
+        f"https://{HOST}:{PORT}" + path + f"?{query}",
+        server_kwargs={"ssl": context},
+    )
+    assert request.url == expected_url.format(HOST, request.server_port)
+
+    parsed = urlparse(request.url)
+
+    assert parsed.scheme == request.scheme
+    assert parsed.path == request.path
+    assert parsed.query == request.query_string
+    assert parsed.netloc == request.host
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_tls.py" startline="95" endline="116" pcid="350">
+def test_url_attributes_with_ssl_dict(app, path, query, expected_url):
+    ssl_dict = {"cert": localhost_cert, "key": localhost_key}
+
+    async def handler(request):
+        return text("OK")
+
+    app.add_route(handler, path)
+
+    request, response = app.test_client.get(
+        f"https://{HOST}:{PORT}" + path + f"?{query}",
+        server_kwargs={"ssl": ssl_dict},
+    )
+    assert request.url == expected_url.format(HOST, request.server_port)
+
+    parsed = urlparse(request.url)
+
+    assert parsed.scheme == request.scheme
+    assert parsed.path == request.path
+    assert parsed.query == request.query_string
+    assert parsed.netloc == request.host
+
+
+</source>
+</class>
+
+<class classid="13" nclones="2" nlines="13" similarity="92">
+<source file="systems/sanic-21.12.1/tests/test_tls.py" startline="202" endline="218" pcid="358">
+def test_missing_sni(app):
+    """The sanic cert does not list 127.0.0.1 and httpx does not send IP as SNI anyway."""
+    ssl_list = [None, sanic_dir]
+
+    @app.get("/sni")
+    async def handler(request):
+        return text(request.conn_info.server_name)
+
+    port = app.test_client.port
+    with pytest.raises(Exception) as exc:
+        request, response = app.test_client.get(
+            f"https://127.0.0.1:{port}/sni",
+            server_kwargs={"ssl": ssl_list},
+        )
+    assert "Request and response object expected" in str(exc.value)
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_tls.py" startline="219" endline="236" pcid="360">
+def test_no_matching_cert(app):
+    """The sanic cert does not list 127.0.0.1 and httpx does not send IP as SNI anyway."""
+    ssl_list = [None, sanic_dir]
+
+    @app.get("/sni")
+    async def handler(request):
+        return text(request.conn_info.server_name)
+
+    port = app.test_client.port
+    with replace_server_name("invalid.test"):
+        with pytest.raises(Exception) as exc:
+            request, response = app.test_client.get(
+                f"https://127.0.0.1:{port}/sni",
+                server_kwargs={"ssl": ssl_list},
+            )
+    assert "Request and response object expected" in str(exc.value)
+
+
+</source>
+</class>
+
+<class classid="14" nclones="3" nlines="10" similarity="81">
+<source file="systems/sanic-21.12.1/tests/test_tls.py" startline="298" endline="313" pcid="368">
+def test_cert_file_on_pathlist(app):
+    @app.get("/test")
+    async def handler(request):
+        return text("ssl test")
+
+    ssl_list = [sanic_cert]
+
+    with pytest.raises(ValueError) as excinfo:
+        request, response = app.test_client.get(
+            "/test", server_kwargs={"ssl": ssl_list}
+        )
+
+    assert "folder expected" in str(excinfo.value)
+    assert sanic_cert in str(excinfo.value)
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_tls.py" startline="330" endline="346" pcid="372">
+def test_missing_cert_file(app):
+    @app.get("/test")
+    async def handler(request):
+        return text("ssl test")
+
+    invalid2 = invalid_dir.replace("nonexist", "certmissing")
+    ssl_list = [invalid2]
+
+    with pytest.raises(ValueError) as excinfo:
+        request, response = app.test_client.get(
+            "/test", server_kwargs={"ssl": ssl_list}
+        )
+
+    assert "not found" in str(excinfo.value)
+    assert invalid2 + "/fullchain.pem" in str(excinfo.value)
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_tls.py" startline="314" endline="329" pcid="370">
+def test_missing_cert_path(app):
+    @app.get("/test")
+    async def handler(request):
+        return text("ssl test")
+
+    ssl_list = [invalid_dir]
+
+    with pytest.raises(ValueError) as excinfo:
+        request, response = app.test_client.get(
+            "/test", server_kwargs={"ssl": ssl_list}
+        )
+
+    assert "not found" in str(excinfo.value)
+    assert invalid_dir + "/privkey.pem" in str(excinfo.value)
+
+
+</source>
+</class>
+
+<class classid="15" nclones="6" nlines="38" similarity="70">
+<source file="systems/sanic-21.12.1/tests/test_url_for_static.py" startline="184" endline="228" pcid="420">
+def test_static_head_request(file_name, static_file_directory):
+    app = Sanic("base")
+    app.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+
+    bp = Blueprint("test_bp_static", url_prefix="/bp")
+    bp.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+    app.blueprint(bp)
+
+    uri = app.url_for("static")
+    assert uri == "/testing.file"
+    assert uri == app.url_for("static", name="static")
+    assert uri == app.url_for("static", name="static", filename="any")
+
+    request, response = app.test_client.head(uri)
+    assert response.status == 200
+    assert "Accept-Ranges" in response.headers
+    assert "Content-Length" in response.headers
+    assert int(response.headers["Content-Length"]) == len(
+        get_file_content(static_file_directory, file_name)
+    )
+
+    # blueprint
+    uri = app.url_for("static", name="test_bp_static.static")
+    assert uri == "/bp/testing.file"
+    assert uri == app.url_for(
+        "static", name="test_bp_static.static", filename="any"
+    )
+
+    request, response = app.test_client.head(uri)
+    assert response.status == 200
+    assert "Accept-Ranges" in response.headers
+    assert "Content-Length" in response.headers
+    assert int(response.headers["Content-Length"]) == len(
+        get_file_content(static_file_directory, file_name)
+    )
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_url_for_static.py" startline="388" endline="440" pcid="424">
+def test_static_content_range_empty(file_name, static_file_directory):
+    app = Sanic("base")
+    app.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+
+    bp = Blueprint("test_bp_static", url_prefix="/bp")
+    bp.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+    app.blueprint(bp)
+
+    uri = app.url_for("static")
+    assert uri == "/testing.file"
+    assert uri == app.url_for("static", name="static")
+    assert uri == app.url_for("static", name="static", filename="any")
+
+    request, response = app.test_client.get(uri)
+    assert response.status == 200
+    assert "Content-Length" in response.headers
+    assert "Content-Range" not in response.headers
+    assert int(response.headers["Content-Length"]) == len(
+        get_file_content(static_file_directory, file_name)
+    )
+    assert response.body == bytes(
+        get_file_content(static_file_directory, file_name)
+    )
+
+    # blueprint
+    uri = app.url_for("static", name="test_bp_static.static")
+    assert uri == "/bp/testing.file"
+    assert uri == app.url_for(
+        "static", name="test_bp_static.static", filename="any"
+    )
+    assert uri == app.url_for("test_bp_static.static")
+    assert uri == app.url_for("test_bp_static.static", filename="any")
+
+    request, response = app.test_client.get(uri)
+    assert response.status == 200
+    assert "Content-Length" in response.headers
+    assert "Content-Range" not in response.headers
+    assert int(response.headers["Content-Length"]) == len(
+        get_file_content(static_file_directory, file_name)
+    )
+    assert response.body == bytes(
+        get_file_content(static_file_directory, file_name)
+    )
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_url_for_static.py" startline="230" endline="280" pcid="421">
+def test_static_content_range_correct(file_name, static_file_directory):
+    app = Sanic("base")
+    app.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+
+    bp = Blueprint("test_bp_static", url_prefix="/bp")
+    bp.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+    app.blueprint(bp)
+
+    headers = {"Range": "bytes=12-19"}
+    uri = app.url_for("static")
+    assert uri == "/testing.file"
+    assert uri == app.url_for("static", name="static")
+    assert uri == app.url_for("static", name="static", filename="any")
+
+    request, response = app.test_client.get(uri, headers=headers)
+    assert response.status == 206
+    assert "Content-Length" in response.headers
+    assert "Content-Range" in response.headers
+    static_content = bytes(get_file_content(static_file_directory, file_name))[
+        12:20
+    ]
+    assert int(response.headers["Content-Length"]) == len(static_content)
+    assert response.body == static_content
+
+    # blueprint
+    uri = app.url_for("static", name="test_bp_static.static")
+    assert uri == "/bp/testing.file"
+    assert uri == app.url_for(
+        "static", name="test_bp_static.static", filename="any"
+    )
+    assert uri == app.url_for("test_bp_static.static")
+
+    request, response = app.test_client.get(uri, headers=headers)
+    assert response.status == 206
+    assert "Content-Length" in response.headers
+    assert "Content-Range" in response.headers
+    static_content = bytes(get_file_content(static_file_directory, file_name))[
+        12:20
+    ]
+    assert int(response.headers["Content-Length"]) == len(static_content)
+    assert response.body == static_content
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_url_for_static.py" startline="282" endline="333" pcid="422">
+def test_static_content_range_front(file_name, static_file_directory):
+    app = Sanic("base")
+    app.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+
+    bp = Blueprint("test_bp_static", url_prefix="/bp")
+    bp.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+    app.blueprint(bp)
+
+    headers = {"Range": "bytes=12-"}
+    uri = app.url_for("static")
+    assert uri == "/testing.file"
+    assert uri == app.url_for("static", name="static")
+    assert uri == app.url_for("static", name="static", filename="any")
+
+    request, response = app.test_client.get(uri, headers=headers)
+    assert response.status == 206
+    assert "Content-Length" in response.headers
+    assert "Content-Range" in response.headers
+    static_content = bytes(get_file_content(static_file_directory, file_name))[
+        12:
+    ]
+    assert int(response.headers["Content-Length"]) == len(static_content)
+    assert response.body == static_content
+
+    # blueprint
+    uri = app.url_for("static", name="test_bp_static.static")
+    assert uri == "/bp/testing.file"
+    assert uri == app.url_for(
+        "static", name="test_bp_static.static", filename="any"
+    )
+    assert uri == app.url_for("test_bp_static.static")
+    assert uri == app.url_for("test_bp_static.static", filename="any")
+
+    request, response = app.test_client.get(uri, headers=headers)
+    assert response.status == 206
+    assert "Content-Length" in response.headers
+    assert "Content-Range" in response.headers
+    static_content = bytes(get_file_content(static_file_directory, file_name))[
+        12:
+    ]
+    assert int(response.headers["Content-Length"]) == len(static_content)
+    assert response.body == static_content
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_url_for_static.py" startline="335" endline="386" pcid="423">
+def test_static_content_range_back(file_name, static_file_directory):
+    app = Sanic("base")
+    app.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+
+    bp = Blueprint("test_bp_static", url_prefix="/bp")
+    bp.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+    app.blueprint(bp)
+
+    headers = {"Range": "bytes=-12"}
+    uri = app.url_for("static")
+    assert uri == "/testing.file"
+    assert uri == app.url_for("static", name="static")
+    assert uri == app.url_for("static", name="static", filename="any")
+
+    request, response = app.test_client.get(uri, headers=headers)
+    assert response.status == 206
+    assert "Content-Length" in response.headers
+    assert "Content-Range" in response.headers
+    static_content = bytes(get_file_content(static_file_directory, file_name))[
+        -12:
+    ]
+    assert int(response.headers["Content-Length"]) == len(static_content)
+    assert response.body == static_content
+
+    # blueprint
+    uri = app.url_for("static", name="test_bp_static.static")
+    assert uri == "/bp/testing.file"
+    assert uri == app.url_for(
+        "static", name="test_bp_static.static", filename="any"
+    )
+    assert uri == app.url_for("test_bp_static.static")
+    assert uri == app.url_for("test_bp_static.static", filename="any")
+
+    request, response = app.test_client.get(uri, headers=headers)
+    assert response.status == 206
+    assert "Content-Length" in response.headers
+    assert "Content-Range" in response.headers
+    static_content = bytes(get_file_content(static_file_directory, file_name))[
+        -12:
+    ]
+    assert int(response.headers["Content-Length"]) == len(static_content)
+    assert response.body == static_content
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_url_for_static.py" startline="442" endline="487" pcid="425">
+def test_static_content_range_error(app, file_name, static_file_directory):
+    app = Sanic("base")
+    app.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+
+    bp = Blueprint("test_bp_static", url_prefix="/bp")
+    bp.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+    app.blueprint(bp)
+
+    headers = {"Range": "bytes=1-0"}
+    uri = app.url_for("static")
+    assert uri == "/testing.file"
+    assert uri == app.url_for("static", name="static")
+    assert uri == app.url_for("static", name="static", filename="any")
+
+    request, response = app.test_client.get(uri, headers=headers)
+    assert response.status == 416
+    assert "Content-Length" in response.headers
+    assert "Content-Range" in response.headers
+    assert response.headers["Content-Range"] == "bytes */%s" % (
+        len(get_file_content(static_file_directory, file_name)),
+    )
+
+    # blueprint
+    uri = app.url_for("static", name="test_bp_static.static")
+    assert uri == "/bp/testing.file"
+    assert uri == app.url_for(
+        "static", name="test_bp_static.static", filename="any"
+    )
+    assert uri == app.url_for("test_bp_static.static")
+    assert uri == app.url_for("test_bp_static.static", filename="any")
+
+    request, response = app.test_client.get(uri, headers=headers)
+    assert response.status == 416
+    assert "Content-Length" in response.headers
+    assert "Content-Range" in response.headers
+    assert response.headers["Content-Range"] == "bytes */%s" % (
+        len(get_file_content(static_file_directory, file_name)),
+    )
+</source>
+</class>
+
+<class classid="16" nclones="2" nlines="22" similarity="70">
+<source file="systems/sanic-21.12.1/tests/test_reloader.py" startline="126" endline="149" pcid="461">
+async def test_reloader_live(runargs, mode):
+    with TemporaryDirectory() as tmpdir:
+        filename = os.path.join(tmpdir, "reloader.py")
+        text = write_app(filename, **runargs)
+        command = argv[mode]
+        proc = Popen(command, cwd=tmpdir, stdout=PIPE, creationflags=flags)
+        try:
+            timeout = Timer(TIMER_DELAY, terminate, [proc])
+            timeout.start()
+            # Python apparently keeps using the old source sometimes if
+            # we don't sleep before rewrite (pycache timestamp problem?)
+            sleep(1)
+            line = scanner(proc)
+            assert text in next(line)
+            # Edit source code and try again
+            text = write_app(filename, **runargs)
+            assert text in next(line)
+        finally:
+            timeout.cancel()
+            terminate(proc)
+            with suppress(TimeoutExpired):
+                proc.wait(timeout=3)
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_reloader.py" startline="159" endline="185" pcid="462">
+async def test_reloader_live_with_dir(runargs, mode):
+    with TemporaryDirectory() as tmpdir:
+        filename = os.path.join(tmpdir, "reloader.py")
+        config_file = os.path.join(tmpdir, "config.json")
+        runargs["reload_dir"] = tmpdir
+        write_json_config_app(filename, config_file, **runargs)
+        text = write_file(config_file)
+        command = argv[mode]
+        if mode == "sanic":
+            command += ["--reload-dir", tmpdir]
+        proc = Popen(command, cwd=tmpdir, stdout=PIPE, creationflags=flags)
+        try:
+            timeout = Timer(TIMER_DELAY, terminate, [proc])
+            timeout.start()
+            # Python apparently keeps using the old source sometimes if
+            # we don't sleep before rewrite (pycache timestamp problem?)
+            sleep(1)
+            line = scanner(proc)
+            assert text in next(line)
+            # Edit source code and try again
+            text = write_file(config_file)
+            assert text in next(line)
+        finally:
+            timeout.cancel()
+            terminate(proc)
+            with suppress(TimeoutExpired):
+                proc.wait(timeout=3)
+</source>
+</class>
+
+<class classid="17" nclones="4" nlines="15" similarity="73">
+<source file="systems/sanic-21.12.1/tests/test_static.py" startline="199" endline="217" pcid="522">
+def test_static_content_range_correct(app, file_name, static_file_directory):
+    app.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+
+    headers = {"Range": "bytes=12-19"}
+    request, response = app.test_client.get("/testing.file", headers=headers)
+    assert response.status == 206
+    assert "Content-Length" in response.headers
+    assert "Content-Range" in response.headers
+    static_content = bytes(get_file_content(static_file_directory, file_name))[
+        12:20
+    ]
+    assert int(response.headers["Content-Length"]) == len(static_content)
+    assert response.body == static_content
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_static.py" startline="283" endline="299" pcid="526">
+def test_static_content_range_error(app, file_name, static_file_directory):
+    app.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+
+    headers = {"Range": "bytes=1-0"}
+    request, response = app.test_client.get("/testing.file", headers=headers)
+    assert response.status == 416
+    assert "Content-Length" in response.headers
+    assert "Content-Range" in response.headers
+    assert response.headers["Content-Range"] == "bytes */%s" % (
+        len(get_file_content(static_file_directory, file_name)),
+    )
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_static.py" startline="239" endline="257" pcid="524">
+def test_static_content_range_back(app, file_name, static_file_directory):
+    app.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+
+    headers = {"Range": "bytes=-12"}
+    request, response = app.test_client.get("/testing.file", headers=headers)
+    assert response.status == 206
+    assert "Content-Length" in response.headers
+    assert "Content-Range" in response.headers
+    static_content = bytes(get_file_content(static_file_directory, file_name))[
+        -12:
+    ]
+    assert int(response.headers["Content-Length"]) == len(static_content)
+    assert response.body == static_content
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_static.py" startline="219" endline="237" pcid="523">
+def test_static_content_range_front(app, file_name, static_file_directory):
+    app.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+
+    headers = {"Range": "bytes=12-"}
+    request, response = app.test_client.get("/testing.file", headers=headers)
+    assert response.status == 206
+    assert "Content-Length" in response.headers
+    assert "Content-Range" in response.headers
+    static_content = bytes(get_file_content(static_file_directory, file_name))[
+        12:
+    ]
+    assert int(response.headers["Content-Length"]) == len(static_content)
+    assert response.body == static_content
+
+
+</source>
+</class>
+
+<class classid="18" nclones="4" nlines="13" similarity="92">
+<source file="systems/sanic-21.12.1/tests/test_static.py" startline="301" endline="317" pcid="527">
+def test_static_content_range_invalid_unit(
+    app, file_name, static_file_directory
+):
+    app.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+
+    unit = "bit"
+    headers = {"Range": f"{unit}=1-0"}
+    request, response = app.test_client.get("/testing.file", headers=headers)
+
+    assert response.status == 416
+    assert f"{unit} is not a valid Range Type" in response.text
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_static.py" startline="319" endline="335" pcid="528">
+def test_static_content_range_invalid_start(
+    app, file_name, static_file_directory
+):
+    app.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+
+    start = "start"
+    headers = {"Range": f"bytes={start}-0"}
+    request, response = app.test_client.get("/testing.file", headers=headers)
+
+    assert response.status == 416
+    assert f"'{start}' is invalid for Content Range" in response.text
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_static.py" startline="355" endline="370" pcid="530">
+def test_static_content_range_invalid_parameters(
+    app, file_name, static_file_directory
+):
+    app.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+
+    headers = {"Range": "bytes=-"}
+    request, response = app.test_client.get("/testing.file", headers=headers)
+
+    assert response.status == 416
+    assert "Invalid for Content Range parameters" in response.text
+
+
+</source>
+<source file="systems/sanic-21.12.1/tests/test_static.py" startline="337" endline="353" pcid="529">
+def test_static_content_range_invalid_end(
+    app, file_name, static_file_directory
+):
+    app.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+
+    end = "end"
+    headers = {"Range": f"bytes=1-{end}"}
+    request, response = app.test_client.get("/testing.file", headers=headers)
+
+    assert response.status == 416
+    assert f"'{end}' is invalid for Content Range" in response.text
+
+
+</source>
+</class>
+
+</clones>

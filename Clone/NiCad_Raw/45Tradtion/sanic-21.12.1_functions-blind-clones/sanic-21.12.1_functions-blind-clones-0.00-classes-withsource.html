@@ -1,0 +1,256 @@
+<html>
+<head>
+    <title>NiCad6 Clone Report</title>
+    <style type="text/css">
+        body {font-family:sans-serif;}
+        table {background-color:white; border:0px; padding:0px; border-spacing:4px; width:auto; margin-left:30px; margin-right:auto;}
+        td {background-color:rgba(192,212,238,0.8); border:0px; padding:8px; width:auto; vertical-align:top; border-radius:8px}
+        pre {background-color:white; padding:4px;}
+        a {color:darkblue;}
+    </style>
+</head>
+<body>
+<h2>NiCad6 Clone Report</h2>
+<table>
+<tr style="font-size:14pt">
+<td><b>System:</b> &nbsp; sanic-21.12.1</td>
+<td><b>Clone pairs:</b> &nbsp; 5</td>
+<td><b>Clone classes:</b> &nbsp; 3</td>
+</tr>
+<tr style="font-size:12pt">
+<td style="background-color:white">Clone type: &nbsp; 2</td>
+<td style="background-color:white">Granularity: &nbsp; functions-blind</td>
+<td style="background-color:white">Max diff threshold: &nbsp; 0%</td>
+<td style="background-color:white">Clone size: &nbsp; 10 - 2500 lines</td>
+<td style="background-color:white">Total functions-blind: &nbsp; 615</td>
+</tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 1:</b> &nbsp; 2 fragments, nominal size 15 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag237')" href="javascript:;">
+sanic-21.12.1/tests/test_keep_alive_timeout.py: 97-118
+</a>
+<div class="mid" id="frag237" style="display:none"><pre>
+def test_keep_alive_client_timeout():
+    """If the server keep-alive timeout is longer than the client
+    keep-alive timeout, client will try to create a new connection here."""
+    port = get_port()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    client = ReusableClient(
+        keep_alive_app_client_timeout, loop=loop, port=port
+    )
+    with client:
+        headers = {"Connection": "keep-alive"}
+        request, response = client.get("/1", headers=headers, timeout=1)
+
+        assert response.status == 200
+        assert response.text == "OK"
+        assert request.protocol.state["requests_count"] == 1
+
+        loop.run_until_complete(aio_sleep(2))
+        request, response = client.get("/1", timeout=1)
+        assert request.protocol.state["requests_count"] == 1
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag238')" href="javascript:;">
+sanic-21.12.1/tests/test_keep_alive_timeout.py: 123-147
+</a>
+<div class="mid" id="frag238" style="display:none"><pre>
+def test_keep_alive_server_timeout():
+    """If the client keep-alive timeout is longer than the server
+    keep-alive timeout, the client will either a 'Connection reset' error
+    _or_ a new connection. Depending on how the event-loop handles the
+    broken server connection."""
+    port = get_port()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    client = ReusableClient(
+        keep_alive_app_server_timeout, loop=loop, port=port
+    )
+    with client:
+        headers = {"Connection": "keep-alive"}
+        request, response = client.get("/1", headers=headers, timeout=60)
+
+        assert response.status == 200
+        assert response.text == "OK"
+        assert request.protocol.state["requests_count"] == 1
+
+        loop.run_until_complete(aio_sleep(3))
+        request, response = client.get("/1", timeout=60)
+
+        assert request.protocol.state["requests_count"] == 1
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 2:</b> &nbsp; 2 fragments, nominal size 14 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag304')" href="javascript:;">
+sanic-21.12.1/tests/test_named_routes.py: 247-265
+</a>
+<div class="mid" id="frag304" style="display:none"><pre>
+def test_dynamic_named_route_regex():
+    app = Sanic("app")
+
+    @app.route("/folder/&lt;folder_id:[A-Za-z0-9]{0,4}&gt;", name="route_re")
+    async def handler(request, folder_id):
+        return text("OK")
+
+    route = app.router.routes_all[
+        (
+            "folder",
+            "&lt;folder_id:[A-Za-z0-9]{0,4}&gt;",
+        )
+    ]
+    assert route.name == "app.route_re"
+    assert app.url_for("route_re", folder_id="test") == "/folder/test"
+    with pytest.raises(URLBuildError):
+        app.url_for("handler")
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag306')" href="javascript:;">
+sanic-21.12.1/tests/test_named_routes.py: 266-284
+</a>
+<div class="mid" id="frag306" style="display:none"><pre>
+def test_dynamic_named_route_path():
+    app = Sanic("app")
+
+    @app.route("/&lt;path:path&gt;/info", name="route_dynamic_path")
+    async def handler(request, path):
+        return text("OK")
+
+    route = app.router.routes_all[
+        (
+            "&lt;path:path&gt;",
+            "info",
+        )
+    ]
+    assert route.name == "app.route_dynamic_path"
+    assert app.url_for("route_dynamic_path", path="path/1") == "/path/1/info"
+    with pytest.raises(URLBuildError):
+        app.url_for("handler")
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 3:</b> &nbsp; 3 fragments, nominal size 13 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag527')" href="javascript:;">
+sanic-21.12.1/tests/test_static.py: 301-317
+</a>
+<div class="mid" id="frag527" style="display:none"><pre>
+def test_static_content_range_invalid_unit(
+    app, file_name, static_file_directory
+):
+    app.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+
+    unit = "bit"
+    headers = {"Range": f"{unit}=1-0"}
+    request, response = app.test_client.get("/testing.file", headers=headers)
+
+    assert response.status == 416
+    assert f"{unit} is not a valid Range Type" in response.text
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag528')" href="javascript:;">
+sanic-21.12.1/tests/test_static.py: 319-335
+</a>
+<div class="mid" id="frag528" style="display:none"><pre>
+def test_static_content_range_invalid_start(
+    app, file_name, static_file_directory
+):
+    app.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+
+    start = "start"
+    headers = {"Range": f"bytes={start}-0"}
+    request, response = app.test_client.get("/testing.file", headers=headers)
+
+    assert response.status == 416
+    assert f"'{start}' is invalid for Content Range" in response.text
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag529')" href="javascript:;">
+sanic-21.12.1/tests/test_static.py: 337-353
+</a>
+<div class="mid" id="frag529" style="display:none"><pre>
+def test_static_content_range_invalid_end(
+    app, file_name, static_file_directory
+):
+    app.static(
+        "/testing.file",
+        get_file_path(static_file_directory, file_name),
+        use_content_range=True,
+    )
+
+    end = "end"
+    headers = {"Range": f"bytes=1-{end}"}
+    request, response = app.test_client.get("/testing.file", headers=headers)
+
+    assert response.status == 416
+    assert f"'{end}' is invalid for Content Range" in response.text
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<script language="JavaScript">
+function ShowHide(divId) { 
+    if(document.getElementById(divId).style.display == 'none') {
+        document.getElementById(divId).style.display='block';
+    } else { 
+        document.getElementById(divId).style.display = 'none';
+    } 
+}
+</script>
+</body>
+</html>

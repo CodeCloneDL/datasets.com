@@ -1,0 +1,846 @@
+<clonepair1>
+<source file="systems/ray-ray-1.10.0/rllib/agents/ppo/tests/test_appo.py" startline="72" endline="115" pcid="448"></source>
+    def test_appo_entropy_coeff_schedule(self):
+        config = ppo.appo.DEFAULT_CONFIG.copy()
+        config["num_workers"] = 1
+        config["num_gpus"] = 0
+        config["train_batch_size"] = 20
+        config["batch_mode"] = "truncate_episodes"
+        config["rollout_fragment_length"] = 10
+        config["timesteps_per_iteration"] = 20
+        # 0 metrics reporting delay, this makes sure timestep,
+        # which entropy coeff depends on, is updated after each worker rollout.
+        config["min_iter_time_s"] = 0
+        # Initial lr, doesn't really matter because of the schedule below.
+        config["entropy_coeff"] = 0.01
+        schedule = [
+            [0, 0.01],
+            [120, 0.0001],
+        ]
+        config["entropy_coeff_schedule"] = schedule
+
+        def _step_n_times(trainer, n: int):
+            """Step trainer n times.
+
+            Returns:
+                learning rate at the end of the execution.
+            """
+            for _ in range(n):
+                results = trainer.train()
+            return results["info"][LEARNER_INFO][DEFAULT_POLICY_ID][
+                LEARNER_STATS_KEY]["entropy_coeff"]
+
+        for _ in framework_iterator(config):
+            trainer = ppo.APPOTrainer(config=config, env="CartPole-v0")
+
+            coeff = _step_n_times(trainer, 1)  # 20 timesteps
+            # Should be close to the starting coeff of 0.01.
+            self.assertGreaterEqual(coeff, 0.005)
+
+            coeff = _step_n_times(trainer, 10)  # 200 timesteps
+            # Should have annealed to the final coeff of 0.0001.
+            self.assertLessEqual(coeff, 0.00011)
+
+            trainer.stop()
+</clonepair1>
+
+<clonepair1>
+<source file="systems/ray-ray-1.10.0/rllib/agents/dqn/tests/test_apex_dqn.py" startline="70" endline="118" pcid="626"></source>
+    def test_apex_lr_schedule(self):
+        config = apex.APEX_DEFAULT_CONFIG.copy()
+        config["num_workers"] = 1
+        config["num_gpus"] = 0
+        config["buffer_size"] = 100
+        config["learning_starts"] = 10
+        config["train_batch_size"] = 10
+        config["rollout_fragment_length"] = 5
+        config["prioritized_replay"] = True
+        config["timesteps_per_iteration"] = 10
+        # 0 metrics reporting delay, this makes sure timestep,
+        # which lr depends on, is updated after each worker rollout.
+        config["min_iter_time_s"] = 0
+        config["optimizer"]["num_replay_buffer_shards"] = 1
+        # This makes sure learning schedule is checked every 10 timesteps.
+        config["optimizer"]["max_weight_sync_delay"] = 10
+        # Initial lr, doesn't really matter because of the schedule below.
+        config["lr"] = 0.2
+        lr_schedule = [
+            [0, 0.2],
+            [100, 0.001],
+        ]
+        config["lr_schedule"] = lr_schedule
+
+        def _step_n_times(trainer, n: int):
+            """Step trainer n times.
+
+            Returns:
+                learning rate at the end of the execution.
+            """
+            for _ in range(n):
+                results = trainer.train()
+            return results["info"][LEARNER_INFO][DEFAULT_POLICY_ID][
+                LEARNER_STATS_KEY]["cur_lr"]
+
+        for _ in framework_iterator(config):
+            trainer = apex.ApexTrainer(config=config, env="CartPole-v0")
+
+            lr = _step_n_times(trainer, 1)  # 10 timesteps
+            # Close to 0.2
+            self.assertGreaterEqual(lr, 0.1)
+
+            lr = _step_n_times(trainer, 20)  # 200 timesteps
+            # LR Annealed to 0.001
+            self.assertLessEqual(lr, 0.0011)
+
+            trainer.stop()
+</clonepair1>
+<clonepair2>
+<source file="systems/ray-ray-1.10.0/rllib/agents/a3c/tests/test_a3c.py" startline="41" endline="86" pcid="409"></source>
+    def test_a3c_entropy_coeff_schedule(self):
+        """Test A3CTrainer entropy coeff schedule support."""
+        config = a3c.DEFAULT_CONFIG.copy()
+        config["num_workers"] = 1
+        config["num_envs_per_worker"] = 1
+        config["train_batch_size"] = 20
+        config["batch_mode"] = "truncate_episodes"
+        config["rollout_fragment_length"] = 10
+        config["timesteps_per_iteration"] = 20
+        # 0 metrics reporting delay, this makes sure timestep,
+        # which entropy coeff depends on, is updated after each worker rollout.
+        config["min_iter_time_s"] = 0
+        # Initial lr, doesn't really matter because of the schedule below.
+        config["entropy_coeff"] = 0.01
+        schedule = [
+            [0, 0.01],
+            [120, 0.0001],
+        ]
+        config["entropy_coeff_schedule"] = schedule
+
+        def _step_n_times(trainer, n: int):
+            """Step trainer n times.
+
+            Returns:
+                learning rate at the end of the execution.
+            """
+            for _ in range(n):
+                results = trainer.train()
+            return results["info"][LEARNER_INFO][DEFAULT_POLICY_ID][
+                LEARNER_STATS_KEY]["entropy_coeff"]
+
+        # Test against all frameworks.
+        for _ in framework_iterator(config):
+            trainer = a3c.A3CTrainer(config=config, env="CartPole-v1")
+
+            coeff = _step_n_times(trainer, 1)  # 20 timesteps
+            # Should be close to the starting coeff of 0.01
+            self.assertGreaterEqual(coeff, 0.005)
+
+            coeff = _step_n_times(trainer, 10)  # 200 timesteps
+            # Should have annealed to the final coeff of 0.0001.
+            self.assertLessEqual(coeff, 0.00011)
+
+            trainer.stop()
+</clonepair2>
+
+<clonepair2>
+<source file="systems/ray-ray-1.10.0/rllib/agents/dqn/tests/test_apex_dqn.py" startline="70" endline="118" pcid="626"></source>
+    def test_apex_lr_schedule(self):
+        config = apex.APEX_DEFAULT_CONFIG.copy()
+        config["num_workers"] = 1
+        config["num_gpus"] = 0
+        config["buffer_size"] = 100
+        config["learning_starts"] = 10
+        config["train_batch_size"] = 10
+        config["rollout_fragment_length"] = 5
+        config["prioritized_replay"] = True
+        config["timesteps_per_iteration"] = 10
+        # 0 metrics reporting delay, this makes sure timestep,
+        # which lr depends on, is updated after each worker rollout.
+        config["min_iter_time_s"] = 0
+        config["optimizer"]["num_replay_buffer_shards"] = 1
+        # This makes sure learning schedule is checked every 10 timesteps.
+        config["optimizer"]["max_weight_sync_delay"] = 10
+        # Initial lr, doesn't really matter because of the schedule below.
+        config["lr"] = 0.2
+        lr_schedule = [
+            [0, 0.2],
+            [100, 0.001],
+        ]
+        config["lr_schedule"] = lr_schedule
+
+        def _step_n_times(trainer, n: int):
+            """Step trainer n times.
+
+            Returns:
+                learning rate at the end of the execution.
+            """
+            for _ in range(n):
+                results = trainer.train()
+            return results["info"][LEARNER_INFO][DEFAULT_POLICY_ID][
+                LEARNER_STATS_KEY]["cur_lr"]
+
+        for _ in framework_iterator(config):
+            trainer = apex.ApexTrainer(config=config, env="CartPole-v0")
+
+            lr = _step_n_times(trainer, 1)  # 10 timesteps
+            # Close to 0.2
+            self.assertGreaterEqual(lr, 0.1)
+
+            lr = _step_n_times(trainer, 20)  # 200 timesteps
+            # LR Annealed to 0.001
+            self.assertLessEqual(lr, 0.0011)
+
+            trainer.stop()
+</clonepair2>
+<clonepair3>
+<source file="systems/ray-ray-1.10.0/python/ray/tests/test_object_spilling_2.py" startline="16" endline="45" pcid="5296"></source>
+def test_delete_objects(object_spilling_config, shutdown_only):
+    # Limit our object store to 75 MiB of memory.
+    object_spilling_config, temp_folder = object_spilling_config
+
+    address = ray.init(
+        object_store_memory=75 * 1024 * 1024,
+        _system_config={
+            "max_io_workers": 1,
+            "min_spilling_size": 0,
+            "automatic_object_spilling_enabled": True,
+            "object_store_full_delay_ms": 100,
+            "object_spilling_config": object_spilling_config,
+        })
+    arr = np.random.rand(1024 * 1024)  # 8 MB data
+    replay_buffer = []
+
+    for _ in range(80):
+        ref = None
+        while ref is None:
+            ref = ray.put(arr)
+            replay_buffer.append(ref)
+
+    print("-----------------------------------")
+
+    del replay_buffer
+    del ref
+    wait_for_condition(lambda: is_dir_empty(temp_folder))
+    assert_no_thrashing(address["redis_address"])
+
+
+</clonepair3>
+
+<clonepair3>
+<source file="systems/ray-ray-1.10.0/python/ray/tests/test_object_spilling_2.py" startline="48" endline="86" pcid="5297"></source>
+def test_delete_objects_delete_while_creating(object_spilling_config,
+                                              shutdown_only):
+    # Limit our object store to 75 MiB of memory.
+    object_spilling_config, temp_folder = object_spilling_config
+
+    address = ray.init(
+        object_store_memory=75 * 1024 * 1024,
+        _system_config={
+            "max_io_workers": 4,
+            "min_spilling_size": 0,
+            "automatic_object_spilling_enabled": True,
+            "object_store_full_delay_ms": 100,
+            "object_spilling_config": object_spilling_config,
+        })
+    arr = np.random.rand(1024 * 1024)  # 8 MB data
+    replay_buffer = []
+
+    for _ in range(80):
+        ref = None
+        while ref is None:
+            ref = ray.put(arr)
+            replay_buffer.append(ref)
+        # Remove the replay buffer with 60% probability.
+        if random.randint(0, 9) < 6:
+            replay_buffer.pop()
+
+    # Do random sampling.
+    for _ in range(200):
+        ref = random.choice(replay_buffer)
+        sample = ray.get(ref, timeout=0)
+        assert np.array_equal(sample, arr)
+
+    # After all, make sure all objects are killed without race condition.
+    del replay_buffer
+    del ref
+    wait_for_condition(lambda: is_dir_empty(temp_folder))
+    assert_no_thrashing(address["redis_address"])
+
+
+</clonepair3>
+<clonepair4>
+<source file="systems/ray-ray-1.10.0/rllib/agents/ppo/tests/test_appo.py" startline="72" endline="115" pcid="448"></source>
+    def test_appo_entropy_coeff_schedule(self):
+        config = ppo.appo.DEFAULT_CONFIG.copy()
+        config["num_workers"] = 1
+        config["num_gpus"] = 0
+        config["train_batch_size"] = 20
+        config["batch_mode"] = "truncate_episodes"
+        config["rollout_fragment_length"] = 10
+        config["timesteps_per_iteration"] = 20
+        # 0 metrics reporting delay, this makes sure timestep,
+        # which entropy coeff depends on, is updated after each worker rollout.
+        config["min_iter_time_s"] = 0
+        # Initial lr, doesn't really matter because of the schedule below.
+        config["entropy_coeff"] = 0.01
+        schedule = [
+            [0, 0.01],
+            [120, 0.0001],
+        ]
+        config["entropy_coeff_schedule"] = schedule
+
+        def _step_n_times(trainer, n: int):
+            """Step trainer n times.
+
+            Returns:
+                learning rate at the end of the execution.
+            """
+            for _ in range(n):
+                results = trainer.train()
+            return results["info"][LEARNER_INFO][DEFAULT_POLICY_ID][
+                LEARNER_STATS_KEY]["entropy_coeff"]
+
+        for _ in framework_iterator(config):
+            trainer = ppo.APPOTrainer(config=config, env="CartPole-v0")
+
+            coeff = _step_n_times(trainer, 1)  # 20 timesteps
+            # Should be close to the starting coeff of 0.01.
+            self.assertGreaterEqual(coeff, 0.005)
+
+            coeff = _step_n_times(trainer, 10)  # 200 timesteps
+            # Should have annealed to the final coeff of 0.0001.
+            self.assertLessEqual(coeff, 0.00011)
+
+            trainer.stop()
+</clonepair4>
+
+<clonepair4>
+<source file="systems/ray-ray-1.10.0/rllib/agents/a3c/tests/test_a3c.py" startline="41" endline="86" pcid="409"></source>
+    def test_a3c_entropy_coeff_schedule(self):
+        """Test A3CTrainer entropy coeff schedule support."""
+        config = a3c.DEFAULT_CONFIG.copy()
+        config["num_workers"] = 1
+        config["num_envs_per_worker"] = 1
+        config["train_batch_size"] = 20
+        config["batch_mode"] = "truncate_episodes"
+        config["rollout_fragment_length"] = 10
+        config["timesteps_per_iteration"] = 20
+        # 0 metrics reporting delay, this makes sure timestep,
+        # which entropy coeff depends on, is updated after each worker rollout.
+        config["min_iter_time_s"] = 0
+        # Initial lr, doesn't really matter because of the schedule below.
+        config["entropy_coeff"] = 0.01
+        schedule = [
+            [0, 0.01],
+            [120, 0.0001],
+        ]
+        config["entropy_coeff_schedule"] = schedule
+
+        def _step_n_times(trainer, n: int):
+            """Step trainer n times.
+
+            Returns:
+                learning rate at the end of the execution.
+            """
+            for _ in range(n):
+                results = trainer.train()
+            return results["info"][LEARNER_INFO][DEFAULT_POLICY_ID][
+                LEARNER_STATS_KEY]["entropy_coeff"]
+
+        # Test against all frameworks.
+        for _ in framework_iterator(config):
+            trainer = a3c.A3CTrainer(config=config, env="CartPole-v1")
+
+            coeff = _step_n_times(trainer, 1)  # 20 timesteps
+            # Should be close to the starting coeff of 0.01
+            self.assertGreaterEqual(coeff, 0.005)
+
+            coeff = _step_n_times(trainer, 10)  # 200 timesteps
+            # Should have annealed to the final coeff of 0.0001.
+            self.assertLessEqual(coeff, 0.00011)
+
+            trainer.stop()
+</clonepair4>
+<clonepair5>
+<source file="systems/ray-ray-1.10.0/python/ray/tests/test_component_failures.py" startline="66" endline="104" pcid="5951"></source>
+def test_dying_driver_get(ray_start_regular):
+    # Start the Ray processes.
+    address_info = ray_start_regular
+
+    @ray.remote
+    def sleep_forever():
+        time.sleep(10**6)
+
+    x_id = sleep_forever.remote()
+
+    driver = """
+import ray
+ray.init("{}")
+ray.get(ray.ObjectRef(ray._private.utils.hex_to_binary("{}")))
+""".format(address_info["redis_address"], x_id.hex())
+
+    p = run_string_as_driver_nonblocking(driver)
+    # Make sure the driver is running.
+    time.sleep(1)
+    assert p.poll() is None
+
+    # Kill the driver process.
+    p.kill()
+    p.wait()
+    time.sleep(0.1)
+
+    # Make sure the original task hasn't finished.
+    ready_ids, _ = ray.wait([x_id], timeout=0)
+    assert len(ready_ids) == 0
+    # Seal the object so the store attempts to notify the worker that the
+    # get has been fulfilled.
+    obj = np.ones(200 * 1024, dtype=np.uint8)
+    ray.worker.global_worker.put_object(obj, x_id)
+    time.sleep(0.1)
+
+    # Make sure that nothing has died.
+    assert ray._private.services.remaining_processes_alive()
+
+
+</clonepair5>
+
+<clonepair5>
+<source file="systems/ray-ray-1.10.0/python/ray/tests/test_component_failures.py" startline="145" endline="183" pcid="5957"></source>
+def test_dying_driver_wait(ray_start_regular):
+    # Start the Ray processes.
+    address_info = ray_start_regular
+
+    @ray.remote
+    def sleep_forever():
+        time.sleep(10**6)
+
+    x_id = sleep_forever.remote()
+
+    driver = """
+import ray
+ray.init("{}")
+ray.wait([ray.ObjectRef(ray._private.utils.hex_to_binary("{}"))])
+""".format(address_info["redis_address"], x_id.hex())
+
+    p = run_string_as_driver_nonblocking(driver)
+    # Make sure the driver is running.
+    time.sleep(1)
+    assert p.poll() is None
+
+    # Kill the driver process.
+    p.kill()
+    p.wait()
+    time.sleep(0.1)
+
+    # Make sure the original task hasn't finished.
+    ready_ids, _ = ray.wait([x_id], timeout=0)
+    assert len(ready_ids) == 0
+    # Seal the object so the store attempts to notify the worker that the
+    # wait can return.
+    obj = np.ones(200 * 1024, dtype=np.uint8)
+    ray.worker.global_worker.put_object(obj, x_id)
+    time.sleep(0.1)
+
+    # Make sure that nothing has died.
+    assert ray._private.services.remaining_processes_alive()
+
+
+</clonepair5>
+<clonepair6>
+<source file="systems/ray-ray-1.10.0/python/ray/tests/test_output.py" startline="260" endline="299" pcid="6449"></source>
+def test_multi_stdout_err(file):
+    if file == "stdout":
+        file_handle = "sys.stdout"
+    else:  # sys.stderr
+        file_handle = "sys.stderr"
+
+    script = f"""
+import ray
+import sys
+
+ray.init(num_cpus=1)
+
+@ray.remote
+def foo():
+    print(file={file_handle})
+
+@ray.remote
+def bar():
+    print(file={file_handle})
+
+@ray.remote
+def baz():
+    print(file={file_handle})
+
+ray.get(foo.remote())
+ray.get(bar.remote())
+ray.get(baz.remote())
+    """
+
+    proc = run_string_as_driver_nonblocking(script)
+    if file == "stdout":
+        out_str = proc.stdout.read().decode("ascii")
+    else:
+        out_str = proc.stderr.read().decode("ascii")
+
+    assert "(foo pid=" in out_str, out_str
+    assert "(bar pid=" in out_str, out_str
+    assert "(baz pid=" in out_str, out_str
+
+
+</clonepair6>
+
+<clonepair6>
+<source file="systems/ray-ray-1.10.0/python/ray/tests/test_output.py" startline="302" endline="350" pcid="6450"></source>
+def test_actor_stdout(file):
+    if file == "stdout":
+        file_handle = "sys.stdout"
+    else:  # sys.stderr
+        file_handle = "sys.stderr"
+
+    script = f"""
+import ray
+import sys
+
+ray.init(num_cpus=2)
+
+@ray.remote
+class Actor1:
+    def f(self):
+        print("hi", file={file_handle})
+
+@ray.remote
+class Actor2:
+    def __init__(self):
+        print("init", file={file_handle})
+        self.name = "ActorX"
+    def f(self):
+        print("bye", file={file_handle})
+    def __repr__(self):
+        return self.name
+
+a = Actor1.remote()
+ray.get(a.f.remote())
+b = Actor2.remote()
+ray.get(b.f.remote())
+    """
+
+    proc = run_string_as_driver_nonblocking(script)
+    if file == "stdout":
+        out_str = proc.stdout.read().decode("ascii")
+    else:
+        out_str = proc.stderr.read().decode("ascii")
+    print(out_str)
+
+    assert "hi" in out_str, out_str
+    assert "(Actor1 pid=" in out_str, out_str
+    assert "bye" in out_str, out_str
+    assert re.search("Actor2 pid=.*init", out_str), out_str
+    assert not re.search("ActorX pid=.*init", out_str), out_str
+    assert re.search("ActorX pid=.*bye", out_str), out_str
+    assert not re.search("Actor2 pid=.*bye", out_str), out_str
+
+
+</clonepair6>
+<clonepair7>
+<source file="systems/ray-ray-1.10.0/python/ray/tests/test_traceback.py" startline="53" endline="80" pcid="6456"></source>
+def test_actor_creation_stacktrace(ray_start_regular):
+    """Test the actor creation task stacktrace."""
+    expected_output = """The actor died because of an error raised in its creation task, ray::A.__init__() (pid=XXX, ip=YYY) # noqa
+  File "FILE", line ZZ, in __init__
+    g(3)
+  File "FILE", line ZZ, in g
+    raise ValueError(a)
+ValueError: 3"""
+
+    def g(a):
+        raise ValueError(a)
+
+    @ray.remote
+    class A:
+        def __init__(self):
+            g(3)
+
+        def ping(self):
+            pass
+
+    try:
+        a = A.remote()
+        ray.get(a.ping.remote())
+    except RayActorError as ex:
+        print(ex)
+        assert clean_noqa(expected_output) == scrub_traceback(str(ex))
+
+
+</clonepair7>
+
+<clonepair7>
+<source file="systems/ray-ray-1.10.0/python/ray/tests/test_traceback.py" startline="114" endline="141" pcid="6463"></source>
+def test_actor_task_stacktrace(ray_start_regular):
+    """Test the actor task stacktrace."""
+    expected_output = """ray::A.f() (pid=XXX, repr=<test_traceback.A object at ADDRESS>) # noqa
+  File "FILE", line ZZ, in f
+    return g(c)
+  File "FILE", line ZZ, in g
+    raise ValueError(a)
+ValueError: 7"""
+
+    def g(a):
+        raise ValueError(a)
+
+    @ray.remote
+    class A:
+        def f(self):
+            a = 3
+            b = 4
+            c = a + b
+            return g(c)
+
+    a = A.remote()
+    try:
+        ray.get(a.f.remote())
+    except ValueError as ex:
+        print(ex)
+        assert clean_noqa(expected_output) == scrub_traceback(str(ex))
+
+
+</clonepair7>
+<clonepair8>
+<source file="systems/ray-ray-1.10.0/rllib/tests/test_supported_multi_agent.py" startline="92" endline="106" pcid="1318"></source>
+    def tearDownClass(cls) -> None:
+        ray.shutdown()
+
+    def test_apex_multiagent(self):
+        check_support_multiagent(
+            "APEX", {
+                "num_workers": 2,
+                "timesteps_per_iteration": 100,
+                "num_gpus": 0,
+                "buffer_size": 1000,
+                "min_iter_time_s": 1,
+                "learning_starts": 10,
+                "target_network_update_freq": 100,
+                "optimizer": {
+                    "num_replay_buffer_shards": 1,
+</clonepair8>
+
+<clonepair8>
+<source file="systems/ray-ray-1.10.0/rllib/tests/test_ignore_worker_failure.py" startline="99" endline="112" pcid="1342"></source>
+    def test_async_replay(self):
+        self.do_test(
+            "APEX", {
+                "timesteps_per_iteration": 1000,
+                "num_gpus": 0,
+                "min_iter_time_s": 1,
+                "explore": False,
+                "learning_starts": 1000,
+                "target_network_update_freq": 100,
+                "optimizer": {
+                    "num_replay_buffer_shards": 1,
+                },
+            })
+
+</clonepair8>
+<clonepair9>
+<source file="systems/ray-ray-1.10.0/rllib/tests/test_supported_multi_agent.py" startline="92" endline="106" pcid="1318"></source>
+    def tearDownClass(cls) -> None:
+        ray.shutdown()
+
+    def test_apex_multiagent(self):
+        check_support_multiagent(
+            "APEX", {
+                "num_workers": 2,
+                "timesteps_per_iteration": 100,
+                "num_gpus": 0,
+                "buffer_size": 1000,
+                "min_iter_time_s": 1,
+                "learning_starts": 10,
+                "target_network_update_freq": 100,
+                "optimizer": {
+                    "num_replay_buffer_shards": 1,
+</clonepair9>
+
+<clonepair9>
+<source file="systems/ray-ray-1.10.0/rllib/tests/test_supported_multi_agent.py" startline="107" endline="119" pcid="1319"></source>
+    def test_apex_ddpg_multiagent(self):
+        check_support_multiagent(
+            "APEX_DDPG", {
+                "num_workers": 2,
+                "timesteps_per_iteration": 100,
+                "buffer_size": 1000,
+                "num_gpus": 0,
+                "min_iter_time_s": 1,
+                "learning_starts": 10,
+                "target_network_update_freq": 100,
+</clonepair9>
+<clonepair10>
+<source file="systems/ray-ray-1.10.0/rllib/tests/test_supported_multi_agent.py" startline="92" endline="106" pcid="1318"></source>
+    def tearDownClass(cls) -> None:
+        ray.shutdown()
+
+    def test_apex_multiagent(self):
+        check_support_multiagent(
+            "APEX", {
+                "num_workers": 2,
+                "timesteps_per_iteration": 100,
+                "num_gpus": 0,
+                "buffer_size": 1000,
+                "min_iter_time_s": 1,
+                "learning_starts": 10,
+                "target_network_update_freq": 100,
+                "optimizer": {
+                    "num_replay_buffer_shards": 1,
+</clonepair10>
+
+<clonepair10>
+<source file="systems/ray-ray-1.10.0/rllib/tests/test_eager_support.py" startline="107" endline="119" pcid="1263"></source>
+    def test_apex_dqn(self):
+        check_support(
+            "APEX", {
+                "num_workers": 2,
+                "learning_starts": 0,
+                "num_gpus": 0,
+                "min_iter_time_s": 1,
+                "timesteps_per_iteration": 100,
+                "optimizer": {
+                    "num_replay_buffer_shards": 1,
+                },
+            })
+
+</clonepair10>
+<clonepair11>
+<source file="systems/ray-ray-1.10.0/python/ray/tune/tests/test_searchers.py" startline="154" endline="170" pcid="3739"></source>
+    def testDragonfly(self):
+        from ray.tune.suggest.dragonfly import DragonflySearch
+
+        np.random.seed(1000)  # At least one nan, inf, -inf and float
+
+        out = tune.run(
+            _invalid_objective,
+            search_alg=DragonflySearch(domain="euclidean", optimizer="random"),
+            config=self.config,
+            metric="_metric",
+            mode="max",
+            num_samples=8,
+            reuse_actors=False)
+
+        best_trial = out.best_trial
+        self.assertLessEqual(best_trial.config["point"], 2.0)
+
+</clonepair11>
+
+<clonepair11>
+<source file="systems/ray-ray-1.10.0/python/ray/tune/tests/test_searchers.py" startline="171" endline="186" pcid="3740"></source>
+    def testHEBO(self):
+        from ray.tune.suggest.hebo import HEBOSearch
+
+        out = tune.run(
+            _invalid_objective,
+            # At least one nan, inf, -inf and float
+            search_alg=HEBOSearch(random_state_seed=123),
+            config=self.config,
+            metric="_metric",
+            mode="max",
+            num_samples=8,
+            reuse_actors=False)
+
+        best_trial = out.best_trial
+        self.assertLessEqual(best_trial.config["report"], 2.0)
+
+</clonepair11>
+<clonepair12>
+<source file="systems/ray-ray-1.10.0/rllib/tests/test_eager_support.py" startline="107" endline="119" pcid="1263"></source>
+    def test_apex_dqn(self):
+        check_support(
+            "APEX", {
+                "num_workers": 2,
+                "learning_starts": 0,
+                "num_gpus": 0,
+                "min_iter_time_s": 1,
+                "timesteps_per_iteration": 100,
+                "optimizer": {
+                    "num_replay_buffer_shards": 1,
+                },
+            })
+
+</clonepair12>
+
+<clonepair12>
+<source file="systems/ray-ray-1.10.0/rllib/tests/test_ignore_worker_failure.py" startline="99" endline="112" pcid="1342"></source>
+    def test_async_replay(self):
+        self.do_test(
+            "APEX", {
+                "timesteps_per_iteration": 1000,
+                "num_gpus": 0,
+                "min_iter_time_s": 1,
+                "explore": False,
+                "learning_starts": 1000,
+                "target_network_update_freq": 100,
+                "optimizer": {
+                    "num_replay_buffer_shards": 1,
+                },
+            })
+
+</clonepair12>
+<clonepair13>
+<source file="systems/ray-ray-1.10.0/rllib/tests/test_supported_multi_agent.py" startline="107" endline="119" pcid="1319"></source>
+    def test_apex_ddpg_multiagent(self):
+        check_support_multiagent(
+            "APEX_DDPG", {
+                "num_workers": 2,
+                "timesteps_per_iteration": 100,
+                "buffer_size": 1000,
+                "num_gpus": 0,
+                "min_iter_time_s": 1,
+                "learning_starts": 10,
+                "target_network_update_freq": 100,
+</clonepair13>
+
+<clonepair13>
+<source file="systems/ray-ray-1.10.0/rllib/tests/test_eager_support.py" startline="107" endline="119" pcid="1263"></source>
+    def test_apex_dqn(self):
+        check_support(
+            "APEX", {
+                "num_workers": 2,
+                "learning_starts": 0,
+                "num_gpus": 0,
+                "min_iter_time_s": 1,
+                "timesteps_per_iteration": 100,
+                "optimizer": {
+                    "num_replay_buffer_shards": 1,
+                },
+            })
+
+</clonepair13>
+<clonepair14>
+<source file="systems/ray-ray-1.10.0/rllib/utils/tests/test_check_env.py" startline="34" endline="46" pcid="1137"></source>
+    def test_sampled_observation_contained(self):
+        env = RandomEnv()
+        # check for observation that is out of bounds
+        error = ".*A sampled observation from your env wasn't contained .*"
+        env.observation_space.sample = MagicMock(return_value=5)
+        with pytest.raises(ValueError, match=error):
+            check_gym_environments(env)
+        # check for observation that is in bounds, but the wrong type
+        env.observation_space.sample = MagicMock(return_value=float(1))
+        with pytest.raises(ValueError, match=error):
+            check_gym_environments(env)
+        del env
+
+</clonepair14>
+
+<clonepair14>
+<source file="systems/ray-ray-1.10.0/rllib/utils/tests/test_check_env.py" startline="47" endline="58" pcid="1138"></source>
+    def test_sampled_action_contained(self):
+        env = RandomEnv()
+        error = ".*A sampled action from your env wasn't contained .*"
+        env.action_space.sample = MagicMock(return_value=5)
+        with pytest.raises(ValueError, match=error):
+            check_gym_environments(env)
+        # check for observation that is in bounds, but the wrong type
+        env.action_space.sample = MagicMock(return_value=float(1))
+        with pytest.raises(ValueError, match=error):
+            check_gym_environments(env)
+        del env
+
+</clonepair14>

@@ -1,0 +1,1688 @@
+<clones>
+<systeminfo processor="nicad6" system="deepvariant-1.3.0" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="838" npairs="48"/>
+<runinfo ncompares="14152" cputime="46984"/>
+<classinfo nclasses="22"/>
+
+<class classid="1" nclones="3" nlines="12" similarity="91">
+<source file="systems/deepvariant-1.3.0/deepvariant/very_sensitive_caller_trio_test.py" startline="57" endline="72" pcid="3">
+  def fake_allele_counter(self, start_pos, counts):
+    allele_counter = mock.Mock()
+    # pylint: disable=g-complex-comprehension
+    allele_counter.summary_counts.return_value = [
+        deepvariant_pb2.AlleleCountSummary(
+            ref_supporting_read_count=n_ref,
+            total_read_count=n_ref + n_alt,
+            ref_base=ref,
+            reference_name='chr1',
+            position=start_pos + i)
+        for i, (n_alt, n_ref, ref) in enumerate(counts)
+    ]
+    # pylint: enable=g-complex-comprehension
+    allele_counter.counts.return_value = counts
+    return allele_counter
+
+</source>
+<source file="systems/deepvariant-1.3.0/deepvariant/vcf_candidate_importer_test.py" startline="67" endline="81" pcid="214">
+  def fake_allele_counter(self, start_pos, counts):
+    allele_counter = mock.Mock()
+    # pylint: disable=g-complex-comprehension
+    allele_counter.summary_counts.return_value = [
+        deepvariant_pb2.AlleleCountSummary(
+            ref_supporting_read_count=n_ref,
+            total_read_count=n_ref + n_alt,
+            ref_base=ref,
+            reference_name='chr1',
+            position=start_pos + i)
+        for i, (n_alt, n_ref, ref) in enumerate(counts)
+    ]
+    # pylint: enable=g-complex-comprehension
+    return allele_counter
+
+</source>
+<source file="systems/deepvariant-1.3.0/deepvariant/very_sensitive_caller_test.py" startline="63" endline="78" pcid="284">
+  def fake_allele_counter(self, start_pos, counts):
+    allele_counter = mock.Mock()
+    # pylint: disable=g-complex-comprehension
+    allele_counter.summary_counts.return_value = [
+        deepvariant_pb2.AlleleCountSummary(
+            ref_supporting_read_count=n_ref,
+            total_read_count=n_ref + n_alt,
+            ref_base=ref,
+            reference_name='chr1',
+            position=start_pos + i)
+        for i, (n_alt, n_ref, ref) in enumerate(counts)
+    ]
+    # pylint: enable=g-complex-comprehension
+    allele_counter.counts.return_value = counts
+    return allele_counter
+
+</source>
+</class>
+
+<class classid="2" nclones="3" nlines="27" similarity="78">
+<source file="systems/deepvariant-1.3.0/deepvariant/very_sensitive_caller_trio_test.py" startline="73" endline="118" pcid="4">
+  def test_calls_from_allele_counts(self):
+    # Our test AlleleCounts are 5 positions:
+    #
+    # 10: A ref [no reads]
+    # 11: G/C variant
+    # 12: G ref [no reads]
+    # 13: G ref [no reads]
+    # 14: T/C variant
+    #
+    # The ref sites have no reads for ref or any alt simply because it
+    # simplifies comparing them with the expected variant genotype likelihoods.
+    # We aren't testing the correctness of the gvcf calculation here (that's
+    # elsewhere) but rather focusing here on the separation of variants from
+    # gvcf records, and the automatic merging of the gvcf blocks.
+    allele_counter = self.fake_allele_counter(10, [
+        (0, 0, 'A'),
+        (10, 10, 'G'),
+        (0, 0, 'G'),
+        (0, 0, 'G'),
+        (10, 10, 'T'),
+    ])
+    fake_candidates = [
+        deepvariant_pb2.DeepVariantCall(
+            variant=test_utils.make_variant(alleles=['G', 'C'], start=11)),
+        deepvariant_pb2.DeepVariantCall(
+            variant=test_utils.make_variant(alleles=['T', 'C'], start=14)),
+    ]
+
+    caller = self.make_test_caller(0.01, 100)
+    with mock.patch.object(caller, 'cpp_variant_caller') as mock_cpp:
+      mock_cpp.calls_from_allele_counts.return_value = fake_candidates
+
+      allele_counters = {'SAMPLE_ID': allele_counter}
+      candidates, _ = caller.calls_and_gvcfs(
+          allele_counters=allele_counters,
+          target_sample='SAMPLE_ID',
+          include_gvcfs=False)
+
+    expected_allele_counts_param = {}
+    expected_allele_counts_param[
+        'SAMPLE_ID'] = allele_counter.counts.return_value
+    mock_cpp.calls_from_allele_counts.assert_called_once_with(
+        expected_allele_counts_param, 'SAMPLE_ID')
+    self.assertEqual(candidates, fake_candidates)
+
+
+</source>
+<source file="systems/deepvariant-1.3.0/deepvariant/very_sensitive_caller_test.py" startline="79" endline="124" pcid="285">
+  def test_calls_from_allele_counts(self):
+    # Our test AlleleCounts are 5 positions:
+    #
+    # 10: A ref [no reads]
+    # 11: G/C variant
+    # 12: G ref [no reads]
+    # 13: G ref [no reads]
+    # 14: T/C variant
+    #
+    # The ref sites have no reads for ref or any alt simply because it
+    # simplifies comparing them with the expected variant genotype likelihoods.
+    # We aren't testing the correctness of the gvcf calculation here (that's
+    # elsewhere) but rather focusing here on the separation of variants from
+    # gvcf records, and the automatic merging of the gvcf blocks.
+    allele_counter = self.fake_allele_counter(10, [
+        (0, 0, 'A'),
+        (10, 10, 'G'),
+        (0, 0, 'G'),
+        (0, 0, 'G'),
+        (10, 10, 'T'),
+    ])
+    fake_candidates = [
+        deepvariant_pb2.DeepVariantCall(
+            variant=test_utils.make_variant(alleles=['G', 'C'], start=11)),
+        deepvariant_pb2.DeepVariantCall(
+            variant=test_utils.make_variant(alleles=['T', 'C'], start=14)),
+    ]
+
+    caller = self.make_test_caller(0.01, 100)
+    with mock.patch.object(caller, 'cpp_variant_caller') as mock_cpp:
+      mock_cpp.calls_from_allele_counts.return_value = fake_candidates
+
+      allele_counters = {'SAMPLE_ID': allele_counter}
+      candidates, _ = caller.calls_and_gvcfs(
+          allele_counters=allele_counters,
+          target_sample='SAMPLE_ID',
+          include_gvcfs=False)
+
+    expected_allele_counts_param = {
+        'SAMPLE_ID': allele_counter.counts.return_value
+    }
+    mock_cpp.calls_from_allele_counts.assert_called_once_with(
+        expected_allele_counts_param, 'SAMPLE_ID')
+    self.assertEqual(candidates, fake_candidates)
+
+
+</source>
+<source file="systems/deepvariant-1.3.0/deepvariant/vcf_candidate_importer_test.py" startline="82" endline="123" pcid="215">
+  def test_calls_from_vcf(self):
+    # Our test AlleleCounts are 5 positions:
+    #
+    # 10: A ref [no reads]
+    # 11: G/C variant
+    # 12: G ref [no reads]
+    # 13: G ref [no reads]
+    # 14: T/C variant
+    #
+    # The ref sites have no reads for ref or any alt simply because it
+    # simplifies comparing them with the expected variant genotype likelihoods.
+    # We aren't testing the correctness of the gvcf calculation here (that's
+    # elsewhere) but rather focusing here on the separation of variants from
+    # gvcf records, and the automatic merging of the gvcf blocks.
+    allele_counter = self.fake_allele_counter(10, [
+        (0, 0, 'A'),
+        (10, 10, 'G'),
+        (0, 0, 'G'),
+        (0, 0, 'G'),
+        (10, 10, 'T'),
+    ])
+    allele_counter_dict = {'SAMPLE_ID': allele_counter}
+    fake_candidates = [
+        deepvariant_pb2.DeepVariantCall(
+            variant=test_utils.make_variant(alleles=['G', 'C'], start=11)),
+        deepvariant_pb2.DeepVariantCall(
+            variant=test_utils.make_variant(alleles=['T', 'C'], start=14)),
+    ]
+
+    caller = self.make_test_caller(0.01, 100)
+    with mock.patch.object(caller, 'cpp_variant_caller_from_vcf') as mock_cpp:
+      mock_cpp.calls_from_vcf.return_value = fake_candidates
+      candidates, _ = caller.calls_and_gvcfs(
+          allele_counters=allele_counter_dict,
+          target_sample='SAMPLE_ID',
+          include_gvcfs=False)
+
+    mock_cpp.calls_from_vcf.assert_called_once_with(allele_counter,
+                                                    caller.vcf_reader)
+    self.assertEqual(candidates, fake_candidates)
+
+  # Golden sets are created with learning/genomics/internal/create_golden.sh.
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="25" similarity="92">
+<source file="systems/deepvariant-1.3.0/deepvariant/freeze_graph.py" startline="51" endline="83" pcid="25">
+def freeze_graph(model,
+                 checkpoint_path,
+                 tensor_shape,
+                 openvino_model_pb,
+                 moving_average_decay=0.9999):
+  """Converts model ckpts."""
+  out_node = 'InceptionV3/Predictions/Reshape_1'
+  in_node = 'input'
+
+  inp = tf.compat.v1.placeholder(
+      shape=[1] + tensor_shape, dtype=tf.float32, name=in_node)
+  _ = model.create(inp, num_classes=3, is_training=False)
+
+  ema = tf.train.ExponentialMovingAverage(moving_average_decay)
+  variables_to_restore = ema.variables_to_restore()
+
+  load_ema = slim.assign_from_checkpoint_fn(
+      checkpoint_path, variables_to_restore, ignore_missing_vars=True)
+
+  with tf.compat.v1.Session() as sess:
+    sess.run(tf.compat.v1.global_variables_initializer())
+    load_ema(sess)
+
+    graph_def = sess.graph.as_graph_def()
+    graph_def = tf.compat.v1.graph_util.convert_variables_to_constants(
+        sess, graph_def, [out_node])
+    graph_def = optimize_for_inference_lib.optimize_for_inference(
+        graph_def, [in_node], [out_node], tf.float32.as_datatype_enum)
+
+    with tf.io.gfile.GFile(openvino_model_pb, 'wb') as f:
+      f.write(graph_def.SerializeToString())
+
+
+</source>
+<source file="systems/deepvariant-1.3.0/deepvariant/openvino_estimator.py" startline="51" endline="85" pcid="188">
+def freeze_graph(model,
+                 checkpoint_path,
+                 tensor_shape,
+                 openvino_model_pb,
+                 moving_average_decay=0.9999):
+  """Converts model ckpts."""
+  logging.info('Processing ckpt=%s, tensor_shape=%s', checkpoint_path,
+               tensor_shape)
+  out_node = 'InceptionV3/Predictions/Reshape_1'
+  in_node = 'input'
+
+  inp = tf.compat.v1.placeholder(
+      shape=[1] + tensor_shape, dtype=tf.float32, name=in_node)
+  _ = model.create(inp, num_classes=3, is_training=False)
+
+  ema = tf.train.ExponentialMovingAverage(moving_average_decay)
+  variables_to_restore = ema.variables_to_restore()
+
+  load_ema = slim.assign_from_checkpoint_fn(
+      checkpoint_path, variables_to_restore, ignore_missing_vars=True)
+
+  with tf.compat.v1.Session() as sess:
+    sess.run(tf.compat.v1.global_variables_initializer())
+    load_ema(sess)
+
+    graph_def = sess.graph.as_graph_def()
+    graph_def = tf.compat.v1.graph_util.convert_variables_to_constants(
+        sess, graph_def, [out_node])
+    graph_def = optimize_for_inference_lib.optimize_for_inference(
+        graph_def, [in_node], [out_node], tf.float32.as_datatype_enum)
+
+    with tf.io.gfile.GFile(openvino_model_pb, 'wb') as f:
+      f.write(graph_def.SerializeToString())
+
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="13" similarity="78">
+<source file="systems/deepvariant-1.3.0/deepvariant/vcf_stats_vis.py" startline="162" endline="181" pcid="44">
+  return qual_histogram
+
+
+def _build_gq_histogram(data):
+  """Create the Genotype quality (GQ) histogram."""
+  # gq = genotype quality, found at :GQ: in FORMAT column of VCF
+  width = 200
+  height = 200
+  title = 'Genotype quality'
+  gq_data = _integer_counts_to_histogram(data)
+  gq_histogram = _placeholder_for_empty_chart(
+      'No entries in VCF with GQ', width=width, height=height, title=title)
+  if not gq_data.empty:
+    # standardize x-axis limits across reports
+    domain = [min(0, data[0][0]), max(150, data[-1][0])]
+    # s = bin_start, e = bin_end, c = count
+    gq_histogram = alt.Chart(gq_data).mark_bar(color=BAR_COLOR_GQ) \
+        .encode(
+            x=alt.X('s', title='GQ', scale=alt.Scale(domain=domain)),
+            x2='e',
+</source>
+<source file="systems/deepvariant-1.3.0/deepvariant/vcf_stats_vis.py" startline="321" endline="336" pcid="50">
+                  title=title) \
+      .interactive(bind_y=False)
+
+    indel_log = alt.Chart(indel_size_data).mark_bar().encode(
+        x=alt.X('s', title='size'),
+        x2='e',
+        y=alt.Y(
+            'c',
+            title='Count',
+            axis=alt.Axis(format='s'),
+            scale=alt.Scale(type='log', base=10)),
+        color=alt.Color('type', sort=ordered_labels,
+                        scale=alt.Scale(scheme='set1'))) \
+      .properties(width=400, height=100) \
+      .interactive(bind_y=False)
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="15" similarity="86">
+<source file="systems/deepvariant-1.3.0/deepvariant/make_examples.py" startline="109" endline="142" pcid="115">
+def default_options(add_flags=True, flags_obj=None):
+  """Creates a MakeExamplesOptions proto populated with reasonable defaults.
+
+  Args:
+    add_flags: bool. defaults to True. If True, we will push the value of
+      certain FLAGS into our options. If False, those option fields are left
+      uninitialized.
+    flags_obj: object.  If not None, use as the source of flags, else use global
+      FLAGS.
+
+  Returns:
+    deepvariant_pb2.MakeExamplesOptions protobuf.
+
+  Raises:
+    ValueError: If we observe invalid flag values.
+  """
+  if not flags_obj:
+    flags_obj = FLAGS
+
+  samples_in_order, sample_role_to_train = one_sample_from_flags(
+      add_flags=add_flags, flags_obj=flags_obj)
+
+  options = make_examples_options.shared_flags_to_options(
+      add_flags=add_flags,
+      flags_obj=flags_obj,
+      samples_in_order=samples_in_order,
+      sample_role_to_train=sample_role_to_train,
+      main_sample_index=MAIN_SAMPLE_INDEX)
+
+  if add_flags:
+    options.bam_fname = os.path.basename(flags_obj.reads)
+  return options
+
+
+</source>
+<source file="systems/deepvariant-1.3.0/deepvariant/multisample_make_examples.py" startline="159" endline="194" pcid="148">
+def default_options(add_flags=True, flags_obj=None):
+  """Creates a MakeExamplesOptions proto populated with reasonable defaults.
+
+  Args:
+    add_flags: bool. defaults to True. If True, we will push the value of
+      certain FLAGS into our options. If False, those option fields are left
+      uninitialized.
+    flags_obj: object.  If not None, use as the source of flags, else use global
+      FLAGS.
+
+  Returns:
+    deepvariant_pb2.MakeExamplesOptions protobuf.
+
+  Raises:
+    ValueError: If we observe invalid flag values.
+  """
+  if not flags_obj:
+    flags_obj = FLAGS
+
+  samples_in_order, sample_role_to_train = n_samples_from_flags(
+      add_flags=add_flags, flags_obj=flags_obj)
+
+  options = make_examples_options.shared_flags_to_options(
+      add_flags=add_flags,
+      flags_obj=flags_obj,
+      samples_in_order=samples_in_order,
+      sample_role_to_train=sample_role_to_train,
+      main_sample_index=MAIN_SAMPLE_INDEX)
+
+  if add_flags:
+    options.bam_fname = '|'.join(
+        [os.path.basename(x) for x in flags_obj.reads.split(';')])
+
+  return options
+
+
+</source>
+</class>
+
+<class classid="6" nclones="3" nlines="12" similarity="100">
+<source file="systems/deepvariant-1.3.0/deepvariant/make_examples.py" startline="151" endline="172" pcid="117">
+def main(argv=()):
+  with errors.clean_commandline_error_exit():
+    if len(argv) > 1:
+      errors.log_and_raise(
+          'Command line parsing failure: make_examples does not accept '
+          'positional arguments but some are present on the command line: '
+          '"{}".'.format(str(argv)), errors.CommandLineError)
+    del argv  # Unused.
+
+    proto_utils.uses_fast_cpp_protos_or_die()
+
+    logging_level.set_from_flag()
+    hts_verbose.set(hts_verbose.htsLogLevel[FLAGS.hts_logging_level])
+
+    # Set up options; may do I/O.
+    options = default_options(add_flags=True, flags_obj=FLAGS)
+    check_options_are_valid(options)
+
+    # Run!
+    make_examples_core.make_examples_runner(options)
+
+
+</source>
+<source file="systems/deepvariant-1.3.0/deepvariant/multisample_make_examples.py" startline="207" endline="228" pcid="150">
+def main(argv=()):
+  with errors.clean_commandline_error_exit():
+    if len(argv) > 1:
+      errors.log_and_raise(
+          'Command line parsing failure: make_examples does not accept '
+          'positional arguments but some are present on the command line: '
+          '"{}".'.format(str(argv)), errors.CommandLineError)
+    del argv  # Unused.
+
+    proto_utils.uses_fast_cpp_protos_or_die()
+
+    logging_level.set_from_flag()
+    hts_verbose.set(hts_verbose.htsLogLevel[FLAGS.hts_logging_level])
+
+    # Set up options; may do I/O.
+    options = default_options(add_flags=True, flags_obj=FLAGS)
+    check_options_are_valid(options)
+
+    # Run!
+    make_examples_core.make_examples_runner(options)
+
+
+</source>
+<source file="systems/deepvariant-1.3.0/deeptrio/make_examples.py" startline="283" endline="304" pcid="433">
+def main(argv=()):
+  with errors.clean_commandline_error_exit():
+    if len(argv) > 1:
+      errors.log_and_raise(
+          'Command line parsing failure: make_examples does not accept '
+          'positional arguments but some are present on the command line: '
+          '"{}".'.format(str(argv)), errors.CommandLineError)
+    del argv  # Unused.
+
+    proto_utils.uses_fast_cpp_protos_or_die()
+
+    logging_level.set_from_flag()
+    hts_verbose.set(hts_verbose.htsLogLevel[FLAGS.hts_logging_level])
+
+    # Set up options; may do I/O.
+    options = default_options(add_flags=True, flags_obj=FLAGS)
+    check_options_are_valid(options)
+
+    # Run!
+    make_examples_core.make_examples_runner(options)
+
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="28" similarity="92">
+<source file="systems/deepvariant-1.3.0/deepvariant/labeler/variant_labeler.py" startline="204" endline="272" pcid="229">
+def _genotype_from_matched_truth(candidate_variant, truth_variant):
+  """Gets the diploid genotype for candidate_variant from matched truth_variant.
+
+  This method figures out the genotype for candidate_variant by matching alleles
+  in candidate_variant with those used by the genotype assigned to
+  truth_variant. For example, if candidate is A/C and truth is A/C with a 0/1
+  genotype, then this function would return (0, 1) indicating that there's one
+  copy of the A allele and one of C in truth. If the true genotype is 1/1, then
+  this routine would return (1, 1).
+
+  The routine allows candidate_variant and truth_variant to differ in both
+  the number of alternate alleles, and even in the representation of the same
+  alleles due to those differences. For example, candidate could be:
+
+      AGT/A/AGTGT => 2 bp deletion and 2 bp insertion
+
+  and truth could have:
+
+      A/AGT => just the simplified 2 bp insertion
+
+  And this routine will correctly equate the AGT/AGTGT allele in candidate
+  with the A/AGT in truth and use the number of copies of AGT in truth to
+  compute the number of copies of AGTGT when determining the returned genotype.
+
+  Args:
+    candidate_variant: Our candidate third_party.nucleus.protos.Variant variant.
+    truth_variant: Our third_party.nucleus.protos.Variant truth variant
+      containing true alleles and genotypes.
+
+  Returns:
+    A tuple genotypes with the same semantics at the genotype field of the
+    VariantCall proto.
+
+  Raises:
+    ValueError: If candidate_variant is None, truth_variant is None, or
+      truth_variant doesn't have genotypes.
+  """
+  if candidate_variant is None:
+    raise ValueError('candidate_variant cannot be None')
+  if truth_variant is None:
+    raise ValueError('truth_variant cannot be None')
+  if not variantcall_utils.has_genotypes(
+      variant_utils.only_call(truth_variant)):
+    raise ValueError('truth_variant needs genotypes to be used for labeling',
+                     truth_variant)
+
+  def _match_one_allele(true_allele):
+    if true_allele == truth_variant.reference_bases:
+      return 0
+    else:
+      simplifed_true_allele = variant_utils.simplify_alleles(
+          truth_variant.reference_bases, true_allele)
+      for alt_index, alt_allele in enumerate(candidate_variant.alternate_bases):
+        simplifed_alt_allele = variant_utils.simplify_alleles(
+            candidate_variant.reference_bases, alt_allele)
+        if simplifed_true_allele == simplifed_alt_allele:
+          return alt_index + 1
+      # If nothing matched, we don't have this alt, so the alt allele index for
+      # should be 0 (i.e., not any alt).
+      return 0
+
+  # If our candidate_variant is a reference call, return a (0, 0) genotype.
+  if variant_utils.is_ref(candidate_variant):
+    return (0, 0)
+  else:
+    return tuple(
+        sorted(
+            _match_one_allele(true_allele) for true_allele in
+            variant_utils.genotype_as_alleles(truth_variant)))
+</source>
+<source file="systems/deepvariant-1.3.0/deepvariant/labeler/positional_labeler.py" startline="164" endline="232" pcid="245">
+def _genotype_from_matched_truth(candidate_variant, truth_variant):
+  """Gets the diploid genotype for candidate_variant from matched truth_variant.
+
+  This method figures out the genotype for candidate_variant by matching alleles
+  in candidate_variant with those used by the genotype assigned to
+  truth_variant. For example, if candidate is A/C and truth is A/C with a 0/1
+  genotype, then this function would return (0, 1) indicating that there's one
+  copy of the A allele and one of C in truth. If the true genotype is 1/1, then
+  this routine would return (1, 1).
+
+  The routine allows candidate_variant and truth_variant to differ in both
+  the number of alternate alleles, and even in the representation of the same
+  alleles due to those differences. For example, candidate could be:
+
+      AGT/A/AGTGT => 2 bp deletion and 2 bp insertion
+
+  and truth could have:
+
+      A/AGT => just the simplified 2 bp insertion
+
+  And this routine will correctly equate the AGT/AGTGT allele in candidate
+  with the A/AGT in truth and use the number of copies of AGT in truth to
+  compute the number of copies of AGTGT when determining the returned genotype.
+
+  Args:
+    candidate_variant: Our candidate third_party.nucleus.protos.Variant variant.
+    truth_variant: Our third_party.nucleus.protos.Variant truth variant
+      containing true alleles and genotypes.
+
+  Returns:
+    A tuple genotypes with the same semantics at the genotype field of the
+    VariantCall proto.
+
+  Raises:
+    ValueError: If candidate_variant is None, truth_variant is None, or
+      truth_variant doesn't have genotypes.
+  """
+  if candidate_variant is None:
+    raise ValueError('candidate_variant cannot be None')
+  if truth_variant is None:
+    raise ValueError('truth_variant cannot be None')
+  if not variantcall_utils.has_genotypes(
+      variant_utils.only_call(truth_variant)):
+    raise ValueError('truth_variant needs genotypes to be used for labeling',
+                     truth_variant)
+
+  def _match_one_allele(true_allele):
+    if true_allele == truth_variant.reference_bases:
+      return 0
+    else:
+      simplified_true_allele = variant_utils.simplify_alleles(
+          truth_variant.reference_bases, true_allele)
+      for alt_index, alt_allele in enumerate(candidate_variant.alternate_bases):
+        simplified_alt_allele = variant_utils.simplify_alleles(
+            candidate_variant.reference_bases, alt_allele)
+        if simplified_true_allele == simplified_alt_allele:
+          return alt_index + 1
+      # If nothing matched, we don't have this alt, so the alt allele index for
+      # should be 0 (i.e., not any alt).
+      return 0
+
+  # If our candidate_variant is a reference call, return a (0, 0) genotype.
+  if variant_utils.is_ref(candidate_variant):
+    return (0, 0)
+  else:
+    return tuple(
+        _match_one_allele(true_allele)
+        for true_allele in variant_utils.genotype_as_alleles(
+            variant_utils.unphase_all_genotypes(truth_variant)))
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="13" similarity="100">
+<source file="systems/deepvariant-1.3.0/deepvariant/show_examples_test.py" startline="134" endline="147" pcid="256">
+  def test_show_examples_end2end_calling_examples(self):
+    output_prefix = test_utils.test_tmpfile('calling')
+    FLAGS.examples = testdata.GOLDEN_CALLING_EXAMPLES
+    FLAGS.output = output_prefix
+    show_examples.run()
+    ls = glob.glob('{}*'.format(output_prefix))
+    filenames = [os.path.basename(path) for path in ls]
+    self.assertTrue(
+        all(['calling_channels' in filename for filename in filenames]))
+    self.assertTrue(all([filename.endswith('.png') for filename in filenames]))
+    self.assertFalse(
+        any(['label' in filename for filename in filenames]),
+        msg='Calling examples should NOT produce labeled images.')
+
+</source>
+<source file="systems/deepvariant-1.3.0/deepvariant/show_examples_test.py" startline="149" endline="162" pcid="257">
+  def test_show_examples_end2end_training_examples(self):
+    output_prefix = test_utils.test_tmpfile('training')
+    FLAGS.examples = testdata.GOLDEN_TRAINING_EXAMPLES
+    FLAGS.output = output_prefix
+    show_examples.run()
+    ls = glob.glob('{}*'.format(output_prefix))
+    filenames = [os.path.basename(path) for path in ls]
+    self.assertTrue(
+        all(['training_channels' in filename for filename in filenames]))
+    self.assertTrue(all([filename.endswith('.png') for filename in filenames]))
+    self.assertTrue(
+        all(['label' in filename for filename in filenames]),
+        msg='Training examples should produce labeled images.')
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="14" similarity="73">
+<source file="systems/deepvariant-1.3.0/deepvariant/realigner/python/ssw_wrap_test.py" startline="48" endline="64" pcid="325">
+  def test_Align(self):
+    """Tests the Align method."""
+    aligner = ssw.Aligner()
+    filter_ = ssw.Filter()
+    length = aligner.set_reference_sequence(REF)
+    self.assertLen(REF, length)
+    alignment = aligner.align(QUERY, filter_)
+    self.assertEqual(21, alignment.sw_score)
+    self.assertEqual(8, alignment.sw_score_next_best)
+    self.assertEqual(8, alignment.ref_begin)
+    self.assertEqual(21, alignment.ref_end)
+    self.assertEqual(0, alignment.query_begin)
+    self.assertEqual(14, alignment.query_end)
+    self.assertEqual(4, alignment.ref_end_next_best)
+    self.assertEqual(2, alignment.mismatches)
+    self.assertEqual(six.b('4=1X4=1I5='), alignment.cigar_string)
+
+</source>
+<source file="systems/deepvariant-1.3.0/deepvariant/realigner/python/ssw_wrap_test.py" startline="65" endline="79" pcid="326">
+  def test_Align2_reversed(self):
+    """Tests the Align method, reversing query and ref from above."""
+    aligner = ssw.Aligner()
+    filter_ = ssw.Filter()
+    aligner.set_reference_sequence(QUERY)
+    alignment = aligner.align(REF, filter_)
+    self.assertEqual(21, alignment.sw_score)
+    self.assertEqual(8, alignment.query_begin)
+    self.assertEqual(21, alignment.query_end)
+    self.assertEqual(0, alignment.ref_begin)
+    self.assertEqual(14, alignment.ref_end)
+    self.assertEqual(2, alignment.mismatches)
+    self.assertEqual(six.b('8S4=1X4=1D5=17S'), alignment.cigar_string)
+
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="18" similarity="100">
+<source file="systems/deepvariant-1.3.0/deepvariant/realigner/python/ssw_misc_test.py" startline="44" endline="64" pcid="328">
+  def test_short(self):
+    """Test very short strings."""
+    ref = 'tttt'
+    query = 'ttAtt'
+    match = 4
+    mismatch = 2
+    gap_extend_penalty = 2
+    gap_open_penalty = 4
+
+    aligner = ssw.Aligner.construct(
+        match_score=match,
+        mismatch_penalty=mismatch,
+        gap_opening_penalty=gap_open_penalty,
+        gap_extending_penalty=gap_extend_penalty)
+    filter_ = ssw.Filter()
+    length = aligner.set_reference_sequence(ref)
+    self.assertLen(ref, length)
+    alignment = aligner.align(query, filter_)
+    p(alignment)
+    self.assertEqual(six.b('2=1I2='), alignment.cigar_string)
+
+</source>
+<source file="systems/deepvariant-1.3.0/deepvariant/realigner/python/ssw_misc_test.py" startline="65" endline="86" pcid="329">
+  def test_longer(self):
+    """Test longer strings, so the second-best alignment is considered."""
+    ref = 'TTTTGGGGGGGGGGGGG'
+    query = 'TTATTGGGGGGGGGGGGG'
+    match = 4
+    mismatch = 2
+    gap_extend_penalty = 2
+    gap_open_penalty = 4
+
+    aligner = ssw.Aligner.construct(
+        match_score=match,
+        mismatch_penalty=mismatch,
+        gap_opening_penalty=gap_open_penalty,
+        gap_extending_penalty=gap_extend_penalty)
+    filter_ = ssw.Filter()
+    length = aligner.set_reference_sequence(ref)
+    self.assertLen(ref, length)
+    alignment = aligner.align(query, filter_)
+    p(alignment)
+    self.assertEqual(six.b('2=1I15='), alignment.cigar_string)
+
+
+</source>
+</class>
+
+<class classid="11" nclones="2" nlines="28" similarity="89">
+<source file="systems/deepvariant-1.3.0/deepvariant/python/variant_calling_multisample_wrap_test.py" startline="50" endline="88" pcid="367">
+  def test_call_from_allele_counter(self):
+    ref = fasta.IndexedFastaReader(testdata.CHR20_FASTA)
+    sam_reader = sam.SamReader(testdata.CHR20_BAM)
+    size = 1000
+    region = ranges.make_range('chr20', 10000000, 10000000 + size)
+    allele_counter = _allelecounter.AlleleCounter(
+        ref.c_reader, region, [],
+        deepvariant_pb2.AlleleCounterOptions(partition_size=size))
+    caller = variant_calling_multisample.VariantCaller(
+        deepvariant_pb2.VariantCallerOptions(
+            min_count_snps=2,
+            min_count_indels=2,
+            min_fraction_snps=0.12,
+            min_fraction_indels=0.12,
+            sample_name='sample_name',
+            p_error=0.001,
+            max_gq=50,
+            gq_resolution=1,
+            ploidy=2))
+
+    # Grab all of the reads in our region and add them to the allele_counter.
+    reads = list(sam_reader.query(region))
+    self.assertNotEmpty(reads)
+    for read in reads:
+      allele_counter.add(read, 'sample_id')
+
+    # Get the candidates records for this whole region.
+    allele_counts = {}
+    allele_counts['sample_id'] = allele_counter.counts()
+    candidates = caller.calls_from_allele_counts(allele_counts, 'sample_id')
+
+    # We should have at least some candidates and some gvcf records.
+    self.assertNotEmpty(candidates)
+
+    # Each candidate should be a DeepVariantCall.
+    for candidate in candidates:
+      self.assertIsInstance(candidate, deepvariant_pb2.DeepVariantCall)
+
+
+</source>
+<source file="systems/deepvariant-1.3.0/deepvariant/python/variant_calling_wrap_test.py" startline="51" endline="87" pcid="369">
+  def test_call_from_allele_counter(self):
+    ref = fasta.IndexedFastaReader(testdata.CHR20_FASTA)
+    sam_reader = sam.SamReader(testdata.CHR20_BAM)
+    size = 1000
+    region = ranges.make_range('chr20', 10000000, 10000000 + size)
+    allele_counter = _allelecounter.AlleleCounter(
+        ref.c_reader, region, [],
+        deepvariant_pb2.AlleleCounterOptions(partition_size=size))
+    caller = variant_calling.VariantCaller(
+        deepvariant_pb2.VariantCallerOptions(
+            min_count_snps=2,
+            min_count_indels=2,
+            min_fraction_snps=0.12,
+            min_fraction_indels=0.12,
+            sample_name='sample_name',
+            p_error=0.001,
+            max_gq=50,
+            gq_resolution=1,
+            ploidy=2))
+
+    # Grab all of the reads in our region and add them to the allele_counter.
+    reads = list(sam_reader.query(region))
+    self.assertNotEmpty(reads)
+    for read in reads:
+      allele_counter.add(read, 'sample_id')
+
+    # Get the candidates records for this whole region.
+    candidates = caller.calls_from_allele_counter(allele_counter)
+
+    # We should have at least some candidates and some gvcf records.
+    self.assertNotEmpty(candidates)
+
+    # Each candidate should be a DeepVariantCall.
+    for candidate in candidates:
+      self.assertIsInstance(candidate, deepvariant_pb2.DeepVariantCall)
+
+
+</source>
+</class>
+
+<class classid="12" nclones="2" nlines="31" similarity="74">
+<source file="systems/deepvariant-1.3.0/scripts/run_deeptrio_test.py" startline="61" endline="130" pcid="374">
+  def test_call_variants_postprocess_variants_commands(self, model_type):
+    FLAGS.model_type = model_type
+    FLAGS.ref = 'your_ref'
+    FLAGS.reads_child = 'your_bam_child'
+    FLAGS.reads_parent1 = 'your_bam_parent1'
+    FLAGS.reads_parent2 = 'your_bam_parent2'
+    FLAGS.sample_name_child = 'your_sample_child'
+    FLAGS.sample_name_parent1 = 'your_sample_parent1'
+    FLAGS.sample_name_parent2 = 'your_sample_parent2'
+    FLAGS.output_vcf_child = 'your_vcf_child'
+    FLAGS.output_vcf_parent1 = 'your_vcf_parent1'
+    FLAGS.output_vcf_parent2 = 'your_vcf_parent2'
+    FLAGS.output_gvcf_child = 'your_gvcf_child'
+    FLAGS.output_gvcf_parent1 = 'your_gvcf_parent1'
+    FLAGS.output_gvcf_parent2 = 'your_gvcf_parent2'
+    FLAGS.output_gvcf_merged = 'your_gvcf_merged'
+    FLAGS.num_shards = 64
+    commands, postprocess_cmds = self._create_all_commands_and_check_stdout()
+
+    self.assertEqual(
+        commands[1], 'time /opt/deepvariant/bin/call_variants '
+        '--outfile '
+        '"/tmp/deeptrio_tmp_output/call_variants_output_child.tfrecord.gz" '
+        '--examples "/tmp/deeptrio_tmp_output/make_examples_child.tfrecord@64.gz" '
+        '--checkpoint "/opt/models/deeptrio/{}/child/model.ckpt"'.format(
+            model_type.lower()))
+    self.assertEqual(
+        commands[2], 'time /opt/deepvariant/bin/call_variants '
+        '--outfile '
+        '"/tmp/deeptrio_tmp_output/call_variants_output_parent1.tfrecord.gz" '
+        '--examples "/tmp/deeptrio_tmp_output/make_examples_parent1.tfrecord@64.gz" '
+        '--checkpoint "/opt/models/deeptrio/{}/parent/model.ckpt"'.format(
+            model_type.lower()))
+    self.assertEqual(
+        commands[3], 'time /opt/deepvariant/bin/call_variants '
+        '--outfile '
+        '"/tmp/deeptrio_tmp_output/call_variants_output_parent2.tfrecord.gz" '
+        '--examples "/tmp/deeptrio_tmp_output/make_examples_parent2.tfrecord@64.gz" '
+        '--checkpoint "/opt/models/deeptrio/{}/parent/model.ckpt"'.format(
+            model_type.lower()))
+    self.assertEqual(
+        postprocess_cmds[0], 'time /opt/deepvariant/bin/postprocess_variants '
+        '--ref "your_ref" '
+        '--infile '
+        '"/tmp/deeptrio_tmp_output/call_variants_output_child.tfrecord.gz" '
+        '--outfile "your_vcf_child" '
+        '--nonvariant_site_tfrecord_path '
+        '"/tmp/deeptrio_tmp_output/gvcf_child.tfrecord@64.gz" '
+        '--gvcf_outfile "your_gvcf_child"')
+    self.assertEqual(
+        postprocess_cmds[1], 'time /opt/deepvariant/bin/postprocess_variants '
+        '--ref "your_ref" '
+        '--infile '
+        '"/tmp/deeptrio_tmp_output/call_variants_output_parent1.tfrecord.gz" '
+        '--outfile "your_vcf_parent1" '
+        '--nonvariant_site_tfrecord_path '
+        '"/tmp/deeptrio_tmp_output/gvcf_parent1.tfrecord@64.gz" '
+        '--gvcf_outfile "your_gvcf_parent1"')
+    self.assertEqual(
+        postprocess_cmds[2], 'time /opt/deepvariant/bin/postprocess_variants '
+        '--ref "your_ref" '
+        '--infile '
+        '"/tmp/deeptrio_tmp_output/call_variants_output_parent2.tfrecord.gz" '
+        '--outfile "your_vcf_parent2" '
+        '--nonvariant_site_tfrecord_path '
+        '"/tmp/deeptrio_tmp_output/gvcf_parent2.tfrecord@64.gz" '
+        '--gvcf_outfile "your_gvcf_parent2"')
+    self.assertLen(commands, 4)
+    self.assertLen(postprocess_cmds, 3)
+
+</source>
+<source file="systems/deepvariant-1.3.0/scripts/run_deeptrio_test.py" startline="133" endline="183" pcid="375">
+  def test_duo_call_variants_postprocess_variants_commands(self, model_type):
+    FLAGS.model_type = model_type
+    FLAGS.ref = 'your_ref'
+    FLAGS.reads_child = 'your_bam_child'
+    FLAGS.reads_parent1 = 'your_bam_parent1'
+    FLAGS.sample_name_child = 'your_sample_child'
+    FLAGS.sample_name_parent1 = 'your_sample_parent1'
+    FLAGS.output_vcf_child = 'your_vcf_child'
+    FLAGS.output_vcf_parent1 = 'your_vcf_parent1'
+    FLAGS.output_gvcf_child = 'your_gvcf_child'
+    FLAGS.output_gvcf_parent1 = 'your_gvcf_parent1'
+    FLAGS.output_gvcf_merged = 'your_gvcf_merged'
+    FLAGS.num_shards = 64
+    commands, postprocess_cmds = self._create_all_commands_and_check_stdout()
+
+    self.assertEqual(
+        commands[1], 'time /opt/deepvariant/bin/call_variants '
+        '--outfile '
+        '"/tmp/deeptrio_tmp_output/call_variants_output_child.tfrecord.gz" '
+        '--examples "/tmp/deeptrio_tmp_output/make_examples_child.tfrecord@64.gz" '
+        '--checkpoint "/opt/models/deeptrio/{}/child/model.ckpt"'.format(
+            model_type.lower()))
+    self.assertEqual(
+        commands[2], 'time /opt/deepvariant/bin/call_variants '
+        '--outfile '
+        '"/tmp/deeptrio_tmp_output/call_variants_output_parent1.tfrecord.gz" '
+        '--examples "/tmp/deeptrio_tmp_output/make_examples_parent1.tfrecord@64.gz" '
+        '--checkpoint "/opt/models/deeptrio/{}/parent/model.ckpt"'.format(
+            model_type.lower()))
+    self.assertEqual(
+        postprocess_cmds[0], 'time /opt/deepvariant/bin/postprocess_variants '
+        '--ref "your_ref" '
+        '--infile '
+        '"/tmp/deeptrio_tmp_output/call_variants_output_child.tfrecord.gz" '
+        '--outfile "your_vcf_child" '
+        '--nonvariant_site_tfrecord_path '
+        '"/tmp/deeptrio_tmp_output/gvcf_child.tfrecord@64.gz" '
+        '--gvcf_outfile "your_gvcf_child"')
+    self.assertEqual(
+        postprocess_cmds[1], 'time /opt/deepvariant/bin/postprocess_variants '
+        '--ref "your_ref" '
+        '--infile '
+        '"/tmp/deeptrio_tmp_output/call_variants_output_parent1.tfrecord.gz" '
+        '--outfile "your_vcf_parent1" '
+        '--nonvariant_site_tfrecord_path '
+        '"/tmp/deeptrio_tmp_output/gvcf_parent1.tfrecord@64.gz" '
+        '--gvcf_outfile "your_gvcf_parent1"')
+    # pylint: disable=g-generic-assert
+    self.assertLen(commands, 3)
+    self.assertLen(postprocess_cmds, 2)
+
+</source>
+</class>
+
+<class classid="13" nclones="9" nlines="21" similarity="71">
+<source file="systems/deepvariant-1.3.0/scripts/run_deeptrio_test.py" startline="202" endline="236" pcid="376">
+  def test_make_examples_commands_with_types(self, model_type,
+                                             extra_args_plus_gvcf):
+    FLAGS.model_type = model_type
+    FLAGS.ref = 'your_ref'
+    FLAGS.reads_child = 'your_bam_child'
+    FLAGS.reads_parent1 = 'your_bam_parent1'
+    FLAGS.reads_parent2 = 'your_bam_parent2'
+    FLAGS.sample_name_child = 'your_sample_child'
+    FLAGS.sample_name_parent1 = 'your_sample_parent1'
+    FLAGS.sample_name_parent2 = 'your_sample_parent2'
+    FLAGS.output_vcf_child = 'your_vcf_child'
+    FLAGS.output_vcf_parent1 = 'your_vcf_parent1'
+    FLAGS.output_vcf_parent2 = 'your_vcf_parent2'
+    FLAGS.output_gvcf_child = 'your_gvcf_child'
+    FLAGS.output_gvcf_parent1 = 'your_gvcf_parent1'
+    FLAGS.output_gvcf_parent2 = 'your_gvcf_parent2'
+    FLAGS.output_gvcf_merged = 'your_gvcf_merged'
+    FLAGS.num_shards = 64
+    commands, _ = self._create_all_commands_and_check_stdout()
+    self.assertEqual(
+        commands[0], 'time seq 0 63 '
+        '| parallel -q --halt 2 --line-buffer '
+        '/opt/deepvariant/bin/deeptrio/make_examples '
+        '--mode calling '
+        '--ref "your_ref" '
+        '--reads_parent1 "your_bam_parent1" '
+        '--reads_parent2 "your_bam_parent2" '
+        '--reads "your_bam_child" '
+        '--examples "/tmp/deeptrio_tmp_output/make_examples.tfrecord@64.gz" '
+        '--sample_name "your_sample_child" '
+        '--sample_name_parent1 "your_sample_parent1" '
+        '--sample_name_parent2 "your_sample_parent2" '
+        '%s'
+        '--task {}' % extra_args_plus_gvcf)
+
+</source>
+<source file="systems/deepvariant-1.3.0/scripts/run_deeptrio_test.py" startline="382" endline="405" pcid="380">
+  def test_use_hp_information_only_with_pacbio(self, model_type):
+    """Confirms use_hp_information only works for."""
+    FLAGS.model_type = model_type
+    FLAGS.ref = 'your_ref'
+    FLAGS.sample_name_child = 'your_sample_child'
+    FLAGS.sample_name_parent1 = 'your_sample_parent1'
+    FLAGS.sample_name_parent2 = 'your_sample_parent2'
+    FLAGS.reads_child = 'your_bam_child'
+    FLAGS.reads_parent1 = 'your_bam_parent1'
+    FLAGS.reads_parent2 = 'your_bam_parent2'
+    FLAGS.output_vcf_child = 'your_vcf_child'
+    FLAGS.output_vcf_parent1 = 'your_vcf_parent1'
+    FLAGS.output_vcf_parent2 = 'your_vcf_parent2'
+    FLAGS.output_gvcf_child = 'your_gvcf_child'
+    FLAGS.output_gvcf_parent1 = 'your_gvcf_parent1'
+    FLAGS.output_gvcf_parent2 = 'your_gvcf_parent2'
+    FLAGS.num_shards = 64
+    FLAGS.regions = None
+    FLAGS.use_hp_information = True
+    with six.assertRaisesRegex(
+        self, ValueError, '--use_hp_information can only be used with '
+        '--model_type="PACBIO"'):
+      run_deeptrio.create_all_commands('/tmp/deeptrio_tmp_output')
+
+</source>
+<source file="systems/deepvariant-1.3.0/scripts/run_deeptrio_test.py" startline="506" endline="538" pcid="384">
+  def test_postprocess_variants_extra_args(self,
+                                           postprocess_variants_extra_args,
+                                           expected_args):
+    FLAGS.model_type = 'WGS'
+    FLAGS.ref = 'your_ref'
+    FLAGS.sample_name_child = 'your_sample_child'
+    FLAGS.sample_name_parent1 = 'your_sample_parent1'
+    FLAGS.sample_name_parent2 = 'your_sample_parent2'
+    FLAGS.reads_child = 'your_bam_child'
+    FLAGS.reads_parent1 = 'your_bam_parent1'
+    FLAGS.reads_parent2 = 'your_bam_parent2'
+    FLAGS.output_vcf_child = 'your_vcf_child'
+    FLAGS.output_vcf_parent1 = 'your_vcf_parent1'
+    FLAGS.output_vcf_parent2 = 'your_vcf_parent2'
+    FLAGS.output_gvcf_child = 'your_gvcf_child'
+    FLAGS.output_gvcf_parent1 = 'your_gvcf_parent1'
+    FLAGS.output_gvcf_parent2 = 'your_gvcf_parent2'
+    FLAGS.num_shards = 64
+    FLAGS.postprocess_variants_extra_args = postprocess_variants_extra_args
+    _, commands_post_process = self._create_all_commands_and_check_stdout()
+
+    self.assertEqual(
+        commands_post_process[0],
+        'time /opt/deepvariant/bin/postprocess_variants '
+        '--ref "your_ref" '
+        '--infile '
+        '"/tmp/deeptrio_tmp_output/call_variants_output_child.tfrecord.gz" '
+        '--outfile "your_vcf_child" '
+        '--nonvariant_site_tfrecord_path '
+        '"/tmp/deeptrio_tmp_output/gvcf_child.tfrecord@64.gz" '
+        '--gvcf_outfile "your_gvcf_child" '
+        '%s' % expected_args)
+
+</source>
+<source file="systems/deepvariant-1.3.0/scripts/run_deeptrio_test.py" startline="475" endline="502" pcid="383">
+  def test_call_variants_extra_args(self, call_variants_extra_args,
+                                    expected_args):
+    FLAGS.model_type = 'WGS'
+    FLAGS.ref = 'your_ref'
+    FLAGS.sample_name_child = 'your_sample_child'
+    FLAGS.sample_name_parent1 = 'your_sample_parent1'
+    FLAGS.sample_name_parent2 = 'your_sample_parent2'
+    FLAGS.reads_child = 'your_bam_child'
+    FLAGS.reads_parent1 = 'your_bam_parent1'
+    FLAGS.reads_parent2 = 'your_bam_parent2'
+    FLAGS.output_vcf_child = 'your_vcf_child'
+    FLAGS.output_vcf_parent1 = 'your_vcf_parent1'
+    FLAGS.output_vcf_parent2 = 'your_vcf_parent2'
+    FLAGS.output_gvcf_child = 'your_gvcf_child'
+    FLAGS.output_gvcf_parent1 = 'your_gvcf_parent1'
+    FLAGS.output_gvcf_parent2 = 'your_gvcf_parent2'
+    FLAGS.num_shards = 64
+    FLAGS.call_variants_extra_args = call_variants_extra_args
+    commands, _ = self._create_all_commands_and_check_stdout()
+
+    self.assertEqual(
+        commands[1], 'time /opt/deepvariant/bin/call_variants '
+        '--outfile '
+        '"/tmp/deeptrio_tmp_output/call_variants_output_child.tfrecord.gz" '
+        '--examples "/tmp/deeptrio_tmp_output/make_examples_child.tfrecord@64.gz" '
+        '--checkpoint "/opt/models/deeptrio/wgs/child/model.ckpt" '
+        '%s' % expected_args)
+
+</source>
+<source file="systems/deepvariant-1.3.0/scripts/run_deeptrio_test.py" startline="447" endline="466" pcid="382">
+  def test_make_examples_extra_args_invalid(self):
+    FLAGS.model_type = 'WGS'
+    FLAGS.ref = 'your_ref'
+    FLAGS.sample_name_child = 'your_sample_child'
+    FLAGS.sample_name_parent1 = 'your_sample_parent1'
+    FLAGS.sample_name_parent2 = 'your_sample_parent2'
+    FLAGS.reads_child = 'your_bam_child'
+    FLAGS.reads_parent1 = 'your_bam_parent1'
+    FLAGS.reads_parent2 = 'your_bam_parent2'
+    FLAGS.output_vcf_child = 'your_vcf_child'
+    FLAGS.output_vcf_parent1 = 'your_vcf_parent1'
+    FLAGS.output_vcf_parent2 = 'your_vcf_parent2'
+    FLAGS.output_gvcf_child = 'your_gvcf_child'
+    FLAGS.output_gvcf_parent1 = 'your_gvcf_parent1'
+    FLAGS.output_gvcf_parent2 = 'your_gvcf_parent2'
+    FLAGS.num_shards = 64
+    FLAGS.make_examples_extra_args = 'keep_secondary_alignments'
+    with six.assertRaisesRegex(self, ValueError, 'not enough values to unpack'):
+      _, _ = run_deeptrio.create_all_commands('/tmp/deeptrio_tmp_output')
+
+</source>
+<source file="systems/deepvariant-1.3.0/scripts/run_deeptrio_test.py" startline="312" endline="345" pcid="378">
+  def test_pacbio_args_overwrite(self, make_examples_extra_args, expected_args,
+                                 expected_stdout):
+    """Confirms that adding extra flags can overwrite the default from mode."""
+    FLAGS.model_type = 'PACBIO'
+    FLAGS.ref = 'your_ref'
+    FLAGS.sample_name_child = 'your_sample_child'
+    FLAGS.sample_name_parent1 = 'your_sample_parent1'
+    FLAGS.sample_name_parent2 = 'your_sample_parent2'
+    FLAGS.reads_child = 'your_bam_child'
+    FLAGS.reads_parent1 = 'your_bam_parent1'
+    FLAGS.reads_parent2 = 'your_bam_parent2'
+    FLAGS.output_vcf_child = 'your_vcf_child'
+    FLAGS.output_vcf_parent1 = 'your_vcf_parent1'
+    FLAGS.output_vcf_parent2 = 'your_vcf_parent2'
+    FLAGS.output_gvcf_child = 'your_gvcf_child'
+    FLAGS.output_gvcf_parent1 = 'your_gvcf_parent1'
+    FLAGS.output_gvcf_parent2 = 'your_gvcf_parent2'
+    FLAGS.num_shards = 64
+    FLAGS.regions = None
+    FLAGS.make_examples_extra_args = make_examples_extra_args
+    commands, _ = self._create_all_commands_and_check_stdout(expected_stdout)
+    self.assertEqual(
+        commands[0], 'time seq 0 63 | parallel -q --halt 2 --line-buffer '
+        '/opt/deepvariant/bin/deeptrio/make_examples --mode calling '
+        '--ref "your_ref" --reads_parent1 "your_bam_parent1" '
+        '--reads_parent2 "your_bam_parent2" '
+        '--reads "your_bam_child" '
+        '--examples "/tmp/deeptrio_tmp_output/make_examples.tfrecord@64.gz" '
+        '--sample_name "your_sample_child" '
+        '--sample_name_parent1 "your_sample_parent1" '
+        '--sample_name_parent2 "your_sample_parent2" '
+        '%s'
+        '--task {}' % expected_args)
+
+</source>
+<source file="systems/deepvariant-1.3.0/scripts/run_deeptrio_test.py" startline="417" endline="445" pcid="381">
+  def test_make_examples_regions(self, regions, expected_args):
+    FLAGS.model_type = 'WGS'
+    FLAGS.ref = 'your_ref'
+    FLAGS.sample_name_child = 'your_sample_child'
+    FLAGS.sample_name_parent1 = 'your_sample_parent1'
+    FLAGS.sample_name_parent2 = 'your_sample_parent2'
+    FLAGS.reads_child = 'your_bam_child'
+    FLAGS.reads_parent1 = 'your_bam_parent1'
+    FLAGS.reads_parent2 = 'your_bam_parent2'
+    FLAGS.output_vcf_child = 'your_vcf_child'
+    FLAGS.output_vcf_parent1 = 'your_vcf_parent1'
+    FLAGS.output_vcf_parent2 = 'your_vcf_parent2'
+    FLAGS.num_shards = 64
+    FLAGS.regions = regions
+    commands, _ = self._create_all_commands_and_check_stdout()
+
+    self.assertEqual(
+        commands[0], 'time seq 0 63 | parallel -q --halt 2 --line-buffer '
+        '/opt/deepvariant/bin/deeptrio/make_examples --mode calling '
+        '--ref "your_ref" --reads_parent1 "your_bam_parent1" '
+        '--reads_parent2 "your_bam_parent2" '
+        '--reads "your_bam_child" '
+        '--examples "/tmp/deeptrio_tmp_output/make_examples.tfrecord@64.gz" '
+        '--sample_name "your_sample_child" '
+        '--sample_name_parent1 "your_sample_parent1" '
+        '--sample_name_parent2 "your_sample_parent2" '
+        '%s '
+        '--task {}' % expected_args)
+
+</source>
+<source file="systems/deepvariant-1.3.0/scripts/run_deeptrio_test.py" startline="255" endline="283" pcid="377">
+  def test_duo_make_examples_commands_with_types(self, model_type,
+                                                 extra_args_plus_gvcf):
+    FLAGS.model_type = model_type
+    FLAGS.ref = 'your_ref'
+    FLAGS.reads_child = 'your_bam_child'
+    FLAGS.reads_parent1 = 'your_bam_parent1'
+    FLAGS.sample_name_child = 'your_sample_child'
+    FLAGS.sample_name_parent1 = 'your_sample_parent1'
+    FLAGS.output_vcf_child = 'your_vcf_child'
+    FLAGS.output_vcf_parent1 = 'your_vcf_parent1'
+    FLAGS.output_gvcf_child = 'your_gvcf_child'
+    FLAGS.output_gvcf_parent1 = 'your_gvcf_parent1'
+    FLAGS.output_gvcf_merged = 'your_gvcf_merged'
+    FLAGS.num_shards = 64
+    commands, _ = self._create_all_commands_and_check_stdout()
+    self.assertEqual(
+        commands[0], 'time seq 0 63 '
+        '| parallel -q --halt 2 --line-buffer '
+        '/opt/deepvariant/bin/deeptrio/make_examples '
+        '--mode calling '
+        '--ref "your_ref" '
+        '--reads_parent1 "your_bam_parent1" '
+        '--reads "your_bam_child" '
+        '--examples "/tmp/deeptrio_tmp_output/make_examples.tfrecord@64.gz" '
+        '--sample_name "your_sample_child" '
+        '--sample_name_parent1 "your_sample_parent1" '
+        '%s'
+        '--task {}' % extra_args_plus_gvcf)
+
+</source>
+<source file="systems/deepvariant-1.3.0/scripts/run_deeptrio_test.py" startline="550" endline="584" pcid="385">
+  def test_postprocess_variants_duplicate_extra_args(
+      self, vcf_stats_report, postprocess_variants_extra_args,
+      expected_vcf_stats_report):
+    FLAGS.model_type = 'WGS'
+    FLAGS.ref = 'your_ref'
+    FLAGS.sample_name_child = 'your_sample_child'
+    FLAGS.sample_name_parent1 = 'your_sample_parent1'
+    FLAGS.sample_name_parent2 = 'your_sample_parent2'
+    FLAGS.reads_child = 'your_bam_child'
+    FLAGS.reads_parent1 = 'your_bam_parent1'
+    FLAGS.reads_parent2 = 'your_bam_parent2'
+    FLAGS.output_vcf_child = 'your_vcf_child'
+    FLAGS.output_vcf_parent1 = 'your_vcf_parent1'
+    FLAGS.output_vcf_parent2 = 'your_vcf_parent2'
+    FLAGS.output_gvcf_child = 'your_gvcf_child'
+    FLAGS.output_gvcf_parent1 = 'your_gvcf_parent1'
+    FLAGS.output_gvcf_parent2 = 'your_gvcf_parent2'
+    FLAGS.num_shards = 64
+    FLAGS.vcf_stats_report = vcf_stats_report
+    FLAGS.postprocess_variants_extra_args = postprocess_variants_extra_args
+    _, commands_post_process = run_deeptrio.create_all_commands(
+        '/tmp/deeptrio_tmp_output')
+
+    self.assertEqual(
+        commands_post_process[0],
+        'time /opt/deepvariant/bin/postprocess_variants '
+        '--ref "your_ref" '
+        '--infile '
+        '"/tmp/deeptrio_tmp_output/call_variants_output_child.tfrecord.gz" '
+        '--outfile "your_vcf_child" '
+        '--nonvariant_site_tfrecord_path '
+        '"/tmp/deeptrio_tmp_output/gvcf_child.tfrecord@64.gz" '
+        '--gvcf_outfile "your_gvcf_child" '
+        '%s' % expected_vcf_stats_report)
+
+</source>
+</class>
+
+<class classid="14" nclones="2" nlines="13" similarity="100">
+<source file="systems/deepvariant-1.3.0/scripts/run_deepvariant.py" startline="161" endline="177" pcid="388">
+def _extra_args_to_dict(extra_args):
+  """Parses comma-separated list of flag_name=flag_value to dict."""
+  args_dict = {}
+  if extra_args is None:
+    return args_dict
+  for extra_arg in extra_args.split(','):
+    (flag_name, flag_value) = extra_arg.split('=')
+    flag_name = flag_name.strip('-')
+    # Check for boolean values.
+    if flag_value.lower() == 'true':
+      flag_value = True
+    elif flag_value.lower() == 'false':
+      flag_value = False
+    args_dict[flag_name] = flag_value
+  return args_dict
+
+
+</source>
+<source file="systems/deepvariant-1.3.0/scripts/run_deeptrio.py" startline="234" endline="250" pcid="407">
+def _extra_args_to_dict(extra_args):
+  """Parses comma-separated list of flag_name=flag_value to dict."""
+  args_dict = {}
+  if extra_args is None:
+    return args_dict
+  for extra_arg in extra_args.split(','):
+    (flag_name, flag_value) = extra_arg.split('=')
+    flag_name = flag_name.strip('-')
+    # Check for boolean values.
+    if flag_value.lower() == 'true':
+      flag_value = True
+    elif flag_value.lower() == 'false':
+      flag_value = False
+    args_dict[flag_name] = flag_value
+  return args_dict
+
+
+</source>
+</class>
+
+<class classid="15" nclones="2" nlines="12" similarity="100">
+<source file="systems/deepvariant-1.3.0/scripts/run_deepvariant.py" startline="178" endline="192" pcid="389">
+def _extend_command_by_args_dict(command, extra_args):
+  """Adds `extra_args` to the command string."""
+  for key in sorted(extra_args):
+    value = extra_args[key]
+    if value is None:
+      continue
+    if isinstance(value, bool):
+      added_arg = '' if value else 'no'
+      added_arg += key
+      command.extend(['--' + added_arg])
+    else:
+      command.extend(['--' + key, _add_quotes(value)])
+  return command
+
+
+</source>
+<source file="systems/deepvariant-1.3.0/scripts/run_deeptrio.py" startline="251" endline="265" pcid="408">
+def _extend_command_by_args_dict(command, extra_args):
+  """Adds `extra_args` to the command string."""
+  for key in sorted(extra_args):
+    value = extra_args[key]
+    if value is None:
+      continue
+    if isinstance(value, bool):
+      added_arg = '' if value else 'no'
+      added_arg += key
+      command.extend(['--' + added_arg])
+    else:
+      command.extend(['--' + key, _add_quotes(value)])
+  return command
+
+
+</source>
+</class>
+
+<class classid="16" nclones="2" nlines="11" similarity="100">
+<source file="systems/deepvariant-1.3.0/scripts/run_deepvariant.py" startline="193" endline="212" pcid="390">
+def _update_kwargs_with_warning(kwargs, extra_args, conflict_args=None):
+  """Updates `kwargs` with `extra_args`; crashes if `conflict_args` changed."""
+  for k, v in extra_args.items():
+    if k in kwargs:
+      if conflict_args is not None and k in conflict_args and kwargs[k] != v:
+        raise ValueError(
+            'The extra_args "{}" might have conflicts with other flags. '
+            'See '
+            'https://github.com/google/deepvariant/blob/r1.3/docs/'
+            'deepvariant-pacbio-model-case-study.md#clarification-'
+            'of-the---use_hp_information-flag '
+            'for an explanation, or report this issue on '
+            'https://github.com/google/deepvariant/issues.'.format(k))
+      if kwargs[k] != v:
+        print('\nWarning: --{} is previously set to {}, now to {}.'.format(
+            k, kwargs[k], v))
+    kwargs[k] = v
+  return kwargs
+
+
+</source>
+<source file="systems/deepvariant-1.3.0/scripts/run_deeptrio.py" startline="266" endline="285" pcid="409">
+def _update_kwargs_with_warning(kwargs, extra_args, conflict_args=None):
+  """Updates `kwargs` with `extra_args`; crashes if `conflict_args` changed."""
+  for k, v in extra_args.items():
+    if k in kwargs:
+      if conflict_args is not None and k in conflict_args and kwargs[k] != v:
+        raise ValueError(
+            'The extra_args "{}" might have conflicts with other flags. '
+            'See '
+            'https://github.com/google/deepvariant/blob/r1.3/docs/'
+            'deepvariant-pacbio-model-case-study.md#clarification-'
+            'of-the---use_hp_information-flag '
+            'for an explanation, or report this issue on '
+            'https://github.com/google/deepvariant/issues.'.format(k))
+      if kwargs[k] != v:
+        print('\nWarning: --{} is previously set to {}, now to {}.'.format(
+            k, kwargs[k], v))
+    kwargs[k] = v
+  return kwargs
+
+
+</source>
+</class>
+
+<class classid="17" nclones="2" nlines="28" similarity="78">
+<source file="systems/deepvariant-1.3.0/scripts/run_deepvariant.py" startline="290" endline="322" pcid="393">
+def postprocess_variants_command(ref,
+                                 infile,
+                                 outfile,
+                                 extra_args,
+                                 nonvariant_site_tfrecord_path=None,
+                                 gvcf_outfile=None,
+                                 vcf_stats_report=True,
+                                 sample_name=None):
+  """Returns a postprocess_variants (command, logfile) for subprocess."""
+  command = ['time', '/opt/deepvariant/bin/postprocess_variants']
+  command.extend(['--ref', '"{}"'.format(ref)])
+  command.extend(['--infile', '"{}"'.format(infile)])
+  command.extend(['--outfile', '"{}"'.format(outfile)])
+  if nonvariant_site_tfrecord_path is not None:
+    command.extend([
+        '--nonvariant_site_tfrecord_path',
+        '"{}"'.format(nonvariant_site_tfrecord_path)
+    ])
+  if gvcf_outfile is not None:
+    command.extend(['--gvcf_outfile', '"{}"'.format(gvcf_outfile)])
+  if not vcf_stats_report:
+    command.extend(['--novcf_stats_report'])
+  if sample_name is not None:
+    command.extend(['--sample_name', '"{}"'.format(sample_name)])
+  # Extend the command with all items in extra_args.
+  command = _extend_command_by_args_dict(command,
+                                         _extra_args_to_dict(extra_args))
+  logfile = None
+  if FLAGS.logging_dir:
+    logfile = '{}/postprocess_variants.log'.format(FLAGS.logging_dir)
+  return (' '.join(command), logfile)
+
+
+</source>
+<source file="systems/deepvariant-1.3.0/scripts/run_deeptrio.py" startline="388" endline="421" pcid="412">
+def postprocess_variants_command(ref,
+                                 infile,
+                                 outfile,
+                                 sample,
+                                 extra_args,
+                                 nonvariant_site_tfrecord_path=None,
+                                 gvcf_outfile=None,
+                                 vcf_stats_report=True):
+  """Returns a postprocess_variants command for subprocess.check_call."""
+  command = ['time', '/opt/deepvariant/bin/postprocess_variants']
+  command.extend(['--ref', '"{}"'.format(ref)])
+  command.extend(['--infile', '"{}"'.format(infile)])
+  command.extend(['--outfile', '"{}"'.format(outfile)])
+  if nonvariant_site_tfrecord_path is not None:
+    command.extend([
+        '--nonvariant_site_tfrecord_path',
+        '"{}"'.format(nonvariant_site_tfrecord_path)
+    ])
+  if gvcf_outfile is not None:
+    command.extend(['--gvcf_outfile', '"{}"'.format(gvcf_outfile)])
+  if not vcf_stats_report:
+    command.extend(['--novcf_stats_report'])
+  # Extend the command with all items in extra_args.
+  command = _extend_command_by_args_dict(command,
+                                         _extra_args_to_dict(extra_args))
+  if FLAGS.logging_dir:
+    command.extend([
+        '2>&1 | tee {}/postprocess_variants_{}.log'.format(
+            FLAGS.logging_dir, sample)
+    ])
+
+  return ' '.join(command)
+
+
+</source>
+</class>
+
+<class classid="18" nclones="2" nlines="11" similarity="100">
+<source file="systems/deepvariant-1.3.0/scripts/run_deepvariant.py" startline="336" endline="349" pcid="395">
+def check_or_create_intermediate_results_dir(intermediate_results_dir):
+  """Checks or creates the path to the directory for intermediate results."""
+  if intermediate_results_dir is None:
+    intermediate_results_dir = tempfile.mkdtemp()
+  if not os.path.isdir(intermediate_results_dir):
+    logging.info('Creating a directory for intermediate results in %s',
+                 intermediate_results_dir)
+    os.makedirs(intermediate_results_dir)
+  else:
+    logging.info('Re-using the directory for intermediate results in %s',
+                 intermediate_results_dir)
+  return intermediate_results_dir
+
+
+</source>
+<source file="systems/deepvariant-1.3.0/scripts/run_deeptrio.py" startline="435" endline="448" pcid="414">
+def check_or_create_intermediate_results_dir(intermediate_results_dir):
+  """Checks or creates the path to the directory for intermediate results."""
+  if intermediate_results_dir is None:
+    intermediate_results_dir = tempfile.mkdtemp()
+  if not os.path.isdir(intermediate_results_dir):
+    logging.info('Creating a directory for intermediate results in %s',
+                 intermediate_results_dir)
+    os.makedirs(intermediate_results_dir)
+  else:
+    logging.info('Re-using the directory for intermediate results in %s',
+                 intermediate_results_dir)
+  return intermediate_results_dir
+
+
+</source>
+</class>
+
+<class classid="19" nclones="2" nlines="11" similarity="100">
+<source file="systems/deepvariant-1.3.0/scripts/run_deepvariant.py" startline="350" endline="371" pcid="396">
+def check_flags():
+  """Additional logic to make sure flags are set appropriately."""
+  if FLAGS.customized_model is not None:
+    if (not tf.compat.v1.gfile.Exists(FLAGS.customized_model +
+                                      '.data-00000-of-00001') or
+        not tf.compat.v1.gfile.Exists(FLAGS.customized_model + '.index') or
+        not tf.compat.v1.gfile.Exists(FLAGS.customized_model + '.meta')):
+      raise RuntimeError('The model files {}* do not exist. Potentially '
+                         'relevant issue: '
+                         'https://github.com/google/deepvariant/blob/r1.3/docs/'
+                         'FAQ.md#why-cant-it-find-one-of-the-input-files-eg-'
+                         'could-not-open'.format(FLAGS.customized_model))
+    logging.info(
+        'You set --customized_model. Instead of using the default '
+        'model for %s, `call_variants` step will load %s* '
+        'instead.', FLAGS.model_type, FLAGS.customized_model)
+
+  if FLAGS.use_hp_information and FLAGS.model_type != 'PACBIO':
+    raise ValueError('--use_hp_information can only be used with '
+                     '--model_type="PACBIO"')
+
+
+</source>
+<source file="systems/deepvariant-1.3.0/scripts/run_deeptrio.py" startline="449" endline="470" pcid="415">
+def check_flags():
+  """Additional logic to make sure flags are set appropriately."""
+  if FLAGS.customized_model is not None:
+    if (not tf.compat.v1.gfile.Exists(FLAGS.customized_model +
+                                      '.data-00000-of-00001') or
+        not tf.compat.v1.gfile.Exists(FLAGS.customized_model + '.index') or
+        not tf.compat.v1.gfile.Exists(FLAGS.customized_model + '.meta')):
+      raise RuntimeError('The model files {}* do not exist. Potentially '
+                         'relevant issue: '
+                         'https://github.com/google/deepvariant/blob/r1.3/docs/'
+                         'FAQ.md#why-cant-it-find-one-of-the-input-files-eg-'
+                         'could-not-open'.format(FLAGS.customized_model))
+    logging.info(
+        'You set --customized_model. Instead of using the default '
+        'model for %s, `call_variants` step will load %s* '
+        'instead.', FLAGS.model_type, FLAGS.customized_model)
+
+  if FLAGS.use_hp_information and FLAGS.model_type != 'PACBIO':
+    raise ValueError('--use_hp_information can only be used with '
+                     '--model_type="PACBIO"')
+
+
+</source>
+</class>
+
+<class classid="20" nclones="2" nlines="12" similarity="91">
+<source file="systems/deepvariant-1.3.0/third_party/nucleus/util/vis_test.py" startline="199" endline="213" pcid="486">
+  def test_save_to_png(self, shape, should_succeed):
+    arr = _image_array(shape)
+
+    if should_succeed:
+      temp_dir = self.create_tempdir().full_path
+      output_path = os.path.join(temp_dir, 'test.png')
+      # check the file doesn't already exist before function runs
+      self.assertEmpty(glob.glob(output_path))
+      vis.save_to_png(arr, path=output_path)
+      self.assertLen(glob.glob(output_path), 1)
+    else:
+      self.assertRaisesWithPredicateMatch(
+          ValueError, lambda x: str(x).index('dimensions') != -1,
+          vis.save_to_png, arr)
+
+</source>
+<source file="systems/deepvariant-1.3.0/third_party/nucleus/util/vis_test.py" startline="221" endline="235" pcid="487">
+  def test_array_to_png_works_with_floats(self, shape, should_succeed):
+    arr = np.random.random(shape)
+
+    if should_succeed:
+      temp_dir = self.create_tempdir().full_path
+      output_path = os.path.join(temp_dir, 'test.png')
+      # Check the file doesn't already exist before function runs.
+      self.assertEmpty(glob.glob(output_path))
+      vis.array_to_png(arr, path=output_path)
+      self.assertLen(glob.glob(output_path), 1)
+    else:
+      self.assertRaisesWithPredicateMatch(
+          ValueError, lambda x: str(x).index('dimensions') != -1,
+          vis.array_to_png, arr)
+
+</source>
+</class>
+
+<class classid="21" nclones="2" nlines="15" similarity="81">
+<source file="systems/deepvariant-1.3.0/third_party/nucleus/io/python/vcf_writer_wrap_test.py" startline="284" endline="311" pcid="789">
+  def test_round_trip_vcf(self, test_datum_name):
+    # Round-trip variants through writing and reading:
+    # 1. Read variants v1 from VcfReader;
+    # 2. Write v1 to vcf using our VcfWriter;
+    # 3. Read back in using VcfReader -- v2;
+    # 4. compare v1 and v2.
+    in_file = test_utils.genomics_core_testdata(test_datum_name)
+    out_file = test_utils.test_tmpfile('output_' + test_datum_name)
+
+    v1_reader = vcf.VcfReader(in_file)
+    v1_records = list(v1_reader.iterate())
+    self.assertTrue(v1_records, 'Reader failed to find records')
+
+    header = copy.deepcopy(v1_reader.header)
+    writer_options = variants_pb2.VcfWriterOptions()
+
+    with vcf_writer.VcfWriter.to_file(out_file, header,
+                                      writer_options) as writer:
+      for record in v1_records:
+        writer.write(record)
+
+    v2_reader = vcf.VcfReader(out_file)
+    v2_records = list(v2_reader.iterate())
+
+    self.assertEqual(v1_records, v2_records,
+                     'Round-tripped variants not as expected')
+
+
+</source>
+<source file="systems/deepvariant-1.3.0/third_party/nucleus/io/python/fastq_writer_wrap_test.py" startline="120" endline="144" pcid="815">
+  def test_round_trip_fastq(self, test_datum_name):
+    # Round-trip FASTQ records through writing and reading:
+    # 1. Read records v1 from FastqReader;
+    # 2. Write v1 to fastq using our FastqWriter;
+    # 3. Read back in using FastqReader -- v2;
+    # 4. compare v1 and v2.
+    in_file = test_utils.genomics_core_testdata(test_datum_name)
+    out_file = test_utils.test_tmpfile('output_' + test_datum_name)
+
+    v1_reader = fastq.FastqReader(in_file)
+    v1_records = list(v1_reader.iterate())
+    self.assertTrue(v1_records, 'Reader failed to find records')
+
+    writer_options = fastq_pb2.FastqWriterOptions()
+
+    with fastq_writer.FastqWriter.to_file(out_file, writer_options) as writer:
+      for record in v1_records:
+        writer.write(record)
+
+    v2_reader = fastq.FastqReader(out_file)
+    v2_records = list(v2_reader.iterate())
+    self.assertEqual(v1_records, v2_records,
+                     'Round-tripped FASTQ files not as expected')
+
+
+</source>
+</class>
+
+<class classid="22" nclones="3" nlines="13" similarity="76">
+<source file="systems/deepvariant-1.3.0/third_party/nucleus/io/python/gff_writer_wrap_test.py" startline="65" endline="81" pcid="808">
+  def test_writing_canned_records(self):
+    """Tests writing all the records that are 'canned' in our tfrecord file."""
+    # This file is in TFRecord format.
+    tfrecord_file = test_utils.genomics_core_testdata(
+        'test_features.gff.tfrecord')
+    writer_options = gff_pb2.GffWriterOptions()
+    gff_records = list(
+        tfrecord.read_tfrecords(tfrecord_file, proto=gff_pb2.GffRecord))
+    out_fname = test_utils.test_tmpfile('output.gff')
+    with gff_writer.GffWriter.to_file(out_fname, self.header,
+                                      writer_options) as writer:
+      for record in gff_records:
+        writer.write(record)
+
+    with open(out_fname) as f:
+      self.assertEqual(f.readlines(), self.expected_gff_content)
+
+</source>
+<source file="systems/deepvariant-1.3.0/third_party/nucleus/io/python/fastq_writer_wrap_test.py" startline="80" endline="96" pcid="812">
+  def test_writing_canned_records(self):
+    """Tests writing all the variants that are 'canned' in our tfrecord file."""
+    # This file is in TFRecord format.
+    tfrecord_file = test_utils.genomics_core_testdata(
+        'test_reads.fastq.tfrecord')
+
+    writer_options = fastq_pb2.FastqWriterOptions()
+    fastq_records = list(
+        tfrecord.read_tfrecords(tfrecord_file, proto=fastq_pb2.FastqRecord))
+    out_fname = test_utils.test_tmpfile('output.fastq')
+    with fastq_writer.FastqWriter.to_file(out_fname, writer_options) as writer:
+      for record in fastq_records:
+        writer.write(record)
+
+    with gfile.Open(out_fname, 'r') as f:
+      self.assertEqual(f.readlines(), self.expected_fastq_content)
+
+</source>
+<source file="systems/deepvariant-1.3.0/third_party/nucleus/io/python/bed_writer_wrap_test.py" startline="67" endline="85" pcid="817">
+  def test_writing_canned_records(self):
+    """Tests writing all the records that are 'canned' in our tfrecord file."""
+    # This file is in TFRecord format.
+    tfrecord_file = test_utils.genomics_core_testdata(
+        'test_regions.bed.tfrecord')
+
+    header = bed_pb2.BedHeader(num_fields=12)
+    writer_options = bed_pb2.BedWriterOptions()
+    bed_records = list(
+        tfrecord.read_tfrecords(tfrecord_file, proto=bed_pb2.BedRecord))
+    out_fname = test_utils.test_tmpfile('output.bed')
+    with bed_writer.BedWriter.to_file(out_fname, header,
+                                      writer_options) as writer:
+      for record in bed_records:
+        writer.write(record)
+
+    with gfile.Open(out_fname, 'r') as f:
+      self.assertEqual(f.readlines(), self.expected_bed_content)
+
+</source>
+</class>
+
+</clones>

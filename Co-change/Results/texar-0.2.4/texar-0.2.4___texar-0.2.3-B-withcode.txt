@@ -1,0 +1,2135 @@
+<clonepair1>
+<source file="systems/texar-0.2.3/texar/tf/modules/classifiers/rnn_classifiers_test.py" startline="45" endline="116" pcid="932"></source>
+    def test_encode(self):
+        """Tests encoding.
+        """
+        max_time = 8
+        batch_size = 16
+        emb_dim = 100
+        inputs = tf.random_uniform([batch_size, max_time, emb_dim],
+                                   maxval=1., dtype=tf.float32)
+
+        # case 1
+        clas = UnidirectionalRNNClassifier()
+        logits, pred = clas(inputs)
+
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            logits_, pred_ = sess.run([logits, pred])
+            self.assertEqual(logits_.shape, (batch_size, clas.num_classes))
+            self.assertEqual(pred_.shape, (batch_size, ))
+
+        # case 2
+        hparams = {
+            "num_classes": 10,
+            "clas_strategy": "time_wise"
+        }
+        clas = UnidirectionalRNNClassifier(hparams=hparams)
+        logits, pred = clas(inputs)
+
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            logits_, pred_ = sess.run([logits, pred])
+            self.assertEqual(logits_.shape,
+                             (batch_size, max_time, clas.num_classes))
+            self.assertEqual(pred_.shape, (batch_size, max_time))
+
+        # case 3
+        hparams = {
+            "output_layer": {
+                "num_layers": 1,
+                "layer_size": 10
+            },
+            "num_classes": 0,
+            "clas_strategy": "time_wise"
+        }
+        clas = UnidirectionalRNNClassifier(hparams=hparams)
+        logits, pred = clas(inputs)
+
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            logits_, pred_ = sess.run([logits, pred])
+            self.assertEqual(logits_.shape,
+                             (batch_size, max_time, 10))
+            self.assertEqual(pred_.shape, (batch_size, max_time))
+
+
+        # case 4
+        hparams = {
+            "num_classes": 10,
+            "clas_strategy": "all_time",
+            "max_seq_length": max_time
+        }
+        inputs = tf.placeholder(tf.float32, shape=[batch_size, 6, emb_dim])
+        clas = UnidirectionalRNNClassifier(hparams=hparams)
+        logits, pred = clas(inputs)
+
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            logits_, pred_ = sess.run(
+                [logits, pred],
+                feed_dict={inputs: np.random.randn(batch_size, 6, emb_dim)})
+            self.assertEqual(logits_.shape, (batch_size, clas.num_classes))
+            self.assertEqual(pred_.shape, (batch_size, ))
+</clonepair1>
+
+<clonepair1>
+<source file="systems/texar-0.2.3/texar/tf/modules/classifiers/rnn_classifiers_test.py" startline="117" endline="178" pcid="933"></source>
+    def test_binary(self):
+        """Tests binary classification.
+        """
+        max_time = 8
+        batch_size = 16
+        emb_dim = 100
+        inputs = tf.random_uniform([batch_size, max_time, emb_dim],
+                                   maxval=1., dtype=tf.float32)
+
+        # case 1 omittd
+
+        # case 2
+        hparams = {
+            "num_classes": 1,
+            "clas_strategy": "time_wise"
+        }
+        clas = UnidirectionalRNNClassifier(hparams=hparams)
+        logits, pred = clas(inputs)
+
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            logits_, pred_ = sess.run([logits, pred])
+            self.assertEqual(logits_.shape, (batch_size, max_time))
+            self.assertEqual(pred_.shape, (batch_size, max_time))
+
+        # case 3
+        hparams = {
+            "output_layer": {
+                "num_layers": 1,
+                "layer_size": 10
+            },
+            "num_classes": 1,
+            "clas_strategy": "time_wise"
+        }
+        clas = UnidirectionalRNNClassifier(hparams=hparams)
+        logits, pred = clas(inputs)
+
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            logits_, pred_ = sess.run([logits, pred])
+            self.assertEqual(logits_.shape, (batch_size, max_time))
+            self.assertEqual(pred_.shape, (batch_size, max_time))
+
+
+        # case 4
+        hparams = {
+            "num_classes": 1,
+            "clas_strategy": "all_time",
+            "max_seq_length": max_time
+        }
+        inputs = tf.placeholder(tf.float32, shape=[batch_size, 6, emb_dim])
+        clas = UnidirectionalRNNClassifier(hparams=hparams)
+        logits, pred = clas(inputs)
+
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            logits_, pred_ = sess.run(
+                [logits, pred],
+                feed_dict={inputs: np.random.randn(batch_size, 6, emb_dim)})
+            self.assertEqual(logits_.shape, (batch_size, ))
+            self.assertEqual(pred_.shape, (batch_size, ))
+</clonepair1>
+<clonepair2>
+<source file="systems/texar-0.2.3/texar/tf/modules/decoders/rnn_decoder_helpers_test.py" startline="40" endline="110" pcid="651"></source>
+    def test_softmax_embedding_helpers(self):
+        """Tests softmax helpers.
+        """
+
+        def _test_fn(helper):
+            _, next_inputs, _ = helper.next_inputs(
+                time=1,
+                outputs=tf.ones([self._batch_size, self._vocab_size]),# Not used
+                state=None, # Not used
+                sample_ids=tf.ones([self._batch_size, self._vocab_size]))
+
+            self.assertEqual(helper.sample_ids_shape,
+                             tf.TensorShape(self._vocab_size))
+            self.assertEqual(next_inputs.get_shape(),
+                             tf.TensorShape([self._batch_size, self._emb_dim]))
+
+            # Test in an RNN decoder
+            output_layer = tf.layers.Dense(self._vocab_size)
+            decoder = BasicRNNDecoder(vocab_size=self._vocab_size,
+                                      output_layer=output_layer)
+            outputs, final_state, sequence_lengths = decoder(
+                helper=helper, max_decoding_length=self._max_seq_length)
+
+            cell_dim = decoder.hparams.rnn_cell.kwargs.num_units
+            with self.test_session() as sess:
+                sess.run(tf.global_variables_initializer())
+                outputs_, final_state_, sequence_lengths_ = sess.run(
+                    [outputs, final_state, sequence_lengths])
+                max_length = max(sequence_lengths_)
+                self.assertEqual(
+                    outputs_.logits.shape,
+                    (self._batch_size, max_length, self._vocab_size))
+                self.assertEqual(
+                    outputs_.sample_id.shape,
+                    (self._batch_size, max_length, self._vocab_size))
+                self.assertEqual(final_state_[0].shape,
+                                 (self._batch_size, cell_dim))
+
+        # SoftmaxEmbeddingHelper
+
+        # case-(1)
+        helper = SoftmaxEmbeddingHelper(
+            self._embedding, self._start_tokens, self._end_token, 0.7)
+        _test_fn(helper)
+
+        # case-(2)
+        embedder = WordEmbedder(self._embedding)
+        helper = SoftmaxEmbeddingHelper(
+            embedder, self._start_tokens, self._end_token, 0.7,
+            embedding_size=self._vocab_size)
+        _test_fn(helper)
+
+        # case-(3)
+        word_embedder = WordEmbedder(self._embedding)
+        pos_embedder = PositionEmbedder(position_size=self._max_seq_length)
+
+        def _emb_fn(soft_ids, times):
+            return word_embedder(soft_ids=soft_ids) + pos_embedder(times)
+        helper = SoftmaxEmbeddingHelper(
+            _emb_fn, self._start_tokens, self._end_token, 0.7,
+            embedding_size=self._vocab_size)
+        _test_fn(helper)
+
+        # GumbelSoftmaxEmbeddingHelper
+
+        # case-(1)
+        helper = GumbelSoftmaxEmbeddingHelper(
+            self._embedding, self._start_tokens, self._end_token, 0.7)
+        _test_fn(helper)
+
+</clonepair2>
+
+<clonepair2>
+<source file="systems/texar-0.2.3/texar/tf/modules/decoders/rnn_decoder_helpers_test.py" startline="111" endline="169" pcid="654"></source>
+    def test_infer_helpers(self):
+        """Tests inference helpers.
+        """
+
+        def _test_fn(helper):
+            _, next_inputs, _ = helper.next_inputs(
+                time=1,
+                outputs=tf.ones([self._batch_size, self._vocab_size]),# Not used
+                state=None, # Not used
+                sample_ids=tf.ones([self._batch_size], dtype=tf.int32))
+
+            self.assertEqual(helper.sample_ids_shape,
+                             tf.TensorShape([]))
+            self.assertEqual(next_inputs.get_shape(),
+                             tf.TensorShape([self._batch_size, self._emb_dim]))
+
+            # Test in an RNN decoder
+            output_layer = tf.layers.Dense(self._vocab_size)
+            decoder = BasicRNNDecoder(vocab_size=self._vocab_size,
+                                      output_layer=output_layer)
+            outputs, final_state, sequence_lengths = decoder(
+                helper=helper, max_decoding_length=self._max_seq_length)
+
+            cell_dim = decoder.hparams.rnn_cell.kwargs.num_units
+            with self.test_session() as sess:
+                sess.run(tf.global_variables_initializer())
+                outputs_, final_state_, sequence_lengths_ = sess.run(
+                    [outputs, final_state, sequence_lengths])
+                max_length = max(sequence_lengths_)
+                self.assertEqual(
+                    outputs_.logits.shape,
+                    (self._batch_size, max_length, self._vocab_size))
+                self.assertEqual(
+                    outputs_.sample_id.shape, (self._batch_size, max_length))
+                self.assertEqual(final_state_[0].shape,
+                                 (self._batch_size, cell_dim))
+
+        # case-(1)
+        helper = GreedyEmbeddingHelper(
+            self._embedding, self._start_tokens, self._end_token)
+        _test_fn(helper)
+
+        # case-(2)
+        embedder = WordEmbedder(self._embedding)
+        helper = GreedyEmbeddingHelper(
+            embedder, self._start_tokens, self._end_token)
+        _test_fn(helper)
+
+        # case-(3)
+        word_embedder = WordEmbedder(self._embedding)
+        pos_embedder = PositionEmbedder(position_size=self._max_seq_length)
+
+        def _emb_fn(ids, times):
+            return word_embedder(ids) + pos_embedder(times)
+        helper = GreedyEmbeddingHelper(
+            _emb_fn, self._start_tokens, self._end_token)
+        _test_fn(helper)
+
+</clonepair2>
+<clonepair3>
+<source file="systems/texar-0.2.3/texar/tf/data/data/data_iterators_test.py" startline="195" endline="246" pcid="291"></source>
+    def test_feedable_iterator_multi_datasets(self):
+        """Tests iterating over multiple datasets with the
+        :class:`FeedableDataIterator`.
+        """
+        train_data = tx.data.MonoTextData(self._train_hparams)
+        test_data = tx.data.MonoTextData(self._test_hparams)
+
+        iterator = tx.data.FeedableDataIterator([train_data, test_data])
+        data_batch = iterator.get_next()
+
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            sess.run(tf.local_variables_initializer())
+            sess.run(tf.tables_initializer())
+
+            iterator.initialize_dataset(sess)
+
+            for _ in range(2):
+                # Iterates over train data
+                iterator.restart_dataset(sess, train_data.name)
+                data_handle = iterator.get_handle(sess, train_data.name)
+                i = 0
+                while True:
+                    try:
+                        feed_dict = {iterator.handle: data_handle}
+                        data_batch_ = sess.run(data_batch, feed_dict=feed_dict)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i+1))
+                        i = (i+1) % 1000
+                    except tf.errors.OutOfRangeError:
+                        print('Train data limit reached')
+                        self.assertEqual(i, 0)
+                        break
+
+                # Iterates over test data
+                iterator.restart_dataset(sess, test_data.name)
+                data_handle = iterator.get_handle(sess, test_data.name)
+                i = 1001
+                while True:
+                    try:
+                        feed_dict = {iterator.handle: data_handle}
+                        data_batch_ = sess.run(data_batch, feed_dict=feed_dict)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i))
+                        i += 1
+                    except tf.errors.OutOfRangeError:
+                        print('Test data limit reached')
+                        self.assertEqual(i, 2001)
+                        break
+
+</clonepair3>
+
+<clonepair3>
+<source file="systems/texar-0.2.3/texar/tf/data/data/data_iterators_test.py" startline="247" endline="296" pcid="292"></source>
+    def test_train_test_feedable_data_iterator(self):
+        """Tests :class:`texar.tf.data.TrainTestFeedableDataIterator`
+        """
+        train_data = tx.data.MonoTextData(self._train_hparams)
+        test_data = tx.data.MonoTextData(self._test_hparams)
+
+        iterator = tx.data.TrainTestFeedableDataIterator(train=train_data,
+                                                         test=test_data)
+        data_batch = iterator.get_next()
+
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            sess.run(tf.local_variables_initializer())
+            sess.run(tf.tables_initializer())
+
+            for _ in range(2):
+                iterator.restart_train_dataset(sess)
+                i = 0
+                while True:
+                    try:
+                        feed_dict = {
+                            iterator.handle: iterator.get_train_handle(sess)
+                        }
+                        data_batch_ = sess.run(data_batch, feed_dict=feed_dict)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i+1))
+                        i = (i+1) % 1000
+                    except tf.errors.OutOfRangeError:
+                        print('Train data limit reached')
+                        self.assertEqual(i, 0)
+                        break
+
+                iterator.restart_test_dataset(sess)
+                i = 1001
+                while True:
+                    try:
+                        feed_dict = {
+                            iterator.handle: iterator.get_test_handle(sess)
+                        }
+                        data_batch_ = sess.run(data_batch, feed_dict=feed_dict)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i))
+                        i += 1
+                    except tf.errors.OutOfRangeError:
+                        print('Test data limit reached')
+                        self.assertEqual(i, 2001)
+                        break
+
+</clonepair3>
+<clonepair4>
+<source file="systems/texar-0.2.3/texar/tf/data/data/data_iterators_test.py" startline="151" endline="194" pcid="290"></source>
+    def test_train_test_data_iterator(self):
+        """Tests :class:`texar.tf.data.TrainTestDataIterator`
+        """
+        train_data = tx.data.MonoTextData(self._train_hparams)
+        test_data = tx.data.MonoTextData(self._test_hparams)
+
+        iterator = tx.data.TrainTestDataIterator(train=train_data,
+                                                 test=test_data)
+        data_batch = iterator.get_next()
+
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            sess.run(tf.local_variables_initializer())
+            sess.run(tf.tables_initializer())
+
+            for _ in range(2):
+                iterator.switch_to_train_data(sess)
+                i = 0
+                while True:
+                    try:
+                        data_batch_ = sess.run(data_batch)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i+1))
+                        i = (i+1) % 1000
+                    except tf.errors.OutOfRangeError:
+                        print('Train data limit reached')
+                        self.assertEqual(i, 0)
+                        break
+
+                iterator.switch_to_test_data(sess)
+                i = 1001
+                while True:
+                    try:
+                        data_batch_ = sess.run(data_batch)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i))
+                        i += 1
+                    except tf.errors.OutOfRangeError:
+                        print('Test data limit reached')
+                        self.assertEqual(i, 2001)
+                        break
+
+</clonepair4>
+
+<clonepair4>
+<source file="systems/texar-0.2.3/texar/tf/data/data/data_iterators_test.py" startline="247" endline="296" pcid="292"></source>
+    def test_train_test_feedable_data_iterator(self):
+        """Tests :class:`texar.tf.data.TrainTestFeedableDataIterator`
+        """
+        train_data = tx.data.MonoTextData(self._train_hparams)
+        test_data = tx.data.MonoTextData(self._test_hparams)
+
+        iterator = tx.data.TrainTestFeedableDataIterator(train=train_data,
+                                                         test=test_data)
+        data_batch = iterator.get_next()
+
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            sess.run(tf.local_variables_initializer())
+            sess.run(tf.tables_initializer())
+
+            for _ in range(2):
+                iterator.restart_train_dataset(sess)
+                i = 0
+                while True:
+                    try:
+                        feed_dict = {
+                            iterator.handle: iterator.get_train_handle(sess)
+                        }
+                        data_batch_ = sess.run(data_batch, feed_dict=feed_dict)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i+1))
+                        i = (i+1) % 1000
+                    except tf.errors.OutOfRangeError:
+                        print('Train data limit reached')
+                        self.assertEqual(i, 0)
+                        break
+
+                iterator.restart_test_dataset(sess)
+                i = 1001
+                while True:
+                    try:
+                        feed_dict = {
+                            iterator.handle: iterator.get_test_handle(sess)
+                        }
+                        data_batch_ = sess.run(data_batch, feed_dict=feed_dict)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i))
+                        i += 1
+                    except tf.errors.OutOfRangeError:
+                        print('Test data limit reached')
+                        self.assertEqual(i, 2001)
+                        break
+
+</clonepair4>
+<clonepair5>
+<source file="systems/texar-0.2.3/texar/tf/data/data/data_iterators_test.py" startline="106" endline="150" pcid="289"></source>
+    def test_iterator_multi_datasets(self):
+        """Tests iterating over multiple datasets.
+        """
+        train_data = tx.data.MonoTextData(self._train_hparams)
+        test_data = tx.data.MonoTextData(self._test_hparams)
+
+        iterator = tx.data.DataIterator([train_data, test_data])
+        data_batch = iterator.get_next()
+
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            sess.run(tf.local_variables_initializer())
+            sess.run(tf.tables_initializer())
+
+            for _ in range(2):
+                # Iterates over train data
+                iterator.switch_to_dataset(sess, train_data.name)
+                i = 0
+                while True:
+                    try:
+                        data_batch_ = sess.run(data_batch)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i+1))
+                        i = (i+1) % 1000
+                    except tf.errors.OutOfRangeError:
+                        print('Train data limit reached')
+                        self.assertEqual(i, 0)
+                        break
+
+                # Iterates over test data
+                iterator.switch_to_dataset(sess, test_data.name)
+                i = 1001
+                while True:
+                    try:
+                        data_batch_ = sess.run(data_batch)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i))
+                        i += 1
+                    except tf.errors.OutOfRangeError:
+                        print('Test data limit reached')
+                        self.assertEqual(i, 2001)
+                        break
+
+</clonepair5>
+
+<clonepair5>
+<source file="systems/texar-0.2.3/texar/tf/data/data/data_iterators_test.py" startline="247" endline="296" pcid="292"></source>
+    def test_train_test_feedable_data_iterator(self):
+        """Tests :class:`texar.tf.data.TrainTestFeedableDataIterator`
+        """
+        train_data = tx.data.MonoTextData(self._train_hparams)
+        test_data = tx.data.MonoTextData(self._test_hparams)
+
+        iterator = tx.data.TrainTestFeedableDataIterator(train=train_data,
+                                                         test=test_data)
+        data_batch = iterator.get_next()
+
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            sess.run(tf.local_variables_initializer())
+            sess.run(tf.tables_initializer())
+
+            for _ in range(2):
+                iterator.restart_train_dataset(sess)
+                i = 0
+                while True:
+                    try:
+                        feed_dict = {
+                            iterator.handle: iterator.get_train_handle(sess)
+                        }
+                        data_batch_ = sess.run(data_batch, feed_dict=feed_dict)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i+1))
+                        i = (i+1) % 1000
+                    except tf.errors.OutOfRangeError:
+                        print('Train data limit reached')
+                        self.assertEqual(i, 0)
+                        break
+
+                iterator.restart_test_dataset(sess)
+                i = 1001
+                while True:
+                    try:
+                        feed_dict = {
+                            iterator.handle: iterator.get_test_handle(sess)
+                        }
+                        data_batch_ = sess.run(data_batch, feed_dict=feed_dict)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i))
+                        i += 1
+                    except tf.errors.OutOfRangeError:
+                        print('Test data limit reached')
+                        self.assertEqual(i, 2001)
+                        break
+
+</clonepair5>
+<clonepair6>
+<source file="systems/texar-0.2.3/texar/tf/data/data/data_iterators_test.py" startline="151" endline="194" pcid="290"></source>
+    def test_train_test_data_iterator(self):
+        """Tests :class:`texar.tf.data.TrainTestDataIterator`
+        """
+        train_data = tx.data.MonoTextData(self._train_hparams)
+        test_data = tx.data.MonoTextData(self._test_hparams)
+
+        iterator = tx.data.TrainTestDataIterator(train=train_data,
+                                                 test=test_data)
+        data_batch = iterator.get_next()
+
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            sess.run(tf.local_variables_initializer())
+            sess.run(tf.tables_initializer())
+
+            for _ in range(2):
+                iterator.switch_to_train_data(sess)
+                i = 0
+                while True:
+                    try:
+                        data_batch_ = sess.run(data_batch)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i+1))
+                        i = (i+1) % 1000
+                    except tf.errors.OutOfRangeError:
+                        print('Train data limit reached')
+                        self.assertEqual(i, 0)
+                        break
+
+                iterator.switch_to_test_data(sess)
+                i = 1001
+                while True:
+                    try:
+                        data_batch_ = sess.run(data_batch)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i))
+                        i += 1
+                    except tf.errors.OutOfRangeError:
+                        print('Test data limit reached')
+                        self.assertEqual(i, 2001)
+                        break
+
+</clonepair6>
+
+<clonepair6>
+<source file="systems/texar-0.2.3/texar/tf/data/data/data_iterators_test.py" startline="195" endline="246" pcid="291"></source>
+    def test_feedable_iterator_multi_datasets(self):
+        """Tests iterating over multiple datasets with the
+        :class:`FeedableDataIterator`.
+        """
+        train_data = tx.data.MonoTextData(self._train_hparams)
+        test_data = tx.data.MonoTextData(self._test_hparams)
+
+        iterator = tx.data.FeedableDataIterator([train_data, test_data])
+        data_batch = iterator.get_next()
+
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            sess.run(tf.local_variables_initializer())
+            sess.run(tf.tables_initializer())
+
+            iterator.initialize_dataset(sess)
+
+            for _ in range(2):
+                # Iterates over train data
+                iterator.restart_dataset(sess, train_data.name)
+                data_handle = iterator.get_handle(sess, train_data.name)
+                i = 0
+                while True:
+                    try:
+                        feed_dict = {iterator.handle: data_handle}
+                        data_batch_ = sess.run(data_batch, feed_dict=feed_dict)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i+1))
+                        i = (i+1) % 1000
+                    except tf.errors.OutOfRangeError:
+                        print('Train data limit reached')
+                        self.assertEqual(i, 0)
+                        break
+
+                # Iterates over test data
+                iterator.restart_dataset(sess, test_data.name)
+                data_handle = iterator.get_handle(sess, test_data.name)
+                i = 1001
+                while True:
+                    try:
+                        feed_dict = {iterator.handle: data_handle}
+                        data_batch_ = sess.run(data_batch, feed_dict=feed_dict)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i))
+                        i += 1
+                    except tf.errors.OutOfRangeError:
+                        print('Test data limit reached')
+                        self.assertEqual(i, 2001)
+                        break
+
+</clonepair6>
+<clonepair7>
+<source file="systems/texar-0.2.3/texar/tf/data/data/data_iterators_test.py" startline="106" endline="150" pcid="289"></source>
+    def test_iterator_multi_datasets(self):
+        """Tests iterating over multiple datasets.
+        """
+        train_data = tx.data.MonoTextData(self._train_hparams)
+        test_data = tx.data.MonoTextData(self._test_hparams)
+
+        iterator = tx.data.DataIterator([train_data, test_data])
+        data_batch = iterator.get_next()
+
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            sess.run(tf.local_variables_initializer())
+            sess.run(tf.tables_initializer())
+
+            for _ in range(2):
+                # Iterates over train data
+                iterator.switch_to_dataset(sess, train_data.name)
+                i = 0
+                while True:
+                    try:
+                        data_batch_ = sess.run(data_batch)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i+1))
+                        i = (i+1) % 1000
+                    except tf.errors.OutOfRangeError:
+                        print('Train data limit reached')
+                        self.assertEqual(i, 0)
+                        break
+
+                # Iterates over test data
+                iterator.switch_to_dataset(sess, test_data.name)
+                i = 1001
+                while True:
+                    try:
+                        data_batch_ = sess.run(data_batch)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i))
+                        i += 1
+                    except tf.errors.OutOfRangeError:
+                        print('Test data limit reached')
+                        self.assertEqual(i, 2001)
+                        break
+
+</clonepair7>
+
+<clonepair7>
+<source file="systems/texar-0.2.3/texar/tf/data/data/data_iterators_test.py" startline="195" endline="246" pcid="291"></source>
+    def test_feedable_iterator_multi_datasets(self):
+        """Tests iterating over multiple datasets with the
+        :class:`FeedableDataIterator`.
+        """
+        train_data = tx.data.MonoTextData(self._train_hparams)
+        test_data = tx.data.MonoTextData(self._test_hparams)
+
+        iterator = tx.data.FeedableDataIterator([train_data, test_data])
+        data_batch = iterator.get_next()
+
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            sess.run(tf.local_variables_initializer())
+            sess.run(tf.tables_initializer())
+
+            iterator.initialize_dataset(sess)
+
+            for _ in range(2):
+                # Iterates over train data
+                iterator.restart_dataset(sess, train_data.name)
+                data_handle = iterator.get_handle(sess, train_data.name)
+                i = 0
+                while True:
+                    try:
+                        feed_dict = {iterator.handle: data_handle}
+                        data_batch_ = sess.run(data_batch, feed_dict=feed_dict)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i+1))
+                        i = (i+1) % 1000
+                    except tf.errors.OutOfRangeError:
+                        print('Train data limit reached')
+                        self.assertEqual(i, 0)
+                        break
+
+                # Iterates over test data
+                iterator.restart_dataset(sess, test_data.name)
+                data_handle = iterator.get_handle(sess, test_data.name)
+                i = 1001
+                while True:
+                    try:
+                        feed_dict = {iterator.handle: data_handle}
+                        data_batch_ = sess.run(data_batch, feed_dict=feed_dict)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i))
+                        i += 1
+                    except tf.errors.OutOfRangeError:
+                        print('Test data limit reached')
+                        self.assertEqual(i, 2001)
+                        break
+
+</clonepair7>
+<clonepair8>
+<source file="systems/texar-0.2.3/texar/tf/modules/encoders/rnn_encoders_test.py" startline="64" endline="112" pcid="817"></source>
+    def test_encode(self):
+        """Tests encoding.
+        """
+        # case 1
+        encoder = UnidirectionalRNNEncoder()
+
+        max_time = 8
+        batch_size = 16
+        emb_dim = 100
+        inputs = tf.random_uniform([batch_size, max_time, emb_dim],
+                                   maxval=1., dtype=tf.float32)
+        outputs, state = encoder(inputs)
+
+        cell_dim = encoder.hparams.rnn_cell.kwargs.num_units
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            outputs_, state_ = sess.run([outputs, state])
+            self.assertEqual(outputs_.shape, (batch_size, max_time, cell_dim))
+            self.assertEqual(state_[0].shape, (batch_size, cell_dim))
+
+        # case 2: with output layers
+        hparams = {
+            "output_layer": {
+                "num_layers": 2,
+                "layer_size": [100, 6],
+                "dropout_layer_ids": [0, 1, 2],
+                "variational_dropout": True
+            }
+        }
+        encoder = UnidirectionalRNNEncoder(hparams=hparams)
+
+        max_time = 8
+        batch_size = 16
+        emb_dim = 100
+        inputs = tf.random_uniform([batch_size, max_time, emb_dim],
+                                   maxval=1., dtype=tf.float32)
+        outputs, state, cell_outputs, output_size = encoder(
+            inputs, return_cell_output=True, return_output_size=True)
+
+        self.assertEqual(output_size[0], 6)
+        self.assertEqual(cell_outputs.shape[-1], encoder.cell.output_size)
+
+        out_dim = encoder.hparams.output_layer.layer_size[-1]
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            outputs_ = sess.run(outputs)
+            self.assertEqual(outputs_.shape, (batch_size, max_time, out_dim))
+
+
+</clonepair8>
+
+<clonepair8>
+<source file="systems/texar-0.2.3/texar/tf/modules/encoders/rnn_encoders_test.py" startline="178" endline="264" pcid="820"></source>
+    def test_encode(self):
+        """Tests encoding.
+        """
+        # case 1
+        encoder = BidirectionalRNNEncoder()
+
+        max_time = 8
+        batch_size = 16
+        emb_dim = 100
+        inputs = tf.random_uniform([batch_size, max_time, emb_dim],
+                                   maxval=1., dtype=tf.float32)
+        outputs, state = encoder(inputs)
+
+        cell_dim = encoder.hparams.rnn_cell_fw.kwargs.num_units
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            outputs_, state_ = sess.run([outputs, state])
+            self.assertEqual(outputs_[0].shape,
+                             (batch_size, max_time, cell_dim))
+            self.assertEqual(state_[0][0].shape, (batch_size, cell_dim))
+
+        # case 2: with output layers
+        hparams = {
+            "output_layer_fw": {
+                "num_layers": 2,
+                "layer_size": [100, 6],
+                "dropout_layer_ids": [0, 1, 2],
+                "variational_dropout": True
+            }
+        }
+        encoder = BidirectionalRNNEncoder(hparams=hparams)
+
+        max_time = 8
+        batch_size = 16
+        emb_dim = 100
+        inputs = tf.random_uniform([batch_size, max_time, emb_dim],
+                                   maxval=1., dtype=tf.float32)
+        outputs, state, cell_outputs, output_size = encoder(
+            inputs, return_cell_output=True, return_output_size=True)
+
+        self.assertEqual(output_size[0][0], 6)
+        self.assertEqual(output_size[1][0], 6)
+        self.assertEqual(cell_outputs[0].shape[-1], encoder.cell_fw.output_size)
+        self.assertEqual(cell_outputs[1].shape[-1], encoder.cell_bw.output_size)
+
+        out_dim = encoder.hparams.output_layer_fw.layer_size[-1]
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            outputs_ = sess.run(outputs)
+            self.assertEqual(outputs_[0].shape, (batch_size, max_time, out_dim))
+            self.assertEqual(outputs_[1].shape, (batch_size, max_time, out_dim))
+
+# TODO(zhiting): not completed yet
+#class HierarchicalForwardRNNEncoderTest(tf.test.TestCase):
+#    """Tests HierarchicalForwardRNNEncoder class.
+#    """
+#
+#    def test_trainable_variables(self):
+#        """Tests the functionality of automatically collecting trainable
+#        variables.
+#        """
+#        encoder = HierarchicalForwardRNNEncoder(vocab_size=2)
+#        inputs = [[[1, 0], [0, 1], [0, 1]]]
+#        _, _ = encoder(inputs)
+#        self.assertEqual(len(encoder.trainable_variables), 5)
+#
+#    def test_encode(self):
+#        """Tests encoding.
+#        """
+#        vocab_size = 4
+#        encoder = HierarchicalForwardRNNEncoder(vocab_size=vocab_size)
+#
+#        max_major_time = 8
+#        max_minor_time = 6
+#        batch_size = 16
+#        inputs = tf.random_uniform([batch_size, max_major_time, max_minor_time],
+#                                   maxval=vocab_size,
+#                                   dtype=tf.int32)
+#        outputs, state = encoder(inputs)
+#
+#        cell_dim = encoder.hparams.rnn_cell.kwargs.num_units
+#        with self.test_session() as sess:
+#            sess.run(tf.global_variables_initializer())
+#            outputs_, state_ = sess.run([outputs, state])
+#            self.assertEqual(outputs_.shape, (batch_size, max_major_time, cell_dim))
+#            self.assertEqual(state_[0].shape, (batch_size, cell_dim))
+
+</clonepair8>
+<clonepair9>
+<source file="systems/texar-0.2.3/texar/tf/modules/decoders/rnn_decoders_test.py" startline="239" endline="291" pcid="704"></source>
+    def test_decode_train(self):
+        """Tests decoding in training mode.
+        """
+        seq_length = np.random.randint(
+            self._max_time, size=[self._batch_size]) + 1
+        encoder_values_length = tf.constant(seq_length)
+        hparams = {
+            "attention": {
+                "kwargs": {
+                    "num_units": self._attention_dim,
+                    # Note: to use sparsemax in TF-CPU, it looks
+                    # `memory_sequence_length` must equal max_time.
+                    #"probability_fn": "sparsemax"
+                }
+            }
+        }
+        decoder = AttentionRNNDecoder(
+            memory=self._encoder_output,
+            memory_sequence_length=encoder_values_length,
+            vocab_size=self._vocab_size,
+            hparams=hparams)
+
+        helper_train = get_helper(
+            decoder.hparams.helper_train.type,
+            inputs=self._inputs,
+            sequence_length=[self._max_time]*self._batch_size,
+            **decoder.hparams.helper_train.kwargs.todict())
+
+        outputs, final_state, sequence_lengths = decoder(helper=helper_train)
+        # 4+1 trainable variables: cell-kernel, cell-bias,
+        # fc-weight, fc-bias, and
+        # memory_layer: For LuongAttention, we only transform the memory layer;
+        # thus num_units *must* match the expected query depth.
+        self.assertEqual(len(decoder.trainable_variables), 5)
+
+        cell_dim = decoder.hparams.rnn_cell.kwargs.num_units
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            outputs_, final_state_, sequence_lengths_ = sess.run(
+                [outputs, final_state, sequence_lengths],
+                feed_dict={context.global_mode(): tf.estimator.ModeKeys.TRAIN})
+            self.assertIsInstance(outputs_, AttentionRNNDecoderOutput)
+            self.assertEqual(
+                outputs_.logits.shape,
+                (self._batch_size, self._max_time, self._vocab_size))
+            self.assertEqual(
+                outputs_.sample_id.shape, (self._batch_size, self._max_time))
+            self.assertEqual(final_state_.cell_state[0].shape,
+                             (self._batch_size, cell_dim))
+            np.testing.assert_array_equal(
+                sequence_lengths_, [self._max_time]*self._batch_size)
+
+</clonepair9>
+
+<clonepair9>
+<source file="systems/texar-0.2.3/texar/tf/modules/decoders/rnn_decoders_test.py" startline="292" endline="341" pcid="705"></source>
+    def test_decode_infer(self):
+        """Tests decoding in inference mode.
+        """
+        seq_length = np.random.randint(
+            self._max_time, size=[self._batch_size]) + 1
+        encoder_values_length = tf.constant(seq_length)
+        hparams = {
+            "attention": {
+                "kwargs": {
+                    "num_units": 256,
+                }
+            }
+        }
+        decoder = AttentionRNNDecoder(
+            vocab_size=self._vocab_size,
+            memory=self._encoder_output,
+            memory_sequence_length=encoder_values_length,
+            hparams=hparams)
+
+        helper_infer = get_helper(
+            decoder.hparams.helper_infer.type,
+            embedding=self._embedding,
+            start_tokens=[1]*self._batch_size,
+            end_token=2,
+            **decoder.hparams.helper_train.kwargs.todict())
+
+        outputs, final_state, sequence_lengths = decoder(helper=helper_infer)
+
+        # 4+1 trainable variables: cell-kernel, cell-bias,
+        # fc-weight, fc-bias, and
+        # memory_layer: For LuongAttention, we only transform the memory layer;
+        # thus num_units *must* match the expected query depth.
+        self.assertEqual(len(decoder.trainable_variables), 5)
+        cell_dim = decoder.hparams.rnn_cell.kwargs.num_units
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            outputs_, final_state_, sequence_lengths_ = sess.run(
+                [outputs, final_state, sequence_lengths],
+                feed_dict={context.global_mode():
+                           tf.estimator.ModeKeys.PREDICT})
+            self.assertIsInstance(outputs_, AttentionRNNDecoderOutput)
+            max_length = max(sequence_lengths_)
+            self.assertEqual(
+                outputs_.logits.shape,
+                (self._batch_size, max_length, self._vocab_size))
+            self.assertEqual(
+                outputs_.sample_id.shape, (self._batch_size, max_length))
+            self.assertEqual(final_state_.cell_state[0].shape,
+                             (self._batch_size, cell_dim))
+</clonepair9>
+<clonepair10>
+<source file="systems/texar-0.2.3/texar/tf/data/data/data_iterators_test.py" startline="106" endline="150" pcid="289"></source>
+    def test_iterator_multi_datasets(self):
+        """Tests iterating over multiple datasets.
+        """
+        train_data = tx.data.MonoTextData(self._train_hparams)
+        test_data = tx.data.MonoTextData(self._test_hparams)
+
+        iterator = tx.data.DataIterator([train_data, test_data])
+        data_batch = iterator.get_next()
+
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            sess.run(tf.local_variables_initializer())
+            sess.run(tf.tables_initializer())
+
+            for _ in range(2):
+                # Iterates over train data
+                iterator.switch_to_dataset(sess, train_data.name)
+                i = 0
+                while True:
+                    try:
+                        data_batch_ = sess.run(data_batch)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i+1))
+                        i = (i+1) % 1000
+                    except tf.errors.OutOfRangeError:
+                        print('Train data limit reached')
+                        self.assertEqual(i, 0)
+                        break
+
+                # Iterates over test data
+                iterator.switch_to_dataset(sess, test_data.name)
+                i = 1001
+                while True:
+                    try:
+                        data_batch_ = sess.run(data_batch)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i))
+                        i += 1
+                    except tf.errors.OutOfRangeError:
+                        print('Test data limit reached')
+                        self.assertEqual(i, 2001)
+                        break
+
+</clonepair10>
+
+<clonepair10>
+<source file="systems/texar-0.2.3/texar/tf/data/data/data_iterators_test.py" startline="151" endline="194" pcid="290"></source>
+    def test_train_test_data_iterator(self):
+        """Tests :class:`texar.tf.data.TrainTestDataIterator`
+        """
+        train_data = tx.data.MonoTextData(self._train_hparams)
+        test_data = tx.data.MonoTextData(self._test_hparams)
+
+        iterator = tx.data.TrainTestDataIterator(train=train_data,
+                                                 test=test_data)
+        data_batch = iterator.get_next()
+
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            sess.run(tf.local_variables_initializer())
+            sess.run(tf.tables_initializer())
+
+            for _ in range(2):
+                iterator.switch_to_train_data(sess)
+                i = 0
+                while True:
+                    try:
+                        data_batch_ = sess.run(data_batch)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i+1))
+                        i = (i+1) % 1000
+                    except tf.errors.OutOfRangeError:
+                        print('Train data limit reached')
+                        self.assertEqual(i, 0)
+                        break
+
+                iterator.switch_to_test_data(sess)
+                i = 1001
+                while True:
+                    try:
+                        data_batch_ = sess.run(data_batch)
+                        self.assertEqual(
+                            tf.compat.as_text(data_batch_['text'][0][0]),
+                            str(i))
+                        i += 1
+                    except tf.errors.OutOfRangeError:
+                        print('Test data limit reached')
+                        self.assertEqual(i, 2001)
+                        break
+
+</clonepair10>
+<clonepair11>
+<source file="systems/texar-0.2.3/examples/distributed_gpu/lm_ptb_distributed.py" startline="143" endline="189" pcid="1019"></source>
+    def _run_epoch(sess, data_iter, epoch, is_train=False, verbose=False):
+        start_time = time.time()
+        loss = 0.
+        iters = 0
+
+        fetches = {
+            "mle_loss": mle_loss,
+            "final_state": final_state,
+        }
+        if is_train:
+            fetches["train_op"] = train_op
+            epoch_size = (len(data["train_text_id"]) // batch_size - 1)\
+                // num_steps
+
+        mode = (tf.estimator.ModeKeys.TRAIN
+                if is_train
+                else tf.estimator.ModeKeys.EVAL)
+
+
+        for step, (x, y) in enumerate(data_iter):
+            if step == 0:
+                state = sess.run(initial_state,
+                                 feed_dict={inputs: x})
+
+            feed_dict = {
+                inputs: x, targets: y, global_step: epoch,
+                tx.global_mode(): mode,
+            }
+            for i, (c, h) in enumerate(initial_state):
+                feed_dict[c] = state[i].c
+                feed_dict[h] = state[i].h
+
+            rets = sess.run(fetches, feed_dict)
+            loss += rets["mle_loss"]
+            state = rets["final_state"]
+            iters += num_steps
+
+            ppl = np.exp(loss / iters)
+            if verbose and is_train and hvd.rank() == 0 \
+                and (step+1) % (epoch_size // 10) == 0:
+                tf.logging.info("%.3f perplexity: %.3f speed: %.0f wps" %
+                      ((step+1) * 1.0 / epoch_size, ppl,
+                       iters * batch_size / (time.time() - start_time)))
+        _elapsed_time = time.time() - start_time
+        tf.logging.info("epoch time elapsed: %f" % (_elapsed_time))
+        ppl = np.exp(loss / iters)
+        return ppl, _elapsed_time
+</clonepair11>
+
+<clonepair11>
+<source file="systems/texar-0.2.3/examples/language_model_ptb/lm_ptb.py" startline="114" endline="154" pcid="1228"></source>
+    def _run_epoch(sess, data_iter, epoch, is_train=False, verbose=False):
+        start_time = time.time()
+        loss = 0.
+        iters = 0
+        state = sess.run(initial_state)
+
+        fetches = {
+            "mle_loss": mle_loss,
+            "final_state": final_state,
+        }
+        if is_train:
+            fetches["train_op"] = train_op
+            epoch_size = (len(data["train_text_id"]) // batch_size - 1)\
+                // num_steps
+
+        mode = (tf.estimator.ModeKeys.TRAIN
+                if is_train
+                else tf.estimator.ModeKeys.EVAL)
+
+        for step, (x, y) in enumerate(data_iter):
+            feed_dict = {
+                inputs: x, targets: y, global_step: epoch,
+                tx.global_mode(): mode,
+            }
+            for i, (c, h) in enumerate(initial_state):
+                feed_dict[c] = state[i].c
+                feed_dict[h] = state[i].h
+
+            rets = sess.run(fetches, feed_dict)
+            loss += rets["mle_loss"]
+            state = rets["final_state"]
+            iters += num_steps
+
+            ppl = np.exp(loss / iters)
+            if verbose and is_train and step % (epoch_size // 10) == 10:
+                print("%.3f perplexity: %.3f speed: %.0f wps" %
+                      ((step+1) * 1.0 / epoch_size, ppl,
+                       iters * batch_size / (time.time() - start_time)))
+
+        ppl = np.exp(loss / iters)
+        return ppl
+</clonepair11>
+<clonepair12>
+<source file="systems/texar-0.2.3/texar/tf/modules/networks/conv_networks_test.py" startline="66" endline="114" pcid="1013"></source>
+    def test_unknown_seq_length(self):
+        """Tests use of pooling layer when the seq_length dimension of inputs
+        is `None`.
+        """
+        network_1 = Conv1DNetwork()
+        inputs_1 = tf.placeholder(tf.float32, [64, None, 300])
+        outputs_1 = network_1(inputs_1)
+        self.assertEqual(outputs_1.shape, [64, 128])
+
+        hparams = {
+            # Conv layers
+            "num_conv_layers": 2,
+            "filters": 128,
+            "kernel_size": [[3, 4, 5], 4],
+            # Pooling layers
+            "pooling": "AveragePooling",
+            "pool_size": [2, None],
+            # Dense layers
+            "num_dense_layers": 1,
+            "dense_size": 10,
+        }
+        network = Conv1DNetwork(hparams)
+        # nlayers = nconv-pool + nconv + npool + ndense + ndropout + flatten
+        self.assertEqual(len(network.layers), 1+1+1+1+1+1)
+        self.assertTrue(isinstance(network.layer_by_name('pool_2'),
+                                   tx.core.AverageReducePooling1D))
+
+        inputs = tf.placeholder(tf.float32, [64, None, 300])
+        outputs = network(inputs)
+        self.assertEqual(outputs.shape, [64, 10])
+
+        hparams_2 = {
+            # Conv layers
+            "num_conv_layers": 1,
+            "filters": 128,
+            "kernel_size": 4,
+            "other_conv_kwargs": {'data_format': 'channels_first'},
+            # Pooling layers
+            "pooling": "MaxPooling",
+            "other_pool_kwargs": {'data_format': 'channels_first'},
+            # Dense layers
+            "num_dense_layers": 1,
+            "dense_size": 10,
+        }
+        network_2 = Conv1DNetwork(hparams_2)
+        inputs_2 = tf.placeholder(tf.float32, [64, 300, None])
+        outputs_2 = network_2(inputs_2)
+        self.assertEqual(outputs_2.shape, [64, 10])
+
+</clonepair12>
+
+<clonepair12>
+<source file="systems/texar-0.2.3/texar/tf/modules/encoders/conv_encoders_test.py" startline="66" endline="115" pcid="751"></source>
+    def test_unknown_seq_length(self):
+        """Tests use of pooling layer when the seq_length dimension of inputs
+        is `None`.
+        """
+        encoder_1 = Conv1DEncoder()
+        inputs_1 = tf.placeholder(tf.float32, [64, None, 300])
+        outputs_1 = encoder_1(inputs_1)
+        self.assertEqual(outputs_1.shape, [64, 128])
+
+        hparams = {
+            # Conv layers
+            "num_conv_layers": 2,
+            "filters": 128,
+            "kernel_size": [[3, 4, 5], 4],
+            # Pooling layers
+            "pooling": "AveragePooling",
+            "pool_size": [2, None],
+            # Dense layers
+            "num_dense_layers": 1,
+            "dense_size": 10,
+        }
+        encoder = Conv1DEncoder(hparams)
+        # nlayers = nconv-pool + nconv + npool + ndense + ndropout + flatten
+        self.assertEqual(len(encoder.layers), 1+1+1+1+1+1)
+        self.assertTrue(isinstance(encoder.layer_by_name('pool_2'),
+                                   tx.core.AverageReducePooling1D))
+
+        inputs = tf.placeholder(tf.float32, [64, None, 300])
+        outputs = encoder(inputs)
+        self.assertEqual(outputs.shape, [64, 10])
+
+        hparams_2 = {
+            # Conv layers
+            "num_conv_layers": 1,
+            "filters": 128,
+            "kernel_size": 4,
+            "other_conv_kwargs": {'data_format': 'channels_first'},
+            # Pooling layers
+            "pooling": "MaxPooling",
+            "other_pool_kwargs": {'data_format': 'channels_first'},
+            # Dense layers
+            "num_dense_layers": 1,
+            "dense_size": 10,
+        }
+        encoder_2 = Conv1DEncoder(hparams_2)
+        inputs_2 = tf.placeholder(tf.float32, [64, 300, None])
+        outputs_2 = encoder_2(inputs_2)
+        self.assertEqual(outputs_2.shape, [64, 10])
+
+
+</clonepair12>
+<clonepair13>
+<source file="systems/texar-0.2.3/texar/tf/modules/networks/conv_networks_test.py" startline="21" endline="65" pcid="1012"></source>
+    def test_feedforward(self):
+        """Tests feed forward.
+        """
+        network_1 = Conv1DNetwork()
+        self.assertEqual(len(network_1.layers), 4)
+        self.assertTrue(isinstance(network_1.layer_by_name("conv_pool_1"),
+                                   tx.core.MergeLayer))
+        for layer in network_1.layers[0].layers:
+            self.assertTrue(isinstance(layer, tx.core.SequentialLayer))
+
+        inputs_1 = tf.ones([64, 16, 300], tf.float32)
+        outputs_1 = network_1(inputs_1)
+        self.assertEqual(outputs_1.shape, [64, 128])
+
+        hparams = {
+            # Conv layers
+            "num_conv_layers": 2,
+            "filters": 128,
+            "kernel_size": [[3, 4, 5], 4],
+            "other_conv_kwargs": {"padding": "same"},
+            # Pooling layers
+            "pooling": "AveragePooling",
+            "pool_size": 2,
+            "pool_strides": 1,
+            # Dense layers
+            "num_dense_layers": 3,
+            "dense_size": [128, 128, 10],
+            "dense_activation": "relu",
+            "other_dense_kwargs": {"use_bias": False},
+            # Dropout
+            "dropout_conv": [0, 1, 2],
+            "dropout_dense": 2
+        }
+        network_2 = Conv1DNetwork(hparams)
+        # nlayers = nconv-pool + nconv + npool + ndense + ndropout + flatten
+        self.assertEqual(len(network_2.layers), 1+1+1+3+4+1)
+        self.assertTrue(isinstance(network_2.layer_by_name("conv_pool_1"),
+                                   tx.core.MergeLayer))
+        for layer in network_2.layers[1].layers:
+            self.assertTrue(isinstance(layer, tx.core.SequentialLayer))
+
+        inputs_2 = tf.ones([64, 16, 300], tf.float32)
+        outputs_2 = network_2(inputs_2)
+        self.assertEqual(outputs_2.shape, [64, 10])
+
+</clonepair13>
+
+<clonepair13>
+<source file="systems/texar-0.2.3/texar/tf/modules/encoders/conv_encoders_test.py" startline="21" endline="65" pcid="750"></source>
+    def test_encode(self):
+        """Tests encode.
+        """
+        encoder_1 = Conv1DEncoder()
+        self.assertEqual(len(encoder_1.layers), 4)
+        self.assertTrue(isinstance(encoder_1.layer_by_name("conv_pool_1"),
+                                   tx.core.MergeLayer))
+        for layer in encoder_1.layers[0].layers:
+            self.assertTrue(isinstance(layer, tx.core.SequentialLayer))
+
+        inputs_1 = tf.ones([64, 16, 300], tf.float32)
+        outputs_1 = encoder_1(inputs_1)
+        self.assertEqual(outputs_1.shape, [64, 128])
+
+        hparams = {
+            # Conv layers
+            "num_conv_layers": 2,
+            "filters": 128,
+            "kernel_size": [[3, 4, 5], 4],
+            "other_conv_kwargs": {"padding": "same"},
+            # Pooling layers
+            "pooling": "AveragePooling",
+            "pool_size": 2,
+            "pool_strides": 1,
+            # Dense layers
+            "num_dense_layers": 3,
+            "dense_size": [128, 128, 10],
+            "dense_activation": "relu",
+            "other_dense_kwargs": {"use_bias": False},
+            # Dropout
+            "dropout_conv": [0, 1, 2],
+            "dropout_dense": 2
+        }
+        encoder_2 = Conv1DEncoder(hparams)
+        # nlayers = nconv-pool + nconv + npool + ndense + ndropout + flatten
+        self.assertEqual(len(encoder_2.layers), 1+1+1+3+4+1)
+        self.assertTrue(isinstance(encoder_2.layer_by_name("conv_pool_1"),
+                                   tx.core.MergeLayer))
+        for layer in encoder_2.layers[1].layers:
+            self.assertTrue(isinstance(layer, tx.core.SequentialLayer))
+
+        inputs_2 = tf.ones([64, 16, 300], tf.float32)
+        outputs_2 = encoder_2(inputs_2)
+        self.assertEqual(outputs_2.shape, [64, 10])
+
+</clonepair13>
+<clonepair14>
+<source file="systems/texar-0.2.3/texar/tf/modules/connectors/connectors.py" startline="487" endline="563" pcid="845"></source>
+    def _build(self,
+               distribution='MultivariateNormalDiag',
+               distribution_kwargs=None,
+               transform=True,
+               num_samples=None):
+        """Samples from a distribution and optionally performs transformation
+        with an MLP layer.
+
+        The distribution must be reparameterizable, i.e.,
+        `distribution.reparameterization_type = FULLY_REPARAMETERIZED`.
+
+        Args:
+            distribution: A instance of subclass of
+                :tf_main:`TF Distribution <distributions/Distribution>`,
+                or :tf_hmpg:`tensorflow_probability Distribution <probability>`,
+                Can be a class, its name or module path, or a class instance.
+            distribution_kwargs (dict, optional): Keyword arguments for the
+                distribution constructor. Ignored if `distribution` is a
+                class instance.
+            transform (bool): Whether to perform MLP transformation of the
+                distribution samples. If `False`, the structure/shape of a
+                sample must match :attr:`output_size`.
+            num_samples (optional): An `int` or `int` Tensor. Number of samples
+                to generate. If not given, generate a single sample. Note
+                that if batch size has already been included in
+                `distribution`'s dimensionality, `num_samples` should be
+                left as `None`.
+
+        Returns:
+            A tuple (output, sample), where
+
+            - output: A Tensor or a (nested) tuple of Tensors with the same \
+            structure and size of :attr:`output_size`. The batch dimension \
+            equals :attr:`num_samples` if specified, or is determined by the \
+            distribution dimensionality. If :attr:`transform` is `False`, \
+            :attr:`output` will be equal to :attr:`sample`.
+            - sample: The sample from the distribution, prior to transformation.
+
+        Raises:
+            ValueError: If distribution cannot be reparametrized.
+            ValueError: The output does not match :attr:`output_size`.
+        """
+        dstr = check_or_get_instance(
+            distribution, distribution_kwargs,
+            ["tensorflow.distributions", "tensorflow_probability.distributions",
+             "texar.tf.custom"])
+
+        if dstr.reparameterization_type == tf_dstr.NOT_REPARAMETERIZED:
+            raise ValueError(
+                "Distribution is not reparameterized: %s" % dstr.name)
+
+        if num_samples:
+            sample = dstr.sample(num_samples)
+        else:
+            sample = dstr.sample()
+
+        #if dstr.event_shape == []:
+        #    sample = tf.reshape(
+        #        sample,
+        #        sample.shape.concatenate(tf.TensorShape(1)))
+
+        # sample = tf.cast(sample, tf.float32)
+        if transform:
+            fn_modules = ['tensorflow', 'tensorflow.nn', 'texar.tf.custom']
+            activation_fn = get_function(self.hparams.activation_fn, fn_modules)
+            output = _mlp_transform(sample, self._output_size, activation_fn)
+        else:
+            output = sample
+
+        _assert_same_size(output, self._output_size)
+        if not self._built:
+            self._add_internal_trainable_variables()
+            self._built = True
+
+        return output, sample
+
+
+</clonepair14>
+
+<clonepair14>
+<source file="systems/texar-0.2.3/texar/tf/modules/connectors/connectors.py" startline="618" endline="776" pcid="848"></source>
+    def _build(self,
+               distribution='MultivariateNormalDiag',
+               distribution_kwargs=None,
+               transform=True,
+               num_samples=None):
+        """Samples from a distribution and optionally performs transformation
+        with an MLP layer.
+
+        The inputs and outputs are the same as
+        :class:`~texar.tf.modules.ReparameterizedStochasticConnector` except that
+        the distribution does not need to be reparameterizable, and gradient
+        cannot be back-propagate through the samples.
+
+        Args:
+            distribution: A instance of subclass of
+                :tf_main:`TF Distribution <distributions/Distribution>`,
+                or :tf_hmpg:`tensorflow_probability Distribution <probability>`.
+                Can be a class, its name or module path, or a class instance.
+            distribution_kwargs (dict, optional): Keyword arguments for the
+                distribution constructor. Ignored if `distribution` is a
+                class instance.
+            transform (bool): Whether to perform MLP transformation of the
+                distribution samples. If `False`, the structure/shape of a
+                sample must match :attr:`output_size`.
+            num_samples (optional): An `int` or `int` Tensor. Number of samples
+                to generate. If not given, generate a single sample. Note
+                that if batch size has already been included in
+                `distribution`'s dimensionality, `num_samples` should be
+                left as `None`.
+
+        Returns:
+            A tuple (output, sample), where
+
+            - output: A Tensor or a (nested) tuple of Tensors with the same \
+            structure and size of :attr:`output_size`. The batch dimension \
+            equals :attr:`num_samples` if specified, or is determined by the \
+            distribution dimensionality. If :attr:`transform` is `False`, \
+            :attr:`output` will be equal to :attr:`sample`.
+            - sample: The sample from the distribution, prior to transformation.
+
+        Raises:
+            ValueError: The output does not match :attr:`output_size`.
+        """
+        dstr = check_or_get_instance(
+            distribution, distribution_kwargs,
+            ["tensorflow.distributions", "tensorflow_probability.distributions",
+             "texar.tf.custom"])
+
+        if num_samples:
+            sample = dstr.sample(num_samples)
+        else:
+            sample = dstr.sample()
+
+        if dstr.event_shape == []:
+            sample = tf.reshape(sample,
+                                sample.shape.concatenate(tf.TensorShape(1)))
+
+        # Disable gradients through samples
+        sample = tf.stop_gradient(sample)
+
+        sample = tf.cast(sample, tf.float32)
+
+        if transform:
+            fn_modules = ['tensorflow', 'tensorflow.nn', 'texar.tf.custom']
+            activation_fn = get_function(self.hparams.activation_fn, fn_modules)
+            output = _mlp_transform(sample, self._output_size, activation_fn)
+        else:
+            output = sample
+
+        _assert_same_size(output, self._output_size)
+        if not self._built:
+            self._add_internal_trainable_variables()
+            self._built = True
+
+        return output, sample
+
+
+#class ConcatConnector(ConnectorBase):
+#    """Concatenates multiple connectors into one connector. Used in, e.g.,
+#    semi-supervised variational autoencoders, disentangled representation
+#    learning, and other models.
+#
+#    Args:
+#        output_size: Size of output excluding the batch dimension (eg.
+#            :attr:`output_size = p` if :attr:`output.shape` is :attr:`[N, p]`).
+#            Can be an int, a tuple of int, a Tensorshape, or a tuple of
+#            TensorShapes.
+#            For example, to transform to decoder state size, set
+#            `output_size=decoder.cell.state_size`.
+#        hparams (dict): Hyperparameters of the connector.
+#    """
+#
+#    def __init__(self, output_size, hparams=None):
+#        ConnectorBase.__init__(self, output_size, hparams)
+#
+#    @staticmethod
+#    def default_hparams():
+#        """Returns a dictionary of hyperparameters with default values.
+#
+#        Returns:
+#            .. code-block:: python
+#
+#                {
+#                    "activation_fn": "tensorflow.identity",
+#                    "name": "concat_connector"
+#                }
+#
+#            Here:
+#
+#            "activation_fn": (str or callable)
+#                The name or full path to the activation function applied to
+#                the outputs of the MLP layer. The activation functions can be:
+#
+#                - Built-in activation functions defined in :mod:`tf` or \
+#                  :mod:`tf.nn`, e.g., :tf_main:`identity <identity>`.
+#                - User-defined activation functions in `texar.tf.custom`.
+#                - External activation functions. Must provide the full path, \
+#                  e.g., "my_module.my_activation_fn".
+#
+#                The default value is :attr:`"identity"`, i.e., the MLP
+#                transformation is linear.
+#
+#            "name": str
+#                Name of the connector.
+#
+#                The default value is "concat_connector".
+#        """
+#        return {
+#            "activation_fn": "tensorflow.identity",
+#            "name": "concat_connector"
+#        }
+#
+#    def _build(self, connector_inputs, transform=True):
+#        """Concatenate multiple input connectors
+#
+#        Args:
+#            connector_inputs: a list of connector states
+#            transform (bool): If `True`, then the output are automatically
+#                transformed to match :attr:`output_size`.
+#
+#        Returns:
+#            A Tensor or a (nested) tuple of Tensors of the same structure of
+#            the decoder state.
+#        """
+#        connector_inputs = [tf.cast(connector, tf.float32)
+#                            for connector in connector_inputs]
+#        output = tf.concat(connector_inputs, axis=1)
+#
+#        if transform:
+#            fn_modules = ['texar.tf.custom', 'tensorflow', 'tensorflow.nn']
+#            activation_fn = get_function(self.hparams.activation_fn,
+#                                         fn_modules)
+#            output = _mlp_transform(output, self._output_size, activation_fn)
+#        _assert_same_size(output, self._output_size)
+#
+#        self._add_internal_trainable_variables()
+#        self._built = True
+#
+#        return output
+</clonepair14>
+<clonepair15>
+<source file="systems/texar-0.2.3/texar/tf/modules/encoders/rnn_encoders_test.py" startline="24" endline="63" pcid="816"></source>
+    def test_trainable_variables(self):
+        """Tests the functionality of automatically collecting trainable
+        variables.
+        """
+        inputs = tf.placeholder(dtype=tf.float32, shape=[None, None, 100])
+
+        # case 1
+        encoder = UnidirectionalRNNEncoder()
+        _, _ = encoder(inputs)
+        self.assertEqual(len(encoder.trainable_variables), 2)
+
+        # case 2
+        hparams = {
+            "rnn_cell": {
+                "dropout": {
+                    "input_keep_prob": 0.5
+                }
+            }
+        }
+        encoder = UnidirectionalRNNEncoder(hparams=hparams)
+        _, _ = encoder(inputs)
+        self.assertEqual(len(encoder.trainable_variables), 2)
+
+        # case 3
+        hparams = {
+            "output_layer": {
+                "num_layers": 2,
+                "layer_size": [100, 6],
+                "activation": "relu",
+                "final_layer_activation": "identity",
+                "dropout_layer_ids": [0, 1, 2],
+                "variational_dropout": False
+            }
+        }
+        encoder = UnidirectionalRNNEncoder(hparams=hparams)
+        _, _ = encoder(inputs)
+        self.assertEqual(len(encoder.trainable_variables), 2+2+2)
+        _, _ = encoder(inputs)
+        self.assertEqual(len(encoder.trainable_variables), 2+2+2)
+
+</clonepair15>
+
+<clonepair15>
+<source file="systems/texar-0.2.3/texar/tf/modules/encoders/rnn_encoders_test.py" startline="133" endline="177" pcid="819"></source>
+    def test_trainable_variables(self):
+        """Tests the functionality of automatically collecting trainable
+        variables.
+        """
+        inputs = tf.placeholder(dtype=tf.float32, shape=[None, None, 100])
+
+        # case 1
+        encoder = BidirectionalRNNEncoder()
+        _, _ = encoder(inputs)
+        self.assertEqual(len(encoder.trainable_variables), 4)
+
+        # case 2
+        hparams = {
+            "rnn_cell_fw": {
+                "dropout": {
+                    "input_keep_prob": 0.5
+                }
+            }
+        }
+        encoder = BidirectionalRNNEncoder(hparams=hparams)
+        _, _ = encoder(inputs)
+        self.assertEqual(len(encoder.trainable_variables), 4)
+
+        # case 3
+        hparams = {
+            "output_layer_fw": {
+                "num_layers": 2,
+                "layer_size": [100, 6],
+                "activation": "relu",
+                "final_layer_activation": "identity",
+                "dropout_layer_ids": [0, 1, 2],
+                "variational_dropout": False
+            },
+            "output_layer_bw": {
+                "num_layers": 3,
+                "other_dense_kwargs": {"use_bias": False}
+            },
+            "output_layer_share_config": False
+        }
+        encoder = BidirectionalRNNEncoder(hparams=hparams)
+        _, _ = encoder(inputs)
+        self.assertEqual(len(encoder.trainable_variables), 4+4+3)
+        _, _ = encoder(inputs)
+        self.assertEqual(len(encoder.trainable_variables), 4+4+3)
+
+</clonepair15>
+<clonepair16>
+<source file="systems/texar-0.2.3/texar/tf/losses/rewards_test.py" startline="105" endline="135" pcid="473"></source>
+    def test_discount_reward_tensor_1d(self):
+        """Tests :func:`texar.tf.losses.rewards._discount_reward_tensor_1d`
+        """
+        reward = tf.ones([2], dtype=tf.float64)
+        sequence_length = [3, 5]
+
+        discounted_reward_1 = _discount_reward_tensor_1d(
+            reward, sequence_length, discount=1.)
+
+        discounted_reward_2 = _discount_reward_tensor_1d(
+            reward, sequence_length, discount=.1)
+
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+
+            r = sess.run(discounted_reward_1)
+            for i in range(5):
+                if i < 3:
+                    self.assertEqual(r[0, i], 1)
+                else:
+                    self.assertEqual(r[0, i], 0)
+                self.assertEqual(r[1, i], 1)
+
+            r = sess.run(discounted_reward_2)
+            for i in range(5):
+                if i < 3:
+                    self.assertAlmostEqual(r[0, i], 0.1**(2-i))
+                else:
+</clonepair16>
+
+<clonepair16>
+<source file="systems/texar-0.2.3/texar/tf/losses/rewards_test.py" startline="164" endline="194" pcid="475"></source>
+    def test_discount_reward_tensor_2d(self):
+        """Tests :func:`texar.tf.losses.rewards._discount_reward_tensor_2d`
+        """
+        reward = tf.ones([2, 10], dtype=tf.float64)
+        sequence_length = [5, 10]
+
+        discounted_reward_1 = _discount_reward_tensor_2d(
+            reward, sequence_length, discount=1.)
+
+        discounted_reward_2 = _discount_reward_tensor_2d(
+            reward, sequence_length, discount=.1)
+
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+
+            r = sess.run(discounted_reward_1)
+            for i in range(10):
+                if i < 5:
+                    self.assertEqual(r[0, i], 5 - i)
+                else:
+                    self.assertEqual(r[0, i], 0)
+                self.assertEqual(r[1, i], 10 - i)
+
+            r = sess.run(discounted_reward_2)
+            for i in range(10):
+                if i < 5:
+                    self.assertEqual(r[0, i], int(11111./10**i) / 10**(4-i))
+                else:
+</clonepair16>
+<clonepair17>
+<source file="systems/texar-0.2.3/texar/tf/losses/rewards_test.py" startline="77" endline="104" pcid="472"></source>
+    def test_discount_reward_py_1d(self):
+        """Tests :func:`texar.tf.losses.rewards._discount_reward_py_1d`
+        """
+        reward = np.ones([2], dtype=np.float64)
+        sequence_length = [3, 5]
+
+        discounted_reward_1 = _discount_reward_py_1d(
+            reward, sequence_length, discount=1.)
+
+        discounted_reward_2 = _discount_reward_py_1d(
+            reward, sequence_length, discount=.1)
+
+        r = discounted_reward_1
+        for i in range(5):
+            if i < 3:
+                self.assertEqual(r[0, i], 1)
+            else:
+                self.assertEqual(r[0, i], 0)
+            self.assertEqual(r[1, i], 1)
+
+        r = discounted_reward_2
+        for i in range(5):
+            if i < 3:
+                self.assertAlmostEqual(r[0, i], 0.1**(2-i))
+            else:
+</clonepair17>
+
+<clonepair17>
+<source file="systems/texar-0.2.3/texar/tf/losses/rewards_test.py" startline="105" endline="135" pcid="473"></source>
+    def test_discount_reward_tensor_1d(self):
+        """Tests :func:`texar.tf.losses.rewards._discount_reward_tensor_1d`
+        """
+        reward = tf.ones([2], dtype=tf.float64)
+        sequence_length = [3, 5]
+
+        discounted_reward_1 = _discount_reward_tensor_1d(
+            reward, sequence_length, discount=1.)
+
+        discounted_reward_2 = _discount_reward_tensor_1d(
+            reward, sequence_length, discount=.1)
+
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+
+            r = sess.run(discounted_reward_1)
+            for i in range(5):
+                if i < 3:
+                    self.assertEqual(r[0, i], 1)
+                else:
+                    self.assertEqual(r[0, i], 0)
+                self.assertEqual(r[1, i], 1)
+
+            r = sess.run(discounted_reward_2)
+            for i in range(5):
+                if i < 3:
+                    self.assertAlmostEqual(r[0, i], 0.1**(2-i))
+                else:
+</clonepair17>
+<clonepair18>
+<source file="systems/texar-0.2.3/texar/tf/losses/rewards_test.py" startline="77" endline="104" pcid="472"></source>
+    def test_discount_reward_py_1d(self):
+        """Tests :func:`texar.tf.losses.rewards._discount_reward_py_1d`
+        """
+        reward = np.ones([2], dtype=np.float64)
+        sequence_length = [3, 5]
+
+        discounted_reward_1 = _discount_reward_py_1d(
+            reward, sequence_length, discount=1.)
+
+        discounted_reward_2 = _discount_reward_py_1d(
+            reward, sequence_length, discount=.1)
+
+        r = discounted_reward_1
+        for i in range(5):
+            if i < 3:
+                self.assertEqual(r[0, i], 1)
+            else:
+                self.assertEqual(r[0, i], 0)
+            self.assertEqual(r[1, i], 1)
+
+        r = discounted_reward_2
+        for i in range(5):
+            if i < 3:
+                self.assertAlmostEqual(r[0, i], 0.1**(2-i))
+            else:
+</clonepair18>
+
+<clonepair18>
+<source file="systems/texar-0.2.3/texar/tf/losses/rewards_test.py" startline="136" endline="163" pcid="474"></source>
+    def test_discount_reward_py_2d(self):
+        """Tests :func:`texar.tf.losses.rewards._discount_reward_py_2d`
+        """
+        reward = np.ones([2, 10], dtype=np.float64)
+        sequence_length = [5, 10]
+
+        discounted_reward_1 = _discount_reward_py_2d(
+            reward, sequence_length, discount=1.)
+
+        discounted_reward_2 = _discount_reward_py_2d(
+            reward, sequence_length, discount=.1)
+
+        r = discounted_reward_1
+        for i in range(10):
+            if i < 5:
+                self.assertEqual(r[0, i], 5 - i)
+            else:
+                self.assertEqual(r[0, i], 0)
+            self.assertEqual(r[1, i], 10 - i)
+
+        r = discounted_reward_2
+        for i in range(10):
+            if i < 5:
+                self.assertEqual(r[0, i], int(11111./10**i) / 10**(4-i))
+            else:
+</clonepair18>
+<clonepair19>
+<source file="systems/texar-0.2.3/texar/tf/data/data/tfrecord_data.py" startline="353" endline="380" pcid="299"></source>
+    def _make_data(self):
+        dataset = self._read_TFRecord_data()
+        # Create and shuffle dataset
+        num_shards = self._hparams.dataset.num_shards
+        shard_id = self._hparams.dataset.shard_id
+        if num_shards is not None and shard_id is not None:
+            dataset = dataset.shard(num_shards, shard_id)
+        dataset, dataset_size = self._shuffle_dataset(
+            dataset, self._hparams, self._hparams.dataset.files)
+        self._dataset_size = dataset_size
+
+        # Processing
+        # pylint: disable=protected-access
+        data_spec = dsutils._DataSpec(dataset=dataset,
+                                      dataset_size=self._dataset_size)
+        dataset, data_spec = self._process_dataset(dataset, self._hparams,
+                                                   data_spec)
+        self._data_spec = data_spec
+        self._decoder = data_spec.decoder # pylint: disable=no-member
+        # Batching
+        dataset = self._make_batch(dataset, self._hparams)
+        # Prefetching
+        if self._hparams.prefetch_buffer_size > 0:
+            dataset = dataset.prefetch(self._hparams.prefetch_buffer_size)
+
+        self._dataset = dataset
+        self.dataset = dataset
+
+</clonepair19>
+
+<clonepair19>
+<source file="systems/texar-0.2.3/texar/tf/data/data/scalar_data.py" startline="204" endline="230" pcid="282"></source>
+    def _make_data(self):
+        dataset_hparams = self._hparams.dataset
+
+        # Create and shuffle dataset
+        dataset = MonoTextData._make_mono_text_dataset(dataset_hparams)
+        dataset, dataset_size = self._shuffle_dataset(
+            dataset, self._hparams, self._hparams.dataset.files)
+        self._dataset_size = dataset_size
+
+        # Processing
+        # pylint: disable=protected-access
+        data_spec = dsutils._DataSpec(dataset=dataset,
+                                      dataset_size=self._dataset_size)
+        dataset, data_spec = self._process_dataset(dataset, self._hparams,
+                                                   data_spec)
+        self._data_spec = data_spec
+        self._decoder = data_spec.decoder # pylint: disable=no-member
+
+        # Batching
+        dataset = self._make_batch(dataset, self._hparams)
+
+        # Prefetching
+        if self._hparams.prefetch_buffer_size > 0:
+            dataset = dataset.prefetch(self._hparams.prefetch_buffer_size)
+
+        self._dataset = dataset
+
+</clonepair19>
+<clonepair20>
+<source file="systems/texar-0.2.3/examples/bert/utils/data_utils.py" startline="142" endline="160" pcid="1038"></source>
+    def get_train_examples(self, data_dir):
+        """See base class."""
+        lines = self._read_tsv(
+            os.path.join(data_dir, "multinli",
+                         "multinli.train.%s.tsv" % self.language))
+        examples = []
+        for (i, line) in enumerate(lines):
+            if i == 0:
+                continue
+            guid = "train-%d" % (i)
+            text_a = tokenization.convert_to_unicode(line[0])
+            text_b = tokenization.convert_to_unicode(line[1])
+            label = tokenization.convert_to_unicode(line[2])
+            if label == tokenization.convert_to_unicode("contradictory"):
+                label = tokenization.convert_to_unicode("contradiction")
+            examples.append(InputExample(guid=guid, text_a=text_a,
+                                         text_b=text_b, label=label))
+        return examples
+
+</clonepair20>
+
+<clonepair20>
+<source file="systems/texar-0.2.3/examples/bert/utils/data_utils.py" startline="161" endline="178" pcid="1039"></source>
+    def get_dev_examples(self, data_dir):
+        """See base class."""
+        lines = self._read_tsv(os.path.join(data_dir, "xnli.dev.tsv"))
+        examples = []
+        for (i, line) in enumerate(lines):
+            if i == 0:
+                continue
+            guid = "dev-%d" % (i)
+            language = tokenization.convert_to_unicode(line[0])
+            if language != tokenization.convert_to_unicode(self.language):
+                continue
+            text_a = tokenization.convert_to_unicode(line[6])
+            text_b = tokenization.convert_to_unicode(line[7])
+            label = tokenization.convert_to_unicode(line[1])
+            examples.append(InputExample(guid=guid, text_a=text_a,
+                                         text_b=text_b, label=label))
+        return examples
+
+</clonepair20>
+<clonepair21>
+<source file="systems/texar-0.2.3/texar/tf/modules/decoders/rnn_decoders_test.py" startline="29" endline="40" pcid="697"></source>
+    def setUp(self):
+        tf.test.TestCase.setUp(self)
+        self._vocab_size = 4
+        self._max_time = 8
+        self._batch_size = 16
+        self._emb_dim = 20
+        self._inputs = tf.random_uniform(
+            [self._batch_size, self._max_time, self._emb_dim],
+            maxval=1., dtype=tf.float32)
+        self._embedding = tf.random_uniform(
+            [self._vocab_size, self._emb_dim], maxval=1., dtype=tf.float32)
+
+</clonepair21>
+
+<clonepair21>
+<source file="systems/texar-0.2.3/texar/tf/modules/decoders/rnn_decoder_helpers_test.py" startline="25" endline="39" pcid="650"></source>
+    def setUp(self):
+        tf.test.TestCase.setUp(self)
+        self._batch_size = 16
+        self._vocab_size = 4
+        self._start_tokens = [self._vocab_size-2]*self._batch_size
+        self._end_token = self._vocab_size-1
+        self._max_time = 8
+        self._emb_dim = 100
+        self._inputs = tf.random_uniform(
+            [self._batch_size, self._max_time, self._emb_dim],
+            maxval=1., dtype=tf.float32)
+        self._embedding = tf.random_uniform(
+            [self._vocab_size, self._emb_dim], maxval=1., dtype=tf.float32)
+        self._max_seq_length = 10
+</clonepair21>
+<clonepair22>
+<source file="systems/texar-0.2.3/examples/memory_network_lm/ptb_reader.py" startline="29" endline="46" pcid="1208"></source>
+def ptb_iterator(data, batch_size, num_steps):
+    """Iterates through the ptb data.
+    """
+    data_length = len(data)
+    batch_length = data_length // batch_size
+
+    data = np.asarray(data[:batch_size*batch_length])
+    data = data.reshape([batch_size, batch_length])
+
+    epoch_size = (batch_length - 1) // num_steps
+    if epoch_size == 0:
+        raise ValueError("epoch_size == 0, decrease batch_size or num_steps")
+
+    for i in range(epoch_size):
+        x = data[:, i * num_steps : (i+1) * num_steps]
+        y = data[:, i * num_steps + 1 : (i+1) * num_steps + 1]
+        yield (x, y)
+
+</clonepair22>
+
+<clonepair22>
+<source file="systems/texar-0.2.3/examples/language_model_ptb/ptb_reader.py" startline="29" endline="46" pcid="1229"></source>
+def ptb_iterator(data, batch_size, num_steps):
+    """Iterates through the ptb data.
+    """
+    data_length = len(data)
+    batch_length = data_length // batch_size
+
+    data = np.asarray(data[:batch_size*batch_length])
+    data = data.reshape([batch_size, batch_length])
+
+    epoch_size = (batch_length - 1) // num_steps
+    if epoch_size == 0:
+        raise ValueError("epoch_size == 0, decrease batch_size or num_steps")
+
+    for i in range(epoch_size):
+        x = data[:, i * num_steps : (i+1) * num_steps]
+        y = data[:, i * num_steps + 1 : (i+1) * num_steps + 1]
+        yield (x, y)
+
+</clonepair22>

@@ -1,0 +1,3037 @@
+<clones>
+<systeminfo processor="nicad6" system="ray-ray-1.11.0" granularity="functions-blind" threshold="0%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="7990" npairs="120"/>
+<runinfo ncompares="162074" cputime="94025"/>
+<classinfo nclasses="52"/>
+
+<class classid="1" nclones="2" nlines="10" similarity="100">
+<source file="systems/ray-ray-1.11.0/rllib/agents/sac/sac_tf_model.py" startline="128" endline="148" pcid="340">
+    def build_policy_model(self, obs_space, num_outputs, policy_model_config,
+                           name):
+        """Builds the policy model used by this SAC.
+
+        Override this method in a sub-class of SACTFModel to implement your
+        own policy net. Alternatively, simply set `custom_model` within the
+        top level SAC `policy_model` config key to make this default
+        implementation of `build_policy_model` use your custom policy network.
+
+        Returns:
+            TFModelV2: The TFModelV2 policy sub-model.
+        """
+        model = ModelCatalog.get_model_v2(
+            obs_space,
+            self.action_space,
+            num_outputs,
+            policy_model_config,
+            framework="tf",
+            name=name)
+        return model
+
+</source>
+<source file="systems/ray-ray-1.11.0/rllib/agents/sac/sac_torch_model.py" startline="136" endline="156" pcid="361">
+    def build_policy_model(self, obs_space, num_outputs, policy_model_config,
+                           name):
+        """Builds the policy model used by this SAC.
+
+        Override this method in a sub-class of SACTFModel to implement your
+        own policy net. Alternatively, simply set `custom_model` within the
+        top level SAC `policy_model` config key to make this default
+        implementation of `build_policy_model` use your custom policy network.
+
+        Returns:
+            TorchModelV2: The TorchModelV2 policy sub-model.
+        """
+        model = ModelCatalog.get_model_v2(
+            obs_space,
+            self.action_space,
+            num_outputs,
+            policy_model_config,
+            framework="torch",
+            name=name)
+        return model
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="29" similarity="100">
+<source file="systems/ray-ray-1.11.0/rllib/agents/sac/sac_tf_model.py" startline="149" endline="189" pcid="341">
+    def build_q_model(self, obs_space, action_space, num_outputs,
+                      q_model_config, name):
+        """Builds one of the (twin) Q-nets used by this SAC.
+
+        Override this method in a sub-class of SACTFModel to implement your
+        own Q-nets. Alternatively, simply set `custom_model` within the
+        top level SAC `Q_model` config key to make this default implementation
+        of `build_q_model` use your custom Q-nets.
+
+        Returns:
+            TFModelV2: The TFModelV2 Q-net sub-model.
+        """
+        self.concat_obs_and_actions = False
+        if self.discrete:
+            input_space = obs_space
+        else:
+            orig_space = getattr(obs_space, "original_space", obs_space)
+            if isinstance(orig_space, Box) and len(orig_space.shape) == 1:
+                input_space = Box(
+                    float("-inf"),
+                    float("inf"),
+                    shape=(orig_space.shape[0] + action_space.shape[0], ))
+                self.concat_obs_and_actions = True
+            else:
+                if isinstance(orig_space, gym.spaces.Tuple):
+                    spaces = list(orig_space.spaces)
+                elif isinstance(orig_space, gym.spaces.Dict):
+                    spaces = list(orig_space.spaces.values())
+                else:
+                    spaces = [obs_space]
+                input_space = gym.spaces.Tuple(spaces + [action_space])
+
+        model = ModelCatalog.get_model_v2(
+            input_space,
+            action_space,
+            num_outputs,
+            q_model_config,
+            framework="tf",
+            name=name)
+        return model
+
+</source>
+<source file="systems/ray-ray-1.11.0/rllib/agents/sac/sac_torch_model.py" startline="157" endline="197" pcid="362">
+    def build_q_model(self, obs_space, action_space, num_outputs,
+                      q_model_config, name):
+        """Builds one of the (twin) Q-nets used by this SAC.
+
+        Override this method in a sub-class of SACTFModel to implement your
+        own Q-nets. Alternatively, simply set `custom_model` within the
+        top level SAC `Q_model` config key to make this default implementation
+        of `build_q_model` use your custom Q-nets.
+
+        Returns:
+            TorchModelV2: The TorchModelV2 Q-net sub-model.
+        """
+        self.concat_obs_and_actions = False
+        if self.discrete:
+            input_space = obs_space
+        else:
+            orig_space = getattr(obs_space, "original_space", obs_space)
+            if isinstance(orig_space, Box) and len(orig_space.shape) == 1:
+                input_space = Box(
+                    float("-inf"),
+                    float("inf"),
+                    shape=(orig_space.shape[0] + action_space.shape[0], ))
+                self.concat_obs_and_actions = True
+            else:
+                if isinstance(orig_space, gym.spaces.Tuple):
+                    spaces = list(orig_space.spaces)
+                elif isinstance(orig_space, gym.spaces.Dict):
+                    spaces = list(orig_space.spaces.values())
+                else:
+                    spaces = [obs_space]
+                input_space = gym.spaces.Tuple(spaces + [action_space])
+
+        model = ModelCatalog.get_model_v2(
+            input_space,
+            action_space,
+            num_outputs,
+            q_model_config,
+            framework="torch",
+            name=name)
+        return model
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="18" similarity="100">
+<source file="systems/ray-ray-1.11.0/rllib/agents/sac/sac_tf_model.py" startline="229" endline="257" pcid="344">
+    def _get_q_value(self, model_out, actions, net):
+        # Model outs may come as original Tuple/Dict observations, concat them
+        # here if this is the case.
+        if isinstance(net.obs_space, Box):
+            if isinstance(model_out, (list, tuple)):
+                model_out = tf.concat(model_out, axis=-1)
+            elif isinstance(model_out, dict):
+                model_out = tf.concat(list(model_out.values()), axis=-1)
+        elif isinstance(model_out, dict):
+            model_out = list(model_out.values())
+
+        # Continuous case -> concat actions to model_out.
+        if actions is not None:
+            if self.concat_obs_and_actions:
+                input_dict = {"obs": tf.concat([model_out, actions], axis=-1)}
+            else:
+                # TODO(junogng) : SampleBatch doesn't support list columns yet.
+                #     Use ModelInputDict.
+                input_dict = {"obs": force_list(model_out) + [actions]}
+        # Discrete case -> return q-vals for all actions.
+        else:
+            input_dict = {"obs": model_out}
+        # Switch on training mode (when getting Q-values, we are usually in
+        # training).
+        input_dict["is_training"] = True
+
+        out, _ = net(input_dict, [], None)
+        return out
+
+</source>
+<source file="systems/ray-ray-1.11.0/rllib/agents/sac/sac_torch_model.py" startline="237" endline="265" pcid="365">
+    def _get_q_value(self, model_out, actions, net):
+        # Model outs may come as original Tuple observations, concat them
+        # here if this is the case.
+        if isinstance(net.obs_space, Box):
+            if isinstance(model_out, (list, tuple)):
+                model_out = torch.cat(model_out, dim=-1)
+            elif isinstance(model_out, dict):
+                model_out = torch.cat(list(model_out.values()), dim=-1)
+        elif isinstance(model_out, dict):
+            model_out = list(model_out.values())
+
+        # Continuous case -> concat actions to model_out.
+        if actions is not None:
+            if self.concat_obs_and_actions:
+                input_dict = {"obs": torch.cat([model_out, actions], dim=-1)}
+            else:
+                # TODO(junogng) : SampleBatch doesn't support list columns yet.
+                #     Use ModelInputDict.
+                input_dict = {"obs": force_list(model_out) + [actions]}
+        # Discrete case -> return q-vals for all actions.
+        else:
+            input_dict = {"obs": model_out}
+        # Switch on training mode (when getting Q-values, we are usually in
+        # training).
+        input_dict["is_training"] = True
+
+        out, _ = net(input_dict, [], None)
+        return out
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="12" similarity="100">
+<source file="systems/ray-ray-1.11.0/rllib/agents/sac/sac_tf_model.py" startline="258" endline="287" pcid="345">
+    def get_policy_output(self, model_out: TensorType) -> TensorType:
+        """Returns policy outputs, given the output of self.__call__().
+
+        For continuous action spaces, these will be the mean/stddev
+        distribution inputs for the (SquashedGaussian) action distribution.
+        For discrete action spaces, these will be the logits for a categorical
+        distribution.
+
+        Args:
+            model_out (TensorType): Feature outputs from the model layers
+                (result of doing `self.__call__(obs)`).
+
+        Returns:
+            TensorType: Distribution inputs for sampling actions.
+        """
+        # Model outs may come as original Tuple/Dict observations, concat them
+        # here if this is the case.
+        if isinstance(self.action_model.obs_space, Box):
+            if isinstance(model_out, (list, tuple)):
+                model_out = tf.concat(model_out, axis=-1)
+            elif isinstance(model_out, dict):
+                model_out = tf.concat(
+                    [
+                        tf.expand_dims(val, 1) if len(val.shape) == 1 else val
+                        for val in tree.flatten(model_out.values())
+                    ],
+                    axis=-1)
+        out, _ = self.action_model({"obs": model_out}, [], None)
+        return out
+
+</source>
+<source file="systems/ray-ray-1.11.0/rllib/agents/sac/sac_torch_model.py" startline="266" endline="295" pcid="366">
+    def get_policy_output(self, model_out: TensorType) -> TensorType:
+        """Returns policy outputs, given the output of self.__call__().
+
+        For continuous action spaces, these will be the mean/stddev
+        distribution inputs for the (SquashedGaussian) action distribution.
+        For discrete action spaces, these will be the logits for a categorical
+        distribution.
+
+        Args:
+            model_out (TensorType): Feature outputs from the model layers
+                (result of doing `self.__call__(obs)`).
+
+        Returns:
+            TensorType: Distribution inputs for sampling actions.
+        """
+        # Model outs may come as original Tuple observations, concat them
+        # here if this is the case.
+        if isinstance(self.action_model.obs_space, Box):
+            if isinstance(model_out, (list, tuple)):
+                model_out = torch.cat(model_out, dim=-1)
+            elif isinstance(model_out, dict):
+                model_out = torch.cat(
+                    [
+                        torch.unsqueeze(val, 1) if len(val.shape) == 1 else val
+                        for val in tree.flatten(model_out.values())
+                    ],
+                    dim=-1)
+        out, _ = self.action_model({"obs": model_out}, [], None)
+        return out
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="37" similarity="100">
+<source file="systems/ray-ray-1.11.0/rllib/agents/marwil/tests/test_marwil.py" startline="26" endline="82" pcid="394">
+
+    def test_marwil_compilation_and_learning_from_offline_file(self):
+        """Test whether a MARWILTrainer can be built with all frameworks.
+
+        Learns from a historic-data file.
+        To generate this data, first run:
+        $ ./train.py --run=PPO --env=CartPole-v0 \
+          --stop='{"timesteps_total": 50000}' \
+          --config='{"output": "/tmp/out", "batch_mode": "complete_episodes"}'
+        """
+        rllib_dir = Path(__file__).parent.parent.parent.parent
+        print("rllib dir={}".format(rllib_dir))
+        data_file = os.path.join(rllib_dir, "tests/data/cartpole/large.json")
+        print("data_file={} exists={}".format(data_file,
+                                              os.path.isfile(data_file)))
+
+        config = marwil.DEFAULT_CONFIG.copy()
+        config["num_workers"] = 2
+        config["evaluation_num_workers"] = 1
+        config["evaluation_interval"] = 3
+        config["evaluation_duration"] = 5
+        config["evaluation_parallel_to_training"] = True
+        # Evaluate on actual environment.
+        config["evaluation_config"] = {"input": "sampler"}
+        # Learn from offline data.
+        config["input"] = [data_file]
+        num_iterations = 350
+        min_reward = 70.0
+
+        # Test for all frameworks.
+        for _ in framework_iterator(config, frameworks=("tf", "torch")):
+            trainer = marwil.MARWILTrainer(config=config, env="CartPole-v0")
+            learnt = False
+            for i in range(num_iterations):
+                results = trainer.train()
+                check_train_results(results)
+                print(results)
+
+                eval_results = results.get("evaluation")
+                if eval_results:
+                    print("iter={} R={} ".format(
+                        i, eval_results["episode_reward_mean"]))
+                    # Learn until some reward is reached on an actual live env.
+                    if eval_results["episode_reward_mean"] > min_reward:
+                        print("learnt!")
+                        learnt = True
+                        break
+
+            if not learnt:
+                raise ValueError(
+                    "MARWILTrainer did not reach {} reward from expert "
+                    "offline data!".format(min_reward))
+
+            check_compute_single_action(
+                trainer, include_prev_action_reward=True)
+
+            trainer.stop()
+</source>
+<source file="systems/ray-ray-1.11.0/rllib/agents/marwil/tests/test_bc.py" startline="22" endline="77" pcid="399">
+
+    def test_bc_compilation_and_learning_from_offline_file(self):
+        """Test whether a BCTrainer can be built with all frameworks.
+
+        And learns from a historic-data file (while being evaluated on an
+        actual env using evaluation_num_workers > 0).
+        """
+        rllib_dir = Path(__file__).parent.parent.parent.parent
+        print("rllib dir={}".format(rllib_dir))
+        data_file = os.path.join(rllib_dir, "tests/data/cartpole/large.json")
+        print("data_file={} exists={}".format(data_file,
+                                              os.path.isfile(data_file)))
+
+        config = marwil.BC_DEFAULT_CONFIG.copy()
+        config["num_workers"] = 0  # Run locally.
+
+        config["evaluation_interval"] = 3
+        config["evaluation_num_workers"] = 1
+        config["evaluation_duration"] = 5
+        config["evaluation_parallel_to_training"] = True
+        # Evaluate on actual environment.
+        config["evaluation_config"] = {"input": "sampler"}
+        # Learn from offline data.
+        config["input"] = [data_file]
+        num_iterations = 350
+        min_reward = 70.0
+
+        # Test for all frameworks.
+        for _ in framework_iterator(config, frameworks=("tf", "torch")):
+            trainer = marwil.BCTrainer(config=config, env="CartPole-v0")
+            learnt = False
+            for i in range(num_iterations):
+                results = trainer.train()
+                check_train_results(results)
+                print(results)
+
+                eval_results = results.get("evaluation")
+                if eval_results:
+                    print("iter={} R={}".format(
+                        i, eval_results["episode_reward_mean"]))
+                    # Learn until good reward is reached in the actual env.
+                    if eval_results["episode_reward_mean"] > min_reward:
+                        print("learnt!")
+                        learnt = True
+                        break
+
+            if not learnt:
+                raise ValueError(
+                    "BCTrainer did not reach {} reward from expert offline "
+                    "data!".format(min_reward))
+
+            check_compute_single_action(
+                trainer, include_prev_action_reward=True)
+
+            trainer.stop()
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="10" similarity="100">
+<source file="systems/ray-ray-1.11.0/rllib/utils/tests/test_check_env.py" startline="42" endline="54" pcid="1158">
+
+    def test_sampled_observation_contained(self):
+        env = RandomEnv()
+        # check for observation that is out of bounds
+        error = ".*A sampled observation from your env wasn't contained .*"
+        env.observation_space.sample = MagicMock(return_value=5)
+        with pytest.raises(ValueError, match=error):
+            check_env(env)
+        # check for observation that is in bounds, but the wrong type
+        env.observation_space.sample = MagicMock(return_value=float(1))
+        with pytest.raises(ValueError, match=error):
+            check_env(env)
+        del env
+</source>
+<source file="systems/ray-ray-1.11.0/rllib/utils/tests/test_check_env.py" startline="55" endline="66" pcid="1159">
+
+    def test_sampled_action_contained(self):
+        env = RandomEnv()
+        error = ".*A sampled action from your env wasn't contained .*"
+        env.action_space.sample = MagicMock(return_value=5)
+        with pytest.raises(ValueError, match=error):
+            check_env(env)
+        # check for observation that is in bounds, but the wrong type
+        env.action_space.sample = MagicMock(return_value=float(1))
+        with pytest.raises(ValueError, match=error):
+            check_env(env)
+        del env
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="12" similarity="100">
+<source file="systems/ray-ray-1.11.0/rllib/tests/test_external_multi_agent_env.py" startline="25" endline="37" pcid="1535">
+    def test_external_multi_agent_env_complete_episodes(self):
+        agents = 4
+        ev = RolloutWorker(
+            env_creator=lambda _: SimpleMultiServing(BasicMultiAgent(agents)),
+            policy_spec=MockPolicy,
+            rollout_fragment_length=40,
+            batch_mode="complete_episodes")
+        for _ in range(3):
+            batch = ev.sample()
+            self.assertEqual(batch.count, 40)
+            self.assertEqual(
+                len(np.unique(batch[SampleBatch.AGENT_INDEX])), agents)
+
+</source>
+<source file="systems/ray-ray-1.11.0/rllib/tests/test_external_multi_agent_env.py" startline="38" endline="50" pcid="1536">
+    def test_external_multi_agent_env_truncate_episodes(self):
+        agents = 4
+        ev = RolloutWorker(
+            env_creator=lambda _: SimpleMultiServing(BasicMultiAgent(agents)),
+            policy_spec=MockPolicy,
+            rollout_fragment_length=40,
+            batch_mode="truncate_episodes")
+        for _ in range(3):
+            batch = ev.sample()
+            self.assertEqual(batch.count, 160)
+            self.assertEqual(
+                len(np.unique(batch[SampleBatch.AGENT_INDEX])), agents)
+
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="16" similarity="100">
+<source file="systems/ray-ray-1.11.0/rllib/examples/models/shared_weights_model.py" startline="67" endline="84" pcid="1668">
+    def __init__(self, observation_space, action_space, num_outputs,
+                 model_config, name):
+        super().__init__(observation_space, action_space, num_outputs,
+                         model_config, name)
+
+        inputs = tf.keras.layers.Input(observation_space.shape)
+        with tf1.variable_scope(
+                tf1.VariableScope(tf1.AUTO_REUSE, "shared"),
+                reuse=tf1.AUTO_REUSE,
+                auxiliary_name_scope=False):
+            last_layer = tf.keras.layers.Dense(
+                units=64, activation=tf.nn.relu, name="fc1")(inputs)
+        output = tf.keras.layers.Dense(
+            units=num_outputs, activation=None, name="fc_out")(last_layer)
+        vf = tf.keras.layers.Dense(
+            units=1, activation=None, name="value_out")(last_layer)
+        self.base_model = tf.keras.models.Model(inputs, [output, vf])
+
+</source>
+<source file="systems/ray-ray-1.11.0/rllib/examples/models/shared_weights_model.py" startline="98" endline="117" pcid="1671">
+    def __init__(self, observation_space, action_space, num_outputs,
+                 model_config, name):
+        super().__init__(observation_space, action_space, num_outputs,
+                         model_config, name)
+
+        inputs = tf.keras.layers.Input(observation_space.shape)
+
+        # Weights shared with SharedWeightsModel1.
+        with tf1.variable_scope(
+                tf1.VariableScope(tf1.AUTO_REUSE, "shared"),
+                reuse=tf1.AUTO_REUSE,
+                auxiliary_name_scope=False):
+            last_layer = tf.keras.layers.Dense(
+                units=64, activation=tf.nn.relu, name="fc1")(inputs)
+        output = tf.keras.layers.Dense(
+            units=num_outputs, activation=None, name="fc_out")(last_layer)
+        vf = tf.keras.layers.Dense(
+            units=1, activation=None, name="value_out")(last_layer)
+        self.base_model = tf.keras.models.Model(inputs, [output, vf])
+
+</source>
+</class>
+
+<class classid="9" nclones="9" nlines="13" similarity="100">
+<source file="systems/ray-ray-1.11.0/rllib/examples/env/dm_control_suite.py" startline="7" endline="21" pcid="1898">
+def acrobot_swingup(from_pixels=True,
+                    height=64,
+                    width=64,
+                    frame_skip=2,
+                    channels_first=True):
+    return DMCEnv(
+        "acrobot",
+        "swingup",
+        from_pixels=from_pixels,
+        height=height,
+        width=width,
+        frame_skip=frame_skip,
+        channels_first=channels_first)
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/rllib/examples/env/dm_control_suite.py" startline="22" endline="36" pcid="1899">
+def walker_walk(from_pixels=True,
+                height=64,
+                width=64,
+                frame_skip=2,
+                channels_first=True):
+    return DMCEnv(
+        "walker",
+        "walk",
+        from_pixels=from_pixels,
+        height=height,
+        width=width,
+        frame_skip=frame_skip,
+        channels_first=channels_first)
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/rllib/examples/env/dm_control_suite.py" startline="82" endline="96" pcid="1903">
+def walker_run(from_pixels=True,
+               height=64,
+               width=64,
+               frame_skip=2,
+               channels_first=True):
+    return DMCEnv(
+        "walker",
+        "run",
+        from_pixels=from_pixels,
+        height=height,
+        width=width,
+        frame_skip=frame_skip,
+        channels_first=channels_first)
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/rllib/examples/env/dm_control_suite.py" startline="37" endline="51" pcid="1900">
+def hopper_hop(from_pixels=True,
+               height=64,
+               width=64,
+               frame_skip=2,
+               channels_first=True):
+    return DMCEnv(
+        "hopper",
+        "hop",
+        from_pixels=from_pixels,
+        height=height,
+        width=width,
+        frame_skip=frame_skip,
+        channels_first=channels_first)
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/rllib/examples/env/dm_control_suite.py" startline="97" endline="111" pcid="1904">
+def pendulum_swingup(from_pixels=True,
+                     height=64,
+                     width=64,
+                     frame_skip=2,
+                     channels_first=True):
+    return DMCEnv(
+        "pendulum",
+        "swingup",
+        from_pixels=from_pixels,
+        height=height,
+        width=width,
+        frame_skip=frame_skip,
+        channels_first=channels_first)
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/rllib/examples/env/dm_control_suite.py" startline="52" endline="66" pcid="1901">
+def hopper_stand(from_pixels=True,
+                 height=64,
+                 width=64,
+                 frame_skip=2,
+                 channels_first=True):
+    return DMCEnv(
+        "hopper",
+        "stand",
+        from_pixels=from_pixels,
+        height=height,
+        width=width,
+        frame_skip=frame_skip,
+        channels_first=channels_first)
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/rllib/examples/env/dm_control_suite.py" startline="112" endline="126" pcid="1905">
+def cartpole_swingup(from_pixels=True,
+                     height=64,
+                     width=64,
+                     frame_skip=2,
+                     channels_first=True):
+    return DMCEnv(
+        "cartpole",
+        "swingup",
+        from_pixels=from_pixels,
+        height=height,
+        width=width,
+        frame_skip=frame_skip,
+        channels_first=channels_first)
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/rllib/examples/env/dm_control_suite.py" startline="67" endline="81" pcid="1902">
+def cheetah_run(from_pixels=True,
+                height=64,
+                width=64,
+                frame_skip=2,
+                channels_first=True):
+    return DMCEnv(
+        "cheetah",
+        "run",
+        from_pixels=from_pixels,
+        height=height,
+        width=width,
+        frame_skip=frame_skip,
+        channels_first=channels_first)
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/rllib/examples/env/dm_control_suite.py" startline="127" endline="139" pcid="1906">
+def humanoid_walk(from_pixels=True,
+                  height=64,
+                  width=64,
+                  frame_skip=2,
+                  channels_first=True):
+    return DMCEnv(
+        "humanoid",
+        "walk",
+        from_pixels=from_pixels,
+        height=height,
+        width=width,
+        frame_skip=frame_skip,
+        channels_first=channels_first)
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="13" similarity="100">
+<source file="systems/ray-ray-1.11.0/release/lightgbm_tests/workloads/train_small.py" startline="42" endline="55" pcid="2165">
+    def train():
+        os.environ["TEST_OUTPUT_JSON"] = output
+        os.environ["TEST_STATE_JSON"] = state
+        train_ray(
+            path="/data/classification.parquet",
+            num_workers=4,
+            num_boost_rounds=100,
+            num_files=25,
+            regression=False,
+            use_gpu=False,
+            ray_params=ray_params,
+            lightgbm_params=None,
+        )
+
+</source>
+<source file="systems/ray-ray-1.11.0/release/xgboost_tests/workloads/train_small.py" startline="42" endline="55" pcid="2240">
+    def train():
+        os.environ["TEST_OUTPUT_JSON"] = output
+        os.environ["TEST_STATE_JSON"] = state
+        train_ray(
+            path="/data/classification.parquet",
+            num_workers=4,
+            num_boost_rounds=100,
+            num_files=25,
+            regression=False,
+            use_gpu=False,
+            ray_params=ray_params,
+            xgboost_params=None,
+        )
+
+</source>
+</class>
+
+<class classid="11" nclones="6" nlines="11" similarity="100">
+<source file="systems/ray-ray-1.11.0/release/lightgbm_tests/workloads/tune_small.py" startline="25" endline="37" pcid="2167">
+def train_wrapper(config, ray_params):
+    train_ray(
+        path="/data/classification.parquet",
+        num_workers=4,
+        num_boost_rounds=100,
+        num_files=25,
+        regression=False,
+        use_gpu=False,
+        ray_params=ray_params,
+        lightgbm_params=config,
+    )
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/release/lightgbm_tests/workloads/tune_4x32.py" startline="25" endline="37" pcid="2168">
+def train_wrapper(config, ray_params):
+    train_ray(
+        path="/data/classification.parquet",
+        num_workers=32,
+        num_boost_rounds=100,
+        num_files=128,
+        regression=False,
+        use_gpu=False,
+        ray_params=ray_params,
+        lightgbm_params=config,
+    )
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/release/xgboost_tests/workloads/tune_32x4.py" startline="25" endline="37" pcid="2245">
+def train_wrapper(config, ray_params):
+    train_ray(
+        path="/data/classification.parquet",
+        num_workers=4,
+        num_boost_rounds=100,
+        num_files=64,
+        regression=False,
+        use_gpu=False,
+        ray_params=ray_params,
+        xgboost_params=config,
+    )
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/release/lightgbm_tests/workloads/tune_32x4.py" startline="25" endline="37" pcid="2169">
+def train_wrapper(config, ray_params):
+    train_ray(
+        path="/data/classification.parquet",
+        num_workers=4,
+        num_boost_rounds=100,
+        num_files=64,
+        regression=False,
+        use_gpu=False,
+        ray_params=ray_params,
+        lightgbm_params=config,
+    )
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/release/xgboost_tests/workloads/tune_4x32.py" startline="25" endline="37" pcid="2244">
+def train_wrapper(config, ray_params):
+    train_ray(
+        path="/data/classification.parquet",
+        num_workers=32,
+        num_boost_rounds=100,
+        num_files=128,
+        regression=False,
+        use_gpu=False,
+        ray_params=ray_params,
+        xgboost_params=config,
+    )
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/release/xgboost_tests/workloads/tune_small.py" startline="25" endline="37" pcid="2243">
+def train_wrapper(config, ray_params):
+    train_ray(
+        path="/data/classification.parquet",
+        num_workers=4,
+        num_boost_rounds=100,
+        num_files=25,
+        regression=False,
+        use_gpu=False,
+        ray_params=ray_params,
+        xgboost_params=config,
+    )
+
+
+</source>
+</class>
+
+<class classid="12" nclones="3" nlines="10" similarity="100">
+<source file="systems/ray-ray-1.11.0/release/long_running_tests/workloads/actor_deaths.py" startline="73" endline="84" pcid="2191">
+    def ping(self, num_pings):
+        children_outputs = []
+        for _ in range(num_pings):
+            children_outputs += [
+                child.ping.remote() for child in self.children
+            ]
+        try:
+            ray.get(children_outputs)
+        except Exception:
+            # Replace the children if one of them died.
+            self.__init__(len(self.children), self.death_probability)
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/tests/test_threaded_actor.py" startline="219" endline="230" pcid="5853">
+        def ping(self, num_pings):
+            children_outputs = []
+            for _ in range(num_pings):
+                children_outputs += [
+                    child.ping.remote() for child in self.children
+                ]
+            try:
+                ray.get(children_outputs)
+            except Exception:
+                # Replace the children if one of them died.
+                self.__init__(len(self.children), self.death_probability)
+
+</source>
+<source file="systems/ray-ray-1.11.0/release/nightly_tests/stress_tests/test_dead_actors.py" startline="39" endline="50" pcid="2333">
+    def ping(self, num_pings):
+        children_outputs = []
+        for _ in range(num_pings):
+            children_outputs += [
+                child.ping.remote() for child in self.children
+            ]
+        try:
+            ray.get(children_outputs)
+        except Exception:
+            # Replace the children if one of them died.
+            self.__init__(len(self.children), self.death_probability)
+
+</source>
+</class>
+
+<class classid="13" nclones="3" nlines="10" similarity="100">
+<source file="systems/ray-ray-1.11.0/release/serve_tests/workloads/serve_cluster_fault_tolerance_gcs.py" startline="28" endline="39" pcid="2225">
+def request_with_retries(endpoint, timeout=3):
+    start = time.time()
+    while True:
+        try:
+            return requests.get(
+                "http://127.0.0.1:8000" + endpoint, timeout=timeout)
+        except requests.RequestException:
+            if time.time() - start > timeout:
+                raise TimeoutError
+            time.sleep(0.1)
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/serve/tests/test_failure.py" startline="12" endline="23" pcid="7817">
+def request_with_retries(endpoint, timeout=30):
+    start = time.time()
+    while True:
+        try:
+            return requests.get(
+                "http://127.0.0.1:8000" + endpoint, timeout=timeout)
+        except requests.RequestException:
+            if time.time() - start > timeout:
+                raise TimeoutError
+            time.sleep(0.1)
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/release/serve_tests/workloads/serve_cluster_fault_tolerance.py" startline="30" endline="41" pcid="2229">
+def request_with_retries(endpoint, timeout=3):
+    start = time.time()
+    while True:
+        try:
+            return requests.get(
+                "http://127.0.0.1:8000" + endpoint, timeout=timeout)
+        except requests.RequestException:
+            if time.time() - start > timeout:
+                raise TimeoutError
+            time.sleep(0.1)
+
+
+</source>
+</class>
+
+<class classid="14" nclones="3" nlines="12" similarity="100">
+<source file="systems/ray-ray-1.11.0/doc/kubernetes/example_scripts/job_example.py" startline="18" endline="32" pcid="2378">
+def wait_for_nodes(expected):
+    # Wait for all nodes to join the cluster.
+    while True:
+        resources = ray.cluster_resources()
+        node_keys = [key for key in resources if "node" in key]
+        num_nodes = sum(resources[node_key] for node_key in node_keys)
+        if num_nodes < expected:
+            print("{} nodes have joined so far, waiting for {} more.".format(
+                num_nodes, expected - num_nodes))
+            sys.stdout.flush()
+            time.sleep(1)
+        else:
+            break
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/doc/kubernetes/example_scripts/run_local_example.py" startline="25" endline="39" pcid="2384">
+def wait_for_nodes(expected):
+    # Wait for all nodes to join the cluster.
+    while True:
+        resources = ray.cluster_resources()
+        node_keys = [key for key in resources if "node" in key]
+        num_nodes = sum(resources[node_key] for node_key in node_keys)
+        if num_nodes < expected:
+            print("{} nodes have joined so far, waiting for {} more.".format(
+                num_nodes, expected - num_nodes))
+            sys.stdout.flush()
+            time.sleep(1)
+        else:
+            break
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/doc/kubernetes/example_scripts/run_on_head.py" startline="17" endline="31" pcid="2381">
+def wait_for_nodes(expected):
+    # Wait for all nodes to join the cluster.
+    while True:
+        resources = ray.cluster_resources()
+        node_keys = [key for key in resources if "node" in key]
+        num_nodes = sum(resources[node_key] for node_key in node_keys)
+        if num_nodes < expected:
+            print("{} nodes have joined so far, waiting for {} more.".format(
+                num_nodes, expected - num_nodes))
+            sys.stdout.flush()
+            time.sleep(1)
+        else:
+            break
+
+
+</source>
+</class>
+
+<class classid="15" nclones="3" nlines="11" similarity="100">
+<source file="systems/ray-ray-1.11.0/doc/kubernetes/example_scripts/job_example.py" startline="33" endline="48" pcid="2379">
+def main():
+    wait_for_nodes(3)
+
+    # Check that objects can be transferred from each node to each other node.
+    for i in range(10):
+        print("Iteration {}".format(i))
+        results = [
+            gethostname.remote(gethostname.remote(())) for _ in range(100)
+        ]
+        print(Counter(ray.get(results)))
+        sys.stdout.flush()
+
+    print("Success!")
+    sys.stdout.flush()
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/doc/kubernetes/example_scripts/run_local_example.py" startline="40" endline="55" pcid="2385">
+def main():
+    wait_for_nodes(3)
+
+    # Check that objects can be transferred from each node to each other node.
+    for i in range(10):
+        print("Iteration {}".format(i))
+        results = [
+            gethostname.remote(gethostname.remote(())) for _ in range(100)
+        ]
+        print(Counter(ray.get(results)))
+        sys.stdout.flush()
+
+    print("Success!")
+    sys.stdout.flush()
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/doc/kubernetes/example_scripts/run_on_head.py" startline="32" endline="47" pcid="2382">
+def main():
+    wait_for_nodes(3)
+
+    # Check that objects can be transferred from each node to each other node.
+    for i in range(10):
+        print("Iteration {}".format(i))
+        results = [
+            gethostname.remote(gethostname.remote(())) for _ in range(100)
+        ]
+        print(Counter(ray.get(results)))
+        sys.stdout.flush()
+
+    print("Success!")
+    sys.stdout.flush()
+
+
+</source>
+</class>
+
+<class classid="16" nclones="2" nlines="12" similarity="100">
+<source file="systems/ray-ray-1.11.0/ci/travis/py_dep_analysis_test.py" startline="40" endline="59" pcid="2601">
+    def test_import_line_continuation(self):
+        graph = pda.DepGraph()
+        graph.ids["ray"] = 0
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            src_path = os.path.join(tmpdir, "continuation1.py")
+            self.create_tmp_file(
+                src_path, """
+import ray.rllib.env.\\
+    mock_env
+b = 2
+""")
+            pda._process_file(graph, src_path, "ray")
+
+        self.assertEqual(len(graph.ids), 2)
+        print(graph.ids)
+        # Shoud pick up the full module name.
+        self.assertEqual(graph.ids["ray.rllib.env.mock_env"], 1)
+        self.assertEqual(graph.edges[0], {1: True})
+
+</source>
+<source file="systems/ray-ray-1.11.0/ci/travis/py_dep_analysis_test.py" startline="60" endline="79" pcid="2602">
+    def test_import_line_continuation_parenthesis(self):
+        graph = pda.DepGraph()
+        graph.ids["ray"] = 0
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            src_path = os.path.join(tmpdir, "continuation1.py")
+            self.create_tmp_file(
+                src_path, """
+from ray.rllib.env import (ClassName,
+    module1, module2)
+b = 2
+""")
+            pda._process_file(graph, src_path, "ray")
+
+        self.assertEqual(len(graph.ids), 2)
+        print(graph.ids)
+        # Shoud pick up the full module name without trailing (.
+        self.assertEqual(graph.ids["ray.rllib.env"], 1)
+        self.assertEqual(graph.edges[0], {1: True})
+
+</source>
+</class>
+
+<class classid="17" nclones="2" nlines="11" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/tune/tests/test_torch_trainable.py" startline="154" endline="166" pcid="3002">
+def test_colocated_gpu(ray_4_node_gpu):  # noqa: F811
+    assert ray.available_resources()["GPU"] == 8
+    trainable_cls = DistributedTrainableCreator(
+        _train_check_global,
+        num_workers=4,
+        num_gpus_per_worker=2,
+        num_workers_per_host=1)
+    trainable = trainable_cls()
+    assert ray.available_resources().get("GPU", 0) == 0
+    trainable.train()
+    trainable.stop()
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/tune/tests/test_tensorflow_trainable.py" startline="115" endline="127" pcid="3194">
+def test_colocated_gpu(ray_4_node_gpu):  # noqa: F811
+    assert ray.available_resources()["GPU"] == 8
+    trainable_cls = DistributedTrainableCreator(
+        _train_check_global,
+        num_workers=4,
+        num_gpus_per_worker=2,
+        num_workers_per_host=1)
+    trainable = trainable_cls()
+    assert ray.available_resources().get("GPU", 0) == 0
+    trainable.train()
+    trainable.stop()
+
+
+</source>
+</class>
+
+<class classid="18" nclones="2" nlines="36" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/tune/tests/test_tune_restore.py" startline="293" endline="335" pcid="3365">
+    def testFailResumeWithPreset(self):
+        os.environ["TUNE_MAX_PENDING_TRIALS_PG"] = "1"
+
+        search_alg = BasicVariantGenerator(points_to_evaluate=[{
+            "test": -1,
+            "test2": -1
+        }, {
+            "test": -1
+        }, {
+            "test2": -1
+        }])
+
+        config = dict(
+            num_samples=3 + 3,  # 3 preset, 3 samples
+            fail_fast=True,
+            config={
+                "test": tune.grid_search([1, 2, 3]),
+                "test2": tune.grid_search([1, 2, 3]),
+            },
+            stop={"training_iteration": 2},
+            local_dir=self.logdir,
+            verbose=1)
+        with self.assertRaises(RuntimeError):
+            tune.run(
+                "trainable",
+                callbacks=[self.FailureInjectorCallback(5)],
+                search_alg=search_alg,
+                **config)
+
+        analysis = tune.run(
+            "trainable",
+            resume=True,
+            callbacks=[self.CheckStateCallback(expected_trials=5)],
+            search_alg=search_alg,
+            **config)
+        assert len(analysis.trials) == 34
+        test_counter = Counter([t.config["test"] for t in analysis.trials])
+        assert test_counter.pop(-1) == 4
+        assert all(v == 10 for v in test_counter.values())
+        test2_counter = Counter([t.config["test2"] for t in analysis.trials])
+        assert test2_counter.pop(-1) == 4
+        assert all(v == 10 for v in test2_counter.values())
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/tune/tests/test_tune_restore.py" startline="336" endline="379" pcid="3366">
+    def testFailResumeAfterPreset(self):
+        os.environ["TUNE_MAX_PENDING_TRIALS_PG"] = "1"
+
+        search_alg = BasicVariantGenerator(points_to_evaluate=[{
+            "test": -1,
+            "test2": -1
+        }, {
+            "test": -1
+        }, {
+            "test2": -1
+        }])
+
+        config = dict(
+            num_samples=3 + 3,  # 3 preset, 3 samples
+            fail_fast=True,
+            config={
+                "test": tune.grid_search([1, 2, 3]),
+                "test2": tune.grid_search([1, 2, 3]),
+            },
+            stop={"training_iteration": 2},
+            local_dir=self.logdir,
+            verbose=1)
+
+        with self.assertRaises(RuntimeError):
+            tune.run(
+                "trainable",
+                callbacks=[self.FailureInjectorCallback(15)],
+                search_alg=search_alg,
+                **config)
+
+        analysis = tune.run(
+            "trainable",
+            resume=True,
+            callbacks=[self.CheckStateCallback(expected_trials=15)],
+            search_alg=search_alg,
+            **config)
+        assert len(analysis.trials) == 34
+        test_counter = Counter([t.config["test"] for t in analysis.trials])
+        assert test_counter.pop(-1) == 4
+        assert all(v == 10 for v in test_counter.values())
+        test2_counter = Counter([t.config["test2"] for t in analysis.trials])
+        assert test2_counter.pop(-1) == 4
+        assert all(v == 10 for v in test2_counter.values())
+
+</source>
+</class>
+
+<class classid="19" nclones="4" nlines="12" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/tune/tests/test_searchers.py" startline="80" endline="95" pcid="3407">
+    def testBayesOpt(self):
+        from ray.tune.suggest.bayesopt import BayesOptSearch
+
+        out = tune.run(
+            _invalid_objective,
+            # At least one nan, inf, -inf and float
+            search_alg=BayesOptSearch(random_state=1234),
+            config=self.config,
+            metric="_metric",
+            mode="max",
+            num_samples=8,
+            reuse_actors=False)
+
+        best_trial = out.best_trial
+        self.assertLessEqual(best_trial.config["report"], 2.0)
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/tune/tests/test_searchers.py" startline="176" endline="191" pcid="3412">
+    def testHEBO(self):
+        from ray.tune.suggest.hebo import HEBOSearch
+
+        out = tune.run(
+            _invalid_objective,
+            # At least one nan, inf, -inf and float
+            search_alg=HEBOSearch(random_state_seed=123),
+            config=self.config,
+            metric="_metric",
+            mode="max",
+            num_samples=8,
+            reuse_actors=False)
+
+        best_trial = out.best_trial
+        self.assertLessEqual(best_trial.config["report"], 2.0)
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/tune/tests/test_searchers.py" startline="119" endline="133" pcid="3409">
+    def testBOHB(self):
+        from ray.tune.suggest.bohb import TuneBOHB
+
+        out = tune.run(
+            _invalid_objective,
+            search_alg=TuneBOHB(seed=1000),
+            config=self.config,
+            metric="_metric",
+            mode="max",
+            num_samples=8,
+            reuse_actors=False)
+
+        best_trial = out.best_trial
+        self.assertLessEqual(best_trial.config["report"], 2.0)
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/tune/tests/test_searchers.py" startline="192" endline="207" pcid="3413">
+    def testHyperopt(self):
+        from ray.tune.suggest.hyperopt import HyperOptSearch
+
+        out = tune.run(
+            _invalid_objective,
+            # At least one nan, inf, -inf and float
+            search_alg=HyperOptSearch(random_state_seed=1234),
+            config=self.config,
+            metric="_metric",
+            mode="max",
+            num_samples=8,
+            reuse_actors=False)
+
+        best_trial = out.best_trial
+        self.assertLessEqual(best_trial.config["report"], 2.0)
+
+</source>
+</class>
+
+<class classid="20" nclones="2" nlines="14" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/tune/tests/test_searchers.py" startline="433" endline="451" pcid="3427">
+    def testHEBO(self):
+        from ray.tune.suggest.hebo import HEBOSearch
+
+        searcher = HEBOSearch(
+            space=self.space,
+            metric="metric",
+            mode="max",
+        )
+
+        point = {
+            self.param_name: self.valid_value,
+        }
+
+        get_len_X = lambda s: len(s._opt.X)  # noqa E731
+        get_len_y = lambda s: len(s._opt.y)  # noqa E731
+
+        self.run_add_evaluated_point(point, searcher, get_len_X, get_len_y)
+        self.run_add_evaluated_trials(searcher, get_len_X, get_len_y)
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/tune/tests/test_searchers.py" startline="452" endline="471" pcid="3428">
+    def testSkOpt(self):
+        from ray.tune.suggest.skopt import SkOptSearch
+
+        searcher = SkOptSearch(
+            space=self.space,
+            metric="metric",
+            mode="max",
+        )
+
+        point = {
+            self.param_name: self.valid_value,
+        }
+
+        get_len_X = lambda s: len(s._skopt_opt.Xi)  # noqa E731
+        get_len_y = lambda s: len(s._skopt_opt.yi)  # noqa E731
+
+        self.run_add_evaluated_point(point, searcher, get_len_X, get_len_y)
+        self.run_add_evaluated_trials(searcher, get_len_X, get_len_y)
+
+
+</source>
+</class>
+
+<class classid="21" nclones="2" nlines="12" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/tune/suggest/bohb.py" startline="168" endline="182" pcid="3562">
+
+        bohb_config = self._bohb_config or {}
+        self.bohber = BOHB(self._space, **bohb_config)
+
+    def set_search_properties(self, metric: Optional[str], mode: Optional[str],
+                              config: Dict, **spec) -> bool:
+        if self._space:
+            return False
+        space = self.convert_search_space(config)
+        self._space = space
+
+        if metric:
+            self._metric = metric
+        if mode:
+            self._mode = mode
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/tune/suggest/dragonfly.py" startline="310" endline="323" pcid="3583">
+            logger.warning("Only non errored and non pruned points"
+                           " can be added to dragonfly.")
+
+    def set_search_properties(self, metric: Optional[str], mode: Optional[str],
+                              config: Dict, **spec) -> bool:
+        if self._opt:
+            return False
+        space = self.convert_search_space(config)
+        self._space = space
+        if metric:
+            self._metric = metric
+        if mode:
+            self._mode = mode
+
+</source>
+</class>
+
+<class classid="22" nclones="3" nlines="17" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/tune/examples/optuna_example.py" startline="33" endline="54" pcid="3718">
+def run_optuna_tune(smoke_test=False):
+    algo = OptunaSearch()
+    algo = ConcurrencyLimiter(algo, max_concurrent=4)
+    scheduler = AsyncHyperBandScheduler()
+    analysis = tune.run(
+        easy_objective,
+        metric="mean_loss",
+        mode="min",
+        search_alg=algo,
+        scheduler=scheduler,
+        num_samples=10 if smoke_test else 100,
+        config={
+            "steps": 100,
+            "width": tune.uniform(0, 20),
+            "height": tune.uniform(-100, 100),
+            # This is an ignored parameter.
+            "activation": tune.choice(["relu", "tanh"])
+        })
+
+    print("Best hyperparameters found were: ", analysis.best_config)
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/tune/examples/blendsearch_example.py" startline="30" endline="51" pcid="3903">
+def run_blendsearch_tune(smoke_test=False):
+    algo = BlendSearch()
+    algo = ConcurrencyLimiter(algo, max_concurrent=4)
+    scheduler = AsyncHyperBandScheduler()
+    analysis = tune.run(
+        easy_objective,
+        metric="mean_loss",
+        mode="min",
+        search_alg=algo,
+        scheduler=scheduler,
+        num_samples=10 if smoke_test else 100,
+        config={
+            "steps": 100,
+            "width": tune.uniform(0, 20),
+            "height": tune.uniform(-100, 100),
+            # This is an ignored parameter.
+            "activation": tune.choice(["relu", "tanh"])
+        })
+
+    print("Best hyperparameters found were: ", analysis.best_config)
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/tune/examples/cfo_example.py" startline="30" endline="51" pcid="3802">
+def run_cfo_tune(smoke_test=False):
+    algo = CFO()
+    algo = ConcurrencyLimiter(algo, max_concurrent=4)
+    scheduler = AsyncHyperBandScheduler()
+    analysis = tune.run(
+        easy_objective,
+        metric="mean_loss",
+        mode="min",
+        search_alg=algo,
+        scheduler=scheduler,
+        num_samples=10 if smoke_test else 100,
+        config={
+            "steps": 100,
+            "width": tune.uniform(0, 20),
+            "height": tune.uniform(-100, 100),
+            # This is an ignored parameter.
+            "activation": tune.choice(["relu", "tanh"])
+        })
+
+    print("Best hyperparameters found were: ", analysis.best_config)
+
+
+</source>
+</class>
+
+<class classid="23" nclones="3" nlines="10" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/tune/examples/mnist_ptl_mini.py" startline="29" endline="39" pcid="3773">
+    def forward(self, x):
+        batch_size, channels, width, height = x.size()
+        x = x.view(batch_size, -1)
+        x = self.layer_1(x)
+        x = torch.relu(x)
+        x = self.layer_2(x)
+        x = torch.relu(x)
+        x = self.layer_3(x)
+        x = torch.log_softmax(x, dim=1)
+        return x
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/util/sgd/torch/examples/pytorch-lightning/mnist-ptl.py" startline="37" endline="50" pcid="6840">
+    def forward(self, x):
+        batch_size, channels, width, height = x.size()
+
+        # (b, 1, 28, 28) -> (b, 1*28*28)
+        x = x.view(batch_size, -1)
+        x = self.layer_1(x)
+        x = torch.relu(x)
+        x = self.layer_2(x)
+        x = torch.relu(x)
+        x = self.layer_3(x)
+
+        x = torch.log_softmax(x, dim=1)
+        return x
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/tune/examples/mnist_pytorch_lightning.py" startline="48" endline="62" pcid="3852">
+
+    def forward(self, x):
+        batch_size, channels, width, height = x.size()
+        x = x.view(batch_size, -1)
+
+        x = self.layer_1(x)
+        x = torch.relu(x)
+
+        x = self.layer_2(x)
+        x = torch.relu(x)
+
+        x = self.layer_3(x)
+        x = torch.log_softmax(x, dim=1)
+
+        return x
+</source>
+</class>
+
+<class classid="24" nclones="2" nlines="12" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/tune/examples/wandb_example.py" startline="44" endline="60" pcid="3898">
+
+
+def tune_decorated(api_key_file):
+    """Example for using the @wandb_mixin decorator with the function API"""
+    analysis = tune.run(
+        decorated_train_function,
+        metric="loss",
+        mode="min",
+        config={
+            "mean": tune.grid_search([1, 2, 3, 4, 5]),
+            "sd": tune.uniform(0.2, 0.8),
+            "wandb": {
+                "api_key_file": api_key_file,
+                "project": "Wandb_example"
+            }
+        })
+    return analysis.best_config
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/tune/examples/wandb_example.py" startline="69" endline="85" pcid="3900">
+
+
+def tune_trainable(api_key_file):
+    """Example for using a WandTrainableMixin with the class API"""
+    analysis = tune.run(
+        WandbTrainable,
+        metric="loss",
+        mode="min",
+        config={
+            "mean": tune.grid_search([1, 2, 3, 4, 5]),
+            "sd": tune.uniform(0.2, 0.8),
+            "wandb": {
+                "api_key_file": api_key_file,
+                "project": "Wandb_example"
+            }
+        })
+    return analysis.best_config
+</source>
+</class>
+
+<class classid="25" nclones="2" nlines="10" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/data/tests/mock_server.py" startline="50" endline="67" pcid="4431">
+def stop_process(process):
+    try:
+        process.send_signal(signal.SIGTERM)
+        process.communicate(timeout=20)
+    except sp.TimeoutExpired:
+        process.kill()
+        outs, errors = process.communicate(timeout=20)
+        exit_code = process.returncode
+        msg = "Child process finished {} not in clean way: {} {}" \
+            .format(exit_code, outs, errors)
+        raise RuntimeError(msg)
+
+
+# TODO(Clark): We should be able to use "session" scope here, but we've found
+# that the s3_fs fixture ends up hanging with S3 ops timing out (or the server
+# being unreachable). This appears to only be an issue when using the tmp_dir
+# fixture as the S3 dir path. We should fix this since "session" scope should
+# reduce a lot of the per-test overhead (2x faster execution for IO methods in
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/workflow/tests/mock_server.py" startline="48" endline="59" pcid="4527">
+def stop_process(process):
+    try:
+        process.send_signal(signal.SIGTERM)
+        process.communicate(timeout=20)
+    except sp.TimeoutExpired:
+        process.kill()
+        outs, errors = process.communicate(timeout=20)
+        exit_code = process.returncode
+        msg = "Child process finished {} not in clean way: {} {}" \
+            .format(exit_code, outs, errors)
+        raise RuntimeError(msg)
+
+</source>
+</class>
+
+<class classid="26" nclones="2" nlines="12" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/tests/test_object_spilling_2.py" startline="114" endline="129" pcid="5030">
+        def create_objects(self):
+            for _ in range(80):
+                ref = None
+                while ref is None:
+                    ref = ray.put(arr)
+                    self.replay_buffer.append(ref)
+                # Remove the replay buffer with 60% probability.
+                if random.randint(0, 9) < 6:
+                    self.replay_buffer.pop()
+
+            # Do random sampling.
+            for _ in range(200):
+                ref = random.choice(self.replay_buffer)
+                sample = ray.get(ref, timeout=0)
+                assert np.array_equal(sample, arr)
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/tests/test_object_spilling_2.py" startline="184" endline="199" pcid="5035">
+        def create_objects(self):
+            for _ in range(80):
+                ref = None
+                while ref is None:
+                    ref = ray.put(arr)
+                    self.replay_buffer.append(ref)
+                # Remove the replay buffer with 60% probability.
+                if random.randint(0, 9) < 6:
+                    self.replay_buffer.pop()
+
+            # Do random sampling.
+            for _ in range(50):
+                ref = random.choice(self.replay_buffer)
+                sample = ray.get(ref, timeout=10)
+                assert np.array_equal(sample, arr)
+
+</source>
+</class>
+
+<class classid="27" nclones="2" nlines="12" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/tests/test_reference_counting.py" startline="36" endline="52" pcid="5081">
+def _fill_object_store_and_get(obj, succeed=True, object_MiB=20,
+                               num_objects=5):
+    for _ in range(num_objects):
+        ray.put(np.zeros(object_MiB * 1024 * 1024, dtype=np.uint8))
+
+    if type(obj) is bytes:
+        obj = ray.ObjectRef(obj)
+
+    if succeed:
+        wait_for_condition(
+            lambda: ray.worker.global_worker.core_worker.object_exists(obj))
+    else:
+        wait_for_condition(
+            lambda: not ray.worker.global_worker.core_worker.object_exists(obj)
+        )
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/tests/test_reference_counting_2.py" startline="38" endline="56" pcid="5283">
+def _fill_object_store_and_get(obj, succeed=True, object_MiB=20,
+                               num_objects=5):
+    for _ in range(num_objects):
+        ray.put(np.zeros(object_MiB * 1024 * 1024, dtype=np.uint8))
+
+    if type(obj) is bytes:
+        obj = ray.ObjectRef(obj)
+
+    if succeed:
+        wait_for_condition(
+            lambda: ray.worker.global_worker.core_worker.object_exists(obj))
+    else:
+        wait_for_condition(
+            lambda: not ray.worker.global_worker.core_worker.object_exists(obj)
+        )
+
+
+# Test that an object containing object refs within it pins the inner IDs
+# recursively and for submitted tasks.
+</source>
+</class>
+
+<class classid="28" nclones="2" nlines="14" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/tests/test_component_failures_2.py" startline="77" endline="93" pcid="5481">
+def check_components_alive(cluster, component_type, check_component_alive):
+    """Check that a given component type is alive on all worker nodes."""
+    worker_nodes = get_other_nodes(cluster)
+    assert len(worker_nodes) > 0
+    for node in worker_nodes:
+        process = node.all_processes[component_type][0].process
+        if check_component_alive:
+            assert process.poll() is None
+        else:
+            print("waiting for " + component_type + " with PID " +
+                  str(process.pid) + "to terminate")
+            process.wait()
+            print("done waiting for " + component_type + " with PID " +
+                  str(process.pid) + "to terminate")
+            assert not process.poll() is None
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/tests/test_multinode_failures.py" startline="135" endline="151" pcid="5828">
+def check_components_alive(cluster, component_type, check_component_alive):
+    """Check that a given component type is alive on all worker nodes."""
+    worker_nodes = get_other_nodes(cluster)
+    assert len(worker_nodes) > 0
+    for node in worker_nodes:
+        process = node.all_processes[component_type][0].process
+        if check_component_alive:
+            assert process.poll() is None
+        else:
+            print("waiting for " + component_type + " with PID " +
+                  str(process.pid) + "to terminate")
+            process.wait()
+            print("done waiting for " + component_type + " with PID " +
+                  str(process.pid) + "to terminate")
+            assert not process.poll() is None
+
+
+</source>
+</class>
+
+<class classid="29" nclones="2" nlines="19" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/tests/test_component_failures.py" startline="66" endline="104" pcid="5693">
+def test_dying_driver_get(ray_start_regular):
+    # Start the Ray processes.
+    address_info = ray_start_regular
+
+    @ray.remote
+    def sleep_forever():
+        time.sleep(10**6)
+
+    x_id = sleep_forever.remote()
+
+    driver = """
+import ray
+ray.init("{}")
+ray.get(ray.ObjectRef(ray._private.utils.hex_to_binary("{}")))
+""".format(address_info["address"], x_id.hex())
+
+    p = run_string_as_driver_nonblocking(driver)
+    # Make sure the driver is running.
+    time.sleep(1)
+    assert p.poll() is None
+
+    # Kill the driver process.
+    p.kill()
+    p.wait()
+    time.sleep(0.1)
+
+    # Make sure the original task hasn't finished.
+    ready_ids, _ = ray.wait([x_id], timeout=0)
+    assert len(ready_ids) == 0
+    # Seal the object so the store attempts to notify the worker that the
+    # get has been fulfilled.
+    obj = np.ones(200 * 1024, dtype=np.uint8)
+    ray.worker.global_worker.put_object(obj, x_id)
+    time.sleep(0.1)
+
+    # Make sure that nothing has died.
+    assert ray._private.services.remaining_processes_alive()
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/tests/test_component_failures.py" startline="145" endline="183" pcid="5699">
+def test_dying_driver_wait(ray_start_regular):
+    # Start the Ray processes.
+    address_info = ray_start_regular
+
+    @ray.remote
+    def sleep_forever():
+        time.sleep(10**6)
+
+    x_id = sleep_forever.remote()
+
+    driver = """
+import ray
+ray.init("{}")
+ray.wait([ray.ObjectRef(ray._private.utils.hex_to_binary("{}"))])
+""".format(address_info["address"], x_id.hex())
+
+    p = run_string_as_driver_nonblocking(driver)
+    # Make sure the driver is running.
+    time.sleep(1)
+    assert p.poll() is None
+
+    # Kill the driver process.
+    p.kill()
+    p.wait()
+    time.sleep(0.1)
+
+    # Make sure the original task hasn't finished.
+    ready_ids, _ = ray.wait([x_id], timeout=0)
+    assert len(ready_ids) == 0
+    # Seal the object so the store attempts to notify the worker that the
+    # wait can return.
+    obj = np.ones(200 * 1024, dtype=np.uint8)
+    ray.worker.global_worker.put_object(obj, x_id)
+    time.sleep(0.1)
+
+    # Make sure that nothing has died.
+    assert ray._private.services.remaining_processes_alive()
+
+
+</source>
+</class>
+
+<class classid="30" nclones="2" nlines="13" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/train/tests/test_tune.py" startline="47" endline="66" pcid="6550">
+
+
+def torch_fashion_mnist(num_workers, use_gpu, num_samples):
+    epochs = 2
+
+    trainer = Trainer("torch", num_workers=num_workers, use_gpu=use_gpu)
+    MnistTrainable = trainer.to_tune_trainable(fashion_mnist_train_func)
+
+    analysis = tune.run(
+        MnistTrainable,
+        num_samples=num_samples,
+        config={
+            "lr": tune.loguniform(1e-4, 1e-1),
+            "batch_size": tune.choice([32, 64, 128]),
+            "epochs": epochs
+        })
+
+    # Check that loss decreases in each trial.
+    for path, df in analysis.trial_dataframes.items():
+        assert df.loc[1, "loss"] < df.loc[0, "loss"]
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/train/tests/test_tune.py" startline="71" endline="89" pcid="6552">
+
+
+def tune_tensorflow_mnist(num_workers, use_gpu, num_samples):
+    epochs = 2
+    trainer = Trainer("tensorflow", num_workers=num_workers, use_gpu=use_gpu)
+    MnistTrainable = trainer.to_tune_trainable(tensorflow_mnist_train_func)
+
+    analysis = tune.run(
+        MnistTrainable,
+        num_samples=num_samples,
+        config={
+            "lr": tune.loguniform(1e-4, 1e-1),
+            "batch_size": tune.choice([32, 64, 128]),
+            "epochs": epochs
+        })
+
+    # Check that loss decreases in each trial.
+    for path, df in analysis.trial_dataframes.items():
+        assert df.loc[1, "loss"] < df.loc[0, "loss"]
+</source>
+</class>
+
+<class classid="31" nclones="2" nlines="11" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/util/sgd/tests/test_torch_basic.py" startline="40" endline="53" pcid="6999">
+def test_single_step(ray_start_2_cpus, use_local):  # noqa: F811
+    trainer = TorchTrainer(
+        training_operator_cls=Operator,
+        num_workers=1,
+        use_local=use_local,
+        use_gpu=False)
+    metrics = trainer.train(num_steps=1)
+    assert metrics[BATCH_COUNT] == 1
+
+    val_metrics = trainer.validate(num_steps=1)
+    assert val_metrics[BATCH_COUNT] == 1
+    trainer.shutdown()
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/util/sgd/tests/test_ptl.py" startline="87" endline="100" pcid="7049">
+@pytest.mark.parametrize("use_local", [True, False])
+def test_single_step(ray_start_2_cpus, use_local):  # noqa: F811
+    trainer = TorchTrainer(
+        training_operator_cls=Operator,
+        num_workers=1,
+        use_local=use_local,
+        use_gpu=False)
+    metrics = trainer.train(num_steps=1)
+    assert metrics[BATCH_COUNT] == 1
+
+    val_metrics = trainer.validate(num_steps=1)
+    assert val_metrics[BATCH_COUNT] == 1
+    trainer.shutdown()
+
+</source>
+</class>
+
+<class classid="32" nclones="2" nlines="15" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/distributed_gpu_tests/test_distributed_allgather.py" startline="14" endline="30" pcid="7202">
+                         [2, 2**5, 2**10, 2**15, 2**20, [2, 2], [5, 5, 5]])
+def test_allgather_different_array_size(ray_start_distributed_2_nodes_4_gpus,
+                                        array_size, tensor_backend):
+    world_size = 4
+    actors, _ = create_collective_workers(world_size)
+    init_tensors_for_gather_scatter(
+        actors, array_size=array_size, tensor_backend=tensor_backend)
+    results = ray.get([a.do_allgather.remote() for a in actors])
+    for i in range(world_size):
+        for j in range(world_size):
+            if tensor_backend == "cupy":
+                assert (results[i][j] == cp.ones(array_size, dtype=cp.float32)
+                        * (j + 1)).all()
+            else:
+                assert (results[i][j] == torch.ones(
+                    array_size, dtype=torch.float32).cuda() * (j + 1)).all()
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/single_node_gpu_tests/test_allgather.py" startline="14" endline="30" pcid="7236">
+                         [2, 2**5, 2**10, 2**15, 2**20, [2, 2], [5, 5, 5]])
+def test_allgather_different_array_size(ray_start_single_node_2_gpus,
+                                        array_size, tensor_backend):
+    world_size = 2
+    actors, _ = create_collective_workers(world_size)
+    init_tensors_for_gather_scatter(
+        actors, array_size=array_size, tensor_backend=tensor_backend)
+    results = ray.get([a.do_allgather.remote() for a in actors])
+    for i in range(world_size):
+        for j in range(world_size):
+            if tensor_backend == "cupy":
+                assert (results[i][j] == cp.ones(array_size, dtype=cp.float32)
+                        * (j + 1)).all()
+            else:
+                assert (results[i][j] == torch.ones(
+                    array_size, dtype=torch.float32).cuda() * (j + 1)).all()
+
+</source>
+</class>
+
+<class classid="33" nclones="2" nlines="11" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/distributed_gpu_tests/test_distributed_allgather.py" startline="59" endline="71" pcid="7205">
+@pytest.mark.parametrize("shape", [10, 20, [4, 5], [1, 3, 5, 7]])
+def test_unmatched_tensor_shape(ray_start_distributed_2_nodes_4_gpus, shape):
+    world_size = 4
+    actors, _ = create_collective_workers(world_size)
+    init_tensors_for_gather_scatter(actors, array_size=10)
+    list_buffer = [cp.ones(shape, dtype=cp.float32) for _ in range(world_size)]
+    ray.get([a.set_list_buffer.remote(list_buffer) for a in actors])
+    if shape != 10:
+        with pytest.raises(RuntimeError):
+            ray.get([a.do_allgather.remote() for a in actors])
+    else:
+        ray.get([a.do_allgather.remote() for a in actors])
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/single_node_gpu_tests/test_allgather.py" startline="57" endline="69" pcid="7239">
+@pytest.mark.parametrize("shape", [10, 20, [4, 5], [1, 3, 5, 7]])
+def test_unmatched_tensor_shape(ray_start_single_node_2_gpus, shape):
+    world_size = 2
+    actors, _ = create_collective_workers(world_size)
+    init_tensors_for_gather_scatter(actors, array_size=10)
+    list_buffer = [cp.ones(shape, dtype=cp.float32) for _ in range(world_size)]
+    ray.get([a.set_list_buffer.remote(list_buffer) for a in actors])
+    if shape != 10:
+        with pytest.raises(RuntimeError):
+            ray.get([a.do_allgather.remote() for a in actors])
+    else:
+        ray.get([a.do_allgather.remote() for a in actors])
+
+</source>
+</class>
+
+<class classid="34" nclones="2" nlines="48" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/distributed_gpu_tests/test_distributed_allgather.py" startline="72" endline="128" pcid="7206">
+
+def test_allgather_torch_cupy(ray_start_distributed_2_nodes_4_gpus):
+    world_size = 4
+    shape = [10, 10]
+    actors, _ = create_collective_workers(world_size)
+
+    # tensor is pytorch, list is cupy
+    for i, a in enumerate(actors):
+        t = torch.ones(shape, dtype=torch.float32).cuda() * (i + 1)
+        ray.wait([a.set_buffer.remote(t)])
+        list_buffer = [
+            cp.ones(shape, dtype=cp.float32) for _ in range(world_size)
+        ]
+        ray.wait([a.set_list_buffer.remote(list_buffer)])
+    results = ray.get([a.do_allgather.remote() for a in actors])
+    for i in range(world_size):
+        for j in range(world_size):
+            assert (results[i][j] == cp.ones(shape, dtype=cp.float32) *
+                    (j + 1)).all()
+
+    # tensor is cupy, list is pytorch
+    for i, a in enumerate(actors):
+        t = cp.ones(shape, dtype=cp.float32) * (i + 1)
+        ray.wait([a.set_buffer.remote(t)])
+        list_buffer = [
+            torch.ones(shape, dtype=torch.float32).cuda()
+            for _ in range(world_size)
+        ]
+        ray.wait([a.set_list_buffer.remote(list_buffer)])
+    results = ray.get([a.do_allgather.remote() for a in actors])
+    for i in range(world_size):
+        for j in range(world_size):
+            assert (results[i][j] == torch.ones(
+                shape, dtype=torch.float32).cuda() * (j + 1)).all()
+
+    # some tensors in the list are pytorch, some are cupy
+    for i, a in enumerate(actors):
+        t = cp.ones(shape, dtype=cp.float32) * (i + 1)
+        ray.wait([a.set_buffer.remote(t)])
+        list_buffer = []
+        for j in range(world_size):
+            if j % 2 == 0:
+                list_buffer.append(
+                    torch.ones(shape, dtype=torch.float32).cuda())
+            else:
+                list_buffer.append(cp.ones(shape, dtype=cp.float32))
+        ray.wait([a.set_list_buffer.remote(list_buffer)])
+    results = ray.get([a.do_allgather.remote() for a in actors])
+    for i in range(world_size):
+        for j in range(world_size):
+            if j % 2 == 0:
+                assert (results[i][j] == torch.ones(
+                    shape, dtype=torch.float32).cuda() * (j + 1)).all()
+            else:
+                assert (results[i][j] == cp.ones(shape, dtype=cp.float32) *
+                        (j + 1)).all()
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/single_node_gpu_tests/test_allgather.py" startline="70" endline="126" pcid="7240">
+
+def test_allgather_torch_cupy(ray_start_single_node_2_gpus):
+    world_size = 2
+    shape = [10, 10]
+    actors, _ = create_collective_workers(world_size)
+
+    # tensor is pytorch, list is cupy
+    for i, a in enumerate(actors):
+        t = torch.ones(shape, dtype=torch.float32).cuda() * (i + 1)
+        ray.wait([a.set_buffer.remote(t)])
+        list_buffer = [
+            cp.ones(shape, dtype=cp.float32) for _ in range(world_size)
+        ]
+        ray.wait([a.set_list_buffer.remote(list_buffer)])
+    results = ray.get([a.do_allgather.remote() for a in actors])
+    for i in range(world_size):
+        for j in range(world_size):
+            assert (results[i][j] == cp.ones(shape, dtype=cp.float32) *
+                    (j + 1)).all()
+
+    # tensor is cupy, list is pytorch
+    for i, a in enumerate(actors):
+        t = cp.ones(shape, dtype=cp.float32) * (i + 1)
+        ray.wait([a.set_buffer.remote(t)])
+        list_buffer = [
+            torch.ones(shape, dtype=torch.float32).cuda()
+            for _ in range(world_size)
+        ]
+        ray.wait([a.set_list_buffer.remote(list_buffer)])
+    results = ray.get([a.do_allgather.remote() for a in actors])
+    for i in range(world_size):
+        for j in range(world_size):
+            assert (results[i][j] == torch.ones(
+                shape, dtype=torch.float32).cuda() * (j + 1)).all()
+
+    # some tensors in the list are pytorch, some are cupy
+    for i, a in enumerate(actors):
+        t = cp.ones(shape, dtype=cp.float32) * (i + 1)
+        ray.wait([a.set_buffer.remote(t)])
+        list_buffer = []
+        for j in range(world_size):
+            if j % 2 == 0:
+                list_buffer.append(
+                    torch.ones(shape, dtype=torch.float32).cuda())
+            else:
+                list_buffer.append(cp.ones(shape, dtype=cp.float32))
+        ray.wait([a.set_list_buffer.remote(list_buffer)])
+    results = ray.get([a.do_allgather.remote() for a in actors])
+    for i in range(world_size):
+        for j in range(world_size):
+            if j % 2 == 0:
+                assert (results[i][j] == torch.ones(
+                    shape, dtype=torch.float32).cuda() * (j + 1)).all()
+            else:
+                assert (results[i][j] == cp.ones(shape, dtype=cp.float32) *
+                        (j + 1)).all()
+
+</source>
+</class>
+
+<class classid="35" nclones="2" nlines="12" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/distributed_gpu_tests/test_distributed_reduce.py" startline="101" endline="114" pcid="7210">
+def test_reduce_torch_cupy(ray_start_distributed_2_nodes_4_gpus, dst_rank):
+    import torch
+    world_size = 4
+    actors, _ = create_collective_workers(world_size)
+    ray.wait([actors[1].set_buffer.remote(torch.ones(10, ).cuda())])
+    results = ray.get([a.do_reduce.remote(dst_rank=dst_rank) for a in actors])
+    if dst_rank == 0:
+        assert (results[0] == cp.ones((10, )) * world_size).all()
+        assert (results[1] == torch.ones((10, )).cuda()).all()
+    else:
+        assert (results[0] == cp.ones((10, ))).all()
+        assert (results[1] == torch.ones((10, )).cuda() * world_size).all()
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/single_node_gpu_tests/test_reduce.py" startline="125" endline="138" pcid="7261">
+def test_reduce_torch_cupy(ray_start_single_node_2_gpus, dst_rank):
+    import torch
+    world_size = 2
+    actors, _ = create_collective_workers(world_size)
+    ray.wait([actors[1].set_buffer.remote(torch.ones(10, ).cuda())])
+    results = ray.get([a.do_reduce.remote(dst_rank=dst_rank) for a in actors])
+    if dst_rank == 0:
+        assert (results[0] == cp.ones((10, )) * world_size).all()
+        assert (results[1] == torch.ones((10, )).cuda()).all()
+    else:
+        assert (results[0] == cp.ones((10, ))).all()
+        assert (results[1] == torch.ones((10, )).cuda() * world_size).all()
+
+
+</source>
+</class>
+
+<class classid="36" nclones="2" nlines="12" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/distributed_gpu_tests/test_distributed_allreduce.py" startline="24" endline="38" pcid="7213">
+def test_allreduce_different_array_size(ray_start_distributed_2_nodes_4_gpus,
+                                        array_size):
+    world_size = 4
+    actors, _ = create_collective_workers(world_size)
+    ray.wait([
+        a.set_buffer.remote(cp.ones(array_size, dtype=cp.float32))
+        for a in actors
+    ])
+    results = ray.get([a.do_allreduce.remote() for a in actors])
+    assert (results[0] == cp.ones(
+        (array_size, ), dtype=cp.float32) * world_size).all()
+    assert (results[1] == cp.ones(
+        (array_size, ), dtype=cp.float32) * world_size).all()
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/single_node_gpu_tests/test_allreduce.py" startline="21" endline="35" pcid="7242">
+def test_allreduce_different_array_size(ray_start_single_node_2_gpus,
+                                        array_size):
+    world_size = 2
+    actors, _ = create_collective_workers(world_size)
+    ray.wait([
+        a.set_buffer.remote(cp.ones(array_size, dtype=cp.float32))
+        for a in actors
+    ])
+    results = ray.get([a.do_allreduce.remote() for a in actors])
+    assert (results[0] == cp.ones(
+        (array_size, ), dtype=cp.float32) * world_size).all()
+    assert (results[1] == cp.ones(
+        (array_size, ), dtype=cp.float32) * world_size).all()
+
+
+</source>
+</class>
+
+<class classid="37" nclones="2" nlines="14" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/distributed_gpu_tests/test_distributed_allreduce.py" startline="66" endline="82" pcid="7215">
+def test_allreduce_multiple_group(ray_start_distributed_2_nodes_4_gpus,
+                                  backend="nccl",
+                                  num_groups=5):
+    world_size = 4
+    actors, _ = create_collective_workers(world_size)
+    for group_name in range(1, num_groups):
+        ray.get([
+            actor.init_group.remote(world_size, i, backend, str(group_name))
+            for i, actor in enumerate(actors)
+        ])
+    for i in range(num_groups):
+        group_name = "default" if i == 0 else str(i)
+        results = ray.get([a.do_allreduce.remote(group_name) for a in actors])
+        assert (results[0] == cp.ones(
+            (10, ), dtype=cp.float32) * (world_size**(i + 1))).all()
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/single_node_gpu_tests/test_allreduce.py" startline="63" endline="79" pcid="7244">
+def test_allreduce_multiple_group(ray_start_single_node_2_gpus,
+                                  backend="nccl",
+                                  num_groups=5):
+    world_size = 2
+    actors, _ = create_collective_workers(world_size)
+    for group_name in range(1, num_groups):
+        ray.get([
+            actor.init_group.remote(world_size, i, backend, str(group_name))
+            for i, actor in enumerate(actors)
+        ])
+    for i in range(num_groups):
+        group_name = "default" if i == 0 else str(i)
+        results = ray.get([a.do_allreduce.remote(group_name) for a in actors])
+        assert (results[0] == cp.ones(
+            (10, ), dtype=cp.float32) * (world_size**(i + 1))).all()
+
+
+</source>
+</class>
+
+<class classid="38" nclones="2" nlines="22" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/distributed_gpu_tests/test_distributed_allreduce.py" startline="83" endline="115" pcid="7216">
+def test_allreduce_different_op(ray_start_distributed_2_nodes_4_gpus):
+    world_size = 4
+    actors, _ = create_collective_workers(world_size)
+
+    # check product
+    ray.wait([
+        a.set_buffer.remote(cp.ones(10, dtype=cp.float32) * (i + 2))
+        for i, a in enumerate(actors)
+    ])
+    results = ray.get(
+        [a.do_allreduce.remote(op=ReduceOp.PRODUCT) for a in actors])
+    assert (results[0] == cp.ones((10, ), dtype=cp.float32) * 120).all()
+    assert (results[1] == cp.ones((10, ), dtype=cp.float32) * 120).all()
+
+    # check min
+    ray.wait([
+        a.set_buffer.remote(cp.ones(10, dtype=cp.float32) * (i + 2))
+        for i, a in enumerate(actors)
+    ])
+    results = ray.get([a.do_allreduce.remote(op=ReduceOp.MIN) for a in actors])
+    assert (results[0] == cp.ones((10, ), dtype=cp.float32) * 2).all()
+    assert (results[1] == cp.ones((10, ), dtype=cp.float32) * 2).all()
+
+    # check max
+    ray.wait([
+        a.set_buffer.remote(cp.ones(10, dtype=cp.float32) * (i + 2))
+        for i, a in enumerate(actors)
+    ])
+    results = ray.get([a.do_allreduce.remote(op=ReduceOp.MAX) for a in actors])
+    assert (results[0] == cp.ones((10, ), dtype=cp.float32) * 5).all()
+    assert (results[1] == cp.ones((10, ), dtype=cp.float32) * 5).all()
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/single_node_gpu_tests/test_allreduce.py" startline="80" endline="112" pcid="7245">
+def test_allreduce_different_op(ray_start_single_node_2_gpus):
+    world_size = 2
+    actors, _ = create_collective_workers(world_size)
+
+    # check product
+    ray.wait([
+        a.set_buffer.remote(cp.ones(10, dtype=cp.float32) * (i + 2))
+        for i, a in enumerate(actors)
+    ])
+    results = ray.get(
+        [a.do_allreduce.remote(op=ReduceOp.PRODUCT) for a in actors])
+    assert (results[0] == cp.ones((10, ), dtype=cp.float32) * 6).all()
+    assert (results[1] == cp.ones((10, ), dtype=cp.float32) * 6).all()
+
+    # check min
+    ray.wait([
+        a.set_buffer.remote(cp.ones(10, dtype=cp.float32) * (i + 2))
+        for i, a in enumerate(actors)
+    ])
+    results = ray.get([a.do_allreduce.remote(op=ReduceOp.MIN) for a in actors])
+    assert (results[0] == cp.ones((10, ), dtype=cp.float32) * 2).all()
+    assert (results[1] == cp.ones((10, ), dtype=cp.float32) * 2).all()
+
+    # check max
+    ray.wait([
+        a.set_buffer.remote(cp.ones(10, dtype=cp.float32) * (i + 2))
+        for i, a in enumerate(actors)
+    ])
+    results = ray.get([a.do_allreduce.remote(op=ReduceOp.MAX) for a in actors])
+    assert (results[0] == cp.ones((10, ), dtype=cp.float32) * 3).all()
+    assert (results[1] == cp.ones((10, ), dtype=cp.float32) * 3).all()
+
+
+</source>
+</class>
+
+<class classid="39" nclones="2" nlines="10" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/distributed_gpu_tests/test_distributed_allreduce.py" startline="128" endline="139" pcid="7218">
+def test_allreduce_torch_cupy(ray_start_distributed_2_nodes_4_gpus):
+    # import torch
+    world_size = 4
+    actors, _ = create_collective_workers(world_size)
+    ray.wait([actors[1].set_buffer.remote(torch.ones(10, ).cuda())])
+    results = ray.get([a.do_allreduce.remote() for a in actors])
+    assert (results[0] == cp.ones((10, )) * world_size).all()
+
+    ray.wait([actors[0].set_buffer.remote(torch.ones(10, ))])
+    ray.wait([actors[1].set_buffer.remote(cp.ones(10, ))])
+    with pytest.raises(RuntimeError):
+        results = ray.get([a.do_allreduce.remote() for a in actors])
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/single_node_gpu_tests/test_allreduce.py" startline="124" endline="137" pcid="7247">
+def test_allreduce_torch_cupy(ray_start_single_node_2_gpus):
+    # import torch
+    world_size = 2
+    actors, _ = create_collective_workers(world_size)
+    ray.wait([actors[1].set_buffer.remote(torch.ones(10, ).cuda())])
+    results = ray.get([a.do_allreduce.remote() for a in actors])
+    assert (results[0] == cp.ones((10, )) * world_size).all()
+
+    ray.wait([actors[0].set_buffer.remote(torch.ones(10, ))])
+    ray.wait([actors[1].set_buffer.remote(cp.ones(10, ))])
+    with pytest.raises(RuntimeError):
+        results = ray.get([a.do_allreduce.remote() for a in actors])
+
+
+</source>
+</class>
+
+<class classid="40" nclones="2" nlines="70" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/distributed_gpu_tests/test_distributed_reducescatter.py" startline="43" endline="123" pcid="7221">
+
+def test_reducescatter_torch_cupy(ray_start_distributed_2_nodes_4_gpus):
+    world_size = 4
+    shape = [10, 10]
+    actors, _ = create_collective_workers(world_size)
+
+    # tensor is pytorch, list is cupy
+    for i, a in enumerate(actors):
+        t = torch.ones(shape, dtype=torch.float32).cuda() * (i + 1)
+        ray.wait([a.set_buffer.remote(t)])
+        list_buffer = [
+            cp.ones(shape, dtype=cp.float32) for _ in range(world_size)
+        ]
+        ray.wait([a.set_list_buffer.remote(list_buffer)])
+    results = ray.get([a.do_reducescatter.remote() for a in actors])
+    for i in range(world_size):
+        assert (results[i] == torch.ones(shape, dtype=torch.float32).cuda() *
+                world_size).all()
+
+    # tensor is cupy, list is pytorch
+    for i, a in enumerate(actors):
+        t = cp.ones(shape, dtype=cp.float32) * (i + 1)
+        ray.wait([a.set_buffer.remote(t)])
+        list_buffer = [
+            torch.ones(shape, dtype=torch.float32).cuda()
+            for _ in range(world_size)
+        ]
+        ray.wait([a.set_list_buffer.remote(list_buffer)])
+    results = ray.get([a.do_reducescatter.remote() for a in actors])
+    for i in range(world_size):
+        assert (
+            results[i] == cp.ones(shape, dtype=cp.float32) * world_size).all()
+
+    # some tensors in the list are pytorch, some are cupy
+    for i, a in enumerate(actors):
+        if i % 2 == 0:
+            t = torch.ones(shape, dtype=torch.float32).cuda() * (i + 1)
+        else:
+            t = cp.ones(shape, dtype=cp.float32) * (i + 1)
+        ray.wait([a.set_buffer.remote(t)])
+        list_buffer = []
+        for j in range(world_size):
+            if j % 2 == 0:
+                list_buffer.append(
+                    torch.ones(shape, dtype=torch.float32).cuda())
+            else:
+                list_buffer.append(cp.ones(shape, dtype=cp.float32))
+        ray.wait([a.set_list_buffer.remote(list_buffer)])
+    results = ray.get([a.do_reducescatter.remote() for a in actors])
+    for i in range(world_size):
+        if i % 2 == 0:
+            assert (results[i] == torch.ones(
+                shape, dtype=torch.float32).cuda() * world_size).all()
+        else:
+            assert (results[i] == cp.ones(shape, dtype=cp.float32) *
+                    world_size).all()
+
+    # mixed case
+    for i, a in enumerate(actors):
+        if i % 2 == 0:
+            t = torch.ones(shape, dtype=torch.float32).cuda() * (i + 1)
+        else:
+            t = cp.ones(shape, dtype=cp.float32) * (i + 1)
+        ray.wait([a.set_buffer.remote(t)])
+        list_buffer = []
+        for j in range(world_size):
+            if j % 2 == 0:
+                list_buffer.append(cp.ones(shape, dtype=cp.float32))
+            else:
+                list_buffer.append(
+                    torch.ones(shape, dtype=torch.float32).cuda())
+        ray.wait([a.set_list_buffer.remote(list_buffer)])
+    results = ray.get([a.do_reducescatter.remote() for a in actors])
+    for i in range(world_size):
+        if i % 2 == 0:
+            assert (results[i] == torch.ones(
+                shape, dtype=torch.float32).cuda() * world_size).all()
+        else:
+            assert (results[i] == cp.ones(shape, dtype=cp.float32) *
+                    world_size).all()
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/single_node_gpu_tests/test_reducescatter.py" startline="42" endline="122" pcid="7256">
+
+def test_reducescatter_torch_cupy(ray_start_single_node_2_gpus):
+    world_size = 2
+    shape = [10, 10]
+    actors, _ = create_collective_workers(world_size)
+
+    # tensor is pytorch, list is cupy
+    for i, a in enumerate(actors):
+        t = torch.ones(shape, dtype=torch.float32).cuda() * (i + 1)
+        ray.wait([a.set_buffer.remote(t)])
+        list_buffer = [
+            cp.ones(shape, dtype=cp.float32) for _ in range(world_size)
+        ]
+        ray.wait([a.set_list_buffer.remote(list_buffer)])
+    results = ray.get([a.do_reducescatter.remote() for a in actors])
+    for i in range(world_size):
+        assert (results[i] == torch.ones(shape, dtype=torch.float32).cuda() *
+                world_size).all()
+
+    # tensor is cupy, list is pytorch
+    for i, a in enumerate(actors):
+        t = cp.ones(shape, dtype=cp.float32) * (i + 1)
+        ray.wait([a.set_buffer.remote(t)])
+        list_buffer = [
+            torch.ones(shape, dtype=torch.float32).cuda()
+            for _ in range(world_size)
+        ]
+        ray.wait([a.set_list_buffer.remote(list_buffer)])
+    results = ray.get([a.do_reducescatter.remote() for a in actors])
+    for i in range(world_size):
+        assert (
+            results[i] == cp.ones(shape, dtype=cp.float32) * world_size).all()
+
+    # some tensors in the list are pytorch, some are cupy
+    for i, a in enumerate(actors):
+        if i % 2 == 0:
+            t = torch.ones(shape, dtype=torch.float32).cuda() * (i + 1)
+        else:
+            t = cp.ones(shape, dtype=cp.float32) * (i + 1)
+        ray.wait([a.set_buffer.remote(t)])
+        list_buffer = []
+        for j in range(world_size):
+            if j % 2 == 0:
+                list_buffer.append(
+                    torch.ones(shape, dtype=torch.float32).cuda())
+            else:
+                list_buffer.append(cp.ones(shape, dtype=cp.float32))
+        ray.wait([a.set_list_buffer.remote(list_buffer)])
+    results = ray.get([a.do_reducescatter.remote() for a in actors])
+    for i in range(world_size):
+        if i % 2 == 0:
+            assert (results[i] == torch.ones(
+                shape, dtype=torch.float32).cuda() * world_size).all()
+        else:
+            assert (results[i] == cp.ones(shape, dtype=cp.float32) *
+                    world_size).all()
+
+    # mixed case
+    for i, a in enumerate(actors):
+        if i % 2 == 0:
+            t = torch.ones(shape, dtype=torch.float32).cuda() * (i + 1)
+        else:
+            t = cp.ones(shape, dtype=cp.float32) * (i + 1)
+        ray.wait([a.set_buffer.remote(t)])
+        list_buffer = []
+        for j in range(world_size):
+            if j % 2 == 0:
+                list_buffer.append(cp.ones(shape, dtype=cp.float32))
+            else:
+                list_buffer.append(
+                    torch.ones(shape, dtype=torch.float32).cuda())
+        ray.wait([a.set_list_buffer.remote(list_buffer)])
+    results = ray.get([a.do_reducescatter.remote() for a in actors])
+    for i in range(world_size):
+        if i % 2 == 0:
+            assert (results[i] == torch.ones(
+                shape, dtype=torch.float32).cuda() * world_size).all()
+        else:
+            assert (results[i] == cp.ones(shape, dtype=cp.float32) *
+                    world_size).all()
+
+</source>
+</class>
+
+<class classid="41" nclones="3" nlines="16" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/distributed_gpu_tests/test_distributed_basic_apis.py" startline="66" endline="84" pcid="7226">
+
+def test_is_group_initialized(ray_start_distributed_2_nodes_4_gpus):
+    world_size = 4
+    actors, _ = create_collective_workers(world_size)
+    # check group is_init
+    actor0_is_init = ray.get(actors[0].report_is_group_initialized.remote())
+    assert actor0_is_init
+    actor0_is_init = ray.get(
+        actors[0].report_is_group_initialized.remote("random"))
+    assert not actor0_is_init
+    actor0_is_init = ray.get(
+        actors[0].report_is_group_initialized.remote("123"))
+    assert not actor0_is_init
+    actor1_is_init = ray.get(actors[0].report_is_group_initialized.remote())
+    assert actor1_is_init
+    actor1_is_init = ray.get(
+        actors[0].report_is_group_initialized.remote("456"))
+    assert not actor1_is_init
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/single_node_gpu_tests/test_basic_apis.py" startline="60" endline="78" pcid="7252">
+
+def test_is_group_initialized(ray_start_single_node_2_gpus):
+    world_size = 2
+    actors, _ = create_collective_workers(world_size)
+    # check group is_init
+    actor0_is_init = ray.get(actors[0].report_is_group_initialized.remote())
+    assert actor0_is_init
+    actor0_is_init = ray.get(
+        actors[0].report_is_group_initialized.remote("random"))
+    assert not actor0_is_init
+    actor0_is_init = ray.get(
+        actors[0].report_is_group_initialized.remote("123"))
+    assert not actor0_is_init
+    actor1_is_init = ray.get(actors[0].report_is_group_initialized.remote())
+    assert actor1_is_init
+    actor1_is_init = ray.get(
+        actors[0].report_is_group_initialized.remote("456"))
+    assert not actor1_is_init
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/distributed_multigpu_tests/test_distributed_multigpu_basic_apis.py" startline="50" endline="68" pcid="7269">
+def test_is_group_initialized(ray_start_distributed_multigpu_2_nodes_4_gpus):
+    world_size = 2
+    actors, _ = create_collective_multigpu_workers(world_size)
+    # check group is_init
+    actor0_is_init = ray.get(actors[0].report_is_group_initialized.remote())
+    assert actor0_is_init
+    actor0_is_init = ray.get(
+        actors[0].report_is_group_initialized.remote("random"))
+    assert not actor0_is_init
+    actor0_is_init = ray.get(
+        actors[0].report_is_group_initialized.remote("123"))
+    assert not actor0_is_init
+    actor1_is_init = ray.get(actors[0].report_is_group_initialized.remote())
+    assert actor1_is_init
+    actor1_is_init = ray.get(
+        actors[0].report_is_group_initialized.remote("456"))
+    assert not actor1_is_init
+
+
+</source>
+</class>
+
+<class classid="42" nclones="2" nlines="12" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/distributed_gpu_tests/test_distributed_broadcast.py" startline="31" endline="45" pcid="7229">
+def test_broadcast_different_array_size(ray_start_distributed_2_nodes_4_gpus,
+                                        array_size, src_rank):
+    world_size = 4
+    actors, _ = create_collective_workers(world_size)
+    ray.wait([
+        a.set_buffer.remote(cp.ones(array_size, dtype=cp.float32) * (i + 2))
+        for i, a in enumerate(actors)
+    ])
+    results = ray.get(
+        [a.do_broadcast.remote(src_rank=src_rank) for a in actors])
+    for i in range(world_size):
+        assert (results[i] == cp.ones(
+            (array_size, ), dtype=cp.float32) * (src_rank + 2)).all()
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/single_node_gpu_tests/test_broadcast.py" startline="31" endline="45" pcid="7233">
+def test_broadcast_different_array_size(ray_start_single_node_2_gpus,
+                                        array_size, src_rank):
+    world_size = 2
+    actors, _ = create_collective_workers(world_size)
+    ray.wait([
+        a.set_buffer.remote(cp.ones(array_size, dtype=cp.float32) * (i + 2))
+        for i, a in enumerate(actors)
+    ])
+    results = ray.get(
+        [a.do_broadcast.remote(src_rank=src_rank) for a in actors])
+    for i in range(world_size):
+        assert (results[i] == cp.ones(
+            (array_size, ), dtype=cp.float32) * (src_rank + 2)).all()
+
+
+</source>
+</class>
+
+<class classid="43" nclones="2" nlines="14" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/distributed_gpu_tests/test_distributed_broadcast.py" startline="47" endline="62" pcid="7230">
+def test_broadcast_torch_cupy(ray_start_distributed_2_nodes_4_gpus, src_rank):
+    import torch
+    world_size = 4
+    actors, _ = create_collective_workers(world_size)
+    ray.wait(
+        [actors[1].set_buffer.remote(torch.ones(10, ).cuda() * world_size)])
+    results = ray.get(
+        [a.do_broadcast.remote(src_rank=src_rank) for a in actors])
+    if src_rank == 0:
+        assert (results[0] == cp.ones((10, ))).all()
+        assert (results[1] == torch.ones((10, )).cuda()).all()
+    else:
+        assert (results[0] == cp.ones((10, )) * world_size).all()
+        assert (results[1] == torch.ones((10, )).cuda() * world_size).all()
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/single_node_gpu_tests/test_broadcast.py" startline="47" endline="62" pcid="7234">
+def test_broadcast_torch_cupy(ray_start_single_node_2_gpus, src_rank):
+    import torch
+    world_size = 2
+    actors, _ = create_collective_workers(world_size)
+    ray.wait(
+        [actors[1].set_buffer.remote(torch.ones(10, ).cuda() * world_size)])
+    results = ray.get(
+        [a.do_broadcast.remote(src_rank=src_rank) for a in actors])
+    if src_rank == 0:
+        assert (results[0] == cp.ones((10, ))).all()
+        assert (results[1] == torch.ones((10, )).cuda()).all()
+    else:
+        assert (results[0] == cp.ones((10, )) * world_size).all()
+        assert (results[1] == torch.ones((10, )).cuda() * world_size).all()
+
+
+</source>
+</class>
+
+<class classid="44" nclones="2" nlines="24" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/single_node_gpu_tests/test_basic_apis.py" startline="79" endline="111" pcid="7253">
+
+def test_destroy_group(ray_start_single_node_2_gpus):
+    world_size = 2
+    actors, _ = create_collective_workers(world_size)
+    # Now destroy the group at actor0
+    ray.wait([actors[0].destroy_group.remote()])
+    actor0_is_init = ray.get(actors[0].report_is_group_initialized.remote())
+    assert not actor0_is_init
+
+    # should go well as the group `random` does not exist at all
+    ray.wait([actors[0].destroy_group.remote("random")])
+
+    actor1_is_init = ray.get(actors[1].report_is_group_initialized.remote())
+    assert actor1_is_init
+    ray.wait([actors[1].destroy_group.remote("random")])
+    actor1_is_init = ray.get(actors[1].report_is_group_initialized.remote())
+    assert actor1_is_init
+    ray.wait([actors[1].destroy_group.remote("default")])
+    actor1_is_init = ray.get(actors[1].report_is_group_initialized.remote())
+    assert not actor1_is_init
+
+    # Now reconstruct the group using the same name
+    init_results = ray.get([
+        actor.init_group.remote(world_size, i)
+        for i, actor in enumerate(actors)
+    ])
+    for i in range(world_size):
+        assert init_results[i]
+    actor0_is_init = ray.get(actors[0].report_is_group_initialized.remote())
+    assert actor0_is_init
+    actor1_is_init = ray.get(actors[0].report_is_group_initialized.remote())
+    assert actor1_is_init
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/distributed_multigpu_tests/test_distributed_multigpu_basic_apis.py" startline="69" endline="101" pcid="7270">
+def test_destroy_group(ray_start_distributed_multigpu_2_nodes_4_gpus):
+    world_size = 2
+    actors, _ = create_collective_multigpu_workers(world_size)
+    # Now destroy the group at actor0
+    ray.wait([actors[0].destroy_group.remote()])
+    actor0_is_init = ray.get(actors[0].report_is_group_initialized.remote())
+    assert not actor0_is_init
+
+    # should go well as the group `random` does not exist at all
+    ray.wait([actors[0].destroy_group.remote("random")])
+
+    actor1_is_init = ray.get(actors[1].report_is_group_initialized.remote())
+    assert actor1_is_init
+    ray.wait([actors[1].destroy_group.remote("random")])
+    actor1_is_init = ray.get(actors[1].report_is_group_initialized.remote())
+    assert actor1_is_init
+    ray.wait([actors[1].destroy_group.remote("default")])
+    actor1_is_init = ray.get(actors[1].report_is_group_initialized.remote())
+    assert not actor1_is_init
+
+    # Now reconstruct the group using the same name
+    init_results = ray.get([
+        actor.init_group.remote(world_size, i)
+        for i, actor in enumerate(actors)
+    ])
+    for i in range(world_size):
+        assert init_results[i]
+    actor0_is_init = ray.get(actors[0].report_is_group_initialized.remote())
+    assert actor0_is_init
+    actor1_is_init = ray.get(actors[0].report_is_group_initialized.remote())
+    assert actor1_is_init
+
+
+</source>
+</class>
+
+<class classid="45" nclones="2" nlines="11" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/single_node_cpu_tests/test_allgather.py" startline="61" endline="73" pcid="7305">
+@pytest.mark.parametrize("shape", [10, 20, [4, 5], [1, 3, 5, 7]])
+def test_unmatched_tensor_shape(ray_start_single_node, shape, backend):
+    world_size = 2
+    actors, _ = create_collective_workers(world_size, backend=backend)
+    init_tensors_for_gather_scatter(actors, array_size=10)
+    list_buffer = [np.ones(shape, dtype=np.float32) for _ in range(world_size)]
+    ray.get([a.set_list_buffer.remote(list_buffer, copy=True) for a in actors])
+    if shape != 10:
+        with pytest.raises(RuntimeError):
+            ray.get([a.do_allgather.remote() for a in actors])
+    else:
+        ray.get([a.do_allgather.remote() for a in actors])
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/distributed_cpu_tests/test_distributed_allgather.py" startline="65" endline="77" pcid="7380">
+@pytest.mark.parametrize("shape", [10, 20, [4, 5], [1, 3, 5, 7]])
+def test_unmatched_tensor_shape(ray_start_distributed_2_nodes, shape, backend):
+    world_size = 8
+    actors, _ = create_collective_workers(world_size, backend=backend)
+    init_tensors_for_gather_scatter(actors, array_size=10)
+    list_buffer = [np.ones(shape, dtype=np.float32) for _ in range(world_size)]
+    ray.get([a.set_list_buffer.remote(list_buffer, copy=True) for a in actors])
+    if shape != 10:
+        with pytest.raises(RuntimeError):
+            ray.get([a.do_allgather.remote() for a in actors])
+    else:
+        ray.get([a.do_allgather.remote() for a in actors])
+
+</source>
+</class>
+
+<class classid="46" nclones="2" nlines="16" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/single_node_cpu_tests/test_basic_apis.py" startline="70" endline="88" pcid="7318">
+@pytest.mark.parametrize("backend", [Backend.GLOO])
+def test_is_group_initialized(ray_start_single_node, backend):
+    world_size = 2
+    actors, _ = create_collective_workers(world_size, backend=backend)
+    # check group is_init
+    actor0_is_init = ray.get(actors[0].report_is_group_initialized.remote())
+    assert actor0_is_init
+    actor0_is_init = ray.get(
+        actors[0].report_is_group_initialized.remote("random"))
+    assert not actor0_is_init
+    actor0_is_init = ray.get(
+        actors[0].report_is_group_initialized.remote("123"))
+    assert not actor0_is_init
+    actor1_is_init = ray.get(actors[0].report_is_group_initialized.remote())
+    assert actor1_is_init
+    actor1_is_init = ray.get(
+        actors[0].report_is_group_initialized.remote("456"))
+    assert not actor1_is_init
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/distributed_cpu_tests/test_distributed_basic_apis.py" startline="73" endline="91" pcid="7401">
+@pytest.mark.parametrize("backend", [Backend.GLOO])
+def test_is_group_initialized(ray_start_distributed_2_nodes, backend):
+    world_size = 8
+    actors, _ = create_collective_workers(world_size, backend=backend)
+    # check group is_init
+    actor0_is_init = ray.get(actors[0].report_is_group_initialized.remote())
+    assert actor0_is_init
+    actor0_is_init = ray.get(
+        actors[0].report_is_group_initialized.remote("random"))
+    assert not actor0_is_init
+    actor0_is_init = ray.get(
+        actors[0].report_is_group_initialized.remote("123"))
+    assert not actor0_is_init
+    actor1_is_init = ray.get(actors[0].report_is_group_initialized.remote())
+    assert actor1_is_init
+    actor1_is_init = ray.get(
+        actors[0].report_is_group_initialized.remote("456"))
+    assert not actor1_is_init
+
+</source>
+</class>
+
+<class classid="47" nclones="2" nlines="68" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/single_node_cpu_tests/test_reducescatter.py" startline="46" endline="123" pcid="7322">
+@pytest.mark.parametrize("backend", [Backend.GLOO])
+def test_reducescatter_torch_numpy(ray_start_single_node, backend):
+    world_size = 2
+    shape = [10, 10]
+    actors, _ = create_collective_workers(world_size, backend=backend)
+
+    # tensor is pytorch, list is numpy
+    for i, a in enumerate(actors):
+        t = torch.ones(shape, dtype=torch.float32) * (i + 1)
+        ray.wait([a.set_buffer.remote(t)])
+        list_buffer = [
+            np.ones(shape, dtype=np.float32) for _ in range(world_size)
+        ]
+        ray.wait([a.set_list_buffer.remote(list_buffer)])
+    results = ray.get([a.do_reducescatter.remote() for a in actors])
+    for i in range(world_size):
+        assert (results[i] == torch.ones(shape, dtype=torch.float32) *
+                world_size).all()
+
+    # tensor is numpy, list is pytorch
+    for i, a in enumerate(actors):
+        t = np.ones(shape, dtype=np.float32) * (i + 1)
+        ray.wait([a.set_buffer.remote(t)])
+        list_buffer = [
+            torch.ones(shape, dtype=torch.float32) for _ in range(world_size)
+        ]
+        ray.wait([a.set_list_buffer.remote(list_buffer)])
+    results = ray.get([a.do_reducescatter.remote() for a in actors])
+    for i in range(world_size):
+        assert (
+            results[i] == np.ones(shape, dtype=np.float32) * world_size).all()
+
+    # some tensors in the list are pytorch, some are numpy
+    for i, a in enumerate(actors):
+        if i % 2 == 0:
+            t = torch.ones(shape, dtype=torch.float32) * (i + 1)
+        else:
+            t = np.ones(shape, dtype=np.float32) * (i + 1)
+        ray.wait([a.set_buffer.remote(t)])
+        list_buffer = []
+        for j in range(world_size):
+            if j % 2 == 0:
+                list_buffer.append(torch.ones(shape, dtype=torch.float32))
+            else:
+                list_buffer.append(np.ones(shape, dtype=np.float32))
+        ray.wait([a.set_list_buffer.remote(list_buffer)])
+    results = ray.get([a.do_reducescatter.remote() for a in actors])
+    for i in range(world_size):
+        if i % 2 == 0:
+            assert (results[i] == torch.ones(shape, dtype=torch.float32) *
+                    world_size).all()
+        else:
+            assert (results[i] == np.ones(shape, dtype=np.float32) *
+                    world_size).all()
+
+    # mixed case
+    for i, a in enumerate(actors):
+        if i % 2 == 0:
+            t = torch.ones(shape, dtype=torch.float32) * (i + 1)
+        else:
+            t = np.ones(shape, dtype=np.float32) * (i + 1)
+        ray.wait([a.set_buffer.remote(t)])
+        list_buffer = []
+        for j in range(world_size):
+            if j % 2 == 0:
+                list_buffer.append(np.ones(shape, dtype=np.float32))
+            else:
+                list_buffer.append(torch.ones(shape, dtype=torch.float32))
+        ray.wait([a.set_list_buffer.remote(list_buffer)])
+    results = ray.get([a.do_reducescatter.remote() for a in actors])
+    for i in range(world_size):
+        if i % 2 == 0:
+            assert (results[i] == torch.ones(shape, dtype=torch.float32) *
+                    world_size).all()
+        else:
+            assert (results[i] == np.ones(shape, dtype=np.float32) *
+                    world_size).all()
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/distributed_cpu_tests/test_distributed_reducescatter.py" startline="47" endline="124" pcid="7396">
+@pytest.mark.parametrize("backend", [Backend.GLOO])
+def test_reducescatter_torch_numpy(ray_start_distributed_2_nodes, backend):
+    world_size = 8
+    shape = [10, 10]
+    actors, _ = create_collective_workers(world_size, backend=backend)
+
+    # tensor is pytorch, list is numpy
+    for i, a in enumerate(actors):
+        t = torch.ones(shape, dtype=torch.float32) * (i + 1)
+        ray.wait([a.set_buffer.remote(t)])
+        list_buffer = [
+            np.ones(shape, dtype=np.float32) for _ in range(world_size)
+        ]
+        ray.wait([a.set_list_buffer.remote(list_buffer)])
+    results = ray.get([a.do_reducescatter.remote() for a in actors])
+    for i in range(world_size):
+        assert (results[i] == torch.ones(shape, dtype=torch.float32) *
+                world_size).all()
+
+    # tensor is numpy, list is pytorch
+    for i, a in enumerate(actors):
+        t = np.ones(shape, dtype=np.float32) * (i + 1)
+        ray.wait([a.set_buffer.remote(t)])
+        list_buffer = [
+            torch.ones(shape, dtype=torch.float32) for _ in range(world_size)
+        ]
+        ray.wait([a.set_list_buffer.remote(list_buffer)])
+    results = ray.get([a.do_reducescatter.remote() for a in actors])
+    for i in range(world_size):
+        assert (
+            results[i] == np.ones(shape, dtype=np.float32) * world_size).all()
+
+    # some tensors in the list are pytorch, some are numpy
+    for i, a in enumerate(actors):
+        if i % 2 == 0:
+            t = torch.ones(shape, dtype=torch.float32) * (i + 1)
+        else:
+            t = np.ones(shape, dtype=np.float32) * (i + 1)
+        ray.wait([a.set_buffer.remote(t)])
+        list_buffer = []
+        for j in range(world_size):
+            if j % 2 == 0:
+                list_buffer.append(torch.ones(shape, dtype=torch.float32))
+            else:
+                list_buffer.append(np.ones(shape, dtype=np.float32))
+        ray.wait([a.set_list_buffer.remote(list_buffer)])
+    results = ray.get([a.do_reducescatter.remote() for a in actors])
+    for i in range(world_size):
+        if i % 2 == 0:
+            assert (results[i] == torch.ones(shape, dtype=torch.float32) *
+                    world_size).all()
+        else:
+            assert (results[i] == np.ones(shape, dtype=np.float32) *
+                    world_size).all()
+
+    # mixed case
+    for i, a in enumerate(actors):
+        if i % 2 == 0:
+            t = torch.ones(shape, dtype=torch.float32) * (i + 1)
+        else:
+            t = np.ones(shape, dtype=np.float32) * (i + 1)
+        ray.wait([a.set_buffer.remote(t)])
+        list_buffer = []
+        for j in range(world_size):
+            if j % 2 == 0:
+                list_buffer.append(np.ones(shape, dtype=np.float32))
+            else:
+                list_buffer.append(torch.ones(shape, dtype=torch.float32))
+        ray.wait([a.set_list_buffer.remote(list_buffer)])
+    results = ray.get([a.do_reducescatter.remote() for a in actors])
+    for i in range(world_size):
+        if i % 2 == 0:
+            assert (results[i] == torch.ones(shape, dtype=torch.float32) *
+                    world_size).all()
+        else:
+            assert (results[i] == np.ones(shape, dtype=np.float32) *
+                    world_size).all()
+
+</source>
+</class>
+
+<class classid="48" nclones="2" nlines="15" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/single_node_cpu_tests/test_reduce.py" startline="31" endline="48" pcid="7324">
+def test_reduce_different_array_size(ray_start_single_node, array_size,
+                                     dst_rank, backend):
+    world_size = 2
+    actors, _ = create_collective_workers(world_size, backend=backend)
+    ray.wait([
+        a.set_buffer.remote(np.ones(array_size, dtype=np.float32))
+        for a in actors
+    ])
+    results = ray.get([a.do_reduce.remote(dst_rank=dst_rank) for a in actors])
+    for i in range(world_size):
+        if i == dst_rank:
+            assert (results[i] == np.ones(
+                (array_size, ), dtype=np.float32) * world_size).all()
+        else:
+            assert (results[i] == np.ones((array_size, ),
+                                          dtype=np.float32)).all()
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/distributed_cpu_tests/test_distributed_reduce.py" startline="31" endline="48" pcid="7383">
+def test_reduce_different_array_size(ray_start_distributed_2_nodes, backend,
+                                     array_size, dst_rank):
+    world_size = 8
+    actors, _ = create_collective_workers(world_size, backend=backend)
+    ray.wait([
+        a.set_buffer.remote(np.ones(array_size, dtype=np.float32))
+        for a in actors
+    ])
+    results = ray.get([a.do_reduce.remote(dst_rank=dst_rank) for a in actors])
+    for i in range(world_size):
+        if i == dst_rank:
+            assert (results[i] == np.ones(
+                (array_size, ), dtype=np.float32) * world_size).all()
+        else:
+            assert (results[i] == np.ones((array_size, ),
+                                          dtype=np.float32)).all()
+
+
+</source>
+</class>
+
+<class classid="49" nclones="2" nlines="13" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/util.py" startline="100" endline="115" pcid="7351">
+def create_collective_workers(num_workers=2,
+                              group_name="default",
+                              backend="nccl"):
+    actors = [None] * num_workers
+    for i in range(num_workers):
+        actor = Worker.remote()
+        ray.get([actor.init_tensors.remote()])
+        actors[i] = actor
+    world_size = num_workers
+    init_results = ray.get([
+        actor.init_group.remote(world_size, i, backend, group_name)
+        for i, actor in enumerate(actors)
+    ])
+    return actors, init_results
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/cpu_util.py" startline="107" endline="122" pcid="7426">
+def create_collective_workers(num_workers=2,
+                              group_name="default",
+                              backend="nccl"):
+    actors = [None] * num_workers
+    for i in range(num_workers):
+        actor = Worker.remote()
+        ray.get([actor.init_tensors.remote()])
+        actors[i] = actor
+    world_size = num_workers
+    init_results = ray.get([
+        actor.init_group.remote(world_size, i, backend, group_name)
+        for i, actor in enumerate(actors)
+    ])
+    return actors, init_results
+
+
+</source>
+</class>
+
+<class classid="50" nclones="2" nlines="17" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/util.py" startline="288" endline="305" pcid="7365">
+    def do_send_multigpu(self,
+                         group_name="default",
+                         dst_rank=0,
+                         dst_gpu_index=0,
+                         src_gpu_index=0):
+        if src_gpu_index == 0:
+            col.send_multigpu(self.buffer0, dst_rank, dst_gpu_index,
+                              group_name)
+            cp.cuda.Device(0).synchronize()
+            return self.buffer0
+        elif src_gpu_index == 1:
+            col.send_multigpu(self.buffer1, dst_rank, dst_gpu_index,
+                              group_name)
+            cp.cuda.Device(1).synchronize()
+            return self.buffer1
+        else:
+            raise RuntimeError()
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/util/collective/tests/util.py" startline="306" endline="323" pcid="7366">
+    def do_recv_multigpu(self,
+                         group_name="default",
+                         src_rank=0,
+                         src_gpu_index=0,
+                         dst_gpu_index=0):
+        if dst_gpu_index == 0:
+            col.recv_multigpu(self.buffer0, src_rank, src_gpu_index,
+                              group_name)
+            cp.cuda.Device(0).synchronize()
+            return self.buffer0
+        elif dst_gpu_index == 1:
+            col.recv_multigpu(self.buffer1, src_rank, src_gpu_index,
+                              group_name)
+            cp.cuda.Device(1).synchronize()
+            return self.buffer1
+        else:
+            raise RuntimeError()
+
+</source>
+</class>
+
+<class classid="51" nclones="2" nlines="11" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/cloudpickle/__init__.py" startline="24" endline="36" pcid="7672">
+def dump_debug(obj, *args, **kwargs):
+    try:
+        return dump(obj, *args, **kwargs)
+    except (TypeError, PicklingError) as exc:
+        if os.environ.get("RAY_PICKLE_VERBOSE_DEBUG"):
+            from ray.util.check_serialize import inspect_serializability
+            inspect_serializability(obj)
+            raise
+        else:
+            msg = _warn_msg(obj, "ray.cloudpickle.dump", exc)
+            raise type(exc)(msg)
+
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/cloudpickle/__init__.py" startline="37" endline="47" pcid="7673">
+def dumps_debug(obj, *args, **kwargs):
+    try:
+        return dumps(obj, *args, **kwargs)
+    except (TypeError, PicklingError) as exc:
+        if os.environ.get("RAY_PICKLE_VERBOSE_DEBUG"):
+            from ray.util.check_serialize import inspect_serializability
+            inspect_serializability(obj)
+            raise
+        else:
+            msg = _warn_msg(obj, "ray.cloudpickle.dumps", exc)
+            raise type(exc)(msg)
+</source>
+</class>
+
+<class classid="52" nclones="2" nlines="11" similarity="100">
+<source file="systems/ray-ray-1.11.0/python/ray/serve/tests/test_autoscaling_policy.py" startline="48" endline="59" pcid="7751">
+    def test_scale_up(self):
+        config = AutoscalingConfig(
+            min_replicas=0,
+            max_replicas=100,
+            target_num_ongoing_requests_per_replica=1)
+        num_replicas = 10
+        num_ongoing_requests = [2.0] * num_replicas
+        desired_num_replicas = calculate_desired_num_replicas(
+            autoscaling_config=config,
+            current_num_ongoing_requests=num_ongoing_requests)
+        assert 19 <= desired_num_replicas <= 21  # 10 * 2 = 20
+
+</source>
+<source file="systems/ray-ray-1.11.0/python/ray/serve/tests/test_autoscaling_policy.py" startline="60" endline="71" pcid="7752">
+    def test_scale_down(self):
+        config = AutoscalingConfig(
+            min_replicas=0,
+            max_replicas=100,
+            target_num_ongoing_requests_per_replica=1)
+        num_replicas = 10
+        num_ongoing_requests = [0.5] * num_replicas
+        desired_num_replicas = calculate_desired_num_replicas(
+            autoscaling_config=config,
+            current_num_ongoing_requests=num_ongoing_requests)
+        assert 4 <= desired_num_replicas <= 6  # 10 * 0.5 = 5
+
+</source>
+</class>
+
+</clones>

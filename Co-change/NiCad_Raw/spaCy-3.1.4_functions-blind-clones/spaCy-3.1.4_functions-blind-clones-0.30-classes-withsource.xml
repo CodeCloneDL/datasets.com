@@ -1,0 +1,3731 @@
+<clones>
+<systeminfo processor="nicad6" system="spaCy-3.1.4" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="1816" npairs="1290"/>
+<runinfo ncompares="105883" cputime="74807"/>
+<classinfo nclasses="39"/>
+
+<class classid="1" nclones="2" nlines="10" similarity="70">
+<source file="systems/spaCy-3.1.4/website/setup/jinja_to_js.py" startline="615" endline="627" pcid="23">
+    def _process_condexpr(self, node, **kwargs):
+        with self._interpolation():
+            self.output.write("(")
+
+            with self._python_bool_wrapper(**kwargs) as new_kwargs:
+                self._process_node(node.test, **new_kwargs)
+
+            self.output.write(" ? ")
+            self._process_node(node.expr1, **kwargs)
+            self.output.write(" : ")
+            self._process_node(node.expr2, **kwargs)
+            self.output.write(")")
+
+</source>
+<source file="systems/spaCy-3.1.4/website/setup/jinja_to_js.py" startline="1066" endline="1079" pcid="71">
+    def _process_add(self, node, **kwargs):
+        # Handle + operator for lists, which behaves differently in JS. Currently
+        # only works if we have an explicit list node on either side (in which
+        # case we assume both are lists).
+        if isinstance(node.left, nodes.List) or isinstance(node.right, nodes.List):
+            with self._interpolation():
+                with self._python_bool_wrapper(**kwargs) as new_kwargs:
+                    self._process_node(node.left, **new_kwargs)
+                    self.output.write(".concat(")
+                    self._process_node(node.right, **new_kwargs)
+                    self.output.write(")")
+        else:
+            self._process_math(node, math_operator=" + ", **kwargs)
+
+</source>
+</class>
+
+<class classid="2" nclones="5" nlines="15" similarity="75">
+<source file="systems/spaCy-3.1.4/spacy/tests/training/test_pretraining.py" startline="166" endline="184" pcid="164">
+def test_pretraining_tok2vec_characters(objective):
+    """Test that pretraining works with the character objective"""
+    config = Config().from_str(pretrain_string_listener)
+    config["pretraining"]["objective"] = objective
+    nlp = util.load_model_from_config(config, auto_fill=True, validate=False)
+    filled = nlp.config
+    pretrain_config = util.load_config(DEFAULT_CONFIG_PRETRAIN_PATH)
+    filled = pretrain_config.merge(filled)
+    with make_tempdir() as tmp_dir:
+        file_path = write_sample_jsonl(tmp_dir)
+        filled["paths"]["raw_text"] = file_path
+        filled = filled.interpolate()
+        assert filled["pretraining"]["component"] == "tok2vec"
+        pretrain(filled, tmp_dir)
+        assert Path(tmp_dir / "model0.bin").exists()
+        assert Path(tmp_dir / "model4.bin").exists()
+        assert not Path(tmp_dir / "model5.bin").exists()
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/training/test_pretraining.py" startline="222" endline="240" pcid="167">
+def test_pretraining_tagger_tok2vec(config):
+    """Test pretraining of the tagger's tok2vec layer (via a listener)"""
+    config = Config().from_str(pretrain_string_listener)
+    nlp = util.load_model_from_config(config, auto_fill=True, validate=False)
+    filled = nlp.config
+    pretrain_config = util.load_config(DEFAULT_CONFIG_PRETRAIN_PATH)
+    filled = pretrain_config.merge(filled)
+    with make_tempdir() as tmp_dir:
+        file_path = write_sample_jsonl(tmp_dir)
+        filled["paths"]["raw_text"] = file_path
+        filled["pretraining"]["component"] = "tagger"
+        filled["pretraining"]["layer"] = "tok2vec"
+        filled = filled.interpolate()
+        pretrain(filled, tmp_dir)
+        assert Path(tmp_dir / "model0.bin").exists()
+        assert Path(tmp_dir / "model4.bin").exists()
+        assert not Path(tmp_dir / "model5.bin").exists()
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/training/test_pretraining.py" startline="186" endline="202" pcid="165">
+def test_pretraining_tok2vec_vectors_fail(objective):
+    """Test that pretraining doesn't works with the vectors objective if there are no static vectors"""
+    config = Config().from_str(pretrain_string_listener)
+    config["pretraining"]["objective"] = objective
+    nlp = util.load_model_from_config(config, auto_fill=True, validate=False)
+    filled = nlp.config
+    pretrain_config = util.load_config(DEFAULT_CONFIG_PRETRAIN_PATH)
+    filled = pretrain_config.merge(filled)
+    with make_tempdir() as tmp_dir:
+        file_path = write_sample_jsonl(tmp_dir)
+        filled["paths"]["raw_text"] = file_path
+        filled = filled.interpolate()
+        assert filled["initialize"]["vectors"] is None
+        with pytest.raises(ValueError):
+            pretrain(filled, tmp_dir)
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/training/test_pretraining.py" startline="204" endline="220" pcid="166">
+def test_pretraining_tok2vec_vectors(objective):
+    """Test that pretraining works with the vectors objective and static vectors defined"""
+    config = Config().from_str(pretrain_string_listener)
+    config["pretraining"]["objective"] = objective
+    nlp = util.load_model_from_config(config, auto_fill=True, validate=False)
+    filled = nlp.config
+    pretrain_config = util.load_config(DEFAULT_CONFIG_PRETRAIN_PATH)
+    filled = pretrain_config.merge(filled)
+    with make_tempdir() as tmp_dir:
+        file_path = write_sample_jsonl(tmp_dir)
+        filled["paths"]["raw_text"] = file_path
+        nlp_path = write_vectors_model(tmp_dir)
+        filled["initialize"]["vectors"] = nlp_path
+        filled = filled.interpolate()
+        pretrain(filled, tmp_dir)
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/training/test_pretraining.py" startline="241" endline="256" pcid="168">
+def test_pretraining_tagger():
+    """Test pretraining of the tagger itself will throw an error (not an appropriate tok2vec layer)"""
+    config = Config().from_str(pretrain_string_internal)
+    nlp = util.load_model_from_config(config, auto_fill=True, validate=False)
+    filled = nlp.config
+    pretrain_config = util.load_config(DEFAULT_CONFIG_PRETRAIN_PATH)
+    filled = pretrain_config.merge(filled)
+    with make_tempdir() as tmp_dir:
+        file_path = write_sample_jsonl(tmp_dir)
+        filled["paths"]["raw_text"] = file_path
+        filled["pretraining"]["component"] = "tagger"
+        filled = filled.interpolate()
+        with pytest.raises(ValueError):
+            pretrain(filled, tmp_dir)
+
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="11" similarity="100">
+<source file="systems/spaCy-3.1.4/spacy/tests/training/test_new_example.py" startline="258" endline="270" pcid="187">
+def test_Example_from_dict_with_spans(annots):
+    vocab = Vocab()
+    predicted = Doc(vocab, words=annots["words"])
+    example = Example.from_dict(predicted, annots)
+    assert len(list(example.reference.ents)) == 0
+    assert len(list(example.reference.spans["cities"])) == 2
+    assert len(list(example.reference.spans["people"])) == 1
+    for span in example.reference.spans["cities"]:
+        assert span.label_ == "LOC"
+    for span in example.reference.spans["people"]:
+        assert span.label_ == "PERSON"
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/training/test_new_example.py" startline="283" endline="295" pcid="188">
+def test_Example_from_dict_with_spans_overlapping(annots):
+    vocab = Vocab()
+    predicted = Doc(vocab, words=annots["words"])
+    example = Example.from_dict(predicted, annots)
+    assert len(list(example.reference.ents)) == 0
+    assert len(list(example.reference.spans["cities"])) == 3
+    assert len(list(example.reference.spans["people"])) == 1
+    for span in example.reference.spans["cities"]:
+        assert span.label_ == "LOC"
+    for span in example.reference.spans["people"]:
+        assert span.label_ == "PERSON"
+
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="16" similarity="93">
+<source file="systems/spaCy-3.1.4/spacy/tests/regression/test_issue4501-5000.py" startline="40" endline="61" pcid="211">
+def test_issue4651_with_phrase_matcher_attr():
+    """Test that the EntityRuler PhraseMatcher is deserialized correctly using
+    the method from_disk when the EntityRuler argument phrase_matcher_attr is
+    specified.
+    """
+    text = "Spacy is a python library for nlp"
+    nlp = English()
+    patterns = [{"label": "PYTHON_LIB", "pattern": "spacy", "id": "spaCy"}]
+    ruler = nlp.add_pipe("entity_ruler", config={"phrase_matcher_attr": "LOWER"})
+    ruler.add_patterns(patterns)
+    doc = nlp(text)
+    res = [(ent.text, ent.label_, ent.ent_id_) for ent in doc.ents]
+    nlp_reloaded = English()
+    with make_tempdir() as d:
+        file_path = d / "entityruler"
+        ruler.to_disk(file_path)
+        nlp_reloaded.add_pipe("entity_ruler").from_disk(file_path)
+    doc_reloaded = nlp_reloaded(text)
+    res_reloaded = [(ent.text, ent.label_, ent.ent_id_) for ent in doc_reloaded.ents]
+    assert res == res_reloaded
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/regression/test_issue4501-5000.py" startline="62" endline="83" pcid="212">
+def test_issue4651_without_phrase_matcher_attr():
+    """Test that the EntityRuler PhraseMatcher is deserialized correctly using
+    the method from_disk when the EntityRuler argument phrase_matcher_attr is
+    not specified.
+    """
+    text = "Spacy is a python library for nlp"
+    nlp = English()
+    patterns = [{"label": "PYTHON_LIB", "pattern": "spacy", "id": "spaCy"}]
+    ruler = nlp.add_pipe("entity_ruler")
+    ruler.add_patterns(patterns)
+    doc = nlp(text)
+    res = [(ent.text, ent.label_, ent.ent_id_) for ent in doc.ents]
+    nlp_reloaded = English()
+    with make_tempdir() as d:
+        file_path = d / "entityruler"
+        ruler.to_disk(file_path)
+        nlp_reloaded.add_pipe("entity_ruler").from_disk(file_path)
+    doc_reloaded = nlp_reloaded(text)
+    res_reloaded = [(ent.text, ent.label_, ent.ent_id_) for ent in doc_reloaded.ents]
+    assert res == res_reloaded
+
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="18" similarity="73">
+<source file="systems/spaCy-3.1.4/spacy/tests/regression/test_issue1001-1500.py" startline="127" endline="149" pcid="233">
+def test_issue1488():
+    prefix_re = re.compile(r"""[\[\("']""")
+    suffix_re = re.compile(r"""[\]\)"']""")
+    infix_re = re.compile(r"""[-~\.]""")
+    simple_url_re = re.compile(r"""^https?://""")
+
+    def my_tokenizer(nlp):
+        return Tokenizer(
+            nlp.vocab,
+            {},
+            prefix_search=prefix_re.search,
+            suffix_search=suffix_re.search,
+            infix_finditer=infix_re.finditer,
+            token_match=simple_url_re.match,
+        )
+
+    nlp = English()
+    nlp.tokenizer = my_tokenizer(nlp)
+    doc = nlp("This is a test.")
+    for token in doc:
+        assert token.text
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/serialize/test_serialize_language.py" startline="32" endline="54" pcid="936">
+def test_serialize_with_custom_tokenizer():
+    """Test that serialization with custom tokenizer works without token_match.
+    See: https://support.prodi.gy/t/how-to-save-a-custom-tokenizer/661/2
+    """
+    prefix_re = re.compile(r"""1/|2/|:[0-9][0-9][A-K]:|:[0-9][0-9]:""")
+    suffix_re = re.compile(r"""""")
+    infix_re = re.compile(r"""[~]""")
+
+    def custom_tokenizer(nlp):
+        return Tokenizer(
+            nlp.vocab,
+            {},
+            prefix_search=prefix_re.search,
+            suffix_search=suffix_re.search,
+            infix_finditer=infix_re.finditer,
+        )
+
+    nlp = Language()
+    nlp.tokenizer = custom_tokenizer(nlp)
+    with make_tempdir() as d:
+        nlp.to_disk(d)
+
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="17" similarity="100">
+<source file="systems/spaCy-3.1.4/spacy/tests/regression/test_issue7716.py" startline="24" endline="45" pcid="293">
+def parser(vocab):
+    vocab.strings.add("ROOT")
+    cfg = {"model": DEFAULT_PARSER_MODEL}
+    model = registry.resolve(cfg, validate=True)["model"]
+    parser = DependencyParser(vocab, model)
+    parser.cfg["token_vector_width"] = 4
+    parser.cfg["hidden_width"] = 32
+    # parser.add_label('right')
+    parser.add_label("left")
+    parser.initialize(lambda: [_parser_example(parser)])
+    sgd = Adam(0.001)
+
+    for i in range(10):
+        losses = {}
+        doc = Doc(vocab, words=["a", "b", "c", "d"])
+        example = Example.from_dict(
+            doc, {"heads": [1, 1, 3, 3], "deps": ["left", "ROOT", "left", "ROOT"]}
+        )
+        parser.update([example], sgd=sgd, losses=losses)
+    return parser
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/parser/test_preset_sbd.py" startline="24" endline="45" pcid="482">
+def parser(vocab):
+    vocab.strings.add("ROOT")
+    cfg = {"model": DEFAULT_PARSER_MODEL}
+    model = registry.resolve(cfg, validate=True)["model"]
+    parser = DependencyParser(vocab, model)
+    parser.cfg["token_vector_width"] = 4
+    parser.cfg["hidden_width"] = 32
+    # parser.add_label('right')
+    parser.add_label("left")
+    parser.initialize(lambda: [_parser_example(parser)])
+    sgd = Adam(0.001)
+
+    for i in range(10):
+        losses = {}
+        doc = Doc(vocab, words=["a", "b", "c", "d"])
+        example = Example.from_dict(
+            doc, {"heads": [1, 1, 3, 3], "deps": ["left", "ROOT", "left", "ROOT"]}
+        )
+        parser.update([example], sgd=sgd, losses=losses)
+    return parser
+
+
+</source>
+</class>
+
+<class classid="7" nclones="6" nlines="13" similarity="71">
+<source file="systems/spaCy-3.1.4/spacy/tests/regression/test_issue2501-3000.py" startline="55" endline="73" pcid="314">
+def test_issue2656(en_tokenizer):
+    """Test that tokenizer correctly splits off punctuation after numbers with
+    decimal points.
+    """
+    doc = en_tokenizer("I went for 40.3, and got home by 10.0.")
+    assert len(doc) == 11
+    assert doc[0].text == "I"
+    assert doc[1].text == "went"
+    assert doc[2].text == "for"
+    assert doc[3].text == "40.3"
+    assert doc[4].text == ","
+    assert doc[5].text == "and"
+    assert doc[6].text == "got"
+    assert doc[7].text == "home"
+    assert doc[8].text == "by"
+    assert doc[9].text == "10.0"
+    assert doc[10].text == "."
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/id/test_prefix_suffix_infix.py" startline="99" endline="111" pcid="1048">
+def test_id_tokenizer_splits_double_hyphen_infix(id_tokenizer):
+    tokens = id_tokenizer("Arsene Wenger--manajer Arsenal--melakukan konferensi pers.")
+    assert len(tokens) == 10
+    assert tokens[0].text == "Arsene"
+    assert tokens[1].text == "Wenger"
+    assert tokens[2].text == "--"
+    assert tokens[3].text == "manajer"
+    assert tokens[4].text == "Arsenal"
+    assert tokens[5].text == "--"
+    assert tokens[6].text == "melakukan"
+    assert tokens[7].text == "konferensi"
+    assert tokens[8].text == "pers"
+    assert tokens[9].text == "."
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/en/test_prefix_suffix_infix.py" startline="97" endline="110" pcid="1377">
+def test_en_tokenizer_splits_double_hyphen_infix(en_tokenizer):
+    tokens = en_tokenizer("No decent--let alone well-bred--people.")
+    assert tokens[0].text == "No"
+    assert tokens[1].text == "decent"
+    assert tokens[2].text == "--"
+    assert tokens[3].text == "let"
+    assert tokens[4].text == "alone"
+    assert tokens[5].text == "well"
+    assert tokens[6].text == "-"
+    assert tokens[7].text == "bred"
+    assert tokens[8].text == "--"
+    assert tokens[9].text == "people"
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/regression/test_issue2501-3000.py" startline="210" endline="223" pcid="325">
+def test_issue2926(fr_tokenizer):
+    """Test that the tokenizer correctly splits tokens separated by a slash (/)
+    ending in a digit.
+    """
+    doc = fr_tokenizer("Learn html5/css3/javascript/jquery")
+    assert len(doc) == 8
+    assert doc[0].text == "Learn"
+    assert doc[1].text == "html5"
+    assert doc[2].text == "/"
+    assert doc[3].text == "css3"
+    assert doc[4].text == "/"
+    assert doc[5].text == "javascript"
+    assert doc[6].text == "/"
+    assert doc[7].text == "jquery"
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/da/test_prefix_suffix_infix.py" startline="124" endline="138" pcid="1198">
+def test_da_tokenizer_splits_double_hyphen_infix(da_tokenizer):
+    tokens = da_tokenizer(
+        "Mange regler--eksempelvis bindestregs-reglerne--er komplicerede."
+    )
+    assert len(tokens) == 9
+    assert tokens[0].text == "Mange"
+    assert tokens[1].text == "regler"
+    assert tokens[2].text == "--"
+    assert tokens[3].text == "eksempelvis"
+    assert tokens[4].text == "bindestregs-reglerne"
+    assert tokens[5].text == "--"
+    assert tokens[6].text == "er"
+    assert tokens[7].text == "komplicerede"
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/de/test_prefix_suffix_infix.py" startline="97" endline="108" pcid="1100">
+def test_de_tokenizer_splits_double_hyphen_infix(de_tokenizer):
+    tokens = de_tokenizer("Viele Regeln--wie die Bindestrich-Regeln--sind kompliziert.")
+    assert len(tokens) == 10
+    assert tokens[0].text == "Viele"
+    assert tokens[1].text == "Regeln"
+    assert tokens[2].text == "--"
+    assert tokens[3].text == "wie"
+    assert tokens[4].text == "die"
+    assert tokens[5].text == "Bindestrich-Regeln"
+    assert tokens[6].text == "--"
+    assert tokens[7].text == "sind"
+    assert tokens[8].text == "kompliziert"
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="29" similarity="80">
+<source file="systems/spaCy-3.1.4/spacy/tests/matcher/test_dependency_matcher.py" startline="373" endline="417" pcid="370">
+def test_dependency_matcher_order_issue(en_tokenizer):
+    # issue from #9263
+    doc = en_tokenizer("I like text")
+    doc[2].head = doc[1]
+
+    # this matches on attrs but not rel op
+    pattern1 = [
+        {"RIGHT_ID": "root", "RIGHT_ATTRS": {"ORTH": "like"}},
+        {
+            "LEFT_ID": "root",
+            "RIGHT_ID": "r",
+            "RIGHT_ATTRS": {"ORTH": "text"},
+            "REL_OP": "<",
+        },
+    ]
+
+    # this matches on rel op but not attrs
+    pattern2 = [
+        {"RIGHT_ID": "root", "RIGHT_ATTRS": {"ORTH": "like"}},
+        {
+            "LEFT_ID": "root",
+            "RIGHT_ID": "r",
+            "RIGHT_ATTRS": {"ORTH": "fish"},
+            "REL_OP": ">",
+        },
+    ]
+
+    matcher = DependencyMatcher(en_tokenizer.vocab)
+
+    # This should behave the same as the next pattern
+    matcher.add("check", [pattern1, pattern2])
+    matches = matcher(doc)
+
+    assert matches == []
+
+    # use a new matcher
+    matcher = DependencyMatcher(en_tokenizer.vocab)
+    # adding one at a time under same label gets a match
+    matcher.add("check", [pattern1])
+    matcher.add("check", [pattern2])
+    matches = matcher(doc)
+
+    assert matches == []
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/matcher/test_dependency_matcher.py" startline="418" endline="454" pcid="371">
+def test_dependency_matcher_remove(en_tokenizer):
+    # issue from #9263
+    doc = en_tokenizer("The red book")
+    doc[1].head = doc[2]
+
+    # this matches
+    pattern1 = [
+        {"RIGHT_ID": "root", "RIGHT_ATTRS": {"ORTH": "book"}},
+        {
+            "LEFT_ID": "root",
+            "RIGHT_ID": "r",
+            "RIGHT_ATTRS": {"ORTH": "red"},
+            "REL_OP": ">",
+        },
+    ]
+
+    # add and then remove it
+    matcher = DependencyMatcher(en_tokenizer.vocab)
+    matcher.add("check", [pattern1])
+    matcher.remove("check")
+
+    # this matches on rel op but not attrs
+    pattern2 = [
+        {"RIGHT_ID": "root", "RIGHT_ATTRS": {"ORTH": "flag"}},
+        {
+            "LEFT_ID": "root",
+            "RIGHT_ID": "r",
+            "RIGHT_ATTRS": {"ORTH": "blue"},
+            "REL_OP": ">",
+        },
+    ]
+
+    # Adding this new pattern with the same label, which should not match
+    matcher.add("check", [pattern2])
+    matches = matcher(doc)
+
+    assert matches == []
+</source>
+</class>
+
+<class classid="9" nclones="5" nlines="10" similarity="75">
+<source file="systems/spaCy-3.1.4/spacy/tests/matcher/test_matcher_api.py" startline="218" endline="229" pcid="391">
+def test_matcher_set_value(en_vocab):
+    matcher = Matcher(en_vocab)
+    pattern = [{"ORTH": {"IN": ["an", "a"]}}]
+    matcher.add("A_OR_AN", [pattern])
+    doc = Doc(en_vocab, words=["an", "a", "apple"])
+    matches = matcher(doc)
+    assert len(matches) == 2
+    doc = Doc(en_vocab, words=["aardvark"])
+    matches = matcher(doc)
+    assert len(matches) == 0
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/matcher/test_matcher_api.py" startline="230" endline="241" pcid="392">
+def test_matcher_set_value_operator(en_vocab):
+    matcher = Matcher(en_vocab)
+    pattern = [{"ORTH": {"IN": ["a", "the"]}, "OP": "?"}, {"ORTH": "house"}]
+    matcher.add("DET_HOUSE", [pattern])
+    doc = Doc(en_vocab, words=["In", "a", "house"])
+    matches = matcher(doc)
+    assert len(matches) == 2
+    doc = Doc(en_vocab, words=["my", "house"])
+    matches = matcher(doc)
+    assert len(matches) == 1
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/matcher/test_matcher_api.py" startline="465" endline="478" pcid="400">
+def test_matcher_extension_set_membership(en_vocab):
+    matcher = Matcher(en_vocab)
+    get_reversed = lambda token: "".join(reversed(token.text))
+    Token.set_extension("reversed", getter=get_reversed, force=True)
+    pattern = [{"_": {"reversed": {"IN": ["eyb", "ih"]}}}]
+    matcher.add("REVERSED", [pattern])
+    doc = Doc(en_vocab, words=["hi", "bye", "hello"])
+    matches = matcher(doc)
+    assert len(matches) == 2
+    doc = Doc(en_vocab, words=["aardvark"])
+    matches = matcher(doc)
+    assert len(matches) == 0
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/matcher/test_matcher_api.py" startline="430" endline="441" pcid="398">
+def test_matcher_regex_shape(en_vocab):
+    matcher = Matcher(en_vocab)
+    pattern = [{"SHAPE": {"REGEX": r"^[^x]+$"}}]
+    matcher.add("NON_ALPHA", [pattern])
+    doc = Doc(en_vocab, words=["99", "problems", "!"])
+    matches = matcher(doc)
+    assert len(matches) == 2
+    doc = Doc(en_vocab, words=["bye"])
+    matches = matcher(doc)
+    assert len(matches) == 0
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/matcher/test_matcher_api.py" startline="418" endline="429" pcid="397">
+def test_matcher_regex(en_vocab):
+    matcher = Matcher(en_vocab)
+    pattern = [{"ORTH": {"REGEX": r"(?:a|an)"}}]
+    matcher.add("A_OR_AN", [pattern])
+    doc = Doc(en_vocab, words=["an", "a", "hi"])
+    matches = matcher(doc)
+    assert len(matches) == 2
+    doc = Doc(en_vocab, words=["bye"])
+    matches = matcher(doc)
+    assert len(matches) == 0
+
+
+</source>
+</class>
+
+<class classid="10" nclones="3" nlines="37" similarity="71">
+<source file="systems/spaCy-3.1.4/spacy/tests/matcher/test_matcher_api.py" startline="242" endline="283" pcid="393">
+def test_matcher_subset_value_operator(en_vocab):
+    matcher = Matcher(en_vocab)
+    pattern = [{"MORPH": {"IS_SUBSET": ["Feat=Val", "Feat2=Val2"]}}]
+    matcher.add("M", [pattern])
+    doc = Doc(en_vocab, words=["a", "b", "c"])
+    assert len(matcher(doc)) == 3
+    doc[0].set_morph("Feat=Val")
+    assert len(matcher(doc)) == 3
+    doc[0].set_morph("Feat=Val|Feat2=Val2")
+    assert len(matcher(doc)) == 3
+    doc[0].set_morph("Feat=Val|Feat2=Val2|Feat3=Val3")
+    assert len(matcher(doc)) == 2
+    doc[0].set_morph("Feat=Val|Feat2=Val2|Feat3=Val3|Feat4=Val4")
+    assert len(matcher(doc)) == 2
+
+    # IS_SUBSET acts like "IN" for attrs other than MORPH
+    matcher = Matcher(en_vocab)
+    pattern = [{"TAG": {"IS_SUBSET": ["A", "B"]}}]
+    matcher.add("M", [pattern])
+    doc = Doc(en_vocab, words=["a", "b", "c"])
+    doc[0].tag_ = "A"
+    assert len(matcher(doc)) == 1
+
+    # IS_SUBSET with an empty list matches nothing
+    matcher = Matcher(en_vocab)
+    pattern = [{"TAG": {"IS_SUBSET": []}}]
+    matcher.add("M", [pattern])
+    doc = Doc(en_vocab, words=["a", "b", "c"])
+    doc[0].tag_ = "A"
+    assert len(matcher(doc)) == 0
+
+    # IS_SUBSET with a list value
+    Token.set_extension("ext", default=[])
+    matcher = Matcher(en_vocab)
+    pattern = [{"_": {"ext": {"IS_SUBSET": ["A", "B"]}}}]
+    matcher.add("M", [pattern])
+    doc = Doc(en_vocab, words=["a", "b", "c"])
+    doc[0]._.ext = ["A"]
+    doc[1]._.ext = ["C", "D"]
+    assert len(matcher(doc)) == 2
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/matcher/test_matcher_api.py" startline="284" endline="330" pcid="394">
+def test_matcher_superset_value_operator(en_vocab):
+    matcher = Matcher(en_vocab)
+    pattern = [{"MORPH": {"IS_SUPERSET": ["Feat=Val", "Feat2=Val2", "Feat3=Val3"]}}]
+    matcher.add("M", [pattern])
+    doc = Doc(en_vocab, words=["a", "b", "c"])
+    assert len(matcher(doc)) == 0
+    doc[0].set_morph("Feat=Val|Feat2=Val2")
+    assert len(matcher(doc)) == 0
+    doc[0].set_morph("Feat=Val|Feat2=Val2|Feat3=Val3")
+    assert len(matcher(doc)) == 1
+    doc[0].set_morph("Feat=Val|Feat2=Val2|Feat3=Val3|Feat4=Val4")
+    assert len(matcher(doc)) == 1
+
+    # IS_SUPERSET with more than one value only matches for MORPH
+    matcher = Matcher(en_vocab)
+    pattern = [{"TAG": {"IS_SUPERSET": ["A", "B"]}}]
+    matcher.add("M", [pattern])
+    doc = Doc(en_vocab, words=["a", "b", "c"])
+    doc[0].tag_ = "A"
+    assert len(matcher(doc)) == 0
+
+    # IS_SUPERSET with one value is the same as ==
+    matcher = Matcher(en_vocab)
+    pattern = [{"TAG": {"IS_SUPERSET": ["A"]}}]
+    matcher.add("M", [pattern])
+    doc = Doc(en_vocab, words=["a", "b", "c"])
+    doc[0].tag_ = "A"
+    assert len(matcher(doc)) == 1
+
+    # IS_SUPERSET with an empty value matches everything
+    matcher = Matcher(en_vocab)
+    pattern = [{"TAG": {"IS_SUPERSET": []}}]
+    matcher.add("M", [pattern])
+    doc = Doc(en_vocab, words=["a", "b", "c"])
+    doc[0].tag_ = "A"
+    assert len(matcher(doc)) == 3
+
+    # IS_SUPERSET with a list value
+    Token.set_extension("ext", default=[])
+    matcher = Matcher(en_vocab)
+    pattern = [{"_": {"ext": {"IS_SUPERSET": ["A"]}}}]
+    matcher.add("M", [pattern])
+    doc = Doc(en_vocab, words=["a", "b", "c"])
+    doc[0]._.ext = ["A", "B"]
+    assert len(matcher(doc)) == 1
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/matcher/test_matcher_api.py" startline="331" endline="387" pcid="395">
+def test_matcher_intersect_value_operator(en_vocab):
+    matcher = Matcher(en_vocab)
+    pattern = [{"MORPH": {"INTERSECTS": ["Feat=Val", "Feat2=Val2", "Feat3=Val3"]}}]
+    matcher.add("M", [pattern])
+    doc = Doc(en_vocab, words=["a", "b", "c"])
+    assert len(matcher(doc)) == 0
+    doc[0].set_morph("Feat=Val")
+    assert len(matcher(doc)) == 1
+    doc[0].set_morph("Feat=Val|Feat2=Val2")
+    assert len(matcher(doc)) == 1
+    doc[0].set_morph("Feat=Val|Feat2=Val2|Feat3=Val3")
+    assert len(matcher(doc)) == 1
+    doc[0].set_morph("Feat=Val|Feat2=Val2|Feat3=Val3|Feat4=Val4")
+    assert len(matcher(doc)) == 1
+
+    # INTERSECTS with a single value is the same as IN
+    matcher = Matcher(en_vocab)
+    pattern = [{"TAG": {"INTERSECTS": ["A", "B"]}}]
+    matcher.add("M", [pattern])
+    doc = Doc(en_vocab, words=["a", "b", "c"])
+    doc[0].tag_ = "A"
+    assert len(matcher(doc)) == 1
+
+    # INTERSECTS with an empty pattern list matches nothing
+    matcher = Matcher(en_vocab)
+    pattern = [{"TAG": {"INTERSECTS": []}}]
+    matcher.add("M", [pattern])
+    doc = Doc(en_vocab, words=["a", "b", "c"])
+    doc[0].tag_ = "A"
+    assert len(matcher(doc)) == 0
+
+    # INTERSECTS with a list value
+    Token.set_extension("ext", default=[])
+    matcher = Matcher(en_vocab)
+    pattern = [{"_": {"ext": {"INTERSECTS": ["A", "C"]}}}]
+    matcher.add("M", [pattern])
+    doc = Doc(en_vocab, words=["a", "b", "c"])
+    doc[0]._.ext = ["A", "B"]
+    assert len(matcher(doc)) == 1
+
+    # INTERSECTS with an empty pattern list matches nothing
+    matcher = Matcher(en_vocab)
+    pattern = [{"_": {"ext": {"INTERSECTS": []}}}]
+    matcher.add("M", [pattern])
+    doc = Doc(en_vocab, words=["a", "b", "c"])
+    doc[0]._.ext = ["A", "B"]
+    assert len(matcher(doc)) == 0
+
+    # INTERSECTS with an empty value matches nothing
+    matcher = Matcher(en_vocab)
+    pattern = [{"_": {"ext": {"INTERSECTS": ["A", "B"]}}}]
+    matcher.add("M", [pattern])
+    doc = Doc(en_vocab, words=["a", "b", "c"])
+    doc[0]._.ext = []
+    assert len(matcher(doc)) == 0
+
+
+</source>
+</class>
+
+<class classid="11" nclones="2" nlines="11" similarity="72">
+<source file="systems/spaCy-3.1.4/spacy/tests/parser/test_add_label.py" startline="114" endline="125" pcid="471">
+def test_ner_labels_added_implicitly_on_predict():
+    nlp = Language()
+    ner = nlp.add_pipe("ner")
+    for label in ["A", "B", "C"]:
+        ner.add_label(label)
+    nlp.initialize()
+    doc = Doc(nlp.vocab, words=["hello", "world"], ents=["B-D", "O"])
+    ner(doc)
+    assert [t.ent_type_ for t in doc] == ["D", ""]
+    assert "D" in ner.labels
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/parser/test_add_label.py" startline="148" endline="158" pcid="474">
+def test_ner_labels_added_implicitly_on_update():
+    nlp = Language()
+    ner = nlp.add_pipe("ner")
+    for label in ["A", "B", "C"]:
+        ner.add_label(label)
+    nlp.initialize()
+    doc = Doc(nlp.vocab, words=["hello", "world"], ents=["B-D", "O"])
+    example = Example(nlp.make_doc(doc.text), doc)
+    assert "D" not in ner.labels
+    nlp.update([example])
+    assert "D" in ner.labels
+</source>
+</class>
+
+<class classid="12" nclones="2" nlines="13" similarity="73">
+<source file="systems/spaCy-3.1.4/spacy/tests/parser/test_preset_sbd.py" startline="52" endline="64" pcid="484">
+def test_sents_1(parser):
+    doc = Doc(parser.vocab, words=["a", "b", "c", "d"])
+    doc[2].sent_start = True
+    doc = parser(doc)
+    assert len(list(doc.sents)) >= 2
+    doc = Doc(parser.vocab, words=["a", "b", "c", "d"])
+    doc[1].sent_start = False
+    doc[2].sent_start = True
+    doc[3].sent_start = False
+    doc = parser(doc)
+    assert len(list(doc.sents)) == 2
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/parser/test_preset_sbd.py" startline="73" endline="87" pcid="486">
+def test_sents_1_3(parser):
+    doc = Doc(parser.vocab, words=["a", "b", "c", "d"])
+    doc[0].is_sent_start = True
+    doc[1].is_sent_start = True
+    doc[2].is_sent_start = None
+    doc[3].is_sent_start = True
+    doc = parser(doc)
+    assert len(list(doc.sents)) >= 3
+    doc = Doc(parser.vocab, words=["a", "b", "c", "d"])
+    doc[0].is_sent_start = True
+    doc[1].is_sent_start = True
+    doc[2].is_sent_start = False
+    doc[3].is_sent_start = True
+    doc = parser(doc)
+    assert len(list(doc.sents)) == 3
+</source>
+</class>
+
+<class classid="13" nclones="3" nlines="15" similarity="80">
+<source file="systems/spaCy-3.1.4/spacy/tests/parser/test_ner.py" startline="68" endline="89" pcid="507">
+def test_negative_samples_two_word_input(tsys, vocab, neg_key):
+    """Test that we don't get stuck in a two word input when we have a negative
+    span. This could happen if we don't have the right check on the B action.
+    """
+    tsys.cfg["neg_key"] = neg_key
+    doc = Doc(vocab, words=["A", "B"])
+    entity_annots = [None, None]
+    example = Example.from_dict(doc, {"entities": entity_annots})
+    # These mean that the oracle sequence shouldn't have O for the first
+    # word, and it shouldn't analyse it as B-PERSON, L-PERSON
+    example.y.spans[neg_key] = [
+        Span(example.y, 0, 1, label="O"),
+        Span(example.y, 0, 2, label="PERSON"),
+    ]
+    act_classes = tsys.get_oracle_sequence(example)
+    names = [tsys.get_class_name(act) for act in act_classes]
+    assert names
+    assert names[0] != "O"
+    assert names[0] != "B-PERSON"
+    assert names[1] != "L-PERSON"
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/parser/test_ner.py" startline="90" endline="108" pcid="508">
+def test_negative_samples_three_word_input(tsys, vocab, neg_key):
+    """Test that we exclude a 2-word entity correctly using a negative example."""
+    tsys.cfg["neg_key"] = neg_key
+    doc = Doc(vocab, words=["A", "B", "C"])
+    entity_annots = [None, None, None]
+    example = Example.from_dict(doc, {"entities": entity_annots})
+    # These mean that the oracle sequence shouldn't have O for the first
+    # word, and it shouldn't analyse it as B-PERSON, L-PERSON
+    example.y.spans[neg_key] = [
+        Span(example.y, 0, 1, label="O"),
+        Span(example.y, 0, 2, label="PERSON"),
+    ]
+    act_classes = tsys.get_oracle_sequence(example)
+    names = [tsys.get_class_name(act) for act in act_classes]
+    assert names
+    assert names[0] != "O"
+    assert names[1] != "B-PERSON"
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/parser/test_ner.py" startline="109" endline="127" pcid="509">
+def test_negative_samples_U_entity(tsys, vocab, neg_key):
+    """Test that we exclude a 2-word entity correctly using a negative example."""
+    tsys.cfg["neg_key"] = neg_key
+    doc = Doc(vocab, words=["A"])
+    entity_annots = [None]
+    example = Example.from_dict(doc, {"entities": entity_annots})
+    # These mean that the oracle sequence shouldn't have O for the first
+    # word, and it shouldn't analyse it as B-PERSON, L-PERSON
+    example.y.spans[neg_key] = [
+        Span(example.y, 0, 1, label="O"),
+        Span(example.y, 0, 1, label="PERSON"),
+    ]
+    act_classes = tsys.get_oracle_sequence(example)
+    names = [tsys.get_class_name(act) for act in act_classes]
+    assert names
+    assert names[0] != "O"
+    assert names[0] != "U-PERSON"
+
+
+</source>
+</class>
+
+<class classid="14" nclones="2" nlines="17" similarity="94">
+<source file="systems/spaCy-3.1.4/spacy/tests/parser/test_ner.py" startline="232" endline="252" pcid="514">
+def test_train_empty():
+    """Test that training an empty text does not throw errors."""
+    train_data = [
+        ("Who is Shaka Khan?", {"entities": [(7, 17, "PERSON")]}),
+        ("", {"entities": []}),
+    ]
+
+    nlp = English()
+    train_examples = []
+    for t in train_data:
+        train_examples.append(Example.from_dict(nlp.make_doc(t[0]), t[1]))
+    ner = nlp.add_pipe("ner", last=True)
+    ner.add_label("PERSON")
+    nlp.initialize()
+    for itn in range(2):
+        losses = {}
+        batches = util.minibatch(train_examples, size=8)
+        for batch in batches:
+            nlp.update(batch, losses=losses)
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/parser/test_ner.py" startline="253" endline="273" pcid="515">
+def test_train_negative_deprecated():
+    """Test that the deprecated negative entity format raises a custom error."""
+    train_data = [
+        ("Who is Shaka Khan?", {"entities": [(7, 17, "!PERSON")]}),
+    ]
+
+    nlp = English()
+    train_examples = []
+    for t in train_data:
+        train_examples.append(Example.from_dict(nlp.make_doc(t[0]), t[1]))
+    ner = nlp.add_pipe("ner", last=True)
+    ner.add_label("PERSON")
+    nlp.initialize()
+    for itn in range(2):
+        losses = {}
+        batches = util.minibatch(train_examples, size=8)
+        for batch in batches:
+            with pytest.raises(ValueError):
+                nlp.update(batch, losses=losses)
+
+
+</source>
+</class>
+
+<class classid="15" nclones="2" nlines="13" similarity="76">
+<source file="systems/spaCy-3.1.4/spacy/tests/parser/test_ner.py" startline="306" endline="325" pcid="518">
+def test_ruler_before_ner():
+    """Test that an NER works after an entity_ruler: the second can add annotations"""
+    nlp = English()
+
+    # 1 : Entity Ruler - should set "this" to B and everything else to empty
+    patterns = [{"label": "THING", "pattern": "This"}]
+    ruler = nlp.add_pipe("entity_ruler")
+
+    # 2: untrained NER - should set everything else to O
+    untrained_ner = nlp.add_pipe("ner")
+    untrained_ner.add_label("MY_LABEL")
+    nlp.initialize()
+    ruler.add_patterns(patterns)
+    doc = nlp("This is Antti Korhonen speaking in Finland")
+    expected_iobs = ["B", "O", "O", "O", "O", "O", "O"]
+    expected_types = ["THING", "", "", "", "", "", ""]
+    assert [token.ent_iob_ for token in doc] == expected_iobs
+    assert [token.ent_type_ for token in doc] == expected_types
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/parser/test_ner.py" startline="336" endline="356" pcid="520">
+def test_ner_before_ruler():
+    """Test that an entity_ruler works after an NER: the second can overwrite O annotations"""
+    nlp = English()
+
+    # 1: untrained NER - should set everything to O
+    untrained_ner = nlp.add_pipe("ner", name="uner")
+    untrained_ner.add_label("MY_LABEL")
+    nlp.initialize()
+
+    # 2 : Entity Ruler - should set "this" to B and keep everything else O
+    patterns = [{"label": "THING", "pattern": "This"}]
+    ruler = nlp.add_pipe("entity_ruler")
+    ruler.add_patterns(patterns)
+
+    doc = nlp("This is Antti Korhonen speaking in Finland")
+    expected_iobs = ["B", "O", "O", "O", "O", "O", "O"]
+    expected_types = ["THING", "", "", "", "", "", ""]
+    assert [token.ent_iob_ for token in doc] == expected_iobs
+    assert [token.ent_type_ for token in doc] == expected_types
+
+
+</source>
+</class>
+
+<class classid="16" nclones="2" nlines="29" similarity="72">
+<source file="systems/spaCy-3.1.4/spacy/tests/parser/test_ner.py" startline="450" endline="484" pcid="523">
+def test_beam_ner_scores():
+    # Test that we can get confidence values out of the beam_ner pipe
+    beam_width = 16
+    beam_density = 0.0001
+    nlp = English()
+    config = {
+        "beam_width": beam_width,
+        "beam_density": beam_density,
+    }
+    ner = nlp.add_pipe("beam_ner", config=config)
+    train_examples = []
+    for text, annotations in TRAIN_DATA:
+        train_examples.append(Example.from_dict(nlp.make_doc(text), annotations))
+        for ent in annotations.get("entities"):
+            ner.add_label(ent[2])
+    optimizer = nlp.initialize()
+
+    # update once
+    losses = {}
+    nlp.update(train_examples, sgd=optimizer, losses=losses)
+
+    # test the scores from the beam
+    test_text = "I like London."
+    doc = nlp.make_doc(test_text)
+    docs = [doc]
+    beams = ner.predict(docs)
+    entity_scores = ner.scored_ents(beams)[0]
+
+    for j in range(len(doc)):
+        for label in ner.labels:
+            score = entity_scores[(j, j + 1, label)]
+            eps = 0.00001
+            assert 0 - eps <= score <= 1 + eps
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/parser/test_parse.py" startline="308" endline="345" pcid="580">
+def test_beam_parser_scores():
+    # Test that we can get confidence values out of the beam_parser pipe
+    beam_width = 16
+    beam_density = 0.0001
+    nlp = English()
+    config = {
+        "beam_width": beam_width,
+        "beam_density": beam_density,
+    }
+    parser = nlp.add_pipe("beam_parser", config=config)
+    train_examples = []
+    for text, annotations in CONFLICTING_DATA:
+        train_examples.append(Example.from_dict(nlp.make_doc(text), annotations))
+        for dep in annotations.get("deps", []):
+            parser.add_label(dep)
+    optimizer = nlp.initialize()
+
+    # update a bit with conflicting data
+    for i in range(10):
+        losses = {}
+        nlp.update(train_examples, sgd=optimizer, losses=losses)
+
+    # test the scores from the beam
+    test_text = "I like securities."
+    doc = nlp.make_doc(test_text)
+    docs = [doc]
+    beams = parser.predict(docs)
+    head_scores, label_scores = parser.scored_parses(beams)
+
+    for j in range(len(doc)):
+        for label in parser.labels:
+            label_score = label_scores[0][(j, label)]
+            assert 0 - eps <= label_score <= 1 + eps
+        for i in range(len(doc)):
+            head_score = head_scores[0][(j, i)]
+            assert 0 - eps <= head_score <= 1 + eps
+
+
+</source>
+</class>
+
+<class classid="17" nclones="2" nlines="13" similarity="84">
+<source file="systems/spaCy-3.1.4/spacy/tests/pipeline/test_senter.py" startline="36" endline="50" pcid="594">
+def test_initialize_examples():
+    nlp = Language()
+    nlp.add_pipe("senter")
+    train_examples = []
+    for t in TRAIN_DATA:
+        train_examples.append(Example.from_dict(nlp.make_doc(t[0]), t[1]))
+    # you shouldn't really call this more than once, but for testing it should be fine
+    nlp.initialize()
+    nlp.initialize(get_examples=lambda: train_examples)
+    with pytest.raises(TypeError):
+        nlp.initialize(get_examples=lambda: None)
+    with pytest.raises(TypeError):
+        nlp.initialize(get_examples=train_examples)
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/pipeline/test_morphologizer.py" startline="61" endline="76" pcid="701">
+def test_initialize_examples():
+    nlp = Language()
+    morphologizer = nlp.add_pipe("morphologizer")
+    morphologizer.add_label("POS" + Morphology.FIELD_SEP + "NOUN")
+    train_examples = []
+    for t in TRAIN_DATA:
+        train_examples.append(Example.from_dict(nlp.make_doc(t[0]), t[1]))
+    # you shouldn't really call this more than once, but for testing it should be fine
+    nlp.initialize()
+    nlp.initialize(get_examples=lambda: train_examples)
+    with pytest.raises(TypeError):
+        nlp.initialize(get_examples=lambda: None)
+    with pytest.raises(TypeError):
+        nlp.initialize(get_examples=train_examples)
+
+
+</source>
+</class>
+
+<class classid="18" nclones="2" nlines="13" similarity="100">
+<source file="systems/spaCy-3.1.4/spacy/tests/pipeline/test_attributeruler.py" startline="18" endline="34" pcid="679">
+def pattern_dicts():
+    return [
+        {
+            "patterns": [[{"ORTH": "a"}], [{"ORTH": "irrelevant"}]],
+            "attrs": {"LEMMA": "the", "MORPH": "Case=Nom|Number=Plur"},
+        },
+        # one pattern sets the lemma
+        {"patterns": [[{"ORTH": "test"}]], "attrs": {"LEMMA": "cat"}},
+        # another pattern sets the morphology
+        {
+            "patterns": [[{"ORTH": "test"}]],
+            "attrs": {"MORPH": "Case=Nom|Number=Sing"},
+            "index": 0,
+        },
+    ]
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/pipeline/test_attributeruler.py" startline="36" endline="52" pcid="680">
+def attribute_ruler_patterns():
+    return [
+        {
+            "patterns": [[{"ORTH": "a"}], [{"ORTH": "irrelevant"}]],
+            "attrs": {"LEMMA": "the", "MORPH": "Case=Nom|Number=Plur"},
+        },
+        # one pattern sets the lemma
+        {"patterns": [[{"ORTH": "test"}]], "attrs": {"LEMMA": "cat"}},
+        # another pattern sets the morphology
+        {
+            "patterns": [[{"ORTH": "test"}]],
+            "attrs": {"MORPH": "Case=Nom|Number=Sing"},
+            "index": 0,
+        },
+    ]
+
+
+</source>
+</class>
+
+<class classid="19" nclones="2" nlines="15" similarity="73">
+<source file="systems/spaCy-3.1.4/spacy/tests/pipeline/test_attributeruler.py" startline="66" endline="81" pcid="683">
+def check_tag_map(ruler):
+    doc = Doc(
+        ruler.vocab,
+        words=["This", "is", "a", "test", "."],
+        tags=["DT", "VBZ", "DT", "NN", "."],
+    )
+    doc = ruler(doc)
+    for i in range(len(doc)):
+        if i == 4:
+            assert doc[i].pos_ == "PUNCT"
+            assert str(doc[i].morph) == "PunctType=peri"
+        else:
+            assert doc[i].pos_ == ""
+            assert str(doc[i].morph) == ""
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/pipeline/test_attributeruler.py" startline="82" endline="98" pcid="684">
+def check_morph_rules(ruler):
+    doc = Doc(
+        ruler.vocab,
+        words=["This", "is", "the", "test", "."],
+        tags=["DT", "VBZ", "DT", "NN", "."],
+    )
+    doc = ruler(doc)
+    for i in range(len(doc)):
+        if i != 2:
+            assert doc[i].pos_ == ""
+            assert str(doc[i].morph) == ""
+        else:
+            assert doc[2].pos_ == "DET"
+            assert doc[2].lemma_ == "a"
+            assert str(doc[2].morph) == "Case=Nom"
+
+
+</source>
+</class>
+
+<class classid="20" nclones="2" nlines="14" similarity="92">
+<source file="systems/spaCy-3.1.4/spacy/tests/serialize/test_serialize_pipeline.py" startline="20" endline="35" pcid="914">
+def parser(en_vocab):
+    config = {
+        "learn_tokens": False,
+        "min_action_freq": 30,
+        "update_with_oracle_cut_size": 100,
+        "beam_width": 1,
+        "beam_update_prob": 1.0,
+        "beam_density": 0.0,
+    }
+    cfg = {"model": DEFAULT_PARSER_MODEL}
+    model = registry.resolve(cfg, validate=True)["model"]
+    parser = DependencyParser(en_vocab, model, **config)
+    parser.add_label("nsubj")
+    return parser
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/serialize/test_serialize_pipeline.py" startline="37" endline="51" pcid="915">
+def blank_parser(en_vocab):
+    config = {
+        "learn_tokens": False,
+        "min_action_freq": 30,
+        "update_with_oracle_cut_size": 100,
+        "beam_width": 1,
+        "beam_update_prob": 1.0,
+        "beam_density": 0.0,
+    }
+    cfg = {"model": DEFAULT_PARSER_MODEL}
+    model = registry.resolve(cfg, validate=True)["model"]
+    parser = DependencyParser(en_vocab, model, **config)
+    return parser
+
+
+</source>
+</class>
+
+<class classid="21" nclones="2" nlines="15" similarity="80">
+<source file="systems/spaCy-3.1.4/spacy/tests/serialize/test_serialize_vocab_strings.py" startline="23" endline="39" pcid="949">
+def test_serialize_vocab_roundtrip_bytes(strings1, strings2):
+    vocab1 = Vocab(strings=strings1)
+    vocab2 = Vocab(strings=strings2)
+    vocab1_b = vocab1.to_bytes()
+    vocab2_b = vocab2.to_bytes()
+    if strings1 == strings2:
+        assert vocab1_b == vocab2_b
+    else:
+        assert vocab1_b != vocab2_b
+    vocab1 = vocab1.from_bytes(vocab1_b)
+    assert vocab1.to_bytes() == vocab1_b
+    new_vocab1 = Vocab().from_bytes(vocab1_b)
+    assert new_vocab1.to_bytes() == vocab1_b
+    assert len(new_vocab1.strings) == len(strings1)
+    assert sorted([s for s in new_vocab1.strings]) == sorted(strings1)
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/serialize/test_serialize_vocab_strings.py" startline="94" endline="109" pcid="954">
+def test_serialize_stringstore_roundtrip_bytes(strings1, strings2):
+    sstore1 = StringStore(strings=strings1)
+    sstore2 = StringStore(strings=strings2)
+    sstore1_b = sstore1.to_bytes()
+    sstore2_b = sstore2.to_bytes()
+    if set(strings1) == set(strings2):
+        assert sstore1_b == sstore2_b
+    else:
+        assert sstore1_b != sstore2_b
+    sstore1 = sstore1.from_bytes(sstore1_b)
+    assert sstore1.to_bytes() == sstore1_b
+    new_sstore1 = StringStore().from_bytes(sstore1_b)
+    assert new_sstore1.to_bytes() == sstore1_b
+    assert set(new_sstore1) == set(strings1)
+
+
+</source>
+</class>
+
+<class classid="22" nclones="2" nlines="16" similarity="75">
+<source file="systems/spaCy-3.1.4/spacy/tests/serialize/test_serialize_vocab_strings.py" startline="41" endline="59" pcid="950">
+def test_serialize_vocab_roundtrip_disk(strings1, strings2):
+    vocab1 = Vocab(strings=strings1)
+    vocab2 = Vocab(strings=strings2)
+    with make_tempdir() as d:
+        file_path1 = d / "vocab1"
+        file_path2 = d / "vocab2"
+        vocab1.to_disk(file_path1)
+        vocab2.to_disk(file_path2)
+        vocab1_d = Vocab().from_disk(file_path1)
+        vocab2_d = Vocab().from_disk(file_path2)
+        # check strings rather than lexemes, which are only reloaded on demand
+        assert set(strings1) == set([s for s in vocab1_d.strings])
+        assert set(strings2) == set([s for s in vocab2_d.strings])
+        if set(strings1) == set(strings2):
+            assert [s for s in vocab1_d.strings] == [s for s in vocab2_d.strings]
+        else:
+            assert [s for s in vocab1_d.strings] != [s for s in vocab2_d.strings]
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/serialize/test_serialize_vocab_strings.py" startline="111" endline="128" pcid="955">
+def test_serialize_stringstore_roundtrip_disk(strings1, strings2):
+    sstore1 = StringStore(strings=strings1)
+    sstore2 = StringStore(strings=strings2)
+    with make_tempdir() as d:
+        file_path1 = d / "strings1"
+        file_path2 = d / "strings2"
+        sstore1.to_disk(file_path1)
+        sstore2.to_disk(file_path2)
+        sstore1_d = StringStore().from_disk(file_path1)
+        sstore2_d = StringStore().from_disk(file_path2)
+        assert set(sstore1_d) == set(sstore1)
+        assert set(sstore2_d) == set(sstore2)
+        if set(strings1) == set(strings2):
+            assert set(sstore1_d) == set(sstore2_d)
+        else:
+            assert set(sstore1_d) != set(sstore2_d)
+
+
+</source>
+</class>
+
+<class classid="23" nclones="4" nlines="10" similarity="100">
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/sr/test_tokenizer.py" startline="103" endline="114" pcid="1011">
+def test_sr_tokenizer_two_diff_punct(
+    sr_tokenizer, punct_open, punct_close, punct_open2, punct_close2, text
+):
+    tokens = sr_tokenizer(punct_open2 + punct_open + text + punct_close + punct_close2)
+    assert len(tokens) == 5
+    assert tokens[0].text == punct_open2
+    assert tokens[1].text == punct_open
+    assert tokens[2].text == text
+    assert tokens[3].text == punct_close
+    assert tokens[4].text == punct_close2
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/ru/test_tokenizer.py" startline="103" endline="114" pcid="1217">
+def test_ru_tokenizer_two_diff_punct(
+    ru_tokenizer, punct_open, punct_close, punct_open2, punct_close2, text
+):
+    tokens = ru_tokenizer(punct_open2 + punct_open + text + punct_close + punct_close2)
+    assert len(tokens) == 5
+    assert tokens[0].text == punct_open2
+    assert tokens[1].text == punct_open
+    assert tokens[2].text == text
+    assert tokens[3].text == punct_close
+    assert tokens[4].text == punct_close2
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/uk/test_tokenizer.py" startline="119" endline="130" pcid="1123">
+def test_uk_tokenizer_two_diff_punct(
+    uk_tokenizer, punct_open, punct_close, punct_open2, punct_close2, text
+):
+    tokens = uk_tokenizer(punct_open2 + punct_open + text + punct_close + punct_close2)
+    assert len(tokens) == 5
+    assert tokens[0].text == punct_open2
+    assert tokens[1].text == punct_open
+    assert tokens[2].text == text
+    assert tokens[3].text == punct_close
+    assert tokens[4].text == punct_close2
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/en/test_punct.py" startline="105" endline="116" pcid="1347">
+def test_en_tokenizer_two_diff_punct(
+    en_tokenizer, punct_open, punct_close, punct_open2, punct_close2, text
+):
+    tokens = en_tokenizer(punct_open2 + punct_open + text + punct_close + punct_close2)
+    assert len(tokens) == 5
+    assert tokens[0].text == punct_open2
+    assert tokens[1].text == punct_open
+    assert tokens[2].text == text
+    assert tokens[3].text == punct_close
+    assert tokens[4].text == punct_close2
+
+
+</source>
+</class>
+
+<class classid="24" nclones="2" nlines="10" similarity="100">
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/de/test_parser.py" startline="4" endline="15" pcid="1083">
+def test_de_parser_noun_chunks_standard_de(de_vocab):
+    words = ["Eine", "Tasse", "steht", "auf", "dem", "Tisch", "."]
+    heads = [1, 2, 2, 2, 5, 3, 2]
+    pos = ["DET", "NOUN", "VERB", "ADP", "DET", "NOUN", "PUNCT"]
+    deps = ["nk", "sb", "ROOT", "mo", "nk", "nk", "punct"]
+    doc = Doc(de_vocab, words=words, pos=pos, deps=deps, heads=heads)
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 2
+    assert chunks[0].text_with_ws == "Eine Tasse "
+    assert chunks[1].text_with_ws == "dem Tisch "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/en/test_parser.py" startline="29" endline="40" pcid="1357">
+def test_en_parser_noun_chunks_pp_chunks(en_vocab):
+    words = ["A", "phrase", "with", "another", "phrase", "occurs", "."]
+    heads = [1, 5, 1, 4, 2, 5, 5]
+    pos = ["DET", "NOUN", "ADP", "DET", "NOUN", "VERB", "PUNCT"]
+    deps = ["det", "nsubj", "prep", "det", "pobj", "ROOT", "punct"]
+    doc = Doc(en_vocab, words=words, pos=pos, deps=deps, heads=heads)
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 2
+    assert chunks[0].text_with_ws == "A phrase "
+    assert chunks[1].text_with_ws == "another phrase "
+
+
+</source>
+</class>
+
+<class classid="25" nclones="2" nlines="25" similarity="84">
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/vi/test_serialize.py" startline="5" endline="33" pcid="1150">
+def test_vi_tokenizer_serialize(vi_tokenizer):
+    tokenizer_bytes = vi_tokenizer.to_bytes()
+    nlp = Vietnamese()
+    nlp.tokenizer.from_bytes(tokenizer_bytes)
+    assert tokenizer_bytes == nlp.tokenizer.to_bytes()
+    assert nlp.tokenizer.use_pyvi is True
+
+    with make_tempdir() as d:
+        file_path = d / "tokenizer"
+        vi_tokenizer.to_disk(file_path)
+        nlp = Vietnamese()
+        nlp.tokenizer.from_disk(file_path)
+        assert tokenizer_bytes == nlp.tokenizer.to_bytes()
+        assert nlp.tokenizer.use_pyvi is True
+
+    # mode is (de)serialized correctly
+    nlp = Vietnamese.from_config({"nlp": {"tokenizer": {"use_pyvi": False}}})
+    nlp_bytes = nlp.to_bytes()
+    nlp_r = Vietnamese()
+    nlp_r.from_bytes(nlp_bytes)
+    assert nlp_bytes == nlp_r.to_bytes()
+    assert nlp_r.tokenizer.use_pyvi is False
+
+    with make_tempdir() as d:
+        nlp.to_disk(d)
+        nlp_r = Vietnamese()
+        nlp_r.from_disk(d)
+        assert nlp_bytes == nlp_r.to_bytes()
+        assert nlp_r.tokenizer.use_pyvi is False
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/ja/test_serialize.py" startline="5" endline="33" pcid="1260">
+def test_ja_tokenizer_serialize(ja_tokenizer):
+    tokenizer_bytes = ja_tokenizer.to_bytes()
+    nlp = Japanese()
+    nlp.tokenizer.from_bytes(tokenizer_bytes)
+    assert tokenizer_bytes == nlp.tokenizer.to_bytes()
+    assert nlp.tokenizer.split_mode is None
+
+    with make_tempdir() as d:
+        file_path = d / "tokenizer"
+        ja_tokenizer.to_disk(file_path)
+        nlp = Japanese()
+        nlp.tokenizer.from_disk(file_path)
+        assert tokenizer_bytes == nlp.tokenizer.to_bytes()
+        assert nlp.tokenizer.split_mode is None
+
+    # split mode is (de)serialized correctly
+    nlp = Japanese.from_config({"nlp": {"tokenizer": {"split_mode": "B"}}})
+    nlp_r = Japanese()
+    nlp_bytes = nlp.to_bytes()
+    nlp_r.from_bytes(nlp_bytes)
+    assert nlp_bytes == nlp_r.to_bytes()
+    assert nlp_r.tokenizer.split_mode == "B"
+
+    with make_tempdir() as d:
+        nlp.to_disk(d)
+        nlp_r = Japanese()
+        nlp_r.from_disk(d)
+        assert nlp_bytes == nlp_r.to_bytes()
+        assert nlp_r.tokenizer.split_mode == "B"
+</source>
+</class>
+
+<class classid="26" nclones="2" nlines="27" similarity="79">
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/da/test_prefix_suffix_infix.py" startline="139" endline="168" pcid="1199">
+def test_da_tokenizer_handles_posessives_and_contractions(da_tokenizer):
+    tokens = da_tokenizer(
+        "'DBA's, Lars' og Liz' bil sku' sgu' ik' ha' en bule, det ka' han ik' li' mere', sagde hun."
+    )
+    assert len(tokens) == 25
+    assert tokens[0].text == "'"
+    assert tokens[1].text == "DBA's"
+    assert tokens[2].text == ","
+    assert tokens[3].text == "Lars'"
+    assert tokens[4].text == "og"
+    assert tokens[5].text == "Liz'"
+    assert tokens[6].text == "bil"
+    assert tokens[7].text == "sku'"
+    assert tokens[8].text == "sgu'"
+    assert tokens[9].text == "ik'"
+    assert tokens[10].text == "ha'"
+    assert tokens[11].text == "en"
+    assert tokens[12].text == "bule"
+    assert tokens[13].text == ","
+    assert tokens[14].text == "det"
+    assert tokens[15].text == "ka'"
+    assert tokens[16].text == "han"
+    assert tokens[17].text == "ik'"
+    assert tokens[18].text == "li'"
+    assert tokens[19].text == "mere"
+    assert tokens[20].text == "'"
+    assert tokens[21].text == ","
+    assert tokens[22].text == "sagde"
+    assert tokens[23].text == "hun"
+    assert tokens[24].text == "."
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/tokenizer/test_exceptions.py" startline="5" endline="33" pcid="1609">
+def test_tokenizer_handles_emoticons(tokenizer):
+    # Tweebo challenge (CMU)
+    text = (
+        """:o :/ :'( >:o (: :) >.< XD -__- o.O ;D :-) @_@ :P 8D :1 >:( :D =| :> ...."""
+    )
+    tokens = tokenizer(text)
+    assert tokens[0].text == ":o"
+    assert tokens[1].text == ":/"
+    assert tokens[2].text == ":'("
+    assert tokens[3].text == ">:o"
+    assert tokens[4].text == "(:"
+    assert tokens[5].text == ":)"
+    assert tokens[6].text == ">.<"
+    assert tokens[7].text == "XD"
+    assert tokens[8].text == "-__-"
+    assert tokens[9].text == "o.O"
+    assert tokens[10].text == ";D"
+    assert tokens[11].text == ":-)"
+    assert tokens[12].text == "@_@"
+    assert tokens[13].text == ":P"
+    assert tokens[14].text == "8D"
+    assert tokens[15].text == ":1"
+    assert tokens[16].text == ">:("
+    assert tokens[17].text == ":D"
+    assert tokens[18].text == "=|"
+    assert tokens[19].text == ":>"
+    assert tokens[20].text == "...."
+
+
+</source>
+</class>
+
+<class classid="27" nclones="39" nlines="11" similarity="72">
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="4" endline="17" pcid="1266">
+def test_tr_noun_chunks_amod_simple(tr_tokenizer):
+    text = "sarı kedi"
+    heads = [1, 1]
+    deps = ["amod", "ROOT"]
+    pos = ["ADJ", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "sarı kedi "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="535" endline="548" pcid="1303">
+def test_tr_noun_chunks_flat_in_nmod(tr_tokenizer):
+    text = "Ahmet Sezer adında bir ögrenci"
+    heads = [2, 0, 4, 4, 4]
+    deps = ["nmod", "flat", "nmod", "det", "ROOT"]
+    pos = ["PROPN", "PROPN", "NOUN", "DET", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "Ahmet Sezer adında bir ögrenci "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="228" endline="241" pcid="1282">
+def test_tr_noun_chunks_acl_nmod2(tr_tokenizer):
+    text = "bildiğim bir turizm şirketi"
+    heads = [3, 3, 3, 3]
+    deps = ["acl", "det", "nmod", "ROOT"]
+    pos = ["VERB", "DET", "NOUN", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "bildiğim bir turizm şirketi "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="88" endline="101" pcid="1272">
+def test_tr_noun_chunks_one_det_two_adjs_simple(tr_tokenizer):
+    text = "o beyaz tombik kedi"
+    heads = [3, 3, 3, 3]
+    deps = ["det", "amod", "amod", "ROOT"]
+    pos = ["DET", "ADJ", "ADJ", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "o beyaz tombik kedi "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="284" endline="297" pcid="1286">
+def test_tr_noun_chunks_np_recursive_two_nmods(tr_tokenizer):
+    text = "ustanın kapısını degiştireceği çamasır makinası"
+    heads = [2, 2, 4, 4, 4]
+    deps = ["nsubj", "obj", "acl", "nmod", "ROOT"]
+    pos = ["NOUN", "NOUN", "VERB", "NOUN", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "ustanın kapısını degiştireceği çamasır makinası "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="242" endline="255" pcid="1283">
+def test_tr_noun_chunks_np_recursive_nsubj_to_root(tr_tokenizer):
+    text = "Simge'nin okuduğu kitap"
+    heads = [1, 2, 2]
+    deps = ["nsubj", "acl", "ROOT"]
+    pos = ["PROPN", "VERB", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "Simge'nin okuduğu kitap "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="130" endline="143" pcid="1275">
+def test_tr_noun_chunks_chain_nmod_with_acl(tr_tokenizer):
+    text = "ev sahibinin gelen köpeği"
+    heads = [1, 3, 3, 3]
+    deps = ["nmod", "nmod", "acl", "ROOT"]
+    pos = ["NOUN", "NOUN", "VERB", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "ev sahibinin gelen köpeği "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="74" endline="87" pcid="1271">
+def test_tr_noun_chunks_two_adjs_simple(tr_tokenizer):
+    text = "beyaz tombik kedi"
+    heads = [2, 2, 2]
+    deps = ["amod", "amod", "ROOT"]
+    pos = ["ADJ", "ADJ", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "beyaz tombik kedi "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="200" endline="213" pcid="1280">
+def test_tr_noun_chunks_acl_verb(tr_tokenizer):
+    text = "sevdiğim sanatçılar"
+    heads = [1, 1]
+    deps = ["acl", "ROOT"]
+    pos = ["VERB", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "sevdiğim sanatçılar "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="549" endline="562" pcid="1304">
+def test_tr_noun_chunks_flat_and_chain_nmod(tr_tokenizer):
+    text = "Batı Afrika ülkelerinden Sierra Leone"
+    heads = [1, 2, 3, 3, 3]
+    deps = ["nmod", "nmod", "nmod", "ROOT", "flat"]
+    pos = ["NOUN", "PROPN", "NOUN", "PROPN", "PROPN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "Batı Afrika ülkelerinden Sierra Leone "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="479" endline="492" pcid="1299">
+def test_tr_noun_chunks_flat_simple(tr_tokenizer):
+    text = "New York"
+    heads = [0, 0]
+    deps = ["ROOT", "flat"]
+    pos = ["PROPN", "PROPN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "New York "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="256" endline="269" pcid="1284">
+def test_tr_noun_chunks_np_recursive_nsubj_attached_to_pron_root(tr_tokenizer):
+    text = "Simge'nin konuşabileceği birisi"
+    heads = [1, 2, 2]
+    deps = ["nsubj", "acl", "ROOT"]
+    pos = ["PROPN", "VERB", "PRON"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "Simge'nin konuşabileceği birisi "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="60" endline="73" pcid="1270">
+def test_tr_noun_chunks_one_det_one_adj_simple(tr_tokenizer):
+    text = "O sarı kedi"
+    heads = [2, 2, 2]
+    deps = ["det", "amod", "ROOT"]
+    pos = ["DET", "ADJ", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "O sarı kedi "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="144" endline="157" pcid="1276">
+def test_tr_noun_chunks_chain_nmod_head_with_amod_acl(tr_tokenizer):
+    text = "arabanın kırdığım sol aynası"
+    heads = [3, 3, 3, 3]
+    deps = ["nmod", "acl", "amod", "ROOT"]
+    pos = ["NOUN", "VERB", "ADJ", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "arabanın kırdığım sol aynası "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="270" endline="283" pcid="1285">
+def test_tr_noun_chunks_np_recursive_nsubj_in_subnp(tr_tokenizer):
+    text = "Simge'nin yarın gideceği yer"
+    heads = [2, 2, 3, 3]
+    deps = ["nsubj", "obl", "acl", "ROOT"]
+    pos = ["PROPN", "NOUN", "VERB", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "Simge'nin yarın gideceği yer "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="116" endline="129" pcid="1274">
+def test_tr_noun_chunks_chain_nmod_with_adj(tr_tokenizer):
+    text = "ev sahibinin tatlı köpeği"
+    heads = [1, 3, 3, 3]
+    deps = ["nmod", "nmod", "amod", "ROOT"]
+    pos = ["NOUN", "NOUN", "ADJ", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "ev sahibinin tatlı köpeği "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="521" endline="534" pcid="1302">
+def test_tr_noun_chunks_flat_name_lastname_and_title(tr_tokenizer):
+    text = "Cumhurbaşkanı Ahmet Necdet Sezer"
+    heads = [1, 1, 1, 1]
+    deps = ["nmod", "ROOT", "flat", "flat"]
+    pos = ["NOUN", "PROPN", "PROPN", "PROPN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "Cumhurbaşkanı Ahmet Necdet Sezer "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="46" endline="59" pcid="1269">
+def test_tr_noun_chunks_nmod_amod(tr_tokenizer):
+    text = "okulun eski müdürü"
+    heads = [2, 2, 2]
+    deps = ["nmod", "amod", "ROOT"]
+    pos = ["NOUN", "ADJ", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "okulun eski müdürü "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="172" endline="185" pcid="1278">
+def test_tr_noun_chunks_det_amod_nmod(tr_tokenizer):
+    text = "bazı eski oyun kuralları"
+    heads = [3, 3, 3, 3]
+    deps = ["det", "nmod", "nmod", "ROOT"]
+    pos = ["DET", "ADJ", "NOUN", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "bazı eski oyun kuralları "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="102" endline="115" pcid="1273">
+def test_tr_noun_chunks_nmod_two(tr_tokenizer):
+    text = "kızın saçının rengi"
+    heads = [1, 2, 2]
+    deps = ["nmod", "nmod", "ROOT"]
+    pos = ["NOUN", "NOUN", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "kızın saçının rengi "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="158" endline="171" pcid="1277">
+def test_tr_noun_chunks_nmod_three(tr_tokenizer):
+    text = "güney Afrika ülkelerinden Mozambik"
+    heads = [1, 2, 3, 3]
+    deps = ["nmod", "nmod", "nmod", "ROOT"]
+    pos = ["NOUN", "PROPN", "NOUN", "PROPN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "güney Afrika ülkelerinden Mozambik "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="493" endline="506" pcid="1300">
+def test_tr_noun_chunks_flat_names_and_title(tr_tokenizer):
+    text = "Gazi Mustafa Kemal"
+    heads = [1, 1, 1]
+    deps = ["nmod", "ROOT", "flat"]
+    pos = ["PROPN", "PROPN", "PROPN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "Gazi Mustafa Kemal "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="32" endline="45" pcid="1268">
+def test_tr_noun_chunks_determiner_simple(tr_tokenizer):
+    text = "O kedi"  # that cat
+    heads = [1, 1]
+    deps = ["det", "ROOT"]
+    pos = ["DET", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "O kedi "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="214" endline="227" pcid="1281">
+def test_tr_noun_chunks_acl_nmod(tr_tokenizer):
+    text = "en sevdiğim ses sanatçısı"
+    heads = [1, 3, 3, 3]
+    deps = ["advmod", "acl", "nmod", "ROOT"]
+    pos = ["ADV", "VERB", "NOUN", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "en sevdiğim ses sanatçısı "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="298" endline="311" pcid="1287">
+def test_tr_noun_chunks_np_recursive_four_nouns(tr_tokenizer):
+    text = "kızına piyano dersi verdiğim hanım"
+    heads = [3, 2, 3, 4, 4]
+    deps = ["obl", "nmod", "obj", "acl", "ROOT"]
+    pos = ["NOUN", "NOUN", "NOUN", "VERB", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "kızına piyano dersi verdiğim hanım "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="343" endline="356" pcid="1290">
+def test_tr_noun_chunks_two_nouns_in_nmod(tr_tokenizer):
+    text = "kız ve erkek çocuklar"
+    heads = [3, 2, 0, 3]
+    deps = ["nmod", "cc", "conj", "ROOT"]
+    pos = ["NOUN", "CCONJ", "NOUN", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "kız ve erkek çocuklar "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="18" endline="31" pcid="1267">
+def test_tr_noun_chunks_nmod_simple(tr_tokenizer):
+    text = "arkadaşımın kedisi"  # my friend's cat
+    heads = [1, 1]
+    deps = ["nmod", "ROOT"]
+    pos = ["NOUN", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "arkadaşımın kedisi "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="312" endline="325" pcid="1288">
+def test_tr_noun_chunks_np_recursive_no_nmod(tr_tokenizer):
+    text = "içine birkaç çiçek konmuş olan bir vazo"
+    heads = [3, 2, 3, 6, 3, 6, 6]
+    deps = ["obl", "det", "nsubj", "acl", "aux", "det", "ROOT"]
+    pos = ["ADP", "DET", "NOUN", "VERB", "AUX", "DET", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "içine birkaç çiçek konmuş olan bir vazo "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="186" endline="199" pcid="1279">
+def test_tr_noun_chunks_acl_simple(tr_tokenizer):
+    text = "bahçesi olan okul"
+    heads = [2, 0, 2]
+    deps = ["acl", "cop", "ROOT"]
+    pos = ["NOUN", "AUX", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "bahçesi olan okul "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="357" endline="370" pcid="1291">
+def test_tr_noun_chunks_two_nouns_in_nmod2(tr_tokenizer):
+    text = "tatlı ve gürbüz çocuklar"
+    heads = [3, 2, 0, 3]
+    deps = ["amod", "cc", "conj", "ROOT"]
+    pos = ["ADJ", "CCONJ", "NOUN", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "tatlı ve gürbüz çocuklar "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="507" endline="520" pcid="1301">
+def test_tr_noun_chunks_flat_names_and_title2(tr_tokenizer):
+    text = "Ahmet Vefik Paşa"
+    heads = [2, 0, 2]
+    deps = ["nmod", "flat", "ROOT"]
+    pos = ["PROPN", "PROPN", "PROPN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 1
+    assert chunks[0].text_with_ws == "Ahmet Vefik Paşa "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="563" endline="575" pcid="1305">
+def test_tr_noun_chunks_two_flats_conjed(tr_tokenizer):
+    text = "New York ve Sierra Leone"
+    heads = [0, 0, 3, 0, 3]
+    deps = ["ROOT", "flat", "cc", "conj", "flat"]
+    pos = ["PROPN", "PROPN", "CCONJ", "PROPN", "PROPN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 2
+    assert chunks[0].text_with_ws == "Sierra Leone "
+    assert chunks[1].text_with_ws == "New York "
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="448" endline="462" pcid="1297">
+def test_tr_noun_chunks_conj_subject(tr_tokenizer):
+    text = "Sen ve ben iyi anlaşıyoruz"
+    heads = [4, 2, 0, 2, 4]
+    deps = ["nsubj", "cc", "conj", "adv", "ROOT"]
+    pos = ["PRON", "CCONJ", "PRON", "ADV", "VERB"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 2
+    assert chunks[0].text_with_ws == "ben "
+    assert chunks[1].text_with_ws == "Sen "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="386" endline="401" pcid="1293">
+def test_tr_noun_chunks_conj_three(tr_tokenizer):
+    text = "sen, ben ve ondan"
+    heads = [0, 2, 0, 4, 0]
+    deps = ["ROOT", "punct", "conj", "cc", "conj"]
+    pos = ["PRON", "PUNCT", "PRON", "CCONJ", "PRON"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 3
+    assert chunks[0].text_with_ws == "ondan "
+    assert chunks[1].text_with_ws == "ben "
+    assert chunks[2].text_with_ws == "sen "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="433" endline="447" pcid="1296">
+def test_tr_noun_chunks_conj_fixed_adj_phrase(tr_tokenizer):
+    text = "ben ya da akıllı çocuk"
+    heads = [0, 4, 1, 4, 0]
+    deps = ["ROOT", "cc", "fixed", "amod", "conj"]
+    pos = ["PRON", "CCONJ", "CCONJ", "ADJ", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 2
+    assert chunks[0].text_with_ws == "akıllı çocuk "
+    assert chunks[1].text_with_ws == "ben "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="418" endline="432" pcid="1295">
+def test_tr_noun_chunks_conj_and_adj_phrase(tr_tokenizer):
+    text = "ben ve akıllı çocuk"
+    heads = [0, 3, 3, 0]
+    deps = ["ROOT", "cc", "amod", "conj"]
+    pos = ["PRON", "CCONJ", "ADJ", "NOUN"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 2
+    assert chunks[0].text_with_ws == "akıllı çocuk "
+    assert chunks[1].text_with_ws == "ben "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="371" endline="385" pcid="1292">
+def test_tr_noun_chunks_conj_simple(tr_tokenizer):
+    text = "Sen ya da ben"
+    heads = [0, 3, 1, 0]
+    deps = ["ROOT", "cc", "fixed", "conj"]
+    pos = ["PRON", "CCONJ", "CCONJ", "PRON"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 2
+    assert chunks[0].text_with_ws == "ben "
+    assert chunks[1].text_with_ws == "Sen "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="402" endline="417" pcid="1294">
+def test_tr_noun_chunks_conj_three2(tr_tokenizer):
+    text = "ben ya da sen ya da onlar"
+    heads = [0, 3, 1, 0, 6, 4, 3]
+    deps = ["ROOT", "cc", "fixed", "conj", "cc", "fixed", "conj"]
+    pos = ["PRON", "CCONJ", "CCONJ", "PRON", "CCONJ", "CCONJ", "PRON"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 3
+    assert chunks[0].text_with_ws == "onlar "
+    assert chunks[1].text_with_ws == "sen "
+    assert chunks[2].text_with_ws == "ben "
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/tr/test_parser.py" startline="463" endline="478" pcid="1298">
+def test_tr_noun_chunks_conj_noun_head_verb(tr_tokenizer):
+    text = "Simge babasını görmüyormuş, annesini değil"
+    heads = [2, 2, 2, 4, 2, 4]
+    deps = ["nsubj", "obj", "ROOT", "punct", "conj", "aux"]
+    pos = ["PROPN", "NOUN", "VERB", "PUNCT", "NOUN", "AUX"]
+    tokens = tr_tokenizer(text)
+    doc = Doc(
+        tokens.vocab, words=[t.text for t in tokens], pos=pos, heads=heads, deps=deps
+    )
+    chunks = list(doc.noun_chunks)
+    assert len(chunks) == 3
+    assert chunks[0].text_with_ws == "annesini "
+    assert chunks[1].text_with_ws == "babasını "
+    assert chunks[2].text_with_ws == "Simge "
+
+
+</source>
+</class>
+
+<class classid="28" nclones="3" nlines="23" similarity="81">
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/en/test_customized_tokenizer.py" startline="78" endline="101" pcid="1352">
+def test_en_customized_tokenizer_handles_token_match(custom_en_tokenizer):
+    sentence = "The 8 and 10-county definitions a-b not used for the greater Southern California Megaregion."
+    context = [word.text for word in custom_en_tokenizer(sentence)]
+    assert context == [
+        "The",
+        "8",
+        "and",
+        "10",
+        "-",
+        "county",
+        "definitions",
+        "a-b",
+        "not",
+        "used",
+        "for",
+        "the",
+        "greater",
+        "Southern",
+        "California",
+        "Megaregion",
+        ".",
+    ]
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/en/test_customized_tokenizer.py" startline="102" endline="126" pcid="1353">
+def test_en_customized_tokenizer_handles_rules(custom_en_tokenizer):
+    sentence = "The 8 and 10-county definitions are not used for the greater Southern California Megaregion. :)"
+    context = [word.text for word in custom_en_tokenizer(sentence)]
+    assert context == [
+        "The",
+        "8",
+        "and",
+        "10",
+        "-",
+        "county",
+        "definitions",
+        "are",
+        "not",
+        "used",
+        "for",
+        "the",
+        "greater",
+        "Southern",
+        "California",
+        "Megaregion",
+        ".",
+        ":)",
+    ]
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/lang/en/test_customized_tokenizer.py" startline="127" endline="153" pcid="1354">
+def test_en_customized_tokenizer_handles_rules_property(custom_en_tokenizer):
+    sentence = "The 8 and 10-county definitions are not used for the greater Southern California Megaregion. :)"
+    rules = custom_en_tokenizer.rules
+    del rules[":)"]
+    custom_en_tokenizer.rules = rules
+    context = [word.text for word in custom_en_tokenizer(sentence)]
+    assert context == [
+        "The",
+        "8",
+        "and",
+        "10",
+        "-",
+        "county",
+        "definitions",
+        "are",
+        "not",
+        "used",
+        "for",
+        "the",
+        "greater",
+        "Southern",
+        "California",
+        "Megaregion",
+        ".",
+        ":",
+        ")",
+    ]
+</source>
+</class>
+
+<class classid="29" nclones="2" nlines="12" similarity="75">
+<source file="systems/spaCy-3.1.4/spacy/tests/conftest.py" startline="344" endline="357" pcid="1452">
+def zh_tokenizer_jieba():
+    pytest.importorskip("jieba")
+    config = {
+        "nlp": {
+            "tokenizer": {
+                "@tokenizers": "spacy.zh.ChineseTokenizer",
+                "segmenter": "jieba",
+            }
+        }
+    }
+    nlp = get_lang_class("zh").from_config(config)
+    return nlp.tokenizer
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/conftest.py" startline="359" endline="374" pcid="1453">
+def zh_tokenizer_pkuseg():
+    pytest.importorskip("spacy_pkuseg")
+    config = {
+        "nlp": {
+            "tokenizer": {
+                "@tokenizers": "spacy.zh.ChineseTokenizer",
+                "segmenter": "pkuseg",
+            }
+        },
+        "initialize": {"tokenizer": {"pkuseg_model": "web"}},
+    }
+    nlp = get_lang_class("zh").from_config(config)
+    nlp.initialize()
+    return nlp.tokenizer
+
+
+</source>
+</class>
+
+<class classid="30" nclones="2" nlines="13" similarity="73">
+<source file="systems/spaCy-3.1.4/spacy/tests/test_language.py" startline="280" endline="299" pcid="1475">
+def test_language_pipe_error_handler_make_doc_actual(n_process):
+    """Test the error handling for make_doc"""
+    # TODO: fix so that the following test is the actual behavior
+
+    ops = get_current_ops()
+    if isinstance(ops, NumpyOps) or n_process < 2:
+        nlp = English()
+        nlp.max_length = 10
+        texts = ["12345678901234567890", "12345"] * 10
+        with pytest.raises(ValueError):
+            list(nlp.pipe(texts, n_process=n_process))
+        nlp.default_error_handler = ignore_error
+        if n_process == 1:
+            with pytest.raises(ValueError):
+                list(nlp.pipe(texts, n_process=n_process))
+        else:
+            docs = list(nlp.pipe(texts, n_process=n_process))
+            assert len(docs) == 0
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/test_language.py" startline="302" endline="316" pcid="1476">
+def test_language_pipe_error_handler_make_doc_preferred(n_process):
+    """Test the error handling for make_doc"""
+
+    ops = get_current_ops()
+    if isinstance(ops, NumpyOps) or n_process < 2:
+        nlp = English()
+        nlp.max_length = 10
+        texts = ["12345678901234567890", "12345"] * 10
+        with pytest.raises(ValueError):
+            list(nlp.pipe(texts, n_process=n_process))
+        nlp.default_error_handler = ignore_error
+        docs = list(nlp.pipe(texts, n_process=n_process))
+        assert len(docs) == 0
+
+
+</source>
+</class>
+
+<class classid="31" nclones="2" nlines="11" similarity="81">
+<source file="systems/spaCy-3.1.4/spacy/tests/test_language.py" startline="337" endline="348" pcid="1480">
+    def make_after_creation():
+        def after_creation(nlp):
+            nonlocal ran_after
+            ran_after = True
+            assert isinstance(nlp, English)
+            assert nlp.pipe_names == []
+            assert nlp.Defaults.foo == "bar"
+            nlp.meta["foo"] = "bar"
+            return nlp
+
+        return after_creation
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/test_language.py" startline="350" endline="362" pcid="1482">
+    def make_after_pipeline_creation():
+        def after_pipeline_creation(nlp):
+            nonlocal ran_after_pipeline
+            ran_after_pipeline = True
+            assert isinstance(nlp, English)
+            assert nlp.pipe_names == ["sentencizer"]
+            assert nlp.Defaults.foo == "bar"
+            assert nlp.meta["foo"] == "bar"
+            nlp.meta["bar"] = "baz"
+            return nlp
+
+        return after_pipeline_creation
+
+</source>
+</class>
+
+<class classid="32" nclones="2" nlines="17" similarity="88">
+<source file="systems/spaCy-3.1.4/spacy/tests/vocab_vectors/test_lookups.py" startline="74" endline="92" pcid="1568">
+def test_lookups_to_from_bytes():
+    lookups = Lookups()
+    lookups.add_table("table1", {"foo": "bar", "hello": "world"})
+    lookups.add_table("table2", {"a": 1, "b": 2, "c": 3})
+    lookups_bytes = lookups.to_bytes()
+    new_lookups = Lookups()
+    new_lookups.from_bytes(lookups_bytes)
+    assert len(new_lookups) == 2
+    assert "table1" in new_lookups
+    assert "table2" in new_lookups
+    table1 = new_lookups.get_table("table1")
+    assert len(table1) == 2
+    assert table1["foo"] == "bar"
+    table2 = new_lookups.get_table("table2")
+    assert len(table2) == 3
+    assert table2["b"] == 2
+    assert new_lookups.to_bytes() == lookups_bytes
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/vocab_vectors/test_lookups.py" startline="93" endline="111" pcid="1569">
+def test_lookups_to_from_disk():
+    lookups = Lookups()
+    lookups.add_table("table1", {"foo": "bar", "hello": "world"})
+    lookups.add_table("table2", {"a": 1, "b": 2, "c": 3})
+    with make_tempdir() as tmpdir:
+        lookups.to_disk(tmpdir)
+        new_lookups = Lookups()
+        new_lookups.from_disk(tmpdir)
+    assert len(new_lookups) == 2
+    assert "table1" in new_lookups
+    assert "table2" in new_lookups
+    table1 = new_lookups.get_table("table1")
+    assert len(table1) == 2
+    assert table1["foo"] == "bar"
+    table2 = new_lookups.get_table("table2")
+    assert len(table2) == 3
+    assert table2["b"] == 2
+
+
+</source>
+</class>
+
+<class classid="33" nclones="2" nlines="14" similarity="85">
+<source file="systems/spaCy-3.1.4/spacy/tests/vocab_vectors/test_lookups.py" startline="112" endline="127" pcid="1570">
+def test_lookups_to_from_bytes_via_vocab():
+    table_name = "test"
+    vocab = Vocab()
+    vocab.lookups.add_table(table_name, {"foo": "bar", "hello": "world"})
+    assert table_name in vocab.lookups
+    vocab_bytes = vocab.to_bytes()
+    new_vocab = Vocab()
+    new_vocab.from_bytes(vocab_bytes)
+    assert len(new_vocab.lookups) == len(vocab.lookups)
+    assert table_name in new_vocab.lookups
+    table = new_vocab.lookups.get_table(table_name)
+    assert len(table) == 2
+    assert table["hello"] == "world"
+    assert new_vocab.to_bytes() == vocab_bytes
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/tests/vocab_vectors/test_lookups.py" startline="128" endline="141" pcid="1571">
+def test_lookups_to_from_disk_via_vocab():
+    table_name = "test"
+    vocab = Vocab()
+    vocab.lookups.add_table(table_name, {"foo": "bar", "hello": "world"})
+    assert table_name in vocab.lookups
+    with make_tempdir() as tmpdir:
+        vocab.to_disk(tmpdir)
+        new_vocab = Vocab()
+        new_vocab.from_disk(tmpdir)
+    assert len(new_vocab.lookups) == len(vocab.lookups)
+    assert table_name in new_vocab.lookups
+    table = new_vocab.lookups.get_table(table_name)
+    assert len(table) == 2
+    assert table["hello"] == "world"
+</source>
+</class>
+
+<class classid="34" nclones="45" nlines="13" similarity="72">
+<source file="systems/spaCy-3.1.4/spacy/lang/sv/lex_attrs.py" startline="44" endline="58" pcid="1662">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text.lower() in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/hy/lex_attrs.py" startline="42" endline="56" pcid="1694">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text.lower() in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/te/lex_attrs.py" startline="41" endline="53" pcid="1792">
+def like_num(text):
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text.lower() in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/ur/lex_attrs.py" startline="28" endline="44" pcid="1764">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text in _num_words:
+        return True
+    if text in _ordinal_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/eu/lex_attrs.py" startline="59" endline="75" pcid="1698">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text in _num_words:
+        return True
+    if text in _ordinal_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/lb/lex_attrs.py" startline="23" endline="40" pcid="1695">
+def like_num(text):
+    """
+    check if text resembles a number
+    """
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text in _num_words:
+        return True
+    if text in _ordinal_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/nl/lex_attrs.py" startline="22" endline="40" pcid="1684">
+def like_num(text):
+    # This only does the most basic check for whether a token is a digit
+    # or matches one of the number words. In order to handle numbers like
+    # "drieëntwintig", more work is required.
+    # See this discussion: https://github.com/explosion/spaCy/pull/1177
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text.lower() in _num_words:
+        return True
+    if text.lower() in _ordinal_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/he/lex_attrs.py" startline="74" endline="94" pcid="1799">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+
+    if text in _num_words:
+        return True
+
+    # Check ordinal number
+    if text in _ordinal_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/pt/lex_attrs.py" startline="102" endline="118" pcid="1738">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "").replace("º", "").replace("ª", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text.lower() in _num_words:
+        return True
+    if text.lower() in _ordinal_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/fr/lex_attrs.py" startline="25" endline="43" pcid="1753">
+def like_num(text):
+    # Might require more work?
+    # See this discussion: https://github.com/explosion/spaCy/pull/1161
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text.lower() in _num_words:
+        return True
+    if text.lower() in _ordinal_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/ne/lex_attrs.py" startline="80" endline="94" pcid="1774">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(", ", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text.lower() in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/tt/lex_attrs.py" startline="43" endline="57" pcid="1699">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/ca/lex_attrs.py" startline="44" endline="58" pcid="1726">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/ta/lex_attrs.py" startline="66" endline="80" pcid="1776">
+def like_num(text):
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text.lower() in _num_words:
+        return True
+    elif suffix_filter(text) in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/sr/lex_attrs.py" startline="51" endline="65" pcid="1665">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text.lower() in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/ro/lex_attrs.py" startline="26" endline="42" pcid="1722">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text.lower() in _num_words:
+        return True
+    if text.lower() in _ordinal_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/hi/lex_attrs.py" startline="166" endline="188" pcid="1677">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text.lower() in _num_words:
+        return True
+
+    # check ordinal numbers
+    # reference: http://www.englishkitab.com/Vocabulary/Numbers.html
+    if text in _ordinal_words_one_to_ten:
+        return True
+    if text.endswith(_ordinal_suffix):
+        if text[: -len(_ordinal_suffix)] in _eleven_to_beyond:
+            return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/tl/lex_attrs.py" startline="44" endline="56" pcid="1786">
+def like_num(text):
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/es/lex_attrs.py" startline="50" endline="64" pcid="1758">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text.lower() in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/da/lex_attrs.py" startline="34" endline="50" pcid="1743">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text.lower() in _num_words:
+        return True
+    if text.lower() in _ordinal_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/cs/lex_attrs.py" startline="46" endline="60" pcid="1735">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text.lower() in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/ar/lex_attrs.py" startline="77" endline="96" pcid="1669">
+def like_num(text):
+    """
+    Check if text resembles a number
+    """
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text in _num_words:
+        return True
+    if text in _ordinal_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/sk/lex_attrs.py" startline="44" endline="58" pcid="1666">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text.lower() in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/bg/lex_attrs.py" startline="73" endline="87" pcid="1667">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text.lower() in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/sa/lex_attrs.py" startline="109" endline="126" pcid="1736">
+def like_num(text):
+    """
+    Check if text resembles a number
+    """
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/ko/lex_attrs.py" startline="49" endline="63" pcid="1674">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if any(char.lower() in _num_words for char in text):
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/th/lex_attrs.py" startline="44" endline="58" pcid="1793">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/fi/lex_attrs.py" startline="41" endline="55" pcid="1800">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(".", "").replace(",", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/si/lex_attrs.py" startline="48" endline="60" pcid="1675">
+def like_num(text):
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text.lower() in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/pl/lex_attrs.py" startline="53" endline="65" pcid="1734">
+def like_num(text):
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text.lower() in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/vi/lex_attrs.py" startline="21" endline="35" pcid="1737">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text.lower() in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/ml/lex_attrs.py" startline="59" endline="76" pcid="1670">
+def like_num(text):
+    """
+    Check if text resembles a number
+    """
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/ky/lex_attrs.py" startline="33" endline="47" pcid="1668">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/lex_attrs.py" startline="39" endline="52" pcid="1702">
+def like_num(text: str) -> bool:
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    # can be overwritten by lang with list of number words
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/ru/lex_attrs.py" startline="51" endline="65" pcid="1749">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text.lower() in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/uk/lex_attrs.py" startline="57" endline="69" pcid="1696">
+def like_num(text):
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/id/lex_attrs.py" startline="38" endline="56" pcid="1671">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text.lower() in _num_words:
+        return True
+    if text.count("-") == 1:
+        _, num = text.split("-")
+        if num.isdigit() or num in _num_words:
+            return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/zh/lex_attrs.py" startline="77" endline="97" pcid="1742">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "").replace("，", "").replace("。", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text in _single_num_words:
+        return True
+    # fmt: off
+    if re.match('^((' + '|'.join(_count_num_words) + '){1}'
+                + '(' + '|'.join(_base_num_words) + '){1})+'
+                + '(' + '|'.join(_count_num_words) + ')?$', text):
+        return True
+    # fmt: on
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/en/lex_attrs.py" startline="22" endline="43" pcid="1789">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    text_lower = text.lower()
+    if text_lower in _num_words:
+        return True
+    # Check ordinal number
+    if text_lower in _ordinal_words:
+        return True
+    if text_lower.endswith(("st", "nd", "rd", "th")):
+        if text_lower[:-2].isdigit():
+            return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/az/lex_attrs.py" startline="66" endline="88" pcid="1763">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    text_lower = text.lower()
+    # Check cardinal number
+    if text_lower in _num_words:
+        return True
+    # Check ordinal number
+    if text_lower in _ordinal_words:
+        return True
+    if text_lower.endswith(_ordinal_endings):
+        if text_lower[:-3].isdigit() or text_lower[:-4].isdigit():
+            return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/am/lex_attrs.py" startline="77" endline="101" pcid="1757">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+
+    text_lower = text.lower()
+    if text_lower in _num_words:
+        return True
+
+    # Check ordinal number
+    if text_lower in _ordinal_words:
+        return True
+    if text_lower.endswith("ኛ"):
+        if text_lower[:-2].isdigit():
+            return True
+
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/ti/lex_attrs.py" startline="77" endline="101" pcid="1756">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+
+    text_lower = text.lower()
+    if text_lower in _num_words:
+        return True
+
+    # Check ordinal number
+    if text_lower in _ordinal_words:
+        return True
+    if text_lower.endswith("ኛ"):
+        if text_lower[:-2].isdigit():
+            return True
+
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/el/lex_attrs.py" startline="78" endline="98" pcid="1781">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text.count("^") == 1:
+        num, denom = text.split("^")
+        if num.isdigit() and denom.isdigit():
+            return True
+    if text.lower() in _num_words or text.lower().split(" ")[0] in _num_words:
+        return True
+    if text in _num_words:
+        return True
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/tn/lex_attrs.py" startline="82" endline="106" pcid="1678">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+
+    text_lower = text.lower()
+    if text_lower in _num_words:
+        return True
+
+    # CHeck ordinal number
+    if text_lower in _ordinal_words:
+        return True
+    if text_lower.endswith("th"):
+        if text_lower[:-2].isdigit():
+            return True
+
+    return False
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/tr/lex_attrs.py" startline="66" endline="88" pcid="1777">
+def like_num(text):
+    if text.startswith(("+", "-", "±", "~")):
+        text = text[1:]
+    text = text.replace(",", "").replace(".", "")
+    if text.isdigit():
+        return True
+    if text.count("/") == 1:
+        num, denom = text.split("/")
+        if num.isdigit() and denom.isdigit():
+            return True
+    text_lower = text.lower()
+    # Check cardinal number
+    if text_lower in _num_words:
+        return True
+    # Check ordinal number
+    if text_lower in _ordinal_words:
+        return True
+    if text_lower.endswith(_ordinal_endings):
+        if text_lower[:-3].isdigit() or text_lower[:-4].isdigit():
+            return True
+    return False
+
+
+</source>
+</class>
+
+<class classid="35" nclones="4" nlines="24" similarity="95">
+<source file="systems/spaCy-3.1.4/spacy/lang/sv/syntax_iterators.py" startline="8" endline="38" pcid="1663">
+def noun_chunks(doclike: Union[Doc, Span]) -> Iterator[Tuple[int, int, int]]:
+    """Detect base noun phrases from a dependency parse. Works on Doc and Span."""
+    # fmt: off
+    labels = ["nsubj", "nsubj:pass", "dobj", "obj", "iobj", "ROOT", "appos", "nmod", "nmod:poss"]
+    # fmt: on
+    doc = doclike.doc  # Ensure works on both Doc and Span.
+    if not doc.has_annotation("DEP"):
+        raise ValueError(Errors.E029)
+    np_deps = [doc.vocab.strings[label] for label in labels]
+    conj = doc.vocab.strings.add("conj")
+    np_label = doc.vocab.strings.add("NP")
+    prev_end = -1
+    for i, word in enumerate(doclike):
+        if word.pos not in (NOUN, PROPN, PRON):
+            continue
+        # Prevent nested chunks from being produced
+        if word.left_edge.i <= prev_end:
+            continue
+        if word.dep in np_deps:
+            prev_end = word.right_edge.i
+            yield word.left_edge.i, word.right_edge.i + 1, np_label
+        elif word.dep == conj:
+            head = word.head
+            while head.dep == conj and head.head.i < head.i:
+                head = head.head
+            # If the head is an NP, and we're coordinated to it, we're an NP
+            if head.dep in np_deps:
+                prev_end = word.right_edge.i
+                yield word.left_edge.i, word.right_edge.i + 1, np_label
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/id/syntax_iterators.py" startline="8" endline="40" pcid="1673">
+def noun_chunks(doclike: Union[Doc, Span]) -> Iterator[Tuple[int, int, int]]:
+    """
+    Detect base noun phrases from a dependency parse. Works on both Doc and Span.
+    """
+    # fmt: off
+    labels = ["nsubj", "nsubj:pass", "obj", "iobj", "ROOT", "appos", "nmod", "nmod:poss"]
+    # fmt: on
+    doc = doclike.doc  # Ensure works on both Doc and Span.
+    if not doc.has_annotation("DEP"):
+        raise ValueError(Errors.E029)
+    np_deps = [doc.vocab.strings[label] for label in labels]
+    conj = doc.vocab.strings.add("conj")
+    np_label = doc.vocab.strings.add("NP")
+    prev_end = -1
+    for i, word in enumerate(doclike):
+        if word.pos not in (NOUN, PROPN, PRON):
+            continue
+        # Prevent nested chunks from being produced
+        if word.left_edge.i <= prev_end:
+            continue
+        if word.dep in np_deps:
+            prev_end = word.right_edge.i
+            yield word.left_edge.i, word.right_edge.i + 1, np_label
+        elif word.dep == conj:
+            head = word.head
+            while head.dep == conj and head.head.i < head.i:
+                head = head.head
+            # If the head is an NP, and we're coordinated to it, we're an NP
+            if head.dep in np_deps:
+                prev_end = word.right_edge.i
+                yield word.left_edge.i, word.right_edge.i + 1, np_label
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/fr/syntax_iterators.py" startline="8" endline="38" pcid="1754">
+def noun_chunks(doclike: Union[Doc, Span]) -> Iterator[Tuple[int, int, int]]:
+    """Detect base noun phrases from a dependency parse. Works on Doc and Span."""
+    # fmt: off
+    labels = ["nsubj", "nsubj:pass", "obj", "iobj", "ROOT", "appos", "nmod", "nmod:poss"]
+    # fmt: on
+    doc = doclike.doc  # Ensure works on both Doc and Span.
+    if not doc.has_annotation("DEP"):
+        raise ValueError(Errors.E029)
+    np_deps = [doc.vocab.strings[label] for label in labels]
+    conj = doc.vocab.strings.add("conj")
+    np_label = doc.vocab.strings.add("NP")
+    prev_end = -1
+    for i, word in enumerate(doclike):
+        if word.pos not in (NOUN, PROPN, PRON):
+            continue
+        # Prevent nested chunks from being produced
+        if word.left_edge.i <= prev_end:
+            continue
+        if word.dep in np_deps:
+            prev_end = word.right_edge.i
+            yield word.left_edge.i, word.right_edge.i + 1, np_label
+        elif word.dep == conj:
+            head = word.head
+            while head.dep == conj and head.head.i < head.i:
+                head = head.head
+            # If the head is an NP, and we're coordinated to it, we're an NP
+            if head.dep in np_deps:
+                prev_end = word.right_edge.i
+                yield word.left_edge.i, word.right_edge.i + 1, np_label
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/nb/syntax_iterators.py" startline="8" endline="38" pcid="1679">
+def noun_chunks(doclike: Union[Doc, Span]) -> Iterator[Tuple[int, int, int]]:
+    """Detect base noun phrases from a dependency parse. Works on Doc and Span."""
+    # fmt: off
+    labels = ["nsubj", "nsubj:pass", "obj", "iobj", "ROOT", "appos", "nmod", "nmod:poss"]
+    # fmt: on
+    doc = doclike.doc  # Ensure works on both Doc and Span.
+    if not doc.has_annotation("DEP"):
+        raise ValueError(Errors.E029)
+    np_deps = [doc.vocab.strings[label] for label in labels]
+    conj = doc.vocab.strings.add("conj")
+    np_label = doc.vocab.strings.add("NP")
+    prev_end = -1
+    for i, word in enumerate(doclike):
+        if word.pos not in (NOUN, PROPN, PRON):
+            continue
+        # Prevent nested chunks from being produced
+        if word.left_edge.i <= prev_end:
+            continue
+        if word.dep in np_deps:
+            prev_end = word.right_edge.i
+            yield word.left_edge.i, word.right_edge.i + 1, np_label
+        elif word.dep == conj:
+            head = word.head
+            while head.dep == conj and head.head.i < head.i:
+                head = head.head
+            # If the head is an NP, and we're coordinated to it, we're an NP
+            if head.dep in np_deps:
+                prev_end = word.right_edge.i
+                yield word.left_edge.i, word.right_edge.i + 1, np_label
+
+
+</source>
+</class>
+
+<class classid="36" nclones="2" nlines="11" similarity="90">
+<source file="systems/spaCy-3.1.4/spacy/lang/hi/lex_attrs.py" startline="148" endline="165" pcid="1676">
+def norm(string):
+    # normalise base exceptions,  e.g. punctuation or currency symbols
+    if string in BASE_NORMS:
+        return BASE_NORMS[string]
+    # set stem word as norm,  if available,  adapted from:
+    # http://computing.open.ac.uk/Sites/EACLSouthAsia/Papers/p6-Ramanathan.pdf
+    # http://research.variancia.com/hindi_stemmer/
+    # https://github.com/taranjeet/hindi-tokenizer/blob/master/HindiTokenizer.py#L142
+    for suffix_group in reversed(_stem_suffixes):
+        length = len(suffix_group[0])
+        if len(string) <= length:
+            continue
+        for suffix in suffix_group:
+            if string.endswith(suffix):
+                return string[:-length]
+    return string
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/ne/lex_attrs.py" startline="63" endline="79" pcid="1773">
+def norm(string):
+    # normalise base exceptions,  e.g. punctuation or currency symbols
+    if string in BASE_NORMS:
+        return BASE_NORMS[string]
+    # set stem word as norm,  if available,  adapted from:
+    # https://github.com/explosion/spaCy/blob/master/spacy/lang/hi/lex_attrs.py
+    # https://www.researchgate.net/publication/237261579_Structure_of_Nepali_Grammar
+    for suffix_group in reversed(_stem_suffixes):
+        length = len(suffix_group[0])
+        if len(string) <= length:
+            break
+        for suffix in suffix_group:
+            if string.endswith(suffix):
+                return string[:-length]
+    return string
+
+
+</source>
+</class>
+
+<class classid="37" nclones="2" nlines="56" similarity="100">
+<source file="systems/spaCy-3.1.4/spacy/lang/ca/lemmatizer.py" startline="26" endline="81" pcid="1725">
+    def rule_lemmatize(self, token: Token) -> List[str]:
+        cache_key = (token.orth, token.pos)
+        if cache_key in self.cache:
+            return self.cache[cache_key]
+        string = token.text
+        univ_pos = token.pos_.lower()
+        if univ_pos in ("", "eol", "space"):
+            return [string.lower()]
+        elif "lemma_rules" not in self.lookups or univ_pos not in (
+            "noun",
+            "verb",
+            "adj",
+            "adp",
+            "adv",
+            "aux",
+            "cconj",
+            "det",
+            "pron",
+            "punct",
+            "sconj",
+        ):
+            return self.lookup_lemmatize(token)
+        index_table = self.lookups.get_table("lemma_index", {})
+        exc_table = self.lookups.get_table("lemma_exc", {})
+        rules_table = self.lookups.get_table("lemma_rules", {})
+        lookup_table = self.lookups.get_table("lemma_lookup", {})
+        index = index_table.get(univ_pos, {})
+        exceptions = exc_table.get(univ_pos, {})
+        rules = rules_table.get(univ_pos, [])
+        string = string.lower()
+        forms = []
+        if string in index:
+            forms.append(string)
+            self.cache[cache_key] = forms
+            return forms
+        forms.extend(exceptions.get(string, []))
+        oov_forms = []
+        if not forms:
+            for old, new in rules:
+                if string.endswith(old):
+                    form = string[: len(string) - len(old)] + new
+                    if not form:
+                        pass
+                    elif form in index or not form.isalpha():
+                        forms.append(form)
+                    else:
+                        oov_forms.append(form)
+        if not forms:
+            forms.extend(oov_forms)
+        if not forms and string in lookup_table.keys():
+            forms.append(self.lookup_lemmatize(token)[0])
+        if not forms:
+            forms.append(string)
+        forms = list(dict.fromkeys(forms))
+        self.cache[cache_key] = forms
+        return forms
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/fr/lemmatizer.py" startline="25" endline="80" pcid="1752">
+    def rule_lemmatize(self, token: Token) -> List[str]:
+        cache_key = (token.orth, token.pos)
+        if cache_key in self.cache:
+            return self.cache[cache_key]
+        string = token.text
+        univ_pos = token.pos_.lower()
+        if univ_pos in ("", "eol", "space"):
+            return [string.lower()]
+        elif "lemma_rules" not in self.lookups or univ_pos not in (
+            "noun",
+            "verb",
+            "adj",
+            "adp",
+            "adv",
+            "aux",
+            "cconj",
+            "det",
+            "pron",
+            "punct",
+            "sconj",
+        ):
+            return self.lookup_lemmatize(token)
+        index_table = self.lookups.get_table("lemma_index", {})
+        exc_table = self.lookups.get_table("lemma_exc", {})
+        rules_table = self.lookups.get_table("lemma_rules", {})
+        lookup_table = self.lookups.get_table("lemma_lookup", {})
+        index = index_table.get(univ_pos, {})
+        exceptions = exc_table.get(univ_pos, {})
+        rules = rules_table.get(univ_pos, [])
+        string = string.lower()
+        forms = []
+        if string in index:
+            forms.append(string)
+            self.cache[cache_key] = forms
+            return forms
+        forms.extend(exceptions.get(string, []))
+        oov_forms = []
+        if not forms:
+            for old, new in rules:
+                if string.endswith(old):
+                    form = string[: len(string) - len(old)] + new
+                    if not form:
+                        pass
+                    elif form in index or not form.isalpha():
+                        forms.append(form)
+                    else:
+                        oov_forms.append(form)
+        if not forms:
+            forms.extend(oov_forms)
+        if not forms and string in lookup_table.keys():
+            forms.append(self.lookup_lemmatize(token)[0])
+        if not forms:
+            forms.append(string)
+        forms = list(dict.fromkeys(forms))
+        self.cache[cache_key] = forms
+        return forms
+</source>
+</class>
+
+<class classid="38" nclones="2" nlines="10" similarity="100">
+<source file="systems/spaCy-3.1.4/spacy/lang/pl/lemmatizer.py" startline="75" endline="86" pcid="1733">
+    def lemmatize_noun(
+        self, string: str, morphology: dict, lookup_table: Dict[str, str]
+    ) -> List[str]:
+        # this method is case-sensitive, in order to work
+        # for incorrectly tagged proper names
+        if string != string.lower():
+            if string.lower() in lookup_table:
+                return [lookup_table[string.lower()]]
+            elif string in lookup_table:
+                return [lookup_table[string]]
+            return [string.lower()]
+        return [lookup_table.get(string, string)]
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/it/lemmatizer.py" startline="121" endline="132" pcid="1771">
+    def lemmatize_noun(
+        self, string: str, morphology: dict, lookup_table: Dict[str, str]
+    ) -> List[str]:
+        # this method is case-sensitive, in order to work
+        # for incorrectly tagged proper names
+        if string != string.lower():
+            if string.lower() in lookup_table:
+                return [lookup_table[string.lower()]]
+            elif string in lookup_table:
+                return [lookup_table[string]]
+            return [string.lower()]
+        return [lookup_table.get(string, string)]
+</source>
+</class>
+
+<class classid="39" nclones="2" nlines="35" similarity="97">
+<source file="systems/spaCy-3.1.4/spacy/lang/fa/syntax_iterators.py" startline="7" endline="49" pcid="1740">
+def noun_chunks(doclike: Union[Doc, Span]) -> Iterator[Tuple[int, int, int]]:
+    """
+    Detect base noun phrases from a dependency parse. Works on both Doc and Span.
+    """
+    labels = [
+        "nsubj",
+        "dobj",
+        "nsubjpass",
+        "pcomp",
+        "pobj",
+        "dative",
+        "appos",
+        "attr",
+        "ROOT",
+    ]
+    doc = doclike.doc  # Ensure works on both Doc and Span.
+
+    if not doc.has_annotation("DEP"):
+        raise ValueError(Errors.E029)
+
+    np_deps = [doc.vocab.strings.add(label) for label in labels]
+    conj = doc.vocab.strings.add("conj")
+    np_label = doc.vocab.strings.add("NP")
+    prev_end = -1
+    for i, word in enumerate(doclike):
+        if word.pos not in (NOUN, PROPN, PRON):
+            continue
+        # Prevent nested chunks from being produced
+        if word.left_edge.i <= prev_end:
+            continue
+        if word.dep in np_deps:
+            prev_end = word.i
+            yield word.left_edge.i, word.i + 1, np_label
+        elif word.dep == conj:
+            head = word.head
+            while head.dep == conj and head.head.i < head.i:
+                head = head.head
+            # If the head is an NP, and we're coordinated to it, we're an NP
+            if head.dep in np_deps:
+                prev_end = word.i
+                yield word.left_edge.i, word.i + 1, np_label
+
+
+</source>
+<source file="systems/spaCy-3.1.4/spacy/lang/en/syntax_iterators.py" startline="8" endline="49" pcid="1790">
+def noun_chunks(doclike: Union[Doc, Span]) -> Iterator[Tuple[int, int, int]]:
+    """
+    Detect base noun phrases from a dependency parse. Works on both Doc and Span.
+    """
+    labels = [
+        "oprd",
+        "nsubj",
+        "dobj",
+        "nsubjpass",
+        "pcomp",
+        "pobj",
+        "dative",
+        "appos",
+        "attr",
+        "ROOT",
+    ]
+    doc = doclike.doc  # Ensure works on both Doc and Span.
+    if not doc.has_annotation("DEP"):
+        raise ValueError(Errors.E029)
+    np_deps = [doc.vocab.strings.add(label) for label in labels]
+    conj = doc.vocab.strings.add("conj")
+    np_label = doc.vocab.strings.add("NP")
+    prev_end = -1
+    for i, word in enumerate(doclike):
+        if word.pos not in (NOUN, PROPN, PRON):
+            continue
+        # Prevent nested chunks from being produced
+        if word.left_edge.i <= prev_end:
+            continue
+        if word.dep in np_deps:
+            prev_end = word.i
+            yield word.left_edge.i, word.i + 1, np_label
+        elif word.dep == conj:
+            head = word.head
+            while head.dep == conj and head.head.i < head.i:
+                head = head.head
+            # If the head is an NP, and we're coordinated to it, we're an NP
+            if head.dep in np_deps:
+                prev_end = word.i
+                yield word.left_edge.i, word.i + 1, np_label
+
+
+</source>
+</class>
+
+</clones>

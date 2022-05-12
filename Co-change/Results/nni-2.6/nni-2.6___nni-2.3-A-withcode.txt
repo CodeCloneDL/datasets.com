@@ -1,0 +1,1332 @@
+<clonepair1>
+<source file="systems/nni-2.6/examples/nas/oneshot/proxylessnas/ops.py" startline="81" endline="124" pcid="4334"></source>
+    def __init__(self, in_channels, out_channels,
+                 use_bn=True, act_func='relu', dropout_rate=0, ops_order='weight_bn_act'):
+        super(Base2DLayer, self).__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
+        self.use_bn = use_bn
+        self.act_func = act_func
+        self.dropout_rate = dropout_rate
+        self.ops_order = ops_order
+
+        """ modules """
+        modules = {}
+        # batch norm
+        if self.use_bn:
+            if self.bn_before_weight:
+                modules['bn'] = nn.BatchNorm2d(in_channels)
+            else:
+                modules['bn'] = nn.BatchNorm2d(out_channels)
+        else:
+            modules['bn'] = None
+        # activation
+        modules['act'] = build_activation(self.act_func, self.ops_list[0] != 'act')
+        # dropout
+        if self.dropout_rate > 0:
+            modules['dropout'] = nn.Dropout2d(self.dropout_rate, inplace=True)
+        else:
+            modules['dropout'] = None
+        # weight
+        modules['weight'] = self.weight_op()
+
+        # add modules
+        for op in self.ops_list:
+            if modules[op] is None:
+                continue
+            elif op == 'weight':
+                if modules['dropout'] is not None:
+                    self.add_module('dropout', modules['dropout'])
+                for key in modules['weight']:
+                    self.add_module(key, modules['weight'][key])
+            else:
+                self.add_module(op, modules[op])
+        self.sequence = nn.Sequential(self._modules)
+
+</clonepair1>
+
+<clonepair1>
+<source file="systems/nni-2.6/examples/nas/oneshot/proxylessnas/ops.py" startline="195" endline="240" pcid="4344"></source>
+    def __init__(self, in_features, out_features, bias=True,
+                 use_bn=False, act_func=None, dropout_rate=0, ops_order='weight_bn_act'):
+        super(LinearLayer, self).__init__()
+
+        self.in_features = in_features
+        self.out_features = out_features
+        self.bias = bias
+
+        self.use_bn = use_bn
+        self.act_func = act_func
+        self.dropout_rate = dropout_rate
+        self.ops_order = ops_order
+
+        """ modules """
+        modules = {}
+        # batch norm
+        if self.use_bn:
+            if self.bn_before_weight:
+                modules['bn'] = nn.BatchNorm1d(in_features)
+            else:
+                modules['bn'] = nn.BatchNorm1d(out_features)
+        else:
+            modules['bn'] = None
+        # activation
+        modules['act'] = build_activation(self.act_func, self.ops_list[0] != 'act')
+        # dropout
+        if self.dropout_rate > 0:
+            modules['dropout'] = nn.Dropout(self.dropout_rate, inplace=True)
+        else:
+            modules['dropout'] = None
+        # linear
+        modules['weight'] = {'linear': nn.Linear(self.in_features, self.out_features, self.bias)}
+
+        # add modules
+        for op in self.ops_list:
+            if modules[op] is None:
+                continue
+            elif op == 'weight':
+                if modules['dropout'] is not None:
+                    self.add_module('dropout', modules['dropout'])
+                for key in modules['weight']:
+                    self.add_module(key, modules['weight'][key])
+            else:
+                self.add_module(op, modules[op])
+        self.sequence = nn.Sequential(self._modules)
+
+</clonepair1>
+<clonepair2>
+<source file="systems/nni-2.6/examples/trials/kaggle-tgs-salt/models.py" startline="303" endline="329" pcid="3864"></source>
+    def forward(self, x):
+        x = self.encoder1(x) #; print('x:', x.size())
+        e2 = self.encoder2(x) #; print('e2:', e2.size())
+        e3 = self.encoder3(e2) #; print('e3:', e3.size())
+        e4 = self.encoder4(e3) #; print('e4:', e4.size())
+        e5 = self.encoder5(e4) #; print('e5:', e5.size())
+
+        center = self.center(e5) #; print('center:', center.size())
+
+        d5 = self.decoder5(center, e5) #; print('d5:', d5.size())
+        d4 = self.decoder4(d5, e4) #; print('d4:', d4.size())
+        d3 = self.decoder3(d4, e3) #; print('d3:', d3.size())
+        d2 = self.decoder2(d3, e2) #; print('d2:', d2.size())
+        d1 = self.decoder1(d2) #; print('d1:', d1.size())
+
+        f = torch.cat([
+            d1,
+            F.interpolate(d2, scale_factor=2, mode='bilinear', align_corners=False),
+            F.interpolate(d3, scale_factor=4, mode='bilinear', align_corners=False),
+            F.interpolate(d4, scale_factor=8, mode='bilinear', align_corners=False),
+            F.interpolate(d5, scale_factor=16, mode='bilinear', align_corners=False),
+        ], 1)
+
+        f = F.dropout2d(f, p=self.dropout_2d)
+
+        return self.logit(f), None
+
+</clonepair2>
+
+<clonepair2>
+<source file="systems/nni-2.6/examples/trials/kaggle-tgs-salt/models.py" startline="381" endline="414" pcid="3866"></source>
+    def forward(self, x):
+        x = F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=False)
+        x = self.encoder1(x) #; print('x:', x.size())
+        e2 = self.encoder2(x) #; print('e2:', e2.size())
+        e3 = self.encoder3(e2) #; print('e3:', e3.size())
+        e4 = self.encoder4(e3) #; print('e4:', e4.size())
+        e5 = self.encoder5(e4) #; print('e5:', e5.size())
+
+        center = self.center(e5) #; print('center:', center.size())
+
+        d5 = self.decoder5(center, e5) #; print('d5:', d5.size())
+        d4 = self.decoder4(d5, e4) #; print('d4:', d4.size())
+        d3 = self.decoder3(d4, e3) #; print('d3:', d3.size())
+        d2 = self.decoder2(d3, e2) #; print('d2:', d2.size())
+        #d1 = self.decoder1(d2) ; print('d1:', d1.size())
+
+        f = torch.cat([
+            d2,
+            F.interpolate(d3, scale_factor=2, mode='bilinear', align_corners=False),
+            F.interpolate(d4, scale_factor=4, mode='bilinear', align_corners=False),
+            F.interpolate(d5, scale_factor=8, mode='bilinear', align_corners=False),
+            F.interpolate(center, scale_factor=16, mode='bilinear', align_corners=False),
+        ], 1)
+
+        f = F.dropout2d(f, p=self.dropout_2d, training=self.training)
+
+        # empty mask classifier
+        img_f = F.adaptive_avg_pool2d(e5, 1).view(x.size(0), -1)
+        img_f = F.dropout(img_f, p=0.5, training=self.training)
+        img_logit = self.logit_image(img_f).view(-1)
+
+        return self.logit(f), img_logit
+
+
+</clonepair2>
+<clonepair3>
+<source file="systems/nni-2.6/test/ut/retiarii/test_convert_basic.py" startline="30" endline="56" pcid="338"></source>
+    def checkExportImport(self, model, input, check_value=True):
+        model_ir = self._convert_model(model, input)
+        model_code = model_to_pytorch_script(model_ir)
+        print(model_code)
+
+        exec_vars = {}
+        exec(model_code + '\n\nconverted_model = _model()', exec_vars)
+        converted_model = exec_vars['converted_model']
+        converted_state_dict = self._match_state_dict(list(model.state_dict().values()),
+                                                      dict(converted_model.state_dict()))
+        converted_model.load_state_dict(converted_state_dict)
+        with torch.no_grad():
+            expected_output = model.eval()(*input)
+            converted_output = converted_model.eval()(*input)
+        if check_value:
+            self.assertEqual(len(converted_output), len(expected_output))
+            for a, b in zip(converted_output, expected_output):
+                if hasattr(a, 'dtype') and a.dtype == torch.bool:
+                    self.assertEqual((a ^ b), False)
+                elif isinstance((a - b), int):
+                    self.assertEqual((a - b), 0)
+                else:
+                    self.assertLess((a - b).abs().max().item(), 1E-4)
+        return converted_model
+
+    # skip torch.Tensor.new_tensor as it is not supported by jit
+
+</clonepair3>
+
+<clonepair3>
+<source file="systems/nni-2.6/test/ut/retiarii/test_convert_pytorch.py" startline="35" endline="60" pcid="401"></source>
+    def run_test(self, model, input, check_value=True):
+        model_ir = self._convert_model(model, input)
+        model_code = model_to_pytorch_script(model_ir)
+        print(model_code)
+
+        from .inject_nn import remove_inject_pytorch_nn
+        remove_inject_pytorch_nn()
+
+        exec_vars = {}
+        exec(model_code + '\n\nconverted_model = _model()', exec_vars)
+        converted_model = exec_vars['converted_model']
+        converted_state_dict = self._match_state_dict(list(model.state_dict().values()),
+                                                      dict(converted_model.state_dict()))
+        converted_model.load_state_dict(converted_state_dict)
+        with torch.no_grad():
+            expected_output = model.eval()(*input)
+            converted_output = converted_model.eval()(*input)
+        if check_value:
+            try:
+                self.assertEqual(len(converted_output), len(expected_output))
+                for a, b in zip(converted_output, expected_output):
+                    torch.eq(a, b)
+            except:
+                self.assertEqual(converted_output, expected_output)
+        return converted_model
+
+</clonepair3>
+<clonepair4>
+<source file="systems/nni-2.6/test/ut/retiarii/test_convert_models.py" startline="30" endline="52" pcid="651"></source>
+    def run_test(self, model, input, check_value=True):
+        model_ir = self._convert_model(model, input)
+        model_code = model_to_pytorch_script(model_ir)
+        print(model_code)
+
+        exec_vars = {}
+        exec(model_code + '\n\nconverted_model = _model()', exec_vars)
+        converted_model = exec_vars['converted_model']
+        converted_state_dict = self._match_state_dict(list(model.state_dict().values()),
+                                                      dict(converted_model.state_dict()))
+        converted_model.load_state_dict(converted_state_dict)
+        with torch.no_grad():
+            expected_output = model.eval()(*input)
+            converted_output = converted_model.eval()(*input)
+        if check_value:
+            try:
+                self.assertEqual(len(converted_output), len(expected_output))
+                for a, b in zip(converted_output, expected_output):
+                    torch.eq(a, b)
+            except:
+                self.assertEqual(converted_output, expected_output)
+        return converted_model
+
+</clonepair4>
+
+<clonepair4>
+<source file="systems/nni-2.6/test/ut/retiarii/test_convert_pytorch.py" startline="35" endline="60" pcid="401"></source>
+    def run_test(self, model, input, check_value=True):
+        model_ir = self._convert_model(model, input)
+        model_code = model_to_pytorch_script(model_ir)
+        print(model_code)
+
+        from .inject_nn import remove_inject_pytorch_nn
+        remove_inject_pytorch_nn()
+
+        exec_vars = {}
+        exec(model_code + '\n\nconverted_model = _model()', exec_vars)
+        converted_model = exec_vars['converted_model']
+        converted_state_dict = self._match_state_dict(list(model.state_dict().values()),
+                                                      dict(converted_model.state_dict()))
+        converted_model.load_state_dict(converted_state_dict)
+        with torch.no_grad():
+            expected_output = model.eval()(*input)
+            converted_output = converted_model.eval()(*input)
+        if check_value:
+            try:
+                self.assertEqual(len(converted_output), len(expected_output))
+                for a, b in zip(converted_output, expected_output):
+                    torch.eq(a, b)
+            except:
+                self.assertEqual(converted_output, expected_output)
+        return converted_model
+
+</clonepair4>
+<clonepair5>
+<source file="systems/nni-2.6/test/ut/retiarii/test_convert_operators.py" startline="37" endline="59" pcid="38"></source>
+    def checkExportImport(self, model, input, check_value=True):
+        model_ir = self._convert_model(model, input)
+        model_code = model_to_pytorch_script(model_ir)
+        #print(model_code)
+
+        exec_vars = {}
+        exec(model_code + '\n\nconverted_model = _model()', exec_vars)
+        converted_model = exec_vars['converted_model']
+        converted_state_dict = self._match_state_dict(list(model.state_dict().values()),
+                                                      dict(converted_model.state_dict()))
+        converted_model.load_state_dict(converted_state_dict)
+        with torch.no_grad():
+            expected_output = model.eval()(*input)
+            converted_output = converted_model.eval()(*input)
+        if check_value:
+            try:
+                self.assertEqual(len(converted_output), len(expected_output))
+                for a, b in zip(converted_output, expected_output):
+                    torch.eq(a, b)
+            except:
+                self.assertEqual(converted_output, expected_output)
+        return converted_model
+
+</clonepair5>
+
+<clonepair5>
+<source file="systems/nni-2.6/test/ut/retiarii/test_convert_pytorch.py" startline="35" endline="60" pcid="401"></source>
+    def run_test(self, model, input, check_value=True):
+        model_ir = self._convert_model(model, input)
+        model_code = model_to_pytorch_script(model_ir)
+        print(model_code)
+
+        from .inject_nn import remove_inject_pytorch_nn
+        remove_inject_pytorch_nn()
+
+        exec_vars = {}
+        exec(model_code + '\n\nconverted_model = _model()', exec_vars)
+        converted_model = exec_vars['converted_model']
+        converted_state_dict = self._match_state_dict(list(model.state_dict().values()),
+                                                      dict(converted_model.state_dict()))
+        converted_model.load_state_dict(converted_state_dict)
+        with torch.no_grad():
+            expected_output = model.eval()(*input)
+            converted_output = converted_model.eval()(*input)
+        if check_value:
+            try:
+                self.assertEqual(len(converted_output), len(expected_output))
+                for a, b in zip(converted_output, expected_output):
+                    torch.eq(a, b)
+            except:
+                self.assertEqual(converted_output, expected_output)
+        return converted_model
+
+</clonepair5>
+<clonepair6>
+<source file="systems/nni-2.6/test/ut/retiarii/test_convert_models.py" startline="30" endline="52" pcid="651"></source>
+    def run_test(self, model, input, check_value=True):
+        model_ir = self._convert_model(model, input)
+        model_code = model_to_pytorch_script(model_ir)
+        print(model_code)
+
+        exec_vars = {}
+        exec(model_code + '\n\nconverted_model = _model()', exec_vars)
+        converted_model = exec_vars['converted_model']
+        converted_state_dict = self._match_state_dict(list(model.state_dict().values()),
+                                                      dict(converted_model.state_dict()))
+        converted_model.load_state_dict(converted_state_dict)
+        with torch.no_grad():
+            expected_output = model.eval()(*input)
+            converted_output = converted_model.eval()(*input)
+        if check_value:
+            try:
+                self.assertEqual(len(converted_output), len(expected_output))
+                for a, b in zip(converted_output, expected_output):
+                    torch.eq(a, b)
+            except:
+                self.assertEqual(converted_output, expected_output)
+        return converted_model
+
+</clonepair6>
+
+<clonepair6>
+<source file="systems/nni-2.6/test/ut/retiarii/test_convert_basic.py" startline="30" endline="56" pcid="338"></source>
+    def checkExportImport(self, model, input, check_value=True):
+        model_ir = self._convert_model(model, input)
+        model_code = model_to_pytorch_script(model_ir)
+        print(model_code)
+
+        exec_vars = {}
+        exec(model_code + '\n\nconverted_model = _model()', exec_vars)
+        converted_model = exec_vars['converted_model']
+        converted_state_dict = self._match_state_dict(list(model.state_dict().values()),
+                                                      dict(converted_model.state_dict()))
+        converted_model.load_state_dict(converted_state_dict)
+        with torch.no_grad():
+            expected_output = model.eval()(*input)
+            converted_output = converted_model.eval()(*input)
+        if check_value:
+            self.assertEqual(len(converted_output), len(expected_output))
+            for a, b in zip(converted_output, expected_output):
+                if hasattr(a, 'dtype') and a.dtype == torch.bool:
+                    self.assertEqual((a ^ b), False)
+                elif isinstance((a - b), int):
+                    self.assertEqual((a - b), 0)
+                else:
+                    self.assertLess((a - b).abs().max().item(), 1E-4)
+        return converted_model
+
+    # skip torch.Tensor.new_tensor as it is not supported by jit
+
+</clonepair6>
+<clonepair7>
+<source file="systems/nni-2.6/test/ut/retiarii/test_convert_models.py" startline="30" endline="52" pcid="651"></source>
+    def run_test(self, model, input, check_value=True):
+        model_ir = self._convert_model(model, input)
+        model_code = model_to_pytorch_script(model_ir)
+        print(model_code)
+
+        exec_vars = {}
+        exec(model_code + '\n\nconverted_model = _model()', exec_vars)
+        converted_model = exec_vars['converted_model']
+        converted_state_dict = self._match_state_dict(list(model.state_dict().values()),
+                                                      dict(converted_model.state_dict()))
+        converted_model.load_state_dict(converted_state_dict)
+        with torch.no_grad():
+            expected_output = model.eval()(*input)
+            converted_output = converted_model.eval()(*input)
+        if check_value:
+            try:
+                self.assertEqual(len(converted_output), len(expected_output))
+                for a, b in zip(converted_output, expected_output):
+                    torch.eq(a, b)
+            except:
+                self.assertEqual(converted_output, expected_output)
+        return converted_model
+
+</clonepair7>
+
+<clonepair7>
+<source file="systems/nni-2.6/test/ut/retiarii/test_convert_operators.py" startline="37" endline="59" pcid="38"></source>
+    def checkExportImport(self, model, input, check_value=True):
+        model_ir = self._convert_model(model, input)
+        model_code = model_to_pytorch_script(model_ir)
+        #print(model_code)
+
+        exec_vars = {}
+        exec(model_code + '\n\nconverted_model = _model()', exec_vars)
+        converted_model = exec_vars['converted_model']
+        converted_state_dict = self._match_state_dict(list(model.state_dict().values()),
+                                                      dict(converted_model.state_dict()))
+        converted_model.load_state_dict(converted_state_dict)
+        with torch.no_grad():
+            expected_output = model.eval()(*input)
+            converted_output = converted_model.eval()(*input)
+        if check_value:
+            try:
+                self.assertEqual(len(converted_output), len(expected_output))
+                for a, b in zip(converted_output, expected_output):
+                    torch.eq(a, b)
+            except:
+                self.assertEqual(converted_output, expected_output)
+        return converted_model
+
+</clonepair7>
+<clonepair8>
+<source file="systems/nni-2.6/test/ut/retiarii/test_convert_operators.py" startline="37" endline="59" pcid="38"></source>
+    def checkExportImport(self, model, input, check_value=True):
+        model_ir = self._convert_model(model, input)
+        model_code = model_to_pytorch_script(model_ir)
+        #print(model_code)
+
+        exec_vars = {}
+        exec(model_code + '\n\nconverted_model = _model()', exec_vars)
+        converted_model = exec_vars['converted_model']
+        converted_state_dict = self._match_state_dict(list(model.state_dict().values()),
+                                                      dict(converted_model.state_dict()))
+        converted_model.load_state_dict(converted_state_dict)
+        with torch.no_grad():
+            expected_output = model.eval()(*input)
+            converted_output = converted_model.eval()(*input)
+        if check_value:
+            try:
+                self.assertEqual(len(converted_output), len(expected_output))
+                for a, b in zip(converted_output, expected_output):
+                    torch.eq(a, b)
+            except:
+                self.assertEqual(converted_output, expected_output)
+        return converted_model
+
+</clonepair8>
+
+<clonepair8>
+<source file="systems/nni-2.6/test/ut/retiarii/test_convert.py" startline="64" endline="81" pcid="671"></source>
+    def checkExportImport(self, model, input):
+        model_ir = self._convert_model(model, input)
+        model_code = model_to_pytorch_script(model_ir)
+
+        exec_vars = {}
+        exec(model_code + '\n\nconverted_model = _model()', exec_vars)
+        converted_model = exec_vars['converted_model']
+        converted_state_dict = self._match_state_dict(list(model.state_dict().values()),
+                                                      dict(converted_model.state_dict()))
+        converted_model.load_state_dict(converted_state_dict)
+        with torch.no_grad():
+            expected_output = model.eval()(*input)
+            converted_output = converted_model.eval()(*input)
+        self.assertEqual(len(converted_output), len(expected_output))
+        for a, b in zip(converted_output, expected_output):
+            self.assertLess((a - b).abs().max().item(), 1E-4)
+        return converted_model
+
+</clonepair8>
+<clonepair9>
+<source file="systems/nni-2.6/nni/retiarii/oneshot/pytorch/random.py" startline="159" endline="177" pcid="1488"></source>
+    def _train_one_epoch(self, epoch):
+        self.model.train()
+        meters = AverageMeterGroup()
+        for step, (x, y) in enumerate(self.train_loader):
+            x, y = to_device(x, self.device), to_device(y, self.device)
+            self.optimizer.zero_grad()
+            self._resample()
+            logits = self.model(x)
+            loss = self.loss(logits, y)
+            loss.backward()
+            self.optimizer.step()
+
+            metrics = self.metrics(logits, y)
+            metrics["loss"] = loss.item()
+            meters.update(metrics)
+            if self.log_frequency is not None and step % self.log_frequency == 0:
+                _logger.info("Epoch [%s/%s] Step [%s/%s]  %s", epoch + 1,
+                             self.num_epochs, step + 1, len(self.train_loader), meters)
+
+</clonepair9>
+
+<clonepair9>
+<source file="systems/nni-2.6/nni/retiarii/oneshot/pytorch/random.py" startline="178" endline="193" pcid="1489"></source>
+    def _validate_one_epoch(self, epoch):
+        self.model.eval()
+        meters = AverageMeterGroup()
+        with torch.no_grad():
+            for step, (x, y) in enumerate(self.valid_loader):
+                x, y = to_device(x, self.device), to_device(y, self.device)
+                self._resample()
+                logits = self.model(x)
+                loss = self.loss(logits, y)
+                metrics = self.metrics(logits, y)
+                metrics["loss"] = loss.item()
+                meters.update(metrics)
+                if self.log_frequency is not None and step % self.log_frequency == 0:
+                    _logger.info("Epoch [%s/%s] Validation Step [%s/%s]  %s", epoch + 1,
+                                 self.num_epochs, step + 1, len(self.valid_loader), meters)
+
+</clonepair9>
+<clonepair10>
+<source file="systems/nni-2.6/nni/algorithms/compression/pytorch/pruning/iterative_pruner.py" startline="293" endline="319" pcid="2660"></source>
+    def validate_config(self, model, config_list):
+        """
+        Parameters
+        ----------
+        model : torch.nn.Module
+            Model to be pruned
+        config_list : list
+            List on pruning configs
+        """
+
+        if self._base_algo == 'level':
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                Optional('op_types'): [str],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, logger)
+        elif self._base_algo in ['l1', 'l2', 'fpgm']:
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                'op_types': ['Conv2d'],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, logger)
+
+        schema.validate(config_list)
+
+</clonepair10>
+
+<clonepair10>
+<source file="systems/nni-2.6/nni/algorithms/compression/pytorch/pruning/sensitivity_pruner.py" startline="137" endline="163" pcid="2771"></source>
+    def validate_config(self, model, config_list):
+        """
+        Parameters
+        ----------
+        model : torch.nn.module
+            Model to be pruned
+        config_list : list
+            List on pruning configs
+        """
+
+        if self.base_algo == 'level':
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                Optional('op_types'): [str],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+        elif self.base_algo in ['l1', 'l2', 'fpgm']:
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                'op_types': ['Conv2d'],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+
+        schema.validate(config_list)
+</clonepair10>
+<clonepair11>
+<source file="systems/nni-2.6/nni/algorithms/compression/pytorch/pruning/sensitivity_pruner.py" startline="137" endline="163" pcid="2771"></source>
+    def validate_config(self, model, config_list):
+        """
+        Parameters
+        ----------
+        model : torch.nn.module
+            Model to be pruned
+        config_list : list
+            List on pruning configs
+        """
+
+        if self.base_algo == 'level':
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                Optional('op_types'): [str],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+        elif self.base_algo in ['l1', 'l2', 'fpgm']:
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                'op_types': ['Conv2d'],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+
+        schema.validate(config_list)
+</clonepair11>
+
+<clonepair11>
+<source file="systems/nni-2.6/nni/algorithms/compression/pytorch/pruning/simulated_annealing_pruner.py" startline="107" endline="133" pcid="2686"></source>
+    def validate_config(self, model, config_list):
+        """
+        Parameters
+        ----------
+        model : torch.nn.Module
+            Model to be pruned
+        config_list : list
+            List on pruning configs
+        """
+
+        if self._base_algo == 'level':
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                Optional('op_types'): [str],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+        elif self._base_algo in ['l1', 'l2', 'fpgm']:
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                'op_types': ['Conv2d'],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+
+        schema.validate(config_list)
+
+</clonepair11>
+<clonepair12>
+<source file="systems/nni-2.6/nni/algorithms/compression/pytorch/pruning/net_adapt_pruner.py" startline="112" endline="138" pcid="2830"></source>
+    def validate_config(self, model, config_list):
+        """
+        Parameters
+        ----------
+        model : torch.nn.Module
+            Model to be pruned
+        config_list : list
+            List on pruning configs
+        """
+
+        if self._base_algo == 'level':
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                Optional('op_types'): [str],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+        elif self._base_algo in ['l1', 'l2', 'fpgm']:
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                'op_types': ['Conv2d'],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+
+        schema.validate(config_list)
+
+</clonepair12>
+
+<clonepair12>
+<source file="systems/nni-2.6/nni/algorithms/compression/pytorch/pruning/sensitivity_pruner.py" startline="137" endline="163" pcid="2771"></source>
+    def validate_config(self, model, config_list):
+        """
+        Parameters
+        ----------
+        model : torch.nn.module
+            Model to be pruned
+        config_list : list
+            List on pruning configs
+        """
+
+        if self.base_algo == 'level':
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                Optional('op_types'): [str],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+        elif self.base_algo in ['l1', 'l2', 'fpgm']:
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                'op_types': ['Conv2d'],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+
+        schema.validate(config_list)
+</clonepair12>
+<clonepair13>
+<source file="systems/nni-2.6/nni/algorithms/compression/pytorch/pruning/sensitivity_pruner.py" startline="137" endline="163" pcid="2771"></source>
+    def validate_config(self, model, config_list):
+        """
+        Parameters
+        ----------
+        model : torch.nn.module
+            Model to be pruned
+        config_list : list
+            List on pruning configs
+        """
+
+        if self.base_algo == 'level':
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                Optional('op_types'): [str],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+        elif self.base_algo in ['l1', 'l2', 'fpgm']:
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                'op_types': ['Conv2d'],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+
+        schema.validate(config_list)
+</clonepair13>
+
+<clonepair13>
+<source file="systems/nni-2.6/nni/algorithms/compression/pytorch/pruning/auto_compress_pruner.py" startline="122" endline="148" pcid="2838"></source>
+    def validate_config(self, model, config_list):
+        """
+        Parameters
+        ----------
+        model : torch.nn.Module
+            Model to be pruned
+        config_list : list
+            List on pruning configs
+        """
+
+        if self._base_algo == 'level':
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                Optional('op_types'): [str],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+        elif self._base_algo in ['l1', 'l2', 'fpgm']:
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                'op_types': ['Conv2d'],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+
+        schema.validate(config_list)
+
+</clonepair13>
+<clonepair14>
+<source file="systems/nni-2.6/nni/algorithms/compression/pytorch/pruning/iterative_pruner.py" startline="293" endline="319" pcid="2660"></source>
+    def validate_config(self, model, config_list):
+        """
+        Parameters
+        ----------
+        model : torch.nn.Module
+            Model to be pruned
+        config_list : list
+            List on pruning configs
+        """
+
+        if self._base_algo == 'level':
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                Optional('op_types'): [str],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, logger)
+        elif self._base_algo in ['l1', 'l2', 'fpgm']:
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                'op_types': ['Conv2d'],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, logger)
+
+        schema.validate(config_list)
+
+</clonepair14>
+
+<clonepair14>
+<source file="systems/nni-2.6/nni/algorithms/compression/pytorch/pruning/simulated_annealing_pruner.py" startline="107" endline="133" pcid="2686"></source>
+    def validate_config(self, model, config_list):
+        """
+        Parameters
+        ----------
+        model : torch.nn.Module
+            Model to be pruned
+        config_list : list
+            List on pruning configs
+        """
+
+        if self._base_algo == 'level':
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                Optional('op_types'): [str],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+        elif self._base_algo in ['l1', 'l2', 'fpgm']:
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                'op_types': ['Conv2d'],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+
+        schema.validate(config_list)
+
+</clonepair14>
+<clonepair15>
+<source file="systems/nni-2.6/nni/algorithms/compression/pytorch/pruning/iterative_pruner.py" startline="293" endline="319" pcid="2660"></source>
+    def validate_config(self, model, config_list):
+        """
+        Parameters
+        ----------
+        model : torch.nn.Module
+            Model to be pruned
+        config_list : list
+            List on pruning configs
+        """
+
+        if self._base_algo == 'level':
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                Optional('op_types'): [str],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, logger)
+        elif self._base_algo in ['l1', 'l2', 'fpgm']:
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                'op_types': ['Conv2d'],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, logger)
+
+        schema.validate(config_list)
+
+</clonepair15>
+
+<clonepair15>
+<source file="systems/nni-2.6/nni/algorithms/compression/pytorch/pruning/net_adapt_pruner.py" startline="112" endline="138" pcid="2830"></source>
+    def validate_config(self, model, config_list):
+        """
+        Parameters
+        ----------
+        model : torch.nn.Module
+            Model to be pruned
+        config_list : list
+            List on pruning configs
+        """
+
+        if self._base_algo == 'level':
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                Optional('op_types'): [str],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+        elif self._base_algo in ['l1', 'l2', 'fpgm']:
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                'op_types': ['Conv2d'],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+
+        schema.validate(config_list)
+
+</clonepair15>
+<clonepair16>
+<source file="systems/nni-2.6/nni/algorithms/compression/pytorch/pruning/iterative_pruner.py" startline="293" endline="319" pcid="2660"></source>
+    def validate_config(self, model, config_list):
+        """
+        Parameters
+        ----------
+        model : torch.nn.Module
+            Model to be pruned
+        config_list : list
+            List on pruning configs
+        """
+
+        if self._base_algo == 'level':
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                Optional('op_types'): [str],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, logger)
+        elif self._base_algo in ['l1', 'l2', 'fpgm']:
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                'op_types': ['Conv2d'],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, logger)
+
+        schema.validate(config_list)
+
+</clonepair16>
+
+<clonepair16>
+<source file="systems/nni-2.6/nni/algorithms/compression/pytorch/pruning/auto_compress_pruner.py" startline="122" endline="148" pcid="2838"></source>
+    def validate_config(self, model, config_list):
+        """
+        Parameters
+        ----------
+        model : torch.nn.Module
+            Model to be pruned
+        config_list : list
+            List on pruning configs
+        """
+
+        if self._base_algo == 'level':
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                Optional('op_types'): [str],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+        elif self._base_algo in ['l1', 'l2', 'fpgm']:
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                'op_types': ['Conv2d'],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+
+        schema.validate(config_list)
+
+</clonepair16>
+<clonepair17>
+<source file="systems/nni-2.6/nni/algorithms/compression/pytorch/pruning/net_adapt_pruner.py" startline="112" endline="138" pcid="2830"></source>
+    def validate_config(self, model, config_list):
+        """
+        Parameters
+        ----------
+        model : torch.nn.Module
+            Model to be pruned
+        config_list : list
+            List on pruning configs
+        """
+
+        if self._base_algo == 'level':
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                Optional('op_types'): [str],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+        elif self._base_algo in ['l1', 'l2', 'fpgm']:
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                'op_types': ['Conv2d'],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+
+        schema.validate(config_list)
+
+</clonepair17>
+
+<clonepair17>
+<source file="systems/nni-2.6/nni/algorithms/compression/pytorch/pruning/simulated_annealing_pruner.py" startline="107" endline="133" pcid="2686"></source>
+    def validate_config(self, model, config_list):
+        """
+        Parameters
+        ----------
+        model : torch.nn.Module
+            Model to be pruned
+        config_list : list
+            List on pruning configs
+        """
+
+        if self._base_algo == 'level':
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                Optional('op_types'): [str],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+        elif self._base_algo in ['l1', 'l2', 'fpgm']:
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                'op_types': ['Conv2d'],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+
+        schema.validate(config_list)
+
+</clonepair17>
+<clonepair18>
+<source file="systems/nni-2.6/nni/algorithms/compression/pytorch/pruning/auto_compress_pruner.py" startline="122" endline="148" pcid="2838"></source>
+    def validate_config(self, model, config_list):
+        """
+        Parameters
+        ----------
+        model : torch.nn.Module
+            Model to be pruned
+        config_list : list
+            List on pruning configs
+        """
+
+        if self._base_algo == 'level':
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                Optional('op_types'): [str],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+        elif self._base_algo in ['l1', 'l2', 'fpgm']:
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                'op_types': ['Conv2d'],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+
+        schema.validate(config_list)
+
+</clonepair18>
+
+<clonepair18>
+<source file="systems/nni-2.6/nni/algorithms/compression/pytorch/pruning/simulated_annealing_pruner.py" startline="107" endline="133" pcid="2686"></source>
+    def validate_config(self, model, config_list):
+        """
+        Parameters
+        ----------
+        model : torch.nn.Module
+            Model to be pruned
+        config_list : list
+            List on pruning configs
+        """
+
+        if self._base_algo == 'level':
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                Optional('op_types'): [str],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+        elif self._base_algo in ['l1', 'l2', 'fpgm']:
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                'op_types': ['Conv2d'],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+
+        schema.validate(config_list)
+
+</clonepair18>
+<clonepair19>
+<source file="systems/nni-2.6/nni/algorithms/compression/pytorch/pruning/net_adapt_pruner.py" startline="112" endline="138" pcid="2830"></source>
+    def validate_config(self, model, config_list):
+        """
+        Parameters
+        ----------
+        model : torch.nn.Module
+            Model to be pruned
+        config_list : list
+            List on pruning configs
+        """
+
+        if self._base_algo == 'level':
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                Optional('op_types'): [str],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+        elif self._base_algo in ['l1', 'l2', 'fpgm']:
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                'op_types': ['Conv2d'],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+
+        schema.validate(config_list)
+
+</clonepair19>
+
+<clonepair19>
+<source file="systems/nni-2.6/nni/algorithms/compression/pytorch/pruning/auto_compress_pruner.py" startline="122" endline="148" pcid="2838"></source>
+    def validate_config(self, model, config_list):
+        """
+        Parameters
+        ----------
+        model : torch.nn.Module
+            Model to be pruned
+        config_list : list
+            List on pruning configs
+        """
+
+        if self._base_algo == 'level':
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                Optional('op_types'): [str],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+        elif self._base_algo in ['l1', 'l2', 'fpgm']:
+            schema = PrunerSchema([{
+                Optional('sparsity'): And(float, lambda n: 0 < n < 1),
+                'op_types': ['Conv2d'],
+                Optional('op_names'): [str],
+                Optional('exclude'): bool
+            }], model, _logger)
+
+        schema.validate(config_list)
+
+</clonepair19>
+<clonepair20>
+<source file="systems/nni-2.6/examples/nas/oneshot/enas/utils.py" startline="7" endline="26" pcid="4326"></source>
+def accuracy(output, target, topk=(1,)):
+    """ Computes the precision@k for the specified values of k """
+    maxk = max(topk)
+    batch_size = target.size(0)
+
+    _, pred = output.topk(maxk, 1, True, True)
+    pred = pred.t()
+    # one-hot case
+    if target.ndimension() > 1:
+        target = target.max(1)[1]
+
+    correct = pred.eq(target.view(1, -1).expand_as(pred))
+
+    res = dict()
+    for k in topk:
+        correct_k = correct[:k].reshape(-1).float().sum(0)
+        res["acc{}".format(k)] = correct_k.mul_(1.0 / batch_size).item()
+    return res
+
+
+</clonepair20>
+
+<clonepair20>
+<source file="systems/nni-2.6/examples/nas/oneshot/darts/utils.py" startline="4" endline="21" pcid="4285"></source>
+def accuracy(output, target, topk=(1,)):
+    """ Computes the precision@k for the specified values of k """
+    maxk = max(topk)
+    batch_size = target.size(0)
+
+    _, pred = output.topk(maxk, 1, True, True)
+    pred = pred.t()
+    # one-hot case
+    if target.ndimension() > 1:
+        target = target.max(1)[1]
+
+    correct = pred.eq(target.view(1, -1).expand_as(pred))
+
+    res = dict()
+    for k in topk:
+        correct_k = correct[:k].reshape(-1).float().sum(0)
+        res["acc{}".format(k)] = correct_k.mul_(1.0 / batch_size).item()
+    return res
+</clonepair20>
+<clonepair21>
+<source file="systems/nni-2.6/examples/nas/oneshot/spos/utils.py" startline="26" endline="45" pcid="4426"></source>
+def accuracy(output, target, topk=(1, 5)):
+    """ Computes the precision@k for the specified values of k """
+    maxk = max(topk)
+    batch_size = target.size(0)
+
+    _, pred = output.topk(maxk, 1, True, True)
+    pred = pred.t()
+    # one-hot case
+    if target.ndimension() > 1:
+        target = target.max(1)[1]
+
+    correct = pred.eq(target.view(1, -1).expand_as(pred))
+
+    res = dict()
+    for k in topk:
+        correct_k = correct[:k].reshape(-1).float().sum(0)
+        res["acc{}".format(k)] = correct_k.mul_(1.0 / batch_size).item()
+    return res
+
+
+</clonepair21>
+
+<clonepair21>
+<source file="systems/nni-2.6/examples/nas/oneshot/enas/utils.py" startline="7" endline="26" pcid="4326"></source>
+def accuracy(output, target, topk=(1,)):
+    """ Computes the precision@k for the specified values of k """
+    maxk = max(topk)
+    batch_size = target.size(0)
+
+    _, pred = output.topk(maxk, 1, True, True)
+    pred = pred.t()
+    # one-hot case
+    if target.ndimension() > 1:
+        target = target.max(1)[1]
+
+    correct = pred.eq(target.view(1, -1).expand_as(pred))
+
+    res = dict()
+    for k in topk:
+        correct_k = correct[:k].reshape(-1).float().sum(0)
+        res["acc{}".format(k)] = correct_k.mul_(1.0 / batch_size).item()
+    return res
+
+
+</clonepair21>
+<clonepair22>
+<source file="systems/nni-2.6/examples/nas/oneshot/spos/utils.py" startline="26" endline="45" pcid="4426"></source>
+def accuracy(output, target, topk=(1, 5)):
+    """ Computes the precision@k for the specified values of k """
+    maxk = max(topk)
+    batch_size = target.size(0)
+
+    _, pred = output.topk(maxk, 1, True, True)
+    pred = pred.t()
+    # one-hot case
+    if target.ndimension() > 1:
+        target = target.max(1)[1]
+
+    correct = pred.eq(target.view(1, -1).expand_as(pred))
+
+    res = dict()
+    for k in topk:
+        correct_k = correct[:k].reshape(-1).float().sum(0)
+        res["acc{}".format(k)] = correct_k.mul_(1.0 / batch_size).item()
+    return res
+
+
+</clonepair22>
+
+<clonepair22>
+<source file="systems/nni-2.6/examples/nas/oneshot/darts/utils.py" startline="4" endline="21" pcid="4285"></source>
+def accuracy(output, target, topk=(1,)):
+    """ Computes the precision@k for the specified values of k """
+    maxk = max(topk)
+    batch_size = target.size(0)
+
+    _, pred = output.topk(maxk, 1, True, True)
+    pred = pred.t()
+    # one-hot case
+    if target.ndimension() > 1:
+        target = target.max(1)[1]
+
+    correct = pred.eq(target.view(1, -1).expand_as(pred))
+
+    res = dict()
+    for k in topk:
+        correct_k = correct[:k].reshape(-1).float().sum(0)
+        res["acc{}".format(k)] = correct_k.mul_(1.0 / batch_size).item()
+    return res
+</clonepair22>
+<clonepair23>
+<source file="systems/nni-2.6/nni/algorithms/nas/pytorch/proxylessnas/utils.py" startline="49" endline="78" pcid="2516"></source>
+def accuracy(output, target, topk=(1,)):
+    """
+    Computes the precision@k for the specified values of k
+
+    Parameters
+    ----------
+    output : pytorch tensor
+        output, e.g., predicted value
+    target : pytorch tensor
+        label
+    topk : tuple
+        specify top1 and top5
+
+    Returns
+    -------
+    list
+        accuracy of top1 and top5
+    """
+    maxk = max(topk)
+    batch_size = target.size(0)
+
+    _, pred = output.topk(maxk, 1, True, True)
+    pred = pred.t()
+    correct = pred.eq(target.view(1, -1).expand_as(pred))
+
+    res = []
+    for k in topk:
+        correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
+        res.append(correct_k.mul_(100.0 / batch_size))
+    return res
+</clonepair23>
+
+<clonepair23>
+<source file="systems/nni-2.6/examples/nas/oneshot/proxylessnas/retrain.py" startline="19" endline="33" pcid="4386"></source>
+def accuracy(output, target, topk=(1,)):
+    maxk = max(topk)
+    batch_size = target.size(0)
+
+    _, pred = output.topk(maxk, 1, True, True)
+    pred = pred.t()
+    correct = pred.eq(target.view(1, -1).expand_as(pred))
+
+    res = []
+    for k in topk:
+        correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
+        res.append(correct_k.mul_(100.0 / batch_size))
+    return res
+
+
+</clonepair23>

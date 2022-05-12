@@ -1,0 +1,2253 @@
+<clones>
+<systeminfo processor="nicad6" system="pandas-1.5.0.dev0" granularity="functions-blind" threshold="0%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="11000" npairs="49"/>
+<runinfo ncompares="488441" cputime="131063"/>
+<classinfo nclasses="47"/>
+
+<class classid="1" nclones="2" nlines="13" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/strings/test_find_replace.py" startline="259" endline="281" pcid="82">
+def test_startswith_nullable_string_dtype(nullable_string_dtype, na):
+    values = Series(
+        ["om", None, "foo_nom", "nom", "bar_foo", None, "foo", "regex", "rege."],
+        dtype=nullable_string_dtype,
+    )
+    result = values.str.startswith("foo", na=na)
+    exp = Series(
+        [False, na, True, False, False, na, True, False, False], dtype="boolean"
+    )
+    tm.assert_series_equal(result, exp)
+
+    result = values.str.startswith("rege.", na=na)
+    exp = Series(
+        [False, na, False, False, False, na, False, False, True], dtype="boolean"
+    )
+    tm.assert_series_equal(result, exp)
+
+
+# --------------------------------------------------------------------------------------
+# str.endswith
+# --------------------------------------------------------------------------------------
+
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/strings/test_find_replace.py" startline="311" endline="333" pcid="84">
+def test_endswith_nullable_string_dtype(nullable_string_dtype, na):
+    values = Series(
+        ["om", None, "foo_nom", "nom", "bar_foo", None, "foo", "regex", "rege."],
+        dtype=nullable_string_dtype,
+    )
+    result = values.str.endswith("foo", na=na)
+    exp = Series(
+        [False, na, False, False, True, na, True, False, False], dtype="boolean"
+    )
+    tm.assert_series_equal(result, exp)
+
+    result = values.str.endswith("rege.", na=na)
+    exp = Series(
+        [False, na, False, False, False, na, False, False, True], dtype="boolean"
+    )
+    tm.assert_series_equal(result, exp)
+
+
+# --------------------------------------------------------------------------------------
+# str.replace
+# --------------------------------------------------------------------------------------
+
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="17" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/strings/test_extract.py" startline="177" endline="201" pcid="127">
+def test_extract_expand_capture_groups_index(index, any_string_dtype):
+    # https://github.com/pandas-dev/pandas/issues/6348
+    # not passing index to the extractor
+    data = ["A1", "B2", "C"]
+
+    if len(index) < len(data):
+        pytest.skip("Index too short")
+
+    index = index[: len(data)]
+    s = Series(data, index=index, dtype=any_string_dtype)
+
+    result = s.str.extract(r"(\d)", expand=False)
+    expected = Series(["1", "2", np.nan], index=index, dtype=any_string_dtype)
+    tm.assert_series_equal(result, expected)
+
+    result = s.str.extract(r"(?P<letter>\D)(?P<number>\d)?", expand=False)
+    expected = DataFrame(
+        [["A", "1"], ["B", "2"], ["C", np.nan]],
+        columns=["letter", "number"],
+        index=index,
+        dtype=any_string_dtype,
+    )
+    tm.assert_frame_equal(result, expected)
+
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/strings/test_extract.py" startline="353" endline="378" pcid="135">
+def test_extract_dataframe_capture_groups_index(index, any_string_dtype):
+    # GH6348
+    # not passing index to the extractor
+
+    data = ["A1", "B2", "C"]
+
+    if len(index) < len(data):
+        pytest.skip("Index too short")
+
+    index = index[: len(data)]
+    s = Series(data, index=index, dtype=any_string_dtype)
+
+    result = s.str.extract(r"(\d)", expand=True)
+    expected = DataFrame(["1", "2", np.nan], index=index, dtype=any_string_dtype)
+    tm.assert_frame_equal(result, expected)
+
+    result = s.str.extract(r"(?P<letter>\D)(?P<number>\d)?", expand=True)
+    expected = DataFrame(
+        [["A", "1"], ["B", "2"], ["C", np.nan]],
+        columns=["letter", "number"],
+        index=index,
+        dtype=any_string_dtype,
+    )
+    tm.assert_frame_equal(result, expected)
+
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="29" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/groupby/test_filters.py" startline="331" endline="373" pcid="544">
+def test_filter_and_transform_with_non_unique_int_index():
+    # GH4620
+    index = [1, 1, 1, 2, 1, 1, 0, 1]
+    df = DataFrame(
+        {"pid": [1, 1, 1, 2, 2, 3, 3, 3], "tag": [23, 45, 62, 24, 45, 34, 25, 62]},
+        index=index,
+    )
+    grouped_df = df.groupby("tag")
+    ser = df["pid"]
+    grouped_ser = ser.groupby(df["tag"])
+    expected_indexes = [1, 2, 4, 7]
+
+    # Filter DataFrame
+    actual = grouped_df.filter(lambda x: len(x) > 1)
+    expected = df.iloc[expected_indexes]
+    tm.assert_frame_equal(actual, expected)
+
+    actual = grouped_df.filter(lambda x: len(x) > 1, dropna=False)
+    expected = df.copy()
+    expected.iloc[[0, 3, 5, 6]] = np.nan
+    tm.assert_frame_equal(actual, expected)
+
+    # Filter Series
+    actual = grouped_ser.filter(lambda x: len(x) > 1)
+    expected = ser.take(expected_indexes)
+    tm.assert_series_equal(actual, expected)
+
+    actual = grouped_ser.filter(lambda x: len(x) > 1, dropna=False)
+    NA = np.nan
+    expected = Series([NA, 1, 1, NA, 2, NA, NA, 3], index, name="pid")
+    # ^ made manually because this can get confusing!
+    tm.assert_series_equal(actual, expected)
+
+    # Transform Series
+    actual = grouped_ser.transform(len)
+    expected = Series([1, 2, 2, 1, 2, 1, 1, 2], index, name="pid")
+    tm.assert_series_equal(actual, expected)
+
+    # Transform (a column from) DataFrameGroupBy
+    actual = grouped_df.pid.transform(len)
+    tm.assert_series_equal(actual, expected)
+
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/groupby/test_filters.py" startline="374" endline="416" pcid="545">
+def test_filter_and_transform_with_multiple_non_unique_int_index():
+    # GH4620
+    index = [1, 1, 1, 2, 0, 0, 0, 1]
+    df = DataFrame(
+        {"pid": [1, 1, 1, 2, 2, 3, 3, 3], "tag": [23, 45, 62, 24, 45, 34, 25, 62]},
+        index=index,
+    )
+    grouped_df = df.groupby("tag")
+    ser = df["pid"]
+    grouped_ser = ser.groupby(df["tag"])
+    expected_indexes = [1, 2, 4, 7]
+
+    # Filter DataFrame
+    actual = grouped_df.filter(lambda x: len(x) > 1)
+    expected = df.iloc[expected_indexes]
+    tm.assert_frame_equal(actual, expected)
+
+    actual = grouped_df.filter(lambda x: len(x) > 1, dropna=False)
+    expected = df.copy()
+    expected.iloc[[0, 3, 5, 6]] = np.nan
+    tm.assert_frame_equal(actual, expected)
+
+    # Filter Series
+    actual = grouped_ser.filter(lambda x: len(x) > 1)
+    expected = ser.take(expected_indexes)
+    tm.assert_series_equal(actual, expected)
+
+    actual = grouped_ser.filter(lambda x: len(x) > 1, dropna=False)
+    NA = np.nan
+    expected = Series([NA, 1, 1, NA, 2, NA, NA, 3], index, name="pid")
+    # ^ made manually because this can get confusing!
+    tm.assert_series_equal(actual, expected)
+
+    # Transform Series
+    actual = grouped_ser.transform(len)
+    expected = Series([1, 2, 2, 1, 2, 1, 1, 2], index, name="pid")
+    tm.assert_series_equal(actual, expected)
+
+    # Transform (a column from) DataFrameGroupBy
+    actual = grouped_df.pid.transform(len)
+    tm.assert_series_equal(actual, expected)
+
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="17" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/groupby/test_function.py" startline="608" endline="627" pcid="626">
+def test_nlargest():
+    a = Series([1, 3, 5, 7, 2, 9, 0, 4, 6, 10])
+    b = Series(list("a" * 5 + "b" * 5))
+    gb = a.groupby(b)
+    r = gb.nlargest(3)
+    e = Series(
+        [7, 5, 3, 10, 9, 6],
+        index=MultiIndex.from_arrays([list("aaabbb"), [3, 2, 1, 9, 5, 8]]),
+    )
+    tm.assert_series_equal(r, e)
+
+    a = Series([1, 1, 3, 2, 0, 3, 3, 2, 1, 0])
+    gb = a.groupby(b)
+    e = Series(
+        [3, 2, 1, 3, 3, 2],
+        index=MultiIndex.from_arrays([list("aaabbb"), [2, 3, 1, 6, 5, 7]]),
+    )
+    tm.assert_series_equal(gb.nlargest(3, keep="last"), e)
+
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/groupby/test_function.py" startline="673" endline="692" pcid="628">
+def test_nsmallest():
+    a = Series([1, 3, 5, 7, 2, 9, 0, 4, 6, 10])
+    b = Series(list("a" * 5 + "b" * 5))
+    gb = a.groupby(b)
+    r = gb.nsmallest(3)
+    e = Series(
+        [1, 2, 3, 0, 4, 6],
+        index=MultiIndex.from_arrays([list("aaabbb"), [0, 4, 1, 6, 7, 8]]),
+    )
+    tm.assert_series_equal(r, e)
+
+    a = Series([1, 1, 3, 2, 0, 3, 3, 2, 1, 0])
+    gb = a.groupby(b)
+    e = Series(
+        [0, 1, 1, 0, 1, 2],
+        index=MultiIndex.from_arrays([list("aaabbb"), [4, 1, 0, 9, 8, 7]]),
+    )
+    tm.assert_series_equal(gb.nsmallest(3, keep="last"), e)
+
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="11" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/dtypes/cast/test_promote.py" startline="365" endline="383" pcid="1238">
+def test_maybe_promote_datetime64_with_any(datetime64_dtype, any_numpy_dtype_reduced):
+    dtype = np.dtype(datetime64_dtype)
+    fill_dtype = np.dtype(any_numpy_dtype_reduced)
+
+    # create array of given dtype; casts "1" to correct dtype
+    fill_value = np.array([1], dtype=fill_dtype)[0]
+
+    # filling datetime with anything but datetime casts to object
+    if is_datetime64_dtype(fill_dtype):
+        expected_dtype = dtype
+        # for datetime dtypes, scalar values get cast to to_datetime64
+        exp_val_for_scalar = pd.Timestamp(fill_value).to_datetime64()
+    else:
+        expected_dtype = np.dtype(object)
+        exp_val_for_scalar = fill_value
+
+    _check_promote(dtype, fill_value, expected_dtype, exp_val_for_scalar)
+
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/dtypes/cast/test_promote.py" startline="444" endline="462" pcid="1241">
+def test_maybe_promote_timedelta64_with_any(timedelta64_dtype, any_numpy_dtype_reduced):
+    dtype = np.dtype(timedelta64_dtype)
+    fill_dtype = np.dtype(any_numpy_dtype_reduced)
+
+    # create array of given dtype; casts "1" to correct dtype
+    fill_value = np.array([1], dtype=fill_dtype)[0]
+
+    # filling timedelta with anything but timedelta casts to object
+    if is_timedelta64_dtype(fill_dtype):
+        expected_dtype = dtype
+        # for timedelta dtypes, scalar values get cast to pd.Timedelta.value
+        exp_val_for_scalar = pd.Timedelta(fill_value).to_timedelta64()
+    else:
+        expected_dtype = np.dtype(object)
+        exp_val_for_scalar = fill_value
+
+    _check_promote(dtype, fill_value, expected_dtype, exp_val_for_scalar)
+
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="10" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/libs/test_join.py" startline="345" endline="360" pcid="2268">
+def test_left_join_indexer2():
+    idx = np.array([1, 1, 2, 5], dtype=np.int64)
+    idx2 = np.array([1, 2, 5, 7, 9], dtype=np.int64)
+
+    res, lidx, ridx = libjoin.left_join_indexer(idx2, idx)
+
+    exp_res = np.array([1, 1, 2, 5, 7, 9], dtype=np.int64)
+    tm.assert_almost_equal(res, exp_res)
+
+    exp_lidx = np.array([0, 0, 1, 2, 3, 4], dtype=np.intp)
+    tm.assert_almost_equal(lidx, exp_lidx)
+
+    exp_ridx = np.array([0, 1, 2, 3, -1, -1], dtype=np.intp)
+    tm.assert_almost_equal(ridx, exp_ridx)
+
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/libs/test_join.py" startline="361" endline="376" pcid="2269">
+def test_outer_join_indexer2():
+    idx = np.array([1, 1, 2, 5], dtype=np.int64)
+    idx2 = np.array([1, 2, 5, 7, 9], dtype=np.int64)
+
+    res, lidx, ridx = libjoin.outer_join_indexer(idx2, idx)
+
+    exp_res = np.array([1, 1, 2, 5, 7, 9], dtype=np.int64)
+    tm.assert_almost_equal(res, exp_res)
+
+    exp_lidx = np.array([0, 0, 1, 2, 3, 4], dtype=np.intp)
+    tm.assert_almost_equal(lidx, exp_lidx)
+
+    exp_ridx = np.array([0, 1, 2, 3, -1, -1], dtype=np.intp)
+    tm.assert_almost_equal(ridx, exp_ridx)
+
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="12" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/io/json/test_json_table_schema_ext_dtype.py" startline="33" endline="46" pcid="2466">
+    def setup_method(self, method):
+        self.da = DateArray([dt.date(2021, 10, 10)])
+        self.dc = DecimalArray([decimal.Decimal(10)])
+        self.sa = array(["pandas"], dtype="string")
+        self.ia = array([10], dtype="Int64")
+        self.df = DataFrame(
+            {
+                "A": self.da,
+                "B": self.dc,
+                "C": self.sa,
+                "D": self.ia,
+            }
+        )
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/io/json/test_json_table_schema_ext_dtype.py" startline="120" endline="133" pcid="2476">
+    def setup_method(self, method):
+        self.da = DateArray([dt.date(2021, 10, 10)])
+        self.dc = DecimalArray([decimal.Decimal(10)])
+        self.sa = array(["pandas"], dtype="string")
+        self.ia = array([10], dtype="Int64")
+        self.df = DataFrame(
+            {
+                "A": self.da,
+                "B": self.dc,
+                "C": self.sa,
+                "D": self.ia,
+            }
+        )
+
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="18" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/io/json/test_json_table_schema_ext_dtype.py" startline="134" endline="159" pcid="2477">
+    def test_build_date_series(self):
+
+        s = Series(self.da, name="a")
+        s.index.name = "id"
+        result = s.to_json(orient="table", date_format="iso")
+        result = json.loads(result, object_pairs_hook=OrderedDict)
+
+        assert "pandas_version" in result["schema"]
+        result["schema"].pop("pandas_version")
+
+        fields = [
+            {"name": "id", "type": "integer"},
+            {"name": "a", "type": "any", "extDtype": "DateDtype"},
+        ]
+
+        schema = {"fields": fields, "primaryKey": ["id"]}
+
+        expected = OrderedDict(
+            [
+                ("schema", schema),
+                ("data", [OrderedDict([("id", 0), ("a", "2021-10-10T00:00:00.000Z")])]),
+            ]
+        )
+
+        assert result == expected
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/io/json/test_json_table_schema_ext_dtype.py" startline="186" endline="210" pcid="2479">
+    def test_build_string_series(self):
+        s = Series(self.sa, name="a")
+        s.index.name = "id"
+        result = s.to_json(orient="table", date_format="iso")
+        result = json.loads(result, object_pairs_hook=OrderedDict)
+
+        assert "pandas_version" in result["schema"]
+        result["schema"].pop("pandas_version")
+
+        fields = [
+            {"name": "id", "type": "integer"},
+            {"name": "a", "type": "any", "extDtype": "string"},
+        ]
+
+        schema = {"fields": fields, "primaryKey": ["id"]}
+
+        expected = OrderedDict(
+            [
+                ("schema", schema),
+                ("data", [OrderedDict([("id", 0), ("a", "pandas")])]),
+            ]
+        )
+
+        assert result == expected
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="15" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/io/test_fsspec.py" startline="164" endline="181" pcid="2711">
+def test_arrowparquet_options(fsspectest):
+    """Regression test for writing to a not-yet-existent GCS Parquet file."""
+    df = DataFrame({"a": [0]})
+    df.to_parquet(
+        "testmem://test/test.csv",
+        engine="pyarrow",
+        compression=None,
+        storage_options={"test": "parquet_write"},
+    )
+    assert fsspectest.test[0] == "parquet_write"
+    read_parquet(
+        "testmem://test/test.csv",
+        engine="pyarrow",
+        storage_options={"test": "parquet_read"},
+    )
+    assert fsspectest.test[0] == "parquet_read"
+
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/io/test_fsspec.py" startline="184" endline="201" pcid="2712">
+def test_fastparquet_options(fsspectest):
+    """Regression test for writing to a not-yet-existent GCS Parquet file."""
+    df = DataFrame({"a": [0]})
+    df.to_parquet(
+        "testmem://test/test.csv",
+        engine="fastparquet",
+        compression=None,
+        storage_options={"test": "parquet_write"},
+    )
+    assert fsspectest.test[0] == "parquet_write"
+    read_parquet(
+        "testmem://test/test.csv",
+        engine="fastparquet",
+        storage_options={"test": "parquet_read"},
+    )
+    assert fsspectest.test[0] == "parquet_read"
+
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="37" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/io/test_orc.py" startline="106" endline="146" pcid="2884">
+def test_orc_reader_date_low(dirpath):
+    data = {
+        "time": np.array(
+            [
+                "1900-05-05 12:34:56.100000",
+                "1900-05-05 12:34:56.100100",
+                "1900-05-05 12:34:56.100200",
+                "1900-05-05 12:34:56.100300",
+                "1900-05-05 12:34:56.100400",
+                "1900-05-05 12:34:56.100500",
+                "1900-05-05 12:34:56.100600",
+                "1900-05-05 12:34:56.100700",
+                "1900-05-05 12:34:56.100800",
+                "1900-05-05 12:34:56.100900",
+            ],
+            dtype="datetime64[ns]",
+        ),
+        "date": np.array(
+            [
+                datetime.date(1900, 12, 25),
+                datetime.date(1900, 12, 25),
+                datetime.date(1900, 12, 25),
+                datetime.date(1900, 12, 25),
+                datetime.date(1900, 12, 25),
+                datetime.date(1900, 12, 25),
+                datetime.date(1900, 12, 25),
+                datetime.date(1900, 12, 25),
+                datetime.date(1900, 12, 25),
+                datetime.date(1900, 12, 25),
+            ],
+            dtype="object",
+        ),
+    }
+    expected = pd.DataFrame.from_dict(data)
+
+    inputfile = os.path.join(dirpath, "TestOrcFile.testDate1900.orc")
+    got = read_orc(inputfile).iloc[:10]
+
+    tm.assert_equal(expected, got)
+
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/io/test_orc.py" startline="147" endline="187" pcid="2885">
+def test_orc_reader_date_high(dirpath):
+    data = {
+        "time": np.array(
+            [
+                "2038-05-05 12:34:56.100000",
+                "2038-05-05 12:34:56.100100",
+                "2038-05-05 12:34:56.100200",
+                "2038-05-05 12:34:56.100300",
+                "2038-05-05 12:34:56.100400",
+                "2038-05-05 12:34:56.100500",
+                "2038-05-05 12:34:56.100600",
+                "2038-05-05 12:34:56.100700",
+                "2038-05-05 12:34:56.100800",
+                "2038-05-05 12:34:56.100900",
+            ],
+            dtype="datetime64[ns]",
+        ),
+        "date": np.array(
+            [
+                datetime.date(2038, 12, 25),
+                datetime.date(2038, 12, 25),
+                datetime.date(2038, 12, 25),
+                datetime.date(2038, 12, 25),
+                datetime.date(2038, 12, 25),
+                datetime.date(2038, 12, 25),
+                datetime.date(2038, 12, 25),
+                datetime.date(2038, 12, 25),
+                datetime.date(2038, 12, 25),
+                datetime.date(2038, 12, 25),
+            ],
+            dtype="object",
+        ),
+    }
+    expected = pd.DataFrame.from_dict(data)
+
+    inputfile = os.path.join(dirpath, "TestOrcFile.testDate2038.orc")
+    got = read_orc(inputfile).iloc[:10]
+
+    tm.assert_equal(expected, got)
+
+
+</source>
+</class>
+
+<class classid="11" nclones="2" nlines="11" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/io/parser/test_header.py" startline="227" endline="245" pcid="2917">
+def test_header_multi_index_common_format1(all_parsers, kwargs):
+    parser = all_parsers
+    expected = DataFrame(
+        [[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]],
+        index=["one", "two"],
+        columns=MultiIndex.from_tuples(
+            [("a", "q"), ("a", "r"), ("a", "s"), ("b", "t"), ("c", "u"), ("c", "v")]
+        ),
+    )
+    data = """,a,a,a,b,c,c
+,q,r,s,t,u,v
+,,,,,,
+one,1,2,3,4,5,6
+two,7,8,9,10,11,12"""
+
+    result = parser.read_csv(StringIO(data), index_col=0, **kwargs)
+    tm.assert_frame_equal(result, expected)
+
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/io/parser/test_header.py" startline="275" endline="292" pcid="2918">
+def test_header_multi_index_common_format2(all_parsers, kwargs):
+    parser = all_parsers
+    expected = DataFrame(
+        [[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]],
+        index=["one", "two"],
+        columns=MultiIndex.from_tuples(
+            [("a", "q"), ("a", "r"), ("a", "s"), ("b", "t"), ("c", "u"), ("c", "v")]
+        ),
+    )
+    data = """,a,a,a,b,c,c
+,q,r,s,t,u,v
+one,1,2,3,4,5,6
+two,7,8,9,10,11,12"""
+
+    result = parser.read_csv(StringIO(data), index_col=0, **kwargs)
+    tm.assert_frame_equal(result, expected)
+
+
+</source>
+</class>
+
+<class classid="12" nclones="2" nlines="10" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/io/parser/test_converters.py" startline="97" endline="111" pcid="2942">
+    def convert_days(x):
+        x = x.strip()
+
+        if not x:
+            return np.nan
+
+        is_plus = x.endswith("+")
+
+        if is_plus:
+            x = int(x[:-1]) + 1
+        else:
+            x = int(x)
+
+        return x
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/io/parser/test_converters.py" startline="112" endline="126" pcid="2943">
+    def convert_days_sentinel(x):
+        x = x.strip()
+
+        if not x:
+            return np.nan
+
+        is_plus = x.endswith("+")
+
+        if is_plus:
+            x = int(x[:-1]) + 1
+        else:
+            x = int(x)
+
+        return x
+
+</source>
+</class>
+
+<class classid="13" nclones="2" nlines="14" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/io/parser/usecols/test_strings.py" startline="22" endline="43" pcid="3201">
+def test_usecols_with_unicode_strings(all_parsers):
+    # see gh-13219
+    data = """AAA,BBB,CCC,DDD
+0.056674973,8,True,a
+2.613230982,2,False,b
+3.568935038,7,False,a"""
+    parser = all_parsers
+
+    exp_data = {
+        "AAA": {
+            0: 0.056674972999999997,
+            1: 2.6132309819999997,
+            2: 3.5689350380000002,
+        },
+        "BBB": {0: 8, 1: 2, 2: 7},
+    }
+    expected = DataFrame(exp_data)
+
+    result = parser.read_csv(StringIO(data), usecols=["AAA", "BBB"])
+    tm.assert_frame_equal(result, expected)
+
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/io/parser/usecols/test_strings.py" startline="44" endline="65" pcid="3202">
+def test_usecols_with_single_byte_unicode_strings(all_parsers):
+    # see gh-13219
+    data = """A,B,C,D
+0.056674973,8,True,a
+2.613230982,2,False,b
+3.568935038,7,False,a"""
+    parser = all_parsers
+
+    exp_data = {
+        "A": {
+            0: 0.056674972999999997,
+            1: 2.6132309819999997,
+            2: 3.5689350380000002,
+        },
+        "B": {0: 8, 1: 2, 2: 7},
+    }
+    expected = DataFrame(exp_data)
+
+    result = parser.read_csv(StringIO(data), usecols=["A", "B"])
+    tm.assert_frame_equal(result, expected)
+
+
+</source>
+</class>
+
+<class classid="14" nclones="2" nlines="14" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/io/test_parquet.py" startline="1026" endline="1042" pcid="3601">
+    def test_partition_cols_supported(self, fp, df_full):
+        # GH #23283
+        partition_cols = ["bool", "int"]
+        df = df_full
+        with tm.ensure_clean_dir() as path:
+            df.to_parquet(
+                path,
+                engine="fastparquet",
+                partition_cols=partition_cols,
+                compression=None,
+            )
+            assert os.path.exists(path)
+            import fastparquet
+
+            actual_partition_cols = fastparquet.ParquetFile(path, False).cats
+            assert len(actual_partition_cols) == 2
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/io/test_parquet.py" startline="1060" endline="1076" pcid="3603">
+    def test_partition_on_supported(self, fp, df_full):
+        # GH #23283
+        partition_cols = ["bool", "int"]
+        df = df_full
+        with tm.ensure_clean_dir() as path:
+            df.to_parquet(
+                path,
+                engine="fastparquet",
+                compression=None,
+                partition_on=partition_cols,
+            )
+            assert os.path.exists(path)
+            import fastparquet
+
+            actual_partition_cols = fastparquet.ParquetFile(path, False).cats
+            assert len(actual_partition_cols) == 2
+
+</source>
+</class>
+
+<class classid="15" nclones="2" nlines="13" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/frame/methods/test_pct_change.py" startline="48" endline="65" pcid="4619">
+    def test_pct_change(self, datetime_frame):
+        rs = datetime_frame.pct_change(fill_method=None)
+        tm.assert_frame_equal(rs, datetime_frame / datetime_frame.shift(1) - 1)
+
+        rs = datetime_frame.pct_change(2)
+        filled = datetime_frame.fillna(method="pad")
+        tm.assert_frame_equal(rs, filled / filled.shift(2) - 1)
+
+        rs = datetime_frame.pct_change(fill_method="bfill", limit=1)
+        filled = datetime_frame.fillna(method="bfill", limit=1)
+        tm.assert_frame_equal(rs, filled / filled.shift(1) - 1)
+
+        rs = datetime_frame.pct_change(freq="5D")
+        filled = datetime_frame.fillna(method="pad")
+        tm.assert_frame_equal(
+            rs, (filled / filled.shift(freq="5D") - 1).reindex_like(filled)
+        )
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/series/methods/test_pct_change.py" startline="12" endline="29" pcid="7924">
+    def test_pct_change(self, datetime_series):
+        rs = datetime_series.pct_change(fill_method=None)
+        tm.assert_series_equal(rs, datetime_series / datetime_series.shift(1) - 1)
+
+        rs = datetime_series.pct_change(2)
+        filled = datetime_series.fillna(method="pad")
+        tm.assert_series_equal(rs, filled / filled.shift(2) - 1)
+
+        rs = datetime_series.pct_change(fill_method="bfill", limit=1)
+        filled = datetime_series.fillna(method="bfill", limit=1)
+        tm.assert_series_equal(rs, filled / filled.shift(1) - 1)
+
+        rs = datetime_series.pct_change(freq="5D")
+        filled = datetime_series.fillna(method="pad")
+        tm.assert_series_equal(
+            rs, (filled / filled.shift(freq="5D") - 1).reindex_like(filled)
+        )
+
+</source>
+</class>
+
+<class classid="16" nclones="2" nlines="13" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/frame/methods/test_sort_values.py" startline="385" endline="403" pcid="4796">
+    def test_sort_nat(self):
+        # GH 16836
+
+        d1 = [Timestamp(x) for x in ["2016-01-01", "2015-01-01", np.nan, "2016-01-01"]]
+        d2 = [
+            Timestamp(x)
+            for x in ["2017-01-01", "2014-01-01", "2016-01-01", "2015-01-01"]
+        ]
+        df = DataFrame({"a": d1, "b": d2}, index=[0, 1, 2, 3])
+
+        d3 = [Timestamp(x) for x in ["2015-01-01", "2016-01-01", "2016-01-01", np.nan]]
+        d4 = [
+            Timestamp(x)
+            for x in ["2014-01-01", "2015-01-01", "2017-01-01", "2016-01-01"]
+        ]
+        expected = DataFrame({"a": d3, "b": d4}, index=[1, 3, 0, 2])
+        sorted_df = df.sort_values(by=["a", "b"])
+        tm.assert_frame_equal(sorted_df, expected)
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/frame/methods/test_sort_values.py" startline="490" endline="509" pcid="4798">
+    def test_sort_values_nat(self):
+
+        # GH#16836
+
+        d1 = [Timestamp(x) for x in ["2016-01-01", "2015-01-01", np.nan, "2016-01-01"]]
+        d2 = [
+            Timestamp(x)
+            for x in ["2017-01-01", "2014-01-01", "2016-01-01", "2015-01-01"]
+        ]
+        df = DataFrame({"a": d1, "b": d2}, index=[0, 1, 2, 3])
+
+        d3 = [Timestamp(x) for x in ["2015-01-01", "2016-01-01", "2016-01-01", np.nan]]
+        d4 = [
+            Timestamp(x)
+            for x in ["2014-01-01", "2015-01-01", "2017-01-01", "2016-01-01"]
+        ]
+        expected = DataFrame({"a": d3, "b": d4}, index=[1, 3, 0, 2])
+        sorted_df = df.sort_values(by=["a", "b"])
+        tm.assert_frame_equal(sorted_df, expected)
+
+</source>
+</class>
+
+<class classid="17" nclones="2" nlines="12" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/frame/methods/test_value_counts.py" startline="7" endline="23" pcid="4873">
+def test_data_frame_value_counts_unsorted():
+    df = pd.DataFrame(
+        {"num_legs": [2, 4, 4, 6], "num_wings": [2, 0, 0, 0]},
+        index=["falcon", "dog", "cat", "ant"],
+    )
+
+    result = df.value_counts(sort=False)
+    expected = pd.Series(
+        data=[1, 2, 1],
+        index=pd.MultiIndex.from_arrays(
+            [(2, 4, 6), (2, 0, 0)], names=["num_legs", "num_wings"]
+        ),
+    )
+
+    tm.assert_series_equal(result, expected)
+
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/frame/methods/test_value_counts.py" startline="24" endline="40" pcid="4874">
+def test_data_frame_value_counts_ascending():
+    df = pd.DataFrame(
+        {"num_legs": [2, 4, 4, 6], "num_wings": [2, 0, 0, 0]},
+        index=["falcon", "dog", "cat", "ant"],
+    )
+
+    result = df.value_counts(ascending=True)
+    expected = pd.Series(
+        data=[1, 1, 2],
+        index=pd.MultiIndex.from_arrays(
+            [(2, 6, 4), (2, 0, 0)], names=["num_legs", "num_wings"]
+        ),
+    )
+
+    tm.assert_series_equal(result, expected)
+
+
+</source>
+</class>
+
+<class classid="18" nclones="2" nlines="10" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/frame/test_subclass.py" startline="211" endline="225" pcid="5090">
+    def test_subclass_stack(self):
+        # GH 15564
+        df = tm.SubclassedDataFrame(
+            [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+            index=["a", "b", "c"],
+            columns=["X", "Y", "Z"],
+        )
+
+        res = df.stack()
+        exp = tm.SubclassedSeries(
+            [1, 2, 3, 4, 5, 6, 7, 8, 9], index=[list("aaabbbccc"), list("XYZXYZXYZ")]
+        )
+
+        tm.assert_series_equal(res, exp)
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/frame/test_subclass.py" startline="345" endline="359" pcid="5093">
+    def test_subclass_unstack(self):
+        # GH 15564
+        df = tm.SubclassedDataFrame(
+            [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+            index=["a", "b", "c"],
+            columns=["X", "Y", "Z"],
+        )
+
+        res = df.unstack()
+        exp = tm.SubclassedSeries(
+            [1, 4, 7, 2, 5, 8, 3, 6, 9], index=[list("XXXYYYZZZ"), list("abcabcabc")]
+        )
+
+        tm.assert_series_equal(res, exp)
+
+</source>
+</class>
+
+<class classid="19" nclones="2" nlines="14" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/window/test_rolling_functions.py" startline="271" endline="290" pcid="5151">
+def test_center_reindex_series(series, roll_func, kwargs, minp, fill_value):
+    # shifter index
+    s = [f"x{x:d}" for x in range(12)]
+
+    series_xp = (
+        getattr(
+            series.reindex(list(series.index) + s).rolling(window=25, min_periods=minp),
+            roll_func,
+        )(**kwargs)
+        .shift(-12)
+        .reindex(series.index)
+    )
+    series_rs = getattr(
+        series.rolling(window=25, min_periods=minp, center=True), roll_func
+    )(**kwargs)
+    if fill_value is not None:
+        series_xp = series_xp.fillna(fill_value)
+    tm.assert_series_equal(series_xp, series_rs)
+
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/window/test_rolling_functions.py" startline="306" endline="325" pcid="5152">
+def test_center_reindex_frame(frame, roll_func, kwargs, minp, fill_value):
+    # shifter index
+    s = [f"x{x:d}" for x in range(12)]
+
+    frame_xp = (
+        getattr(
+            frame.reindex(list(frame.index) + s).rolling(window=25, min_periods=minp),
+            roll_func,
+        )(**kwargs)
+        .shift(-12)
+        .reindex(frame.index)
+    )
+    frame_rs = getattr(
+        frame.rolling(window=25, min_periods=minp, center=True), roll_func
+    )(**kwargs)
+    if fill_value is not None:
+        frame_xp = frame_xp.fillna(fill_value)
+    tm.assert_frame_equal(frame_xp, frame_rs)
+
+
+</source>
+</class>
+
+<class classid="20" nclones="2" nlines="10" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/window/test_timeseries_window.py" startline="343" endline="355" pcid="5317">
+    def test_ragged_mean(self):
+
+        df = self.ragged
+        result = df.rolling(window="1s", min_periods=1).mean()
+        expected = df.copy()
+        expected["B"] = [0.0, 1, 2, 3, 4]
+        tm.assert_frame_equal(result, expected)
+
+        result = df.rolling(window="2s", min_periods=1).mean()
+        expected = df.copy()
+        expected["B"] = [0.0, 1, 1.5, 3.0, 3.5]
+        tm.assert_frame_equal(result, expected)
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/window/test_timeseries_window.py" startline="356" endline="368" pcid="5318">
+    def test_ragged_median(self):
+
+        df = self.ragged
+        result = df.rolling(window="1s", min_periods=1).median()
+        expected = df.copy()
+        expected["B"] = [0.0, 1, 2, 3, 4]
+        tm.assert_frame_equal(result, expected)
+
+        result = df.rolling(window="2s", min_periods=1).median()
+        expected = df.copy()
+        expected["B"] = [0.0, 1, 1.5, 3.0, 3.5]
+        tm.assert_frame_equal(result, expected)
+
+</source>
+</class>
+
+<class classid="21" nclones="2" nlines="14" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/window/test_timeseries_window.py" startline="501" endline="519" pcid="5326">
+    def test_ragged_min(self):
+
+        df = self.ragged
+
+        result = df.rolling(window="1s", min_periods=1).min()
+        expected = df.copy()
+        expected["B"] = [0.0, 1, 2, 3, 4]
+        tm.assert_frame_equal(result, expected)
+
+        result = df.rolling(window="2s", min_periods=1).min()
+        expected = df.copy()
+        expected["B"] = [0.0, 1, 1, 3, 3]
+        tm.assert_frame_equal(result, expected)
+
+        result = df.rolling(window="5s", min_periods=1).min()
+        expected = df.copy()
+        expected["B"] = [0.0, 0, 0, 1, 1]
+        tm.assert_frame_equal(result, expected)
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/window/test_timeseries_window.py" startline="535" endline="553" pcid="5328">
+    def test_ragged_max(self):
+
+        df = self.ragged
+
+        result = df.rolling(window="1s", min_periods=1).max()
+        expected = df.copy()
+        expected["B"] = [0.0, 1, 2, 3, 4]
+        tm.assert_frame_equal(result, expected)
+
+        result = df.rolling(window="2s", min_periods=1).max()
+        expected = df.copy()
+        expected["B"] = [0.0, 1, 2, 3, 4]
+        tm.assert_frame_equal(result, expected)
+
+        result = df.rolling(window="5s", min_periods=1).max()
+        expected = df.copy()
+        expected["B"] = [0.0, 1, 2, 3, 4]
+        tm.assert_frame_equal(result, expected)
+
+</source>
+</class>
+
+<class classid="22" nclones="2" nlines="10" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/window/test_rolling_quantile.py" startline="143" endline="158" pcid="5347">
+def test_center_reindex_series(series, q):
+    # shifter index
+    s = [f"x{x:d}" for x in range(12)]
+
+    series_xp = (
+        series.reindex(list(series.index) + s)
+        .rolling(window=25)
+        .quantile(q)
+        .shift(-12)
+        .reindex(series.index)
+    )
+
+    series_rs = series.rolling(window=25, center=True).quantile(q)
+    tm.assert_series_equal(series_xp, series_rs)
+
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/window/test_rolling_quantile.py" startline="160" endline="172" pcid="5348">
+def test_center_reindex_frame(frame, q):
+    # shifter index
+    s = [f"x{x:d}" for x in range(12)]
+
+    frame_xp = (
+        frame.reindex(list(frame.index) + s)
+        .rolling(window=25)
+        .quantile(q)
+        .shift(-12)
+        .reindex(frame.index)
+    )
+    frame_rs = frame.rolling(window=25, center=True).quantile(q)
+    tm.assert_frame_equal(frame_xp, frame_rs)
+</source>
+</class>
+
+<class classid="23" nclones="2" nlines="11" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/window/test_rolling_skew_kurt.py" startline="139" endline="154" pcid="5356">
+def test_center_reindex_series(series, roll_func):
+    # shifter index
+    s = [f"x{x:d}" for x in range(12)]
+
+    series_xp = (
+        getattr(
+            series.reindex(list(series.index) + s).rolling(window=25),
+            roll_func,
+        )()
+        .shift(-12)
+        .reindex(series.index)
+    )
+    series_rs = getattr(series.rolling(window=25, center=True), roll_func)()
+    tm.assert_series_equal(series_xp, series_rs)
+
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/window/test_rolling_skew_kurt.py" startline="157" endline="172" pcid="5357">
+def test_center_reindex_frame(frame, roll_func):
+    # shifter index
+    s = [f"x{x:d}" for x in range(12)]
+
+    frame_xp = (
+        getattr(
+            frame.reindex(list(frame.index) + s).rolling(window=25),
+            roll_func,
+        )()
+        .shift(-12)
+        .reindex(frame.index)
+    )
+    frame_rs = getattr(frame.rolling(window=25, center=True), roll_func)()
+    tm.assert_frame_equal(frame_xp, frame_rs)
+
+
+</source>
+</class>
+
+<class classid="24" nclones="2" nlines="12" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/window/test_rolling_skew_kurt.py" startline="173" endline="193" pcid="5358">
+def test_rolling_skew_edge_cases():
+
+    all_nan = Series([np.NaN] * 5)
+
+    # yields all NaN (0 variance)
+    d = Series([1] * 5)
+    x = d.rolling(window=5).skew()
+    tm.assert_series_equal(all_nan, x)
+
+    # yields all NaN (window too small)
+    d = Series(np.random.randn(5))
+    x = d.rolling(window=2).skew()
+    tm.assert_series_equal(all_nan, x)
+
+    # yields [NaN, NaN, NaN, 0.177994, 1.548824]
+    d = Series([-1.50837035, -0.1297039, 0.19501095, 1.73508164, 0.41941401])
+    expected = Series([np.NaN, np.NaN, np.NaN, 0.177994, 1.548824])
+    x = d.rolling(window=4).skew()
+    tm.assert_series_equal(expected, x)
+
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/window/test_rolling_skew_kurt.py" startline="194" endline="214" pcid="5359">
+def test_rolling_kurt_edge_cases():
+
+    all_nan = Series([np.NaN] * 5)
+
+    # yields all NaN (0 variance)
+    d = Series([1] * 5)
+    x = d.rolling(window=5).kurt()
+    tm.assert_series_equal(all_nan, x)
+
+    # yields all NaN (window too small)
+    d = Series(np.random.randn(5))
+    x = d.rolling(window=3).kurt()
+    tm.assert_series_equal(all_nan, x)
+
+    # yields [NaN, NaN, NaN, 1.224307, 2.671499]
+    d = Series([-1.50837035, -0.1297039, 0.19501095, 1.73508164, 0.41941401])
+    expected = Series([np.NaN, np.NaN, np.NaN, 1.224307, 2.671499])
+    x = d.rolling(window=4).kurt()
+    tm.assert_series_equal(expected, x)
+
+
+</source>
+</class>
+
+<class classid="25" nclones="2" nlines="12" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/plotting/test_misc.py" startline="453" endline="477" pcid="5621">
+    def test_has_externally_shared_axis_x_axis(self):
+        # GH33819
+        # Test _has_externally_shared_axis() works for x-axis
+        func = plotting._matplotlib.tools._has_externally_shared_axis
+
+        fig = self.plt.figure()
+        plots = fig.subplots(2, 4)
+
+        # Create *externally* shared axes for first and third columns
+        plots[0][0] = fig.add_subplot(231, sharex=plots[1][0])
+        plots[0][2] = fig.add_subplot(233, sharex=plots[1][2])
+
+        # Create *internally* shared axes for second and third columns
+        plots[0][1].twinx()
+        plots[0][2].twinx()
+
+        # First  column is only externally shared
+        # Second column is only internally shared
+        # Third  column is both
+        # Fourth column is neither
+        assert func(plots[0][0], "x")
+        assert not func(plots[0][1], "x")
+        assert func(plots[0][2], "x")
+        assert not func(plots[0][3], "x")
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/plotting/test_misc.py" startline="478" endline="502" pcid="5622">
+    def test_has_externally_shared_axis_y_axis(self):
+        # GH33819
+        # Test _has_externally_shared_axis() works for y-axis
+        func = plotting._matplotlib.tools._has_externally_shared_axis
+
+        fig = self.plt.figure()
+        plots = fig.subplots(4, 2)
+
+        # Create *externally* shared axes for first and third rows
+        plots[0][0] = fig.add_subplot(321, sharey=plots[0][1])
+        plots[2][0] = fig.add_subplot(325, sharey=plots[2][1])
+
+        # Create *internally* shared axes for second and third rows
+        plots[1][0].twiny()
+        plots[2][0].twiny()
+
+        # First  row is only externally shared
+        # Second row is only internally shared
+        # Third  row is both
+        # Fourth row is neither
+        assert func(plots[0][0], "y")
+        assert not func(plots[1][0], "y")
+        assert func(plots[2][0], "y")
+        assert not func(plots[3][0], "y")
+
+</source>
+</class>
+
+<class classid="26" nclones="3" nlines="11" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/plotting/frame/test_frame_groupby.py" startline="17" endline="31" pcid="5625">
+    def setup_method(self, method):
+        TestPlotBase.setup_method(self, method)
+        import matplotlib as mpl
+
+        mpl.rcdefaults()
+
+        self.tdf = tm.makeTimeDataFrame()
+        self.hexbin_df = DataFrame(
+            {
+                "A": np.random.uniform(size=20),
+                "B": np.random.uniform(size=20),
+                "C": np.arange(20) + np.random.uniform(size=20),
+            }
+        )
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/plotting/frame/test_frame_subplots.py" startline="27" endline="41" pcid="5630">
+    def setup_method(self, method):
+        TestPlotBase.setup_method(self, method)
+        import matplotlib as mpl
+
+        mpl.rcdefaults()
+
+        self.tdf = tm.makeTimeDataFrame()
+        self.hexbin_df = DataFrame(
+            {
+                "A": np.random.uniform(size=20),
+                "B": np.random.uniform(size=20),
+                "C": np.arange(20) + np.random.uniform(size=20),
+            }
+        )
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/plotting/frame/test_frame_color.py" startline="23" endline="37" pcid="5662">
+    def setup_method(self, method):
+        TestPlotBase.setup_method(self, method)
+        import matplotlib as mpl
+
+        mpl.rcdefaults()
+
+        self.tdf = tm.makeTimeDataFrame()
+        self.hexbin_df = DataFrame(
+            {
+                "A": np.random.uniform(size=20),
+                "B": np.random.uniform(size=20),
+                "C": np.arange(20) + np.random.uniform(size=20),
+            }
+        )
+
+</source>
+</class>
+
+<class classid="27" nclones="2" nlines="11" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/plotting/frame/test_frame_groupby.py" startline="51" endline="65" pcid="5628">
+    def test_groupby_boxplot_sharey(self, kwargs, expected):
+        # https://github.com/pandas-dev/pandas/issues/20968
+        # sharey can now be switched check whether the right
+        # pair of axes is turned on or off
+        df = DataFrame(
+            {
+                "a": [-1.43, -0.15, -3.70, -1.43, -0.14],
+                "b": [0.56, 0.84, 0.29, 0.56, 0.85],
+                "c": [0, 1, 2, 3, 1],
+            },
+            index=[0, 1, 2, 3, 4],
+        )
+        axes = df.groupby("c").boxplot(**kwargs)
+        self._assert_ytickslabels_visibility(axes, expected)
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/plotting/frame/test_frame_groupby.py" startline="78" endline="92" pcid="5629">
+    def test_groupby_boxplot_sharex(self, kwargs, expected):
+        # https://github.com/pandas-dev/pandas/issues/20968
+        # sharex can now be switched check whether the right
+        # pair of axes is turned on or off
+
+        df = DataFrame(
+            {
+                "a": [-1.43, -0.15, -3.70, -1.43, -0.14],
+                "b": [0.56, 0.84, 0.29, 0.56, 0.85],
+                "c": [0, 1, 2, 3, 1],
+            },
+            index=[0, 1, 2, 3, 4],
+        )
+        axes = df.groupby("c").boxplot(**kwargs)
+        self._assert_xtickslabels_visibility(axes, expected)
+</source>
+</class>
+
+<class classid="28" nclones="2" nlines="10" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/plotting/frame/test_hist_box_by.py" startline="193" endline="208" pcid="5700">
+    def test_axis_share_x_with_by(self):
+        # GH 15079
+        ax1, ax2, ax3 = self.hist_df.plot.hist(column="A", by="C", sharex=True)
+
+        # share x
+        assert self.get_x_axis(ax1).joined(ax1, ax2)
+        assert self.get_x_axis(ax2).joined(ax1, ax2)
+        assert self.get_x_axis(ax3).joined(ax1, ax3)
+        assert self.get_x_axis(ax3).joined(ax2, ax3)
+
+        # don't share y
+        assert not self.get_y_axis(ax1).joined(ax1, ax2)
+        assert not self.get_y_axis(ax2).joined(ax1, ax2)
+        assert not self.get_y_axis(ax3).joined(ax1, ax3)
+        assert not self.get_y_axis(ax3).joined(ax2, ax3)
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/plotting/frame/test_hist_box_by.py" startline="210" endline="225" pcid="5701">
+    def test_axis_share_y_with_by(self):
+        # GH 15079
+        ax1, ax2, ax3 = self.hist_df.plot.hist(column="A", by="C", sharey=True)
+
+        # share y
+        assert self.get_y_axis(ax1).joined(ax1, ax2)
+        assert self.get_y_axis(ax2).joined(ax1, ax2)
+        assert self.get_y_axis(ax3).joined(ax1, ax3)
+        assert self.get_y_axis(ax3).joined(ax2, ax3)
+
+        # don't share x
+        assert not self.get_x_axis(ax1).joined(ax1, ax2)
+        assert not self.get_x_axis(ax2).joined(ax1, ax2)
+        assert not self.get_x_axis(ax3).joined(ax1, ax3)
+        assert not self.get_x_axis(ax3).joined(ax2, ax3)
+
+</source>
+</class>
+
+<class classid="29" nclones="2" nlines="12" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/indexes/timedeltas/test_setops.py" startline="218" endline="234" pcid="6178">
+    def test_difference_freq(self, sort):
+        # GH14323: Difference of TimedeltaIndex should not preserve frequency
+
+        index = timedelta_range("0 days", "5 days", freq="D")
+
+        other = timedelta_range("1 days", "4 days", freq="D")
+        expected = TimedeltaIndex(["0 days", "5 days"], freq=None)
+        idx_diff = index.difference(other, sort)
+        tm.assert_index_equal(idx_diff, expected)
+        tm.assert_attr_equal("freq", idx_diff, expected)
+
+        other = timedelta_range("2 days", "5 days", freq="D")
+        idx_diff = index.difference(other, sort)
+        expected = TimedeltaIndex(["0 days", "1 days"], freq=None)
+        tm.assert_index_equal(idx_diff, expected)
+        tm.assert_attr_equal("freq", idx_diff, expected)
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/indexes/datetimes/test_setops.py" startline="345" endline="360" pcid="6803">
+    def test_difference_freq(self, sort):
+        # GH14323: difference of DatetimeIndex should not preserve frequency
+
+        index = date_range("20160920", "20160925", freq="D")
+        other = date_range("20160921", "20160924", freq="D")
+        expected = DatetimeIndex(["20160920", "20160925"], freq=None)
+        idx_diff = index.difference(other, sort)
+        tm.assert_index_equal(idx_diff, expected)
+        tm.assert_attr_equal("freq", idx_diff, expected)
+
+        other = date_range("20160922", "20160925", freq="D")
+        idx_diff = index.difference(other, sort)
+        expected = DatetimeIndex(["20160920", "20160921"], freq=None)
+        tm.assert_index_equal(idx_diff, expected)
+        tm.assert_attr_equal("freq", idx_diff, expected)
+
+</source>
+</class>
+
+<class classid="30" nclones="2" nlines="12" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/indexes/timedeltas/test_indexing.py" startline="227" endline="242" pcid="6190">
+    def test_take_invalid_kwargs(self):
+        idx = timedelta_range("1 day", "31 day", freq="D", name="idx")
+        indices = [1, 6, 5, 9, 10, 13, 15, 3]
+
+        msg = r"take\(\) got an unexpected keyword argument 'foo'"
+        with pytest.raises(TypeError, match=msg):
+            idx.take(indices, foo=2)
+
+        msg = "the 'out' parameter is not supported"
+        with pytest.raises(ValueError, match=msg):
+            idx.take(indices, out=indices)
+
+        msg = "the 'mode' parameter is not supported"
+        with pytest.raises(ValueError, match=msg):
+            idx.take(indices, mode="clip")
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/indexes/datetimes/test_indexing.py" startline="277" endline="293" pcid="6831">
+    def test_take_invalid_kwargs(self):
+        idx = date_range("2011-01-01", "2011-01-31", freq="D", name="idx")
+        indices = [1, 6, 5, 9, 10, 13, 15, 3]
+
+        msg = r"take\(\) got an unexpected keyword argument 'foo'"
+        with pytest.raises(TypeError, match=msg):
+            idx.take(indices, foo=2)
+
+        msg = "the 'out' parameter is not supported"
+        with pytest.raises(ValueError, match=msg):
+            idx.take(indices, out=indices)
+
+        msg = "the 'mode' parameter is not supported"
+        with pytest.raises(ValueError, match=msg):
+            idx.take(indices, mode="clip")
+
+    # TODO: This method came from test_datetime; de-dup with version above
+</source>
+</class>
+
+<class classid="31" nclones="2" nlines="20" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/indexes/timedeltas/test_indexing.py" startline="257" endline="287" pcid="6192">
+    def test_take_fill_value(self):
+        # GH 12631
+        idx = TimedeltaIndex(["1 days", "2 days", "3 days"], name="xxx")
+        result = idx.take(np.array([1, 0, -1]))
+        expected = TimedeltaIndex(["2 days", "1 days", "3 days"], name="xxx")
+        tm.assert_index_equal(result, expected)
+
+        # fill_value
+        result = idx.take(np.array([1, 0, -1]), fill_value=True)
+        expected = TimedeltaIndex(["2 days", "1 days", "NaT"], name="xxx")
+        tm.assert_index_equal(result, expected)
+
+        # allow_fill=False
+        result = idx.take(np.array([1, 0, -1]), allow_fill=False, fill_value=True)
+        expected = TimedeltaIndex(["2 days", "1 days", "3 days"], name="xxx")
+        tm.assert_index_equal(result, expected)
+
+        msg = (
+            "When allow_fill=True and fill_value is not None, "
+            "all indices must be >= -1"
+        )
+        with pytest.raises(ValueError, match=msg):
+            idx.take(np.array([1, 0, -2]), fill_value=True)
+        with pytest.raises(ValueError, match=msg):
+            idx.take(np.array([1, 0, -5]), fill_value=True)
+
+        msg = "index -5 is out of bounds for (axis 0 with )?size 3"
+        with pytest.raises(IndexError, match=msg):
+            idx.take(np.array([1, -5]))
+
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/indexes/datetimes/test_indexing.py" startline="322" endline="351" pcid="6833">
+    def test_take_fill_value(self):
+        # GH#12631
+        idx = DatetimeIndex(["2011-01-01", "2011-02-01", "2011-03-01"], name="xxx")
+        result = idx.take(np.array([1, 0, -1]))
+        expected = DatetimeIndex(["2011-02-01", "2011-01-01", "2011-03-01"], name="xxx")
+        tm.assert_index_equal(result, expected)
+
+        # fill_value
+        result = idx.take(np.array([1, 0, -1]), fill_value=True)
+        expected = DatetimeIndex(["2011-02-01", "2011-01-01", "NaT"], name="xxx")
+        tm.assert_index_equal(result, expected)
+
+        # allow_fill=False
+        result = idx.take(np.array([1, 0, -1]), allow_fill=False, fill_value=True)
+        expected = DatetimeIndex(["2011-02-01", "2011-01-01", "2011-03-01"], name="xxx")
+        tm.assert_index_equal(result, expected)
+
+        msg = (
+            "When allow_fill=True and fill_value is not None, "
+            "all indices must be >= -1"
+        )
+        with pytest.raises(ValueError, match=msg):
+            idx.take(np.array([1, 0, -2]), fill_value=True)
+        with pytest.raises(ValueError, match=msg):
+            idx.take(np.array([1, 0, -5]), fill_value=True)
+
+        msg = "out of bounds"
+        with pytest.raises(IndexError, match=msg):
+            idx.take(np.array([1, -5]))
+
+</source>
+</class>
+
+<class classid="32" nclones="2" nlines="14" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/indexes/period/test_monotonic.py" startline="7" endline="25" pcid="6242">
+def test_is_monotonic_increasing():
+    # GH#17717
+    p0 = Period("2017-09-01")
+    p1 = Period("2017-09-02")
+    p2 = Period("2017-09-03")
+
+    idx_inc0 = PeriodIndex([p0, p1, p2])
+    idx_inc1 = PeriodIndex([p0, p1, p1])
+    idx_dec0 = PeriodIndex([p2, p1, p0])
+    idx_dec1 = PeriodIndex([p2, p1, p1])
+    idx = PeriodIndex([p1, p2, p0])
+
+    assert idx_inc0.is_monotonic_increasing is True
+    assert idx_inc1.is_monotonic_increasing is True
+    assert idx_dec0.is_monotonic_increasing is False
+    assert idx_dec1.is_monotonic_increasing is False
+    assert idx.is_monotonic_increasing is False
+
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/indexes/period/test_monotonic.py" startline="26" endline="42" pcid="6243">
+def test_is_monotonic_decreasing():
+    # GH#17717
+    p0 = Period("2017-09-01")
+    p1 = Period("2017-09-02")
+    p2 = Period("2017-09-03")
+
+    idx_inc0 = PeriodIndex([p0, p1, p2])
+    idx_inc1 = PeriodIndex([p0, p1, p1])
+    idx_dec0 = PeriodIndex([p2, p1, p0])
+    idx_dec1 = PeriodIndex([p2, p1, p1])
+    idx = PeriodIndex([p1, p2, p0])
+
+    assert idx_inc0.is_monotonic_decreasing is False
+    assert idx_inc1.is_monotonic_decreasing is False
+    assert idx_dec0.is_monotonic_decreasing is True
+    assert idx_dec1.is_monotonic_decreasing is True
+    assert idx.is_monotonic_decreasing is False
+</source>
+</class>
+
+<class classid="33" nclones="2" nlines="24" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/indexes/period/test_indexing.py" startline="737" endline="775" pcid="6346">
+    def test_take_fill_value(self):
+        # GH#12631
+        idx = PeriodIndex(
+            ["2011-01-01", "2011-02-01", "2011-03-01"], name="xxx", freq="D"
+        )
+        result = idx.take(np.array([1, 0, -1]))
+        expected = PeriodIndex(
+            ["2011-02-01", "2011-01-01", "2011-03-01"], name="xxx", freq="D"
+        )
+        tm.assert_index_equal(result, expected)
+
+        # fill_value
+        result = idx.take(np.array([1, 0, -1]), fill_value=True)
+        expected = PeriodIndex(
+            ["2011-02-01", "2011-01-01", "NaT"], name="xxx", freq="D"
+        )
+        tm.assert_index_equal(result, expected)
+
+        # allow_fill=False
+        result = idx.take(np.array([1, 0, -1]), allow_fill=False, fill_value=True)
+        expected = PeriodIndex(
+            ["2011-02-01", "2011-01-01", "2011-03-01"], name="xxx", freq="D"
+        )
+        tm.assert_index_equal(result, expected)
+
+        msg = (
+            "When allow_fill=True and fill_value is not None, "
+            "all indices must be >= -1"
+        )
+        with pytest.raises(ValueError, match=msg):
+            idx.take(np.array([1, 0, -2]), fill_value=True)
+        with pytest.raises(ValueError, match=msg):
+            idx.take(np.array([1, 0, -5]), fill_value=True)
+
+        msg = "index -5 is out of bounds for( axis 0 with)? size 3"
+        with pytest.raises(IndexError, match=msg):
+            idx.take(np.array([1, -5]))
+
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/indexes/datetimes/test_indexing.py" startline="352" endline="389" pcid="6834">
+    def test_take_fill_value_with_timezone(self):
+        idx = DatetimeIndex(
+            ["2011-01-01", "2011-02-01", "2011-03-01"], name="xxx", tz="US/Eastern"
+        )
+        result = idx.take(np.array([1, 0, -1]))
+        expected = DatetimeIndex(
+            ["2011-02-01", "2011-01-01", "2011-03-01"], name="xxx", tz="US/Eastern"
+        )
+        tm.assert_index_equal(result, expected)
+
+        # fill_value
+        result = idx.take(np.array([1, 0, -1]), fill_value=True)
+        expected = DatetimeIndex(
+            ["2011-02-01", "2011-01-01", "NaT"], name="xxx", tz="US/Eastern"
+        )
+        tm.assert_index_equal(result, expected)
+
+        # allow_fill=False
+        result = idx.take(np.array([1, 0, -1]), allow_fill=False, fill_value=True)
+        expected = DatetimeIndex(
+            ["2011-02-01", "2011-01-01", "2011-03-01"], name="xxx", tz="US/Eastern"
+        )
+        tm.assert_index_equal(result, expected)
+
+        msg = (
+            "When allow_fill=True and fill_value is not None, "
+            "all indices must be >= -1"
+        )
+        with pytest.raises(ValueError, match=msg):
+            idx.take(np.array([1, 0, -2]), fill_value=True)
+        with pytest.raises(ValueError, match=msg):
+            idx.take(np.array([1, 0, -5]), fill_value=True)
+
+        msg = "out of bounds"
+        with pytest.raises(IndexError, match=msg):
+            idx.take(np.array([1, -5]))
+
+
+</source>
+</class>
+
+<class classid="34" nclones="2" nlines="11" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/indexes/datetimes/methods/test_to_period.py" startline="111" endline="125" pcid="6970">
+    def test_to_period_millisecond(self):
+        index = DatetimeIndex(
+            [
+                Timestamp("2007-01-01 10:11:12.123456Z"),
+                Timestamp("2007-01-01 10:11:13.789123Z"),
+            ]
+        )
+
+        with tm.assert_produces_warning(UserWarning):
+            # warning that timezone info will be lost
+            period = index.to_period(freq="L")
+        assert 2 == len(period)
+        assert period[0] == Period("2007-01-01 10:11:12.123Z", "L")
+        assert period[1] == Period("2007-01-01 10:11:13.789Z", "L")
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/indexes/datetimes/methods/test_to_period.py" startline="126" endline="140" pcid="6971">
+    def test_to_period_microsecond(self):
+        index = DatetimeIndex(
+            [
+                Timestamp("2007-01-01 10:11:12.123456Z"),
+                Timestamp("2007-01-01 10:11:13.789123Z"),
+            ]
+        )
+
+        with tm.assert_produces_warning(UserWarning):
+            # warning that timezone info will be lost
+            period = index.to_period(freq="U")
+        assert 2 == len(period)
+        assert period[0] == Period("2007-01-01 10:11:12.123456Z", "U")
+        assert period[1] == Period("2007-01-01 10:11:13.789123Z", "U")
+
+</source>
+</class>
+
+<class classid="35" nclones="2" nlines="13" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/indexes/multi/conftest.py" startline="13" endline="30" pcid="7238">
+def idx():
+    # a MultiIndex used to test the general functionality of the
+    # general functionality of this object
+    major_axis = Index(["foo", "bar", "baz", "qux"])
+    minor_axis = Index(["one", "two"])
+
+    major_codes = np.array([0, 0, 1, 2, 3, 3])
+    minor_codes = np.array([0, 1, 0, 1, 0, 1])
+    index_names = ["first", "second"]
+    mi = MultiIndex(
+        levels=[major_axis, minor_axis],
+        codes=[major_codes, minor_codes],
+        names=index_names,
+        verify_integrity=False,
+    )
+    return mi
+
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/indexes/multi/conftest.py" startline="32" endline="48" pcid="7239">
+def idx_dup():
+    # compare tests/indexes/multi/conftest.py
+    major_axis = Index(["foo", "bar", "baz", "qux"])
+    minor_axis = Index(["one", "two"])
+
+    major_codes = np.array([0, 0, 1, 0, 1, 1])
+    minor_codes = np.array([0, 1, 0, 1, 0, 1])
+    index_names = ["first", "second"]
+    mi = MultiIndex(
+        levels=[major_axis, minor_axis],
+        codes=[major_codes, minor_codes],
+        names=index_names,
+        verify_integrity=False,
+    )
+    return mi
+
+
+</source>
+</class>
+
+<class classid="36" nclones="2" nlines="21" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/series/test_ufunc.py" startline="352" endline="379" pcid="7625">
+    def test_max(self, values_for_np_reduce, box_with_array):
+        box = box_with_array
+        values = values_for_np_reduce
+
+        same_type = True
+        if box is pd.Index and values.dtype.kind in ["i", "f"]:
+            # ATM Index casts to object, so we get python ints/floats
+            same_type = False
+
+        warn = None
+        if is_dtype_equal(values.dtype, "Sparse[int]") and box is pd.Index:
+            warn = FutureWarning
+        msg = "passing a SparseArray to pd.Index"
+        with tm.assert_produces_warning(warn, match=msg):
+            obj = box(values)
+
+        result = np.maximum.reduce(obj)
+        if box is pd.DataFrame:
+            # TODO: cases with axis kwarg
+            expected = obj.max(numeric_only=False)
+            tm.assert_series_equal(result, expected)
+        else:
+            expected = values[1]
+            assert result == expected
+            if same_type:
+                # check we have e.g. Timestamp instead of dt64
+                assert type(result) == type(expected)
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/series/test_ufunc.py" startline="380" endline="407" pcid="7626">
+    def test_min(self, values_for_np_reduce, box_with_array):
+        box = box_with_array
+        values = values_for_np_reduce
+
+        same_type = True
+        if box is pd.Index and values.dtype.kind in ["i", "f"]:
+            # ATM Index casts to object, so we get python ints/floats
+            same_type = False
+
+        warn = None
+        if is_dtype_equal(values.dtype, "Sparse[int]") and box is pd.Index:
+            warn = FutureWarning
+        msg = "passing a SparseArray to pd.Index"
+        with tm.assert_produces_warning(warn, match=msg):
+            obj = box(values)
+
+        result = np.minimum.reduce(obj)
+        if box is pd.DataFrame:
+            expected = obj.min(numeric_only=False)
+            tm.assert_series_equal(result, expected)
+        else:
+            expected = values[0]
+            assert result == expected
+            if same_type:
+                # check we have e.g. Timestamp instead of dt64
+                assert type(result) == type(expected)
+
+
+</source>
+</class>
+
+<class classid="37" nclones="2" nlines="11" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/series/accessors/test_dt_accessor.py" startline="581" endline="593" pcid="7666">
+    def test_strftime_period_hours(self):
+        ser = Series(period_range("20130101", periods=4, freq="H"))
+        result = ser.dt.strftime("%Y/%m/%d %H:%M:%S")
+        expected = Series(
+            [
+                "2013/01/01 00:00:00",
+                "2013/01/01 01:00:00",
+                "2013/01/01 02:00:00",
+                "2013/01/01 03:00:00",
+            ]
+        )
+        tm.assert_series_equal(result, expected)
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/series/accessors/test_dt_accessor.py" startline="594" endline="606" pcid="7667">
+    def test_strftime_period_minutes(self):
+        ser = Series(period_range("20130101", periods=4, freq="L"))
+        result = ser.dt.strftime("%Y/%m/%d %H:%M:%S.%l")
+        expected = Series(
+            [
+                "2013/01/01 00:00:00.000",
+                "2013/01/01 00:00:00.001",
+                "2013/01/01 00:00:00.002",
+                "2013/01/01 00:00:00.003",
+            ]
+        )
+        tm.assert_series_equal(result, expected)
+
+</source>
+</class>
+
+<class classid="38" nclones="2" nlines="11" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/series/methods/test_value_counts.py" startline="90" endline="107" pcid="8025">
+    def test_value_counts_categorical_ordered(self):
+        # most dtypes are tested in tests/base
+        values = Categorical([1, 2, 3, 1, 1, 3], ordered=True)
+
+        exp_idx = CategoricalIndex([1, 3, 2], categories=[1, 2, 3], ordered=True)
+        exp = Series([3, 2, 1], index=exp_idx, name="xxx")
+
+        ser = Series(values, name="xxx")
+        tm.assert_series_equal(ser.value_counts(), exp)
+        # check CategoricalIndex outputs the same result
+        idx = CategoricalIndex(values, name="xxx")
+        tm.assert_series_equal(idx.value_counts(), exp)
+
+        # normalize
+        exp = Series(np.array([3.0, 2.0, 1]) / 6.0, index=exp_idx, name="xxx")
+        tm.assert_series_equal(ser.value_counts(normalize=True), exp)
+        tm.assert_series_equal(idx.value_counts(normalize=True), exp)
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/series/methods/test_value_counts.py" startline="108" endline="124" pcid="8026">
+    def test_value_counts_categorical_not_ordered(self):
+        values = Categorical([1, 2, 3, 1, 1, 3], ordered=False)
+
+        exp_idx = CategoricalIndex([1, 3, 2], categories=[1, 2, 3], ordered=False)
+        exp = Series([3, 2, 1], index=exp_idx, name="xxx")
+
+        ser = Series(values, name="xxx")
+        tm.assert_series_equal(ser.value_counts(), exp)
+        # check CategoricalIndex outputs the same result
+        idx = CategoricalIndex(values, name="xxx")
+        tm.assert_series_equal(idx.value_counts(), exp)
+
+        # normalize
+        exp = Series(np.array([3.0, 2.0, 1]) / 6.0, index=exp_idx, name="xxx")
+        tm.assert_series_equal(ser.value_counts(normalize=True), exp)
+        tm.assert_series_equal(idx.value_counts(normalize=True), exp)
+
+</source>
+</class>
+
+<class classid="39" nclones="2" nlines="11" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/extension/test_integer.py" startline="200" endline="213" pcid="8237">
+    def test_value_counts(self, all_data, dropna):
+        all_data = all_data[:10]
+        if dropna:
+            other = np.array(all_data[~all_data.isna()])
+        else:
+            other = all_data
+
+        result = pd.Series(all_data).value_counts(dropna=dropna).sort_index()
+        expected = pd.Series(other).value_counts(dropna=dropna).sort_index()
+        expected = expected.astype("Int64")
+        expected.index = expected.index.astype(all_data.dtype)
+
+        self.assert_series_equal(result, expected)
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/extension/test_floating.py" startline="177" endline="190" pcid="8451">
+    def test_value_counts(self, all_data, dropna):
+        all_data = all_data[:10]
+        if dropna:
+            other = np.array(all_data[~all_data.isna()])
+        else:
+            other = all_data
+
+        result = pd.Series(all_data).value_counts(dropna=dropna).sort_index()
+        expected = pd.Series(other).value_counts(dropna=dropna).sort_index()
+        expected = expected.astype("Int64")
+        expected.index = expected.index.astype(all_data.dtype)
+
+        self.assert_series_equal(result, expected)
+
+</source>
+</class>
+
+<class classid="40" nclones="2" nlines="20" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/arrays/integer/test_arithmetic.py" startline="162" endline="200" pcid="8964">
+def test_error_invalid_values(data, all_arithmetic_operators):
+
+    op = all_arithmetic_operators
+    s = pd.Series(data)
+    ops = getattr(s, op)
+
+    # invalid scalars
+    msg = (
+        r"(:?can only perform ops with numeric values)"
+        r"|(:?IntegerArray cannot perform the operation mod)"
+    )
+    with pytest.raises(TypeError, match=msg):
+        ops("foo")
+    with pytest.raises(TypeError, match=msg):
+        ops(pd.Timestamp("20180101"))
+
+    # invalid array-likes
+    with pytest.raises(TypeError, match=msg):
+        ops(pd.Series("foo", index=s.index))
+
+    msg = "|".join(
+        [
+            "can only perform ops with numeric values",
+            "cannot perform .* with this index type: DatetimeArray",
+            "Addition/subtraction of integers and integer-arrays "
+            "with DatetimeArray is no longer supported. *",
+        ]
+    )
+    with pytest.raises(TypeError, match=msg):
+        ops(pd.Series(pd.date_range("20180101", periods=len(s))))
+
+
+# Various
+# -----------------------------------------------------------------------------
+
+
+# TODO test unsigned overflow
+
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/arrays/floating/test_arithmetic.py" startline="125" endline="160" pcid="9153">
+def test_error_invalid_values(data, all_arithmetic_operators):
+
+    op = all_arithmetic_operators
+    s = pd.Series(data)
+    ops = getattr(s, op)
+
+    # invalid scalars
+    msg = (
+        r"(:?can only perform ops with numeric values)"
+        r"|(:?FloatingArray cannot perform the operation mod)"
+    )
+    with pytest.raises(TypeError, match=msg):
+        ops("foo")
+    with pytest.raises(TypeError, match=msg):
+        ops(pd.Timestamp("20180101"))
+
+    # invalid array-likes
+    with pytest.raises(TypeError, match=msg):
+        ops(pd.Series("foo", index=s.index))
+
+    msg = "|".join(
+        [
+            "can only perform ops with numeric values",
+            "cannot perform .* with this index type: DatetimeArray",
+            "Addition/subtraction of integers and integer-arrays "
+            "with DatetimeArray is no longer supported. *",
+        ]
+    )
+    with pytest.raises(TypeError, match=msg):
+        ops(pd.Series(pd.date_range("20180101", periods=len(s))))
+
+
+# Various
+# -----------------------------------------------------------------------------
+
+
+</source>
+</class>
+
+<class classid="41" nclones="2" nlines="10" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/arrays/integer/test_arithmetic.py" startline="293" endline="303" pcid="8969">
+def test_unary_int_operators(any_signed_int_ea_dtype, source, neg_target, abs_target):
+    dtype = any_signed_int_ea_dtype
+    arr = pd.array(source, dtype=dtype)
+    neg_result, pos_result, abs_result = -arr, +arr, abs(arr)
+    neg_target = pd.array(neg_target, dtype=dtype)
+    abs_target = pd.array(abs_target, dtype=dtype)
+
+    tm.assert_extension_array_equal(neg_result, neg_target)
+    tm.assert_extension_array_equal(pos_result, arr)
+    assert not tm.shares_memory(pos_result, arr)
+    tm.assert_extension_array_equal(abs_result, abs_target)
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/arrays/floating/test_arithmetic.py" startline="192" endline="203" pcid="9155">
+def test_unary_float_operators(float_ea_dtype, source, neg_target, abs_target):
+    # GH38794
+    dtype = float_ea_dtype
+    arr = pd.array(source, dtype=dtype)
+    neg_result, pos_result, abs_result = -arr, +arr, abs(arr)
+    neg_target = pd.array(neg_target, dtype=dtype)
+    abs_target = pd.array(abs_target, dtype=dtype)
+
+    tm.assert_extension_array_equal(neg_result, neg_target)
+    tm.assert_extension_array_equal(pos_result, arr)
+    assert not tm.shares_memory(pos_result, arr)
+    tm.assert_extension_array_equal(abs_result, abs_target)
+</source>
+</class>
+
+<class classid="42" nclones="2" nlines="12" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/arrays/test_timedeltas.py" startline="66" endline="81" pcid="9083">
+    def test_searchsorted_invalid_types(self, other, index):
+        data = np.arange(10, dtype="i8") * 24 * 3600 * 10 ** 9
+        arr = TimedeltaArray(data, freq="D")
+        if index:
+            arr = pd.Index(arr)
+
+        msg = "|".join(
+            [
+                "searchsorted requires compatible dtype or scalar",
+                "value should be a 'Timedelta', 'NaT', or array of those. Got",
+            ]
+        )
+        with pytest.raises(TypeError, match=msg):
+            arr.searchsorted(other)
+
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/arrays/test_datetimes.py" startline="336" endline="350" pcid="9126">
+    def test_searchsorted_invalid_types(self, other, index):
+        data = np.arange(10, dtype="i8") * 24 * 3600 * 10 ** 9
+        arr = DatetimeArray(data, freq="D")
+        if index:
+            arr = pd.Index(arr)
+
+        msg = "|".join(
+            [
+                "searchsorted requires compatible dtype or scalar",
+                "value should be a 'Timestamp', 'NaT', or array of those. Got",
+            ]
+        )
+        with pytest.raises(TypeError, match=msg):
+            arr.searchsorted(other)
+
+</source>
+</class>
+
+<class classid="43" nclones="2" nlines="14" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/arrays/sparse/test_libsparse.py" startline="284" endline="301" pcid="9306">
+    def test_int_internal(self):
+        idx = make_sparse_index(4, np.array([2, 3], dtype=np.int32), kind="integer")
+        assert isinstance(idx, IntIndex)
+        assert idx.npoints == 2
+        tm.assert_numpy_array_equal(idx.indices, np.array([2, 3], dtype=np.int32))
+
+        idx = make_sparse_index(4, np.array([], dtype=np.int32), kind="integer")
+        assert isinstance(idx, IntIndex)
+        assert idx.npoints == 0
+        tm.assert_numpy_array_equal(idx.indices, np.array([], dtype=np.int32))
+
+        idx = make_sparse_index(
+            4, np.array([0, 1, 2, 3], dtype=np.int32), kind="integer"
+        )
+        assert isinstance(idx, IntIndex)
+        assert idx.npoints == 4
+        tm.assert_numpy_array_equal(idx.indices, np.array([0, 1, 2, 3], dtype=np.int32))
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/arrays/sparse/test_libsparse.py" startline="531" endline="548" pcid="9318">
+    def test_int_internal(self):
+        idx = make_sparse_index(4, np.array([2, 3], dtype=np.int32), kind="integer")
+        assert isinstance(idx, IntIndex)
+        assert idx.npoints == 2
+        tm.assert_numpy_array_equal(idx.indices, np.array([2, 3], dtype=np.int32))
+
+        idx = make_sparse_index(4, np.array([], dtype=np.int32), kind="integer")
+        assert isinstance(idx, IntIndex)
+        assert idx.npoints == 0
+        tm.assert_numpy_array_equal(idx.indices, np.array([], dtype=np.int32))
+
+        idx = make_sparse_index(
+            4, np.array([0, 1, 2, 3], dtype=np.int32), kind="integer"
+        )
+        assert isinstance(idx, IntIndex)
+        assert idx.npoints == 4
+        tm.assert_numpy_array_equal(idx.indices, np.array([0, 1, 2, 3], dtype=np.int32))
+
+</source>
+</class>
+
+<class classid="44" nclones="2" nlines="21" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/arrays/sparse/test_libsparse.py" startline="302" endline="326" pcid="9307">
+    def test_block_internal(self):
+        idx = make_sparse_index(4, np.array([2, 3], dtype=np.int32), kind="block")
+        assert isinstance(idx, BlockIndex)
+        assert idx.npoints == 2
+        tm.assert_numpy_array_equal(idx.blocs, np.array([2], dtype=np.int32))
+        tm.assert_numpy_array_equal(idx.blengths, np.array([2], dtype=np.int32))
+
+        idx = make_sparse_index(4, np.array([], dtype=np.int32), kind="block")
+        assert isinstance(idx, BlockIndex)
+        assert idx.npoints == 0
+        tm.assert_numpy_array_equal(idx.blocs, np.array([], dtype=np.int32))
+        tm.assert_numpy_array_equal(idx.blengths, np.array([], dtype=np.int32))
+
+        idx = make_sparse_index(4, np.array([0, 1, 2, 3], dtype=np.int32), kind="block")
+        assert isinstance(idx, BlockIndex)
+        assert idx.npoints == 4
+        tm.assert_numpy_array_equal(idx.blocs, np.array([0], dtype=np.int32))
+        tm.assert_numpy_array_equal(idx.blengths, np.array([4], dtype=np.int32))
+
+        idx = make_sparse_index(4, np.array([0, 2, 3], dtype=np.int32), kind="block")
+        assert isinstance(idx, BlockIndex)
+        assert idx.npoints == 3
+        tm.assert_numpy_array_equal(idx.blocs, np.array([0, 2], dtype=np.int32))
+        tm.assert_numpy_array_equal(idx.blengths, np.array([1, 2], dtype=np.int32))
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/arrays/sparse/test_libsparse.py" startline="420" endline="444" pcid="9311">
+    def test_block_internal(self):
+        idx = make_sparse_index(4, np.array([2, 3], dtype=np.int32), kind="block")
+        assert isinstance(idx, BlockIndex)
+        assert idx.npoints == 2
+        tm.assert_numpy_array_equal(idx.blocs, np.array([2], dtype=np.int32))
+        tm.assert_numpy_array_equal(idx.blengths, np.array([2], dtype=np.int32))
+
+        idx = make_sparse_index(4, np.array([], dtype=np.int32), kind="block")
+        assert isinstance(idx, BlockIndex)
+        assert idx.npoints == 0
+        tm.assert_numpy_array_equal(idx.blocs, np.array([], dtype=np.int32))
+        tm.assert_numpy_array_equal(idx.blengths, np.array([], dtype=np.int32))
+
+        idx = make_sparse_index(4, np.array([0, 1, 2, 3], dtype=np.int32), kind="block")
+        assert isinstance(idx, BlockIndex)
+        assert idx.npoints == 4
+        tm.assert_numpy_array_equal(idx.blocs, np.array([0], dtype=np.int32))
+        tm.assert_numpy_array_equal(idx.blengths, np.array([4], dtype=np.int32))
+
+        idx = make_sparse_index(4, np.array([0, 2, 3], dtype=np.int32), kind="block")
+        assert isinstance(idx, BlockIndex)
+        assert idx.npoints == 3
+        tm.assert_numpy_array_equal(idx.blocs, np.array([0, 2], dtype=np.int32))
+        tm.assert_numpy_array_equal(idx.blengths, np.array([1, 2], dtype=np.int32))
+
+</source>
+</class>
+
+<class classid="45" nclones="2" nlines="10" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/tseries/offsets/test_business_quarter.py" startline="33" endline="45" pcid="9610">
+def test_on_offset(offset):
+    dates = [
+        datetime(2016, m, d)
+        for m in [10, 11, 12]
+        for d in [1, 2, 3, 28, 29, 30, 31]
+        if not (m == 11 and d == 31)
+    ]
+    for date in dates:
+        res = offset.is_on_offset(date)
+        slow_version = date == (date + offset) - offset
+        assert res == slow_version
+
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/tseries/offsets/test_quarter.py" startline="33" endline="45" pcid="9621">
+def test_on_offset(offset):
+    dates = [
+        datetime(2016, m, d)
+        for m in [10, 11, 12]
+        for d in [1, 2, 3, 28, 29, 30, 31]
+        if not (m == 11 and d == 31)
+    ]
+    for date in dates:
+        res = offset.is_on_offset(date)
+        slow_version = date == (date + offset) - offset
+        assert res == slow_version
+
+
+</source>
+</class>
+
+<class classid="46" nclones="2" nlines="14" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/reshape/merge/test_multi.py" startline="433" endline="455" pcid="9839">
+    def test_merge_datetime_index(self, klass):
+        # see gh-19038
+        df = DataFrame(
+            [1, 2, 3], ["2016-01-01", "2017-01-01", "2018-01-01"], columns=["a"]
+        )
+        df.index = pd.to_datetime(df.index)
+        on_vector = df.index.year
+
+        if klass is not None:
+            on_vector = klass(on_vector)
+
+        expected = DataFrame({"a": [1, 2, 3], "key_1": [2016, 2017, 2018]})
+
+        result = df.merge(df, on=["a", on_vector], how="inner")
+        tm.assert_frame_equal(result, expected)
+
+        expected = DataFrame(
+            {"key_0": [2016, 2017, 2018], "a_x": [1, 2, 3], "a_y": [1, 2, 3]}
+        )
+
+        result = df.merge(df, on=[df.index.year], how="inner")
+        tm.assert_frame_equal(result, expected)
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/reshape/merge/test_multi.py" startline="844" endline="866" pcid="9851">
+    def test_merge_datetime_index(self, box):
+        # see gh-19038
+        df = DataFrame(
+            [1, 2, 3], ["2016-01-01", "2017-01-01", "2018-01-01"], columns=["a"]
+        )
+        df.index = pd.to_datetime(df.index)
+        on_vector = df.index.year
+
+        if box is not None:
+            on_vector = box(on_vector)
+
+        expected = DataFrame({"a": [1, 2, 3], "key_1": [2016, 2017, 2018]})
+
+        result = df.merge(df, on=["a", on_vector], how="inner")
+        tm.assert_frame_equal(result, expected)
+
+        expected = DataFrame(
+            {"key_0": [2016, 2017, 2018], "a_x": [1, 2, 3], "a_y": [1, 2, 3]}
+        )
+
+        result = df.merge(df, on=[df.index.year], how="inner")
+        tm.assert_frame_equal(result, expected)
+
+</source>
+</class>
+
+<class classid="47" nclones="2" nlines="14" similarity="100">
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/reshape/merge/test_merge_asof.py" startline="859" endline="878" pcid="9906">
+    def test_allow_exact_matches_and_tolerance_forward(self):
+        # GH14887
+
+        left = pd.DataFrame({"a": [1, 5, 10], "left_val": ["a", "b", "c"]})
+        right = pd.DataFrame({"a": [1, 3, 4, 6, 11], "right_val": [1, 3, 4, 6, 11]})
+
+        expected = pd.DataFrame(
+            {"a": [1, 5, 10], "left_val": ["a", "b", "c"], "right_val": [np.nan, 6, 11]}
+        )
+
+        result = merge_asof(
+            left,
+            right,
+            on="a",
+            direction="forward",
+            allow_exact_matches=False,
+            tolerance=1,
+        )
+        tm.assert_frame_equal(result, expected)
+
+</source>
+<source file="systems/pandas-1.5.0.dev0/pandas/tests/reshape/merge/test_merge_asof.py" startline="879" endline="898" pcid="9907">
+    def test_allow_exact_matches_and_tolerance_nearest(self):
+        # GH14887
+
+        left = pd.DataFrame({"a": [1, 5, 10], "left_val": ["a", "b", "c"]})
+        right = pd.DataFrame({"a": [1, 3, 4, 6, 11], "right_val": [1, 3, 4, 7, 11]})
+
+        expected = pd.DataFrame(
+            {"a": [1, 5, 10], "left_val": ["a", "b", "c"], "right_val": [np.nan, 4, 11]}
+        )
+
+        result = merge_asof(
+            left,
+            right,
+            on="a",
+            direction="nearest",
+            allow_exact_matches=False,
+            tolerance=1,
+        )
+        tm.assert_frame_equal(result, expected)
+
+</source>
+</class>
+
+</clones>

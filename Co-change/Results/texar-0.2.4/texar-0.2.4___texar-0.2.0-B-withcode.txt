@@ -1,0 +1,182 @@
+<clonepair1>
+<source file="systems/texar-0.2.0/examples/distributed_gpu/lm_ptb_distributed.py" startline="143" endline="189" pcid="837"></source>
+    def _run_epoch(sess, data_iter, epoch, is_train=False, verbose=False):
+        start_time = time.time()
+        loss = 0.
+        iters = 0
+
+        fetches = {
+            "mle_loss": mle_loss,
+            "final_state": final_state,
+        }
+        if is_train:
+            fetches["train_op"] = train_op
+            epoch_size = (len(data["train_text_id"]) // batch_size - 1)\
+                // num_steps
+
+        mode = (tf.estimator.ModeKeys.TRAIN
+                if is_train
+                else tf.estimator.ModeKeys.EVAL)
+
+
+        for step, (x, y) in enumerate(data_iter):
+            if step == 0:
+                state = sess.run(initial_state,
+                                 feed_dict={inputs: x})
+
+            feed_dict = {
+                inputs: x, targets: y, global_step: epoch,
+                tx.global_mode(): mode,
+            }
+            for i, (c, h) in enumerate(initial_state):
+                feed_dict[c] = state[i].c
+                feed_dict[h] = state[i].h
+
+            rets = sess.run(fetches, feed_dict)
+            loss += rets["mle_loss"]
+            state = rets["final_state"]
+            iters += num_steps
+
+            ppl = np.exp(loss / iters)
+            if verbose and is_train and hvd.rank() == 0 \
+                and (step+1) % (epoch_size // 10) == 0:
+                tf.logging.info("%.3f perplexity: %.3f speed: %.0f wps" %
+                      ((step+1) * 1.0 / epoch_size, ppl,
+                       iters * batch_size / (time.time() - start_time)))
+        _elapsed_time = time.time() - start_time
+        tf.logging.info("epoch time elapsed: %f" % (_elapsed_time))
+        ppl = np.exp(loss / iters)
+        return ppl, _elapsed_time
+</clonepair1>
+
+<clonepair1>
+<source file="systems/texar-0.2.0/examples/language_model_ptb/lm_ptb.py" startline="114" endline="154" pcid="1028"></source>
+    def _run_epoch(sess, data_iter, epoch, is_train=False, verbose=False):
+        start_time = time.time()
+        loss = 0.
+        iters = 0
+        state = sess.run(initial_state)
+
+        fetches = {
+            "mle_loss": mle_loss,
+            "final_state": final_state,
+        }
+        if is_train:
+            fetches["train_op"] = train_op
+            epoch_size = (len(data["train_text_id"]) // batch_size - 1)\
+                // num_steps
+
+        mode = (tf.estimator.ModeKeys.TRAIN
+                if is_train
+                else tf.estimator.ModeKeys.EVAL)
+
+        for step, (x, y) in enumerate(data_iter):
+            feed_dict = {
+                inputs: x, targets: y, global_step: epoch,
+                tx.global_mode(): mode,
+            }
+            for i, (c, h) in enumerate(initial_state):
+                feed_dict[c] = state[i].c
+                feed_dict[h] = state[i].h
+
+            rets = sess.run(fetches, feed_dict)
+            loss += rets["mle_loss"]
+            state = rets["final_state"]
+            iters += num_steps
+
+            ppl = np.exp(loss / iters)
+            if verbose and is_train and step % (epoch_size // 10) == 10:
+                print("%.3f perplexity: %.3f speed: %.0f wps" %
+                      ((step+1) * 1.0 / epoch_size, ppl,
+                       iters * batch_size / (time.time() - start_time)))
+
+        ppl = np.exp(loss / iters)
+        return ppl
+</clonepair1>
+<clonepair2>
+<source file="systems/texar-0.2.0/examples/bert/utils/data_utils.py" startline="142" endline="160" pcid="856"></source>
+    def get_train_examples(self, data_dir):
+        """See base class."""
+        lines = self._read_tsv(
+            os.path.join(data_dir, "multinli",
+                         "multinli.train.%s.tsv" % self.language))
+        examples = []
+        for (i, line) in enumerate(lines):
+            if i == 0:
+                continue
+            guid = "train-%d" % (i)
+            text_a = tokenization.convert_to_unicode(line[0])
+            text_b = tokenization.convert_to_unicode(line[1])
+            label = tokenization.convert_to_unicode(line[2])
+            if label == tokenization.convert_to_unicode("contradictory"):
+                label = tokenization.convert_to_unicode("contradiction")
+            examples.append(InputExample(guid=guid, text_a=text_a,
+                                         text_b=text_b, label=label))
+        return examples
+
+</clonepair2>
+
+<clonepair2>
+<source file="systems/texar-0.2.0/examples/bert/utils/data_utils.py" startline="161" endline="178" pcid="857"></source>
+    def get_dev_examples(self, data_dir):
+        """See base class."""
+        lines = self._read_tsv(os.path.join(data_dir, "xnli.dev.tsv"))
+        examples = []
+        for (i, line) in enumerate(lines):
+            if i == 0:
+                continue
+            guid = "dev-%d" % (i)
+            language = tokenization.convert_to_unicode(line[0])
+            if language != tokenization.convert_to_unicode(self.language):
+                continue
+            text_a = tokenization.convert_to_unicode(line[6])
+            text_b = tokenization.convert_to_unicode(line[7])
+            label = tokenization.convert_to_unicode(line[1])
+            examples.append(InputExample(guid=guid, text_a=text_a,
+                                         text_b=text_b, label=label))
+        return examples
+
+</clonepair2>
+<clonepair3>
+<source file="systems/texar-0.2.0/examples/memory_network_lm/ptb_reader.py" startline="29" endline="46" pcid="1008"></source>
+def ptb_iterator(data, batch_size, num_steps):
+    """Iterates through the ptb data.
+    """
+    data_length = len(data)
+    batch_length = data_length // batch_size
+
+    data = np.asarray(data[:batch_size*batch_length])
+    data = data.reshape([batch_size, batch_length])
+
+    epoch_size = (batch_length - 1) // num_steps
+    if epoch_size == 0:
+        raise ValueError("epoch_size == 0, decrease batch_size or num_steps")
+
+    for i in range(epoch_size):
+        x = data[:, i * num_steps : (i+1) * num_steps]
+        y = data[:, i * num_steps + 1 : (i+1) * num_steps + 1]
+        yield (x, y)
+
+</clonepair3>
+
+<clonepair3>
+<source file="systems/texar-0.2.0/examples/language_model_ptb/ptb_reader.py" startline="29" endline="46" pcid="1029"></source>
+def ptb_iterator(data, batch_size, num_steps):
+    """Iterates through the ptb data.
+    """
+    data_length = len(data)
+    batch_length = data_length // batch_size
+
+    data = np.asarray(data[:batch_size*batch_length])
+    data = data.reshape([batch_size, batch_length])
+
+    epoch_size = (batch_length - 1) // num_steps
+    if epoch_size == 0:
+        raise ValueError("epoch_size == 0, decrease batch_size or num_steps")
+
+    for i in range(epoch_size):
+        x = data[:, i * num_steps : (i+1) * num_steps]
+        y = data[:, i * num_steps + 1 : (i+1) * num_steps + 1]
+        yield (x, y)
+
+</clonepair3>

@@ -1,0 +1,653 @@
+<clones>
+<systeminfo processor="nicad6" system="eve-1.1.5" granularity="functions-blind" threshold="0%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="1193" npairs="15"/>
+<runinfo ncompares="4794" cputime="44298"/>
+<classinfo nclasses="13"/>
+
+<class classid="1" nclones="2" nlines="13" similarity="100">
+<source file="systems/eve-1.1.5/eve/tests/methods/patch.py" startline="294" endline="309" pcid="569">
+    def test_patch_internal(self):
+        # test that patch_internal is available and working properly.
+        test_field = "ref"
+        test_value = "9876543210987654321098765"
+        data = {test_field: test_value}
+        with self.app.test_request_context(self.item_id_url):
+            r, _, _, status = patch_internal(
+                self.known_resource,
+                data,
+                concurrency_check=False,
+                **{"_id": self.item_id}
+            )
+        db_value = self.compare_patch_with_get(test_field, r)
+        self.assertEqual(db_value, test_value)
+        self.assert200(status)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/put.py" startline="440" endline="455" pcid="642">
+    def test_put_internal(self):
+        # test that put_internal is available and working properly.
+        test_field = "ref"
+        test_value = "9876543210987654321098765"
+        data = {test_field: test_value}
+        with self.app.test_request_context(self.item_id_url):
+            r, _, _, status = put_internal(
+                self.known_resource,
+                data,
+                concurrency_check=False,
+                **{"_id": self.item_id}
+            )
+        db_value = self.compare_put_with_get(test_field, r)
+        self.assertEqual(db_value, test_value)
+        self.assert200(status)
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="13" similarity="100">
+<source file="systems/eve-1.1.5/eve/tests/methods/patch.py" startline="529" endline="546" pcid="585">
+    def test_patch_bandwidth_saver(self):
+        changes = {"ref": "1234567890123456789012345"}
+
+        # bandwidth_saver is on by default
+        self.assertTrue(self.app.config["BANDWIDTH_SAVER"])
+        r = self.perform_patch(changes)
+        self.assertFalse("ref" in r)
+        db_value = self.compare_patch_with_get(self.app.config["ETAG"], r)
+        self.assertEqual(db_value, r[self.app.config["ETAG"]])
+        self.item_etag = r[self.app.config["ETAG"]]
+
+        # test return all fields (bandwidth_saver off)
+        self.app.config["BANDWIDTH_SAVER"] = False
+        r = self.perform_patch(changes)
+        self.assertTrue("ref" in r)
+        db_value = self.compare_patch_with_get(self.app.config["ETAG"], r)
+        self.assertEqual(db_value, r[self.app.config["ETAG"]])
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/put.py" startline="347" endline="364" pcid="637">
+    def test_put_bandwidth_saver(self):
+        changes = {"ref": "1234567890123456789012345"}
+
+        # bandwidth_saver is on by default
+        self.assertTrue(self.app.config["BANDWIDTH_SAVER"])
+        r = self.perform_put(changes)
+        self.assertFalse("ref" in r)
+        db_value = self.compare_put_with_get(self.app.config["ETAG"], r)
+        self.assertEqual(db_value, r[self.app.config["ETAG"]])
+        self.item_etag = r[self.app.config["ETAG"]]
+
+        # test return all fields (bandwidth_saver off)
+        self.app.config["BANDWIDTH_SAVER"] = False
+        r = self.perform_put(changes)
+        self.assertTrue("ref" in r)
+        db_value = self.compare_put_with_get(self.app.config["ETAG"], r)
+        self.assertEqual(db_value, r[self.app.config["ETAG"]])
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="39" similarity="100">
+<source file="systems/eve-1.1.5/eve/tests/methods/patch.py" startline="547" endline="589" pcid="586">
+    def test_patch_bandwidth_saver_credit_rule_broken(self):
+        _db = self.connection[MONGO_DBNAME]
+        rule = {
+            "amount": 300.0,
+            "duration": "months",
+            "name": "Testing BANDWIDTH_SAVER=False",
+            "start": "2020-03-28T06:00:00 UTC",
+        }
+        rule_id = _db.credit_rules.insert_one(rule).inserted_id
+        rule_url = "credit_rules/%s/" % (rule_id)
+        changes = {
+            "amount": 120.0,
+            "duration": "months",
+            "start": "2020-04-01T00:00:00 UTC",
+        }
+        response, _ = self.get("credit_rules/%s/" % (rule_id))
+        etag = response[ETAG]
+        # bandwidth_saver is on by default
+        self.assertTrue(self.app.config["BANDWIDTH_SAVER"])
+        self.assertTrue(self.app.config["PROJECTION"])
+        r, status = self.patch(rule_url, data=changes, headers=[("If-Match", etag)])
+        self.assert200(status)
+        self.assertPatchResponse(r, "%s" % (rule_id))
+        self.assertFalse("amount" in r)
+        etag = r[self.app.config["ETAG"]]
+        r, _ = self.get(rule_url, "")
+        self.assertEqual(etag, r[self.app.config["ETAG"]])
+
+        # test return all fields (bandwidth_saver off)
+        self.app.config["BANDWIDTH_SAVER"] = False
+        changes["name"] = "Give it all to me!"
+        r, status = self.patch(rule_url, data=changes, headers=[("If-Match", etag)])
+        self.assert200(status)
+        self.assertPatchResponse(r, "%s" % (rule_id))
+        self.assertTrue(
+            all(["amount" in r, "duration" in r, "name" in r, "start" in r]),
+            'One or more of "amount", "duration", "name", "start" is missing.',
+        )
+        self.assertTrue(r["name"] == "Give it all to me!")
+        etag = r[self.app.config["ETAG"]]
+        r, status = self.get(rule_url, "")
+        self.assertEqual(etag, r[self.app.config["ETAG"]])
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/put.py" startline="365" endline="407" pcid="638">
+    def test_put_bandwidth_saver_credit_rule_broken(self):
+        _db = self.connection[MONGO_DBNAME]
+        rule = {
+            "amount": 300.0,
+            "duration": "months",
+            "name": "Testing BANDWIDTH_SAVER=False",
+            "start": "2020-03-28T06:00:00 UTC",
+        }
+        rule_id = _db.credit_rules.insert_one(rule).inserted_id
+        rule_url = "credit_rules/%s/" % (rule_id)
+        changes = {
+            "amount": 120.0,
+            "duration": "months",
+            "start": "2020-04-01T00:00:00 UTC",
+        }
+        response, _ = self.get("credit_rules/%s/" % (rule_id))
+        etag = response[ETAG]
+        # bandwidth_saver is on by default
+        self.assertTrue(self.app.config["BANDWIDTH_SAVER"])
+        self.assertTrue(self.app.config["PROJECTION"])
+        r, status = self.put(rule_url, data=changes, headers=[("If-Match", etag)])
+        self.assert200(status)
+        self.assertPutResponse(r, "%s" % (rule_id))
+        self.assertFalse("amount" in r)
+        etag = r[self.app.config["ETAG"]]
+        r, _ = self.get(rule_url, "")
+        self.assertEqual(etag, r[self.app.config["ETAG"]])
+
+        # test return all fields (bandwidth_saver off)
+        self.app.config["BANDWIDTH_SAVER"] = False
+        changes["name"] = "Give it all to me!"
+        r, status = self.put(rule_url, data=changes, headers=[("If-Match", etag)])
+        self.assert200(status)
+        self.assertPutResponse(r, "%s" % (rule_id))
+        self.assertTrue(
+            all(["amount" in r, "duration" in r, "name" in r, "start" in r]),
+            'One or more of "amount", "duration", "name", "start" is missing.',
+        )
+        self.assertTrue(r["name"] == "Give it all to me!")
+        etag = r[self.app.config["ETAG"]]
+        r, status = self.get(rule_url, "")
+        self.assertEqual(etag, r[self.app.config["ETAG"]])
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="11" similarity="100">
+<source file="systems/eve-1.1.5/eve/tests/methods/patch.py" startline="851" endline="862" pcid="596">
+    def assertPatchResponse(self, response, item_id, resource=None):
+        id_field = self.domain[resource or self.known_resource]["id_field"]
+        self.assertTrue(STATUS in response)
+        self.assertTrue(STATUS_OK in response[STATUS])
+        self.assertFalse(ISSUES in response)
+        self.assertTrue(id_field in response)
+        self.assertEqual(response[id_field], item_id)
+        self.assertTrue(LAST_UPDATED in response)
+        self.assertTrue(ETAG in response)
+        self.assertTrue("_links" in response)
+        self.assertItemLink(response["_links"], item_id)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/put.py" startline="569" endline="580" pcid="653">
+    def assertPutResponse(self, response, item_id, resource=None):
+        id_field = self.domain[resource or self.known_resource]["id_field"]
+        self.assertTrue(STATUS in response)
+        self.assertTrue(STATUS_OK in response[STATUS])
+        self.assertFalse(ISSUES in response)
+        self.assertTrue(id_field in response)
+        self.assertEqual(response[id_field], item_id)
+        self.assertTrue(LAST_UPDATED in response)
+        self.assertTrue(ETAG in response)
+        self.assertTrue("_links" in response)
+        self.assertItemLink(response["_links"], item_id)
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="11" similarity="100">
+<source file="systems/eve-1.1.5/eve/tests/methods/get.py" startline="249" endline="261" pcid="693">
+    def test_get_where_mongo_objectid_as_string(self):
+        where = '{"tid": "%s"}' % self.item_tid
+        response, status = self.get(self.known_resource, "?where=%s" % where)
+        self.assert200(status)
+        resource = response["_items"]
+        self.assertEqual(len(resource), 1)
+
+        self.app.config["DOMAIN"]["contacts"]["query_objectid_as_string"] = True
+        response, status = self.get(self.known_resource, "?where=%s" % where)
+        self.assert200(status)
+        resource = response["_items"]
+        self.assertEqual(len(resource), 1)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/get.py" startline="262" endline="274" pcid="694">
+    def test_get_where_mongo_objectid_as_string_with_nested_documents(self):
+        where = '{"tid": { "$in": ["%s"]}}' % self.item_tid
+        response, status = self.get(self.known_resource, "?where=%s" % where)
+        self.assert200(status)
+        resource = response["_items"]
+        self.assertEqual(len(resource), 1)
+
+        self.app.config["DOMAIN"]["contacts"]["query_objectid_as_string"] = True
+        response, status = self.get(self.known_resource, "?where=%s" % where)
+        self.assert200(status)
+        resource = response["_items"]
+        self.assertEqual(len(resource), 1)
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="18" similarity="100">
+<source file="systems/eve-1.1.5/eve/tests/methods/get.py" startline="405" endline="433" pcid="702">
+    def test_get_server_include_projection_can_exclude(self):
+        """Test that static projection only expose fields included
+        and support client projection on these fields.
+        """
+        # exclude `ref` by client side
+        projection = '{"ref": 0}'
+        response, status = self.get(
+            self.different_resource, "?projection=%s" % projection
+        )
+        self.assert200(status)
+
+        resource = response["_items"]
+
+        # 'users' has a static inclusive projection with 'username' and 'ref'
+        # fields, so other document fields should be excluded.
+        # and client can further exclude 'ref' or 'username'.
+        for r in resource:
+            self.assertFalse("location" in r)
+            self.assertFalse("role" in r)
+            self.assertFalse("prog" in r)
+            self.assertTrue("username" in r)
+            self.assertFalse("ref" in r)
+            self.assertTrue(self.domain[self.known_resource]["id_field"] in r)
+            self.assertTrue(self.app.config["ETAG"] in r)
+            self.assertTrue(self.app.config["LAST_UPDATED"] in r)
+            self.assertTrue(self.app.config["DATE_CREATED"] in r)
+            self.assertTrue(r[self.app.config["LAST_UPDATED"]] != self.epoch)
+            self.assertTrue(r[self.app.config["DATE_CREATED"]] != self.epoch)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/get.py" startline="434" endline="459" pcid="703">
+    def test_get_server_include_projection_block_sniff(self):
+        """Test that static projection only expose fields included
+        and client projection on other fields will fail.
+        """
+        # shouldn't work when including `prog` (excluded) by client side
+        projection = '{"prog": 1}'
+        response, status = self.get(
+            self.different_resource, "?projection=%s" % projection
+        )
+        self.assert200(status)
+
+        resource = response["_items"]
+        for r in resource:
+            self.assertFalse("location" in r)
+            self.assertFalse("role" in r)
+            # shouldn't work
+            self.assertFalse("prog" in r)
+            self.assertFalse("username" in r)
+            self.assertFalse("ref" in r)
+            self.assertTrue(self.domain[self.known_resource]["id_field"] in r)
+            self.assertTrue(self.app.config["ETAG"] in r)
+            self.assertTrue(self.app.config["LAST_UPDATED"] in r)
+            self.assertTrue(self.app.config["DATE_CREATED"] in r)
+            self.assertTrue(r[self.app.config["LAST_UPDATED"]] != self.epoch)
+            self.assertTrue(r[self.app.config["DATE_CREATED"]] != self.epoch)
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="17" similarity="100">
+<source file="systems/eve-1.1.5/eve/tests/methods/get.py" startline="460" endline="486" pcid="704">
+    def test_get_server_exclude_projection_can_project_others(self):
+        """Test that static projection expose fields other than excluded
+        and support client projection on exposed fields.
+        """
+        projection = '{"prog": 1, "location":1}'
+        response, status = self.get(
+            self.different_resource_exclude, "?projection=%s" % projection
+        )
+        self.assert200(status)
+
+        resource = response["_items"]
+
+        # 'users' has a static inclusive projection with 'username' and 'ref'
+        # fields, so other document fields should be excluded.
+        # and client can further exclude 'ref' or 'username'.
+        for r in resource:
+            self.assertTrue("location" in r)
+            self.assertFalse("role" in r)
+            self.assertTrue("prog" in r)
+            self.assertFalse("born" in r)
+            self.assertTrue(self.domain[self.known_resource]["id_field"] in r)
+            self.assertTrue(self.app.config["ETAG"] in r)
+            self.assertTrue(self.app.config["LAST_UPDATED"] in r)
+            self.assertTrue(self.app.config["DATE_CREATED"] in r)
+            self.assertTrue(r[self.app.config["LAST_UPDATED"]] != self.epoch)
+            self.assertTrue(r[self.app.config["DATE_CREATED"]] != self.epoch)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/get.py" startline="487" endline="510" pcid="705">
+    def test_get_server_exlcude_projection_can_sniff(self):
+        """Test that static projection expose fields other than excluded
+        and client projection on excluded **will work**.
+        """
+        projection = '{"born": 1}'
+        response, status = self.get(
+            self.different_resource_exclude, "?projection=%s" % projection
+        )
+        self.assert200(status)
+
+        resource = response["_items"]
+        for r in resource:
+            self.assertFalse("location" in r)
+            self.assertFalse("role" in r)
+            self.assertFalse("prog" in r)
+            # should work
+            self.assertTrue("born" in r)
+            self.assertTrue(self.domain[self.known_resource]["id_field"] in r)
+            self.assertTrue(self.app.config["ETAG"] in r)
+            self.assertTrue(self.app.config["LAST_UPDATED"] in r)
+            self.assertTrue(self.app.config["DATE_CREATED"] in r)
+            self.assertTrue(r[self.app.config["LAST_UPDATED"]] != self.epoch)
+            self.assertTrue(r[self.app.config["DATE_CREATED"]] != self.epoch)
+
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="26" similarity="100">
+<source file="systems/eve-1.1.5/eve/tests/methods/get.py" startline="2330" endline="2364" pcid="809">
+    def test_get_before_aggregation_hook(self):
+        _db = self.connection[MONGO_DBNAME]
+        _db.aggregate_test.insert_many(
+            [
+                {"x": 1, "tags": ["dog", "cat"]},
+                {"x": 2, "tags": ["cat"]},
+                {"x": 2, "tags": ["mouse", "cat", "dog"]},
+                {"x": 3, "tags": []},
+            ]
+        )
+
+        self.app.before_aggregation += self.devent
+
+        self.app.register_resource(
+            "aggregate_test",
+            {
+                "datasource": {
+                    "aggregation": {
+                        "pipeline": [
+                            {"$unwind": "$tags"},
+                            {"$group": {"_id": "$tags", "count": {"$sum": "$field1"}}},
+                        ]
+                    }
+                }
+            },
+        )
+
+        response, status = self.get("aggregate_test?aggregate=ciao")
+        self.assert400(status)
+        self.assertTrue(self.devent.called is None)
+
+        response, status = self.get('aggregate_test?aggregate={"$field1":1}')
+        self.assert200(status)
+        self.assertEqual("aggregate_test", self.devent.called[0])
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/get.py" startline="2365" endline="2399" pcid="810">
+    def test_get_after_aggregation_hook(self):
+        _db = self.connection[MONGO_DBNAME]
+        _db.aggregate_test.insert_many(
+            [
+                {"x": 1, "tags": ["dog", "cat"]},
+                {"x": 2, "tags": ["cat"]},
+                {"x": 2, "tags": ["mouse", "cat", "dog"]},
+                {"x": 3, "tags": []},
+            ]
+        )
+
+        self.app.after_aggregation += self.devent
+
+        self.app.register_resource(
+            "aggregate_test",
+            {
+                "datasource": {
+                    "aggregation": {
+                        "pipeline": [
+                            {"$unwind": "$tags"},
+                            {"$group": {"_id": "$tags", "count": {"$sum": "$field1"}}},
+                        ]
+                    }
+                }
+            },
+        )
+
+        response, status = self.get("aggregate_test?aggregate=ciao")
+        self.assert400(status)
+        self.assertTrue(self.devent.called is None)
+
+        response, status = self.get('aggregate_test?aggregate={"$field1":1}')
+        self.assert200(status)
+        self.assertEqual("aggregate_test", self.devent.called[0])
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="13" similarity="100">
+<source file="systems/eve-1.1.5/eve/tests/methods/common.py" startline="623" endline="636" pcid="851">
+    def test_patch_oplog(self):
+        self.headers.append(("If-Match", self.item_etag))
+        r = self.test_client.patch(
+            self.item_id_url,
+            data=json.dumps(self.data),
+            headers=self.headers,
+            environ_base={"REMOTE_ADDR": "127.0.0.1"},
+        )
+        r, status = self.oplog_get()
+        self.assert200(status)
+        self.assertEqual(len(r["_items"]), 1)
+        oplog_entry = r["_items"][0]
+        self.assertOpLogEntry(oplog_entry, "PATCH")
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/common.py" startline="637" endline="650" pcid="852">
+    def test_put_oplog(self):
+        self.headers.append(("If-Match", self.item_etag))
+        r = self.test_client.put(
+            self.item_id_url,
+            data=json.dumps(self.data),
+            headers=self.headers,
+            environ_base={"REMOTE_ADDR": "127.0.0.1"},
+        )
+        r, status = self.oplog_get()
+        self.assert200(status)
+        self.assertEqual(len(r["_items"]), 1)
+        oplog_entry = r["_items"][0]
+        self.assertOpLogEntry(oplog_entry, "PUT")
+
+</source>
+</class>
+
+<class classid="10" nclones="3" nlines="14" similarity="100">
+<source file="systems/eve-1.1.5/eve/tests/methods/common.py" startline="699" endline="713" pcid="856">
+    def test_post_oplog_with_basic_auth(self):
+        self.domain["contacts"]["authentication"] = ValidBasicAuth
+        self.headers.append(("Authorization", "Basic YWRtaW46c2VjcmV0"))
+        r = self.test_client.post(
+            self.known_resource_url,
+            data=json.dumps(self.data),
+            headers=self.headers,
+            environ_base={"REMOTE_ADDR": "127.0.0.1"},
+        )
+        r, status = self.oplog_get()
+        self.assert200(status)
+        self.assertEqual(len(r["_items"]), 1)
+        oplog_entry = r["_items"][0]
+        self.assertOpLogEntry(oplog_entry, "POST", "admin")
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/common.py" startline="729" endline="743" pcid="858">
+    def test_post_oplog_with_hmac_auth(self):
+        self.domain["contacts"]["authentication"] = ValidHMACAuth
+        self.headers.append(("Authorization", "admin:secret"))
+        r = self.test_client.post(
+            self.known_resource_url,
+            data=json.dumps(self.data),
+            headers=self.headers,
+            environ_base={"REMOTE_ADDR": "127.0.0.1"},
+        )
+        r, status = self.oplog_get()
+        self.assert200(status)
+        self.assertEqual(len(r["_items"]), 1)
+        oplog_entry = r["_items"][0]
+        self.assertOpLogEntry(oplog_entry, "POST", "admin")
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/methods/common.py" startline="714" endline="728" pcid="857">
+    def test_post_oplog_with_token_auth(self):
+        self.domain["contacts"]["authentication"] = ValidTokenAuth
+        self.headers.append(("Authorization", "Basic dGVzdF90b2tlbjo="))
+        r = self.test_client.post(
+            self.known_resource_url,
+            data=json.dumps(self.data),
+            headers=self.headers,
+            environ_base={"REMOTE_ADDR": "127.0.0.1"},
+        )
+        r, status = self.oplog_get()
+        self.assert200(status)
+        self.assertEqual(len(r["_items"]), 1)
+        oplog_entry = r["_items"][0]
+        self.assertOpLogEntry(oplog_entry, "POST", "test_token")
+
+</source>
+</class>
+
+<class classid="11" nclones="2" nlines="11" similarity="100">
+<source file="systems/eve-1.1.5/eve/tests/versioning.py" startline="270" endline="283" pcid="886">
+    def do_test_put(self, partial):
+        response, status = self.put(
+            self.item_id_url,
+            data=self.item_change,
+            headers=[("If-Match", self.item_etag)],
+        )
+        self.assertGoodPutPatch(response, status)
+        self.assertPrimaryAndShadowDocuments(self.item_id, 2, partial=partial)
+
+        document = self.directGetDocument(self.item_id)
+        self.assertEqualFields(self.item_change, document, self.fields)
+
+        self.assertTrue(self.countShadowDocuments(self.item_id) == 2)
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/versioning.py" startline="284" endline="297" pcid="887">
+    def do_test_patch(self, partial):
+        response, status = self.patch(
+            self.item_id_url,
+            data=self.item_change,
+            headers=[("If-Match", self.item_etag)],
+        )
+        self.assertGoodPutPatch(response, status)
+        self.assertPrimaryAndShadowDocuments(self.item_id, 2, partial=partial)
+
+        document = self.directGetDocument(self.item_id)
+        self.assertEqualFields(self.item_change, document, self.fields)
+
+        self.assertTrue(self.countShadowDocuments(self.item_id) == 2)
+
+</source>
+</class>
+
+<class classid="12" nclones="2" nlines="12" similarity="100">
+<source file="systems/eve-1.1.5/eve/tests/versioning.py" startline="1324" endline="1346" pcid="936">
+    def test_put(self):
+        """Make sure that Eve jumps to version = 2 and saves two shadow copies
+        (version 1 and version 2) for documents that where already in the
+        database before version control was turned on.
+        """
+        # make sure there are no shadow documents
+        self.assertTrue(self.countShadowDocuments() == 0)
+
+        # put a change
+        changes = {"ref": "this is a different value"}
+        response, status = self.put(
+            self.item_id_url, data=changes, headers=[("If-Match", self.item_etag)]
+        )
+        self.assertGoodPutPatch(response, status)
+        self.assertDocumentVersionFields(response, 2)
+
+        # make sure that this saved to the db (if it didn't, version == 1)
+        self.assertTrue(self.countShadowDocuments() == 2)
+        response2, status = self.get(self.known_resource, item=self.item_id)
+        self.assert200(status)
+        self.assertDocumentVersionFields(response2, 2)
+        self.assertEqual(response[ETAG], response2[ETAG])
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/versioning.py" startline="1347" endline="1369" pcid="937">
+    def test_patch(self):
+        """Make sure that Eve jumps to version = 2 and saves two shadow copies
+        (version 1 and version 2) for documents that where already in the
+        database before version control was turned on.
+        """
+        # make sure there are no shadow documents
+        self.assertTrue(self.countShadowDocuments() == 0)
+
+        # patch a change
+        changes = {"ref": "this is a different value"}
+        response, status = self.patch(
+            self.item_id_url, data=changes, headers=[("If-Match", self.item_etag)]
+        )
+        self.assertGoodPutPatch(response, status)
+        self.assertDocumentVersionFields(response, 2)
+
+        # make sure that this saved to the db (if it didn't, version == 1)
+        self.assertTrue(self.countShadowDocuments() == 2)
+        response2, status = self.get(self.known_resource, item=self.item_id)
+        self.assert200(status)
+        self.assertDocumentVersionFields(response2, 2)
+        self.assertEqual(response[ETAG], response2[ETAG])
+
+</source>
+</class>
+
+<class classid="13" nclones="2" nlines="12" similarity="100">
+<source file="systems/eve-1.1.5/eve/tests/__init__.py" startline="532" endline="544" pcid="999">
+    def random_payments(self, num):
+        payments = []
+        for i in range(num):
+            dt = datetime.utcnow().replace(microsecond=0)
+            payment = {
+                "a_string": self.random_string(10),
+                "a_number": i,
+                eve.LAST_UPDATED: dt,
+                eve.DATE_CREATED: dt,
+            }
+            payments.append(payment)
+        return payments
+
+</source>
+<source file="systems/eve-1.1.5/eve/tests/__init__.py" startline="597" endline="609" pcid="1006">
+    def random_internal_transactions(self, num):
+        transactions = []
+        for i in range(num):
+            dt = datetime.utcnow().replace(microsecond=0)
+            transaction = {
+                "internal_string": self.random_string(10),
+                "internal_number": i,
+                eve.LAST_UPDATED: dt,
+                eve.DATE_CREATED: dt,
+            }
+            transactions.append(transaction)
+        return transactions
+
+</source>
+</class>
+
+</clones>

@@ -1,0 +1,708 @@
+<clones>
+<systeminfo processor="nicad6" system="GPflow-2.4.0" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="539" npairs="21"/>
+<runinfo ncompares="6353" cputime="35240"/>
+<classinfo nclasses="11"/>
+
+<class classid="1" nclones="2" nlines="24" similarity="87">
+<source file="systems/GPflow-2.4.0/tests/integration/test_dynamic_shapes.py" startline="41" endline="73" pcid="114">
+def test_vgp():
+    X = tf.Variable(
+        tf.zeros((1, Datum.n_inputs), dtype=default_float()), shape=(None, None), trainable=False
+    )
+    Y = tf.Variable(
+        tf.zeros((1, Datum.n_outputs), dtype=default_float()), shape=(None, None), trainable=False
+    )
+
+    model = gpflow.models.VGP(
+        (X, Y),
+        gpflow.kernels.SquaredExponential(),
+        gpflow.likelihoods.Gaussian(),
+        num_latent_gps=Datum.n_outputs,
+    )
+
+    @tf.function
+    def model_closure():
+        return -model.elbo()
+
+    model_closure()  # Trigger compilation.
+
+    gpflow.models.vgp.update_vgp_data(model, (Datum.X, Datum.Y))
+    opt = gpflow.optimizers.Scipy()
+
+    # simply test whether it runs without erroring...:
+    opt.minimize(
+        model_closure,
+        variables=model.trainable_variables,
+        options=dict(maxiter=3),
+        compile=True,
+    )
+
+
+</source>
+<source file="systems/GPflow-2.4.0/tests/integration/test_dynamic_shapes.py" startline="112" endline="145" pcid="118">
+def test_vgp_multiclass():
+    X = tf.Variable(
+        tf.zeros((1, Datum.n_inputs), dtype=default_float()), shape=(None, None), trainable=False
+    )
+    Yc = tf.Variable(
+        tf.zeros((1, Datum.n_outputs_c), dtype=default_float()), shape=(None, None), trainable=False
+    )
+
+    num_classes = 3
+    model = gpflow.models.VGP(
+        (X, Yc),
+        gpflow.kernels.SquaredExponential(),
+        gpflow.likelihoods.MultiClass(num_classes=num_classes),
+        num_latent_gps=num_classes,
+    )
+
+    @tf.function
+    def model_closure():
+        return -model.elbo()
+
+    model_closure()  # Trigger compilation.
+
+    gpflow.models.vgp.update_vgp_data(model, (Datum.X, Datum.Yc))
+    opt = gpflow.optimizers.Scipy()
+
+    # simply test whether it runs without erroring...:
+    opt.minimize(
+        model_closure,
+        variables=model.trainable_variables,
+        options=dict(maxiter=3),
+        compile=True,
+    )
+
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="26" similarity="81">
+<source file="systems/GPflow-2.4.0/tests/integration/test_dynamic_shapes.py" startline="76" endline="111" pcid="116">
+def test_svgp(whiten, q_diag):
+    model = gpflow.models.SVGP(
+        gpflow.kernels.SquaredExponential(),
+        gpflow.likelihoods.Gaussian(),
+        inducing_variable=Datum.X.copy(),
+        q_diag=q_diag,
+        whiten=whiten,
+        mean_function=gpflow.mean_functions.Constant(),
+        num_latent_gps=Datum.n_outputs,
+    )
+    gpflow.set_trainable(model.inducing_variable, False)
+
+    # test with explicitly unknown shapes:
+    tensor_spec = tf.TensorSpec(shape=None, dtype=default_float())
+    elbo = tf.function(
+        model.elbo,
+        input_signature=[(tensor_spec, tensor_spec)],
+    )
+
+    @tf.function
+    def model_closure():
+        return -elbo(Datum.data)
+
+    model_closure()  # Trigger compilation.
+
+    opt = gpflow.optimizers.Scipy()
+
+    # simply test whether it runs without erroring...:
+    opt.minimize(
+        model_closure,
+        variables=model.trainable_variables,
+        options=dict(maxiter=3),
+        compile=True,
+    )
+
+
+</source>
+<source file="systems/GPflow-2.4.0/tests/integration/test_dynamic_shapes.py" startline="146" endline="177" pcid="120">
+def test_svgp_multiclass():
+    num_classes = 3
+    model = gpflow.models.SVGP(
+        gpflow.kernels.SquaredExponential(),
+        gpflow.likelihoods.MultiClass(num_classes=num_classes),
+        inducing_variable=Datum.X.copy(),
+        num_latent_gps=num_classes,
+    )
+    gpflow.set_trainable(model.inducing_variable, False)
+
+    # test with explicitly unknown shapes:
+    tensor_spec = tf.TensorSpec(shape=None, dtype=default_float())
+    elbo = tf.function(
+        model.elbo,
+        input_signature=[(tensor_spec, tensor_spec)],
+    )
+
+    @tf.function
+    def model_closure():
+        return -elbo(Datum.cdata)
+
+    model_closure()  # Trigger compilation.
+
+    opt = gpflow.optimizers.Scipy()
+
+    # simply test whether it runs without erroring...:
+    opt.minimize(
+        model_closure,
+        variables=model.trainable_variables,
+        options=dict(maxiter=3),
+        compile=True,
+    )
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="12" similarity="75">
+<source file="systems/GPflow-2.4.0/tests/gpflow/test_mean_functions.py" startline="121" endline="141" pcid="125">
+def test_mean_functions_distributive_property(mean_functions: Sequence[MeanFunction]) -> None:
+    """
+    Tests that distributive property of addition and multiplication holds for mean functions
+    (both Constant and Linear): A * (B + C) = A * B + A * C
+    """
+    X, Y = rng.randn(Datum.N, Datum.input_dim), rng.randn(Datum.N, Datum.output_dim)
+    Xtest = rng.randn(30, Datum.input_dim)
+    A, B, C = mean_functions[0], mean_functions[1], mean_functions[2]
+    lhs = Product(A, Additive(B, C))  # A * (B + C)
+    rhs = Additive(Product(A, B), Product(A, C))  # A * B + A * C
+
+    model_lhs = _create_GPR_model_with_bias(X, Y, mean_function=lhs)
+    model_rhs = _create_GPR_model_with_bias(X, Y, mean_function=rhs)
+
+    mu_lhs, var_lhs = model_lhs.predict_f(Xtest)
+    mu_rhs, var_rhs = model_rhs.predict_f(Xtest)
+
+    assert_allclose(mu_lhs, mu_rhs)
+    assert_allclose(var_lhs, var_rhs)
+
+
+</source>
+<source file="systems/GPflow-2.4.0/tests/gpflow/test_mean_functions.py" startline="143" endline="163" pcid="126">
+def test_mean_functions_A_minus_A_equals_zero(mean_functions: Sequence[MeanFunction]) -> None:
+    """
+    Tests that the addition the inverse of a mean function to itself is equivalent to having a
+    Zero mean function: A + (-A) = 0
+    """
+    X, Y = rng.randn(Datum.N, Datum.input_dim), rng.randn(Datum.N, Datum.output_dim)
+    Xtest = rng.randn(30, Datum.input_dim)
+    A, A_inverse = mean_functions[0], mean_functions[-1]
+    lhs = Additive(A, A_inverse)  # A + (-A)
+    rhs = Zero()  # 0
+
+    model_lhs = _create_GPR_model_with_bias(X, Y, mean_function=lhs)
+    model_rhs = _create_GPR_model_with_bias(X, Y, mean_function=rhs)
+
+    mu_lhs, var_lhs = model_lhs.predict_f(Xtest)
+    mu_rhs, var_rhs = model_rhs.predict_f(Xtest)
+
+    assert_allclose(mu_lhs, mu_rhs)
+    assert_allclose(var_lhs, var_rhs)
+
+
+</source>
+</class>
+
+<class classid="4" nclones="3" nlines="19" similarity="75">
+<source file="systems/GPflow-2.4.0/tests/gpflow/likelihoods/test_switched_likelihood.py" startline="32" endline="57" pcid="144">
+def test_switched_likelihood_log_prob(
+    Y_list: Sequence[TensorType],
+    F_list: Sequence[TensorType],
+    Fvar_list: Sequence[TensorType],
+    Y_label: Sequence[TensorType],
+) -> None:
+    """
+    SwitchedLikelihood is separately tested here.
+    Here, we make sure the partition-stitch works fine.
+    """
+    Y_perm = list(range(3 + 4 + 5))
+    np.random.shuffle(Y_perm)
+    # shuffle the original data
+    Y_sw = np.hstack([np.concatenate(Y_list), np.concatenate(Y_label)])[Y_perm, :3]
+    F_sw = np.concatenate(F_list)[Y_perm, :]
+    likelihoods = [Gaussian()] * 3
+    for lik in likelihoods:
+        lik.variance = np.exp(np.random.randn(1)).squeeze().astype(np.float32)
+    switched_likelihood = SwitchedLikelihood(likelihoods)
+
+    switched_results = switched_likelihood.log_prob(F_sw, Y_sw)
+    results = [lik.log_prob(f, y) for lik, y, f in zip(likelihoods, Y_list, F_list)]
+
+    assert_allclose(switched_results, np.concatenate(results)[Y_perm])
+
+
+</source>
+<source file="systems/GPflow-2.4.0/tests/gpflow/likelihoods/test_switched_likelihood.py" startline="93" endline="118" pcid="146">
+def test_switched_likelihood_variational_expectations(
+    Y_list: Sequence[TensorType],
+    F_list: Sequence[TensorType],
+    Fvar_list: Sequence[TensorType],
+    Y_label: Sequence[TensorType],
+) -> None:
+    Y_perm = list(range(3 + 4 + 5))
+    np.random.shuffle(Y_perm)
+    # shuffle the original data
+    Y_sw = np.hstack([np.concatenate(Y_list), np.concatenate(Y_label)])[Y_perm, :3]
+    F_sw = np.concatenate(F_list)[Y_perm, :]
+    Fvar_sw = np.concatenate(Fvar_list)[Y_perm, :]
+
+    likelihoods = [Gaussian()] * 3
+    for lik in likelihoods:
+        lik.variance = np.exp(np.random.randn(1)).squeeze().astype(np.float32)
+    switched_likelihood = SwitchedLikelihood(likelihoods)
+
+    switched_results = switched_likelihood.variational_expectations(F_sw, Fvar_sw, Y_sw)
+    results = [
+        lik.variational_expectations(f, fvar, y)
+        for lik, y, f, fvar in zip(likelihoods, Y_list, F_list, Fvar_list)
+    ]
+    assert_allclose(switched_results, np.concatenate(results)[Y_perm])
+
+
+</source>
+<source file="systems/GPflow-2.4.0/tests/gpflow/likelihoods/test_switched_likelihood.py" startline="62" endline="88" pcid="145">
+def test_switched_likelihood_predict_log_density(
+    Y_list: Sequence[TensorType],
+    F_list: Sequence[TensorType],
+    Fvar_list: Sequence[TensorType],
+    Y_label: Sequence[TensorType],
+) -> None:
+    Y_perm = list(range(3 + 4 + 5))
+    np.random.shuffle(Y_perm)
+    # shuffle the original data
+    Y_sw = np.hstack([np.concatenate(Y_list), np.concatenate(Y_label)])[Y_perm, :3]
+    F_sw = np.concatenate(F_list)[Y_perm, :]
+    Fvar_sw = np.concatenate(Fvar_list)[Y_perm, :]
+
+    likelihoods = [Gaussian()] * 3
+    for lik in likelihoods:
+        lik.variance = np.exp(np.random.randn(1)).squeeze().astype(np.float32)
+    switched_likelihood = SwitchedLikelihood(likelihoods)
+
+    switched_results = switched_likelihood.predict_log_density(F_sw, Fvar_sw, Y_sw)
+    # likelihood
+    results = [
+        lik.predict_log_density(f, fvar, y)
+        for lik, y, f, fvar in zip(likelihoods, Y_list, F_list, Fvar_list)
+    ]
+    assert_allclose(switched_results, np.concatenate(results)[Y_perm])
+
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="10" similarity="100">
+<source file="systems/GPflow-2.4.0/tests/gpflow/likelihoods/test_likelihoods.py" startline="261" endline="272" pcid="171">
+def test_montecarlo_variational_expectation(
+    likelihood_var: float, mu: TensorType, var: TensorType, y: TensorType
+) -> None:
+    likelihood_gaussian_mc, likelihood_gaussian = _make_montecarlo_likelihoods(likelihood_var)
+    assert_allclose(
+        likelihood_gaussian_mc.variational_expectations(mu, var, y),
+        likelihood_gaussian.variational_expectations(mu, var, y),
+        rtol=5e-4,
+        atol=1e-4,
+    )
+
+
+</source>
+<source file="systems/GPflow-2.4.0/tests/gpflow/likelihoods/test_likelihoods.py" startline="275" endline="286" pcid="172">
+def test_montecarlo_predict_log_density(
+    likelihood_var: float, mu: TensorType, var: TensorType, y: TensorType
+) -> None:
+    likelihood_gaussian_mc, likelihood_gaussian = _make_montecarlo_likelihoods(likelihood_var)
+    assert_allclose(
+        likelihood_gaussian_mc.predict_log_density(mu, var, y),
+        likelihood_gaussian.predict_log_density(mu, var, y),
+        rtol=5e-4,
+        atol=1e-4,
+    )
+
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="15" similarity="86">
+<source file="systems/GPflow-2.4.0/tests/gpflow/models/test_sgpr_posterior.py" startline="63" endline="84" pcid="193">
+def test_old_vs_new_gp_fused(
+    sgpr_deprecated_model: SGPR_deprecated,
+    sgpr_model: SGPR,
+    dummy_data,
+    full_cov: bool,
+    full_output_cov: bool,
+) -> None:
+    _, X_new, _ = dummy_data
+
+    mu_old, var2_old = sgpr_deprecated_model.predict_f(
+        X_new, full_cov=full_cov, full_output_cov=full_output_cov
+    )
+    mu_new_fuse, var2_new_fuse = sgpr_model.predict_f(
+        X_new, full_cov=full_cov, full_output_cov=full_output_cov
+    )
+
+    # check new fuse is same as old version
+    np.testing.assert_allclose(mu_new_fuse, mu_old)
+    np.testing.assert_allclose(var2_new_fuse, var2_old)
+
+
+# TODO: move to common test_model_utils
+</source>
+<source file="systems/GPflow-2.4.0/tests/gpflow/models/test_sgpr_posterior.py" startline="88" endline="107" pcid="194">
+def test_old_vs_new_with_posterior(
+    sgpr_deprecated_model: SGPR_deprecated,
+    sgpr_model: SGPR,
+    dummy_data,
+    cache_type: PrecomputeCacheType,
+    full_cov: bool,
+    full_output_cov: bool,
+) -> None:
+    _, X_new, _ = dummy_data
+
+    mu_old, var2_old = sgpr_deprecated_model.predict_f(
+        X_new, full_cov=full_cov, full_output_cov=full_output_cov
+    )
+    mu_new_cache, var2_new_cache = sgpr_model.posterior(cache_type).predict_f(
+        X_new, full_cov=full_cov, full_output_cov=full_output_cov
+    )
+
+    # check new cache is same as old version
+    np.testing.assert_allclose(mu_old, mu_new_cache)
+    np.testing.assert_allclose(var2_old, var2_new_cache)
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="13" similarity="92">
+<source file="systems/GPflow-2.4.0/tests/gpflow/models/test_vgp_posterior.py" startline="34" endline="51" pcid="197">
+def test_old_vs_new_gp_fused(
+    cache_type: PrecomputeCacheType,
+    likelihood: gpflow.likelihoods.Likelihood,
+    full_cov: bool,
+    full_output_cov: bool,
+):
+    X, X_new, Y = _get_data_for_tests()
+    mold, mnew = make_models((X, Y), likelihood)
+
+    mu_old, var2_old = mold.predict_f(X_new, full_cov=full_cov, full_output_cov=full_output_cov)
+    mu_new_fuse, var2_new_fuse = mnew.predict_f(
+        X_new, full_cov=full_cov, full_output_cov=full_output_cov
+    )
+    # check new fuse is same as old version
+    np.testing.assert_allclose(mu_new_fuse, mu_old)
+    np.testing.assert_allclose(var2_new_fuse, var2_old)
+
+
+</source>
+<source file="systems/GPflow-2.4.0/tests/gpflow/models/test_vgp_posterior.py" startline="58" endline="74" pcid="198">
+def test_old_vs_new_with_posterior(
+    cache_type: PrecomputeCacheType,
+    likelihood: gpflow.likelihoods.Likelihood,
+    full_cov: bool,
+    full_output_cov: bool,
+):
+    X, X_new, Y = _get_data_for_tests()
+    mold, mnew = make_models((X, Y), likelihood)
+
+    mu_old, var2_old = mold.predict_f(X_new, full_cov=full_cov, full_output_cov=full_output_cov)
+    mu_new_cache, var2_new_cache = mnew.posterior(cache_type).predict_f(
+        X_new, full_cov=full_cov, full_output_cov=full_output_cov
+    )
+
+    # check new cache is same as old version
+    np.testing.assert_allclose(mu_old, mu_new_cache)
+    np.testing.assert_allclose(var2_old, var2_new_cache)
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="10" similarity="90">
+<source file="systems/GPflow-2.4.0/tests/gpflow/models/test_gpr_posterior.py" startline="30" endline="44" pcid="203">
+def test_old_vs_new_gp_fused(
+    cache_type: PrecomputeCacheType, full_cov: bool, full_output_cov: bool
+):
+    X, X_new, Y = _get_data_for_tests()
+    mold, mnew = make_models((X, Y))
+
+    mu_old, var2_old = mold.predict_f(X_new, full_cov=full_cov, full_output_cov=full_output_cov)
+    mu_new_fuse, var2_new_fuse = mnew.predict_f(
+        X_new, full_cov=full_cov, full_output_cov=full_output_cov
+    )
+    # check new fuse is same as old version
+    np.testing.assert_allclose(mu_new_fuse, mu_old)
+    np.testing.assert_allclose(var2_new_fuse, var2_old)
+
+
+</source>
+<source file="systems/GPflow-2.4.0/tests/gpflow/models/test_gpr_posterior.py" startline="48" endline="61" pcid="204">
+def test_old_vs_new_with_posterior(
+    cache_type: PrecomputeCacheType, full_cov: bool, full_output_cov: bool
+):
+    X, X_new, Y = _get_data_for_tests()
+    mold, mnew = make_models((X, Y))
+
+    mu_old, var2_old = mold.predict_f(X_new, full_cov=full_cov, full_output_cov=full_output_cov)
+    mu_new_cache, var2_new_cache = mnew.posterior(cache_type).predict_f(
+        X_new, full_cov=full_cov, full_output_cov=full_output_cov
+    )
+
+    # check new cache is same as old version
+    np.testing.assert_allclose(mu_old, mu_new_cache)
+    np.testing.assert_allclose(var2_old, var2_new_cache)
+</source>
+</class>
+
+<class classid="9" nclones="4" nlines="19" similarity="85">
+<source file="systems/GPflow-2.4.0/tests/gpflow/experimental/check_shapes/test_inheritance.py" startline="27" endline="51" pcid="268">
+def test_inherit_check_shapes__defined_in_super_class() -> None:
+    class SuperClass(ABC):
+        @abstractmethod
+        @check_shapes(
+            "a: [4]",
+            "return: [1]",
+        )
+        def f(self, a: TensorType) -> TensorType:
+            pass
+
+    class MiddleClass(SuperClass):  # pylint: disable=abstract-method
+        pass
+
+    class SubClass(MiddleClass):
+        @inherit_check_shapes
+        def f(self, a: TensorType) -> TensorType:
+            return t(1)
+
+    sub = SubClass()
+    sub.f(t(4))  # Don't crash...
+
+    with pytest.raises(ShapeMismatchError):
+        sub.f(t(5))
+
+
+</source>
+<source file="systems/GPflow-2.4.0/tests/gpflow/experimental/check_shapes/test_inheritance.py" startline="105" endline="129" pcid="279">
+def test_inherit_check_shapes__defined_in_middle_class() -> None:
+    class SuperClass(ABC):
+        pass
+
+    class MiddleClass(SuperClass):
+        @abstractmethod
+        @check_shapes(
+            "a: [4]",
+            "return: [1]",
+        )
+        def f(self, a: TensorType) -> TensorType:
+            pass
+
+    class SubClass(MiddleClass):
+        @inherit_check_shapes
+        def f(self, a: TensorType) -> TensorType:
+            return t(1)
+
+    sub = SubClass()
+    sub.f(t(4))  # Don't crash...
+
+    with pytest.raises(ShapeMismatchError):
+        sub.f(t(5))
+
+
+</source>
+<source file="systems/GPflow-2.4.0/tests/gpflow/experimental/check_shapes/test_inheritance.py" startline="52" endline="78" pcid="271">
+def test_inherit_check_shapes__overridden_with_checks() -> None:
+    class SuperClass(ABC):
+        @abstractmethod
+        @check_shapes(
+            "a: [4]",
+            "return: [1]",
+        )
+        def f(self, a: TensorType) -> TensorType:
+            pass
+
+    class MiddleClass(SuperClass):
+        @inherit_check_shapes
+        def f(self, a: TensorType) -> TensorType:
+            return t(2)
+
+    class SubClass(MiddleClass):
+        @inherit_check_shapes
+        def f(self, a: TensorType) -> TensorType:
+            return t(1)
+
+    sub = SubClass()
+    sub.f(t(4))  # Don't crash...
+
+    with pytest.raises(ShapeMismatchError):
+        sub.f(t(5))
+
+
+</source>
+<source file="systems/GPflow-2.4.0/tests/gpflow/experimental/check_shapes/test_inheritance.py" startline="79" endline="104" pcid="275">
+def test_inherit_check_shapes__overridden_without_checks() -> None:
+    class SuperClass(ABC):
+        @abstractmethod
+        @check_shapes(
+            "a: [4]",
+            "return: [1]",
+        )
+        def f(self, a: TensorType) -> TensorType:
+            pass
+
+    class MiddleClass(SuperClass):
+        def f(self, a: TensorType) -> TensorType:
+            return t(2)
+
+    class SubClass(MiddleClass):
+        @inherit_check_shapes
+        def f(self, a: TensorType) -> TensorType:
+            return t(1)
+
+    sub = SubClass()
+    sub.f(t(4))  # Don't crash...
+
+    with pytest.raises(ShapeMismatchError):
+        sub.f(t(5))
+
+
+</source>
+</class>
+
+<class classid="10" nclones="3" nlines="12" similarity="83">
+<source file="systems/GPflow-2.4.0/tests/gpflow/kernels/test_coregion.py" startline="127" endline="140" pcid="389">
+def test_likelihood_variance() -> None:
+    vgp0, vgp1, cvgp = _prepare_models()
+    assert_allclose(
+        vgp0.likelihood.variance.numpy(),
+        cvgp.likelihood.likelihoods[0].variance.numpy(),
+        atol=1e-2,
+    )
+    assert_allclose(
+        vgp1.likelihood.variance.numpy(),
+        cvgp.likelihood.likelihoods[1].variance.numpy(),
+        atol=1e-2,
+    )
+
+
+</source>
+<source file="systems/GPflow-2.4.0/tests/gpflow/kernels/test_coregion.py" startline="155" endline="168" pcid="391">
+def test_mean_values() -> None:
+    vgp0, vgp1, cvgp = _prepare_models()
+    assert_allclose(
+        vgp0.mean_function.c.numpy(),
+        cvgp.mean_function.meanfunctions[0].c.numpy(),
+        atol=1.0e-4,
+    )
+    assert_allclose(
+        vgp1.mean_function.c.numpy(),
+        cvgp.mean_function.meanfunctions[1].c.numpy(),
+        atol=1.0e-4,
+    )
+
+
+</source>
+<source file="systems/GPflow-2.4.0/tests/gpflow/kernels/test_coregion.py" startline="141" endline="154" pcid="390">
+def test_kernel_variance() -> None:
+    vgp0, vgp1, cvgp = _prepare_models()
+    assert_allclose(
+        vgp0.kernel.variance.numpy(),
+        cvgp.kernel.kernels[1].kappa.numpy()[0],
+        atol=1.0e-4,
+    )
+    assert_allclose(
+        vgp1.kernel.variance.numpy(),
+        cvgp.kernel.kernels[1].kappa.numpy()[1],
+        atol=1.0e-4,
+    )
+
+
+</source>
+</class>
+
+<class classid="11" nclones="3" nlines="17" similarity="72">
+<source file="systems/GPflow-2.4.0/gpflow/models/sgpmc.py" startline="66" endline="90" pcid="398">
+    def __init__(
+        self,
+        data: RegressionData,
+        kernel: Kernel,
+        likelihood: Likelihood,
+        mean_function: Optional[MeanFunction] = None,
+        num_latent_gps: Optional[int] = None,
+        inducing_variable: Optional[InducingPoints] = None,
+    ):
+        """
+        data is a tuple of X, Y with X, a data matrix, size [N, D] and Y, a data matrix, size [N, R]
+        Z is a data matrix, of inducing inputs, size [M, D]
+        kernel, likelihood, mean_function are appropriate GPflow objects
+        """
+        if num_latent_gps is None:
+            num_latent_gps = self.calc_num_latent_gps_from_data(data, kernel, likelihood)
+        super().__init__(kernel, likelihood, mean_function, num_latent_gps=num_latent_gps)
+        self.data = data_input_to_tensor(data)
+        self.num_data = data[0].shape[0]
+        self.inducing_variable = inducingpoint_wrapper(inducing_variable)
+        self.V = Parameter(np.zeros((self.inducing_variable.num_inducing, self.num_latent_gps)))
+        self.V.prior = tfp.distributions.Normal(
+            loc=to_default_float(0.0), scale=to_default_float(1.0)
+        )
+
+</source>
+<source file="systems/GPflow-2.4.0/gpflow/models/gpmc.py" startline="34" endline="67" pcid="422">
+    def __init__(
+        self,
+        data: RegressionData,
+        kernel: Kernel,
+        likelihood: Likelihood,
+        mean_function: Optional[MeanFunction] = None,
+        num_latent_gps: Optional[int] = None,
+    ):
+        """
+        data is a tuple of X, Y with X, a data matrix, size [N, D] and Y, a data matrix, size [N, R]
+        kernel, likelihood, mean_function are appropriate GPflow objects
+
+        This is a vanilla implementation of a GP with a non-Gaussian
+        likelihood. The latent function values are represented by centered
+        (whitened) variables, so
+
+            v ~ N(0, I)
+            f = Lv + m(x)
+
+        with
+
+            L L^T = K
+
+        """
+        if num_latent_gps is None:
+            num_latent_gps = self.calc_num_latent_gps_from_data(data, kernel, likelihood)
+        super().__init__(kernel, likelihood, mean_function, num_latent_gps)
+        self.data = data_input_to_tensor(data)
+        self.num_data = self.data[0].shape[0]
+        self.V = Parameter(np.zeros((self.num_data, self.num_latent_gps)))
+        self.V.prior = tfp.distributions.Normal(
+            loc=to_default_float(0.0), scale=to_default_float(1.0)
+        )
+
+</source>
+<source file="systems/GPflow-2.4.0/gpflow/models/vgp.py" startline="267" endline="290" pcid="418">
+    def __init__(
+        self,
+        data: RegressionData,
+        kernel: Kernel,
+        likelihood: Likelihood,
+        mean_function: Optional[MeanFunction] = None,
+        num_latent_gps: Optional[int] = None,
+    ):
+        """
+        data = (X, Y) contains the input points [N, D] and the observations [N, P]
+        kernel, likelihood, mean_function are appropriate GPflow objects
+        """
+        if num_latent_gps is None:
+            num_latent_gps = self.calc_num_latent_gps_from_data(data, kernel, likelihood)
+        super().__init__(kernel, likelihood, mean_function, num_latent_gps)
+
+        self.data = data_input_to_tensor(data)
+        X_data, Y_data = self.data
+        self.num_data = X_data.shape[0]
+        self.q_alpha = Parameter(np.zeros((self.num_data, self.num_latent_gps)))
+        self.q_lambda = Parameter(
+            np.ones((self.num_data, self.num_latent_gps)), transform=gpflow.utilities.positive()
+        )
+
+</source>
+</class>
+
+</clones>

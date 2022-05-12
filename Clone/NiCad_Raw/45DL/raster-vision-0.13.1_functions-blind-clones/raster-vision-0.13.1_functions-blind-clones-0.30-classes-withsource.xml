@@ -1,0 +1,1429 @@
+<clones>
+<systeminfo processor="nicad6" system="raster-vision-0.13.1" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="1063" npairs="57"/>
+<runinfo ncompares="24023" cputime="53808"/>
+<classinfo nclasses="23"/>
+
+<class classid="1" nclones="2" nlines="13" similarity="71">
+<source file="systems/raster-vision-0.13.1/rastervision_pytorch_backend/rastervision/pytorch_backend/examples/test.py" startline="253" endline="274" pcid="53">
+def predict(keys, collect_dir, remote, overrides=[]):
+    """Test model bundles using predict command using output of collect command."""
+    overrides = dict(overrides)
+
+    run_all = len(keys) == 0
+    validate_keys(keys)
+
+    for exp_cfg in cfg:
+        key = exp_cfg['key']
+        if run_all or key in keys:
+            if len(keys) == 1:
+                override_cfg(exp_cfg, overrides)
+            uris = exp_cfg['remote'] if remote else exp_cfg['local']
+            root_uri = uris['root_uri']
+            _collect_dir = join(collect_dir, key)
+            fetch_cmd_dir(root_uri, 'bundle', _collect_dir)
+            _predict(exp_cfg, _collect_dir)
+
+
+# --------------------
+# compare
+# --------------------
+</source>
+<source file="systems/raster-vision-0.13.1/rastervision_pytorch_backend/rastervision/pytorch_backend/examples/test.py" startline="308" endline="327" pcid="55">
+def upload(keys, collect_dir, upload_dir, overrides=[]):
+    """Upload eval, bundle, and sample predictions to the target dir."""
+    overrides = dict(overrides)
+
+    run_all = len(keys) == 0
+    validate_keys(keys)
+
+    for exp_cfg in cfg:
+        key = exp_cfg['key']
+        if run_all or key in keys:
+            if len(keys) == 1:
+                override_cfg(exp_cfg, overrides)
+            _collect_dir = join(collect_dir, key)
+            _upload_dir = join(upload_dir, key)
+            _upload_to_zoo(exp_cfg, _collect_dir, _upload_dir)
+
+
+######################
+# utils
+######################
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="11" similarity="72">
+<source file="systems/raster-vision-0.13.1/rastervision_pytorch_learner/rastervision/pytorch_learner/learner.py" startline="259" endline="276" pcid="136">
+    def setup_model(self, model_def_path: Optional[str] = None) -> None:
+        """Setup self.model.
+
+        Args:
+            model_def_path (str, optional): Model definition path. Will be
+            available when loading from a bundle. Defaults to None.
+        """
+        ext_cfg = self.cfg.model.external_def
+        if ext_cfg is not None:
+            hubconf_dir = self._get_external_module_dir(
+                ext_cfg, model_def_path)
+            self.model = self.load_external_module(
+                ext_cfg=ext_cfg, hubconf_dir=hubconf_dir)
+        else:
+            self.model = self.build_model()
+        self.model.to(self.device)
+        self.load_init_weights()
+
+</source>
+<source file="systems/raster-vision-0.13.1/rastervision_pytorch_learner/rastervision/pytorch_learner/learner.py" startline="282" endline="299" pcid="138">
+    def setup_loss(self, loss_def_path: Optional[str] = None) -> None:
+        """Setup self.loss.
+
+        Args:
+            loss_def_path (str, optional): Loss definition path. Will be
+            available when loading from a bundle. Defaults to None.
+        """
+        ext_cfg = self.cfg.solver.external_loss_def
+        if ext_cfg is not None:
+            hubconf_dir = self._get_external_module_dir(ext_cfg, loss_def_path)
+            self.loss = self.load_external_module(
+                ext_cfg=ext_cfg, hubconf_dir=hubconf_dir)
+        else:
+            self.loss = self.build_loss()
+
+        if self.loss is not None and isinstance(self.loss, nn.Module):
+            self.loss.to(self.device)
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="11" similarity="75">
+<source file="systems/raster-vision-0.13.1/rastervision_pytorch_learner/rastervision/pytorch_learner/learner.py" startline="826" endline="850" pcid="166">
+    def numpy_predict(self, x: np.ndarray,
+                      raw_out: bool = False) -> np.ndarray:
+        """Make a prediction using an image or batch of images in numpy format.
+        If x.dtype is a subtype of np.unsignedinteger, it will be normalized
+        to [0, 1] using the max possible value of that dtype. Otherwise, x will
+        be assumed to be in [0, 1] already and will be cast to torch.float32
+        directly.
+
+        Args:
+            x: (ndarray) of shape [height, width, channels] or
+                [batch_sz, height, width, channels]
+            raw_out: if True, return prediction probabilities
+
+        Returns:
+            predictions using numpy arrays
+        """
+        transform, _ = self.get_data_transforms()
+        x = self.normalize_input(x)
+        x = self.to_batch(x)
+        x = np.stack([transform(image=img)['image'] for img in x])
+        x = torch.from_numpy(x)
+        x = x.permute((0, 3, 1, 2))
+        out = self.predict(x, raw_out=raw_out)
+        return self.output_to_numpy(out)
+
+</source>
+<source file="systems/raster-vision-0.13.1/rastervision_pytorch_learner/rastervision/pytorch_learner/object_detection_learner.py" startline="72" endline="85" pcid="248">
+    def numpy_predict(self, x: np.ndarray,
+                      raw_out: bool = False) -> np.ndarray:
+        transform, _ = self.get_data_transforms()
+        x = self.normalize_input(x)
+        x = self.to_batch(x)
+        x = np.stack([
+            transform(image=img, bboxes=[], category_id=[])['image']
+            for img in x
+        ])
+        x = torch.from_numpy(x)
+        x = x.permute((0, 3, 1, 2))
+        out = self.predict(x, raw_out=raw_out)
+        return self.output_to_numpy(out)
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="16" similarity="93">
+<source file="systems/raster-vision-0.13.1/rastervision_pytorch_learner/rastervision/pytorch_learner/examples/classification.py" startline="11" endline="27" pcid="188">
+def get_config(runner, test=False):
+    base_uri = ('s3://raster-vision-lf-dev/learner/classification'
+                if runner == AWS_BATCH else '/opt/data/learner/classification')
+    root_uri = join(base_uri, 'output')
+    data_uri = join(base_uri, 'tiny-buildings.zip')
+
+    model = ModelConfig(backbone='resnet50')
+    solver = SolverConfig(lr=2e-4, num_epochs=3, batch_sz=8, one_cycle=True)
+    data = ClassificationDataConfig(
+        data_format='image_folder',
+        uri=data_uri,
+        img_sz=200,
+        labels=['building', 'no_building'])
+    learner = ClassificationLearnerConfig(
+        model=model, solver=solver, data=data, test_mode=test)
+    pipeline = LearnerPipelineConfig(root_uri=root_uri, learner=learner)
+    return pipeline
+</source>
+<source file="systems/raster-vision-0.13.1/rastervision_pytorch_learner/rastervision/pytorch_learner/examples/regression.py" startline="10" endline="27" pcid="189">
+def get_config(runner, test=False):
+    base_uri = ('s3://raster-vision-lf-dev/learner/regression'
+                if runner == AWS_BATCH else '/opt/data/learner/regression')
+    root_uri = join(base_uri, 'output')
+    data_uri = join(base_uri, 'tiny-buildings.zip')
+
+    model = RegressionModelConfig(backbone='resnet50')
+    solver = SolverConfig(lr=1e-4, num_epochs=10, batch_sz=8, one_cycle=True)
+    data = RegressionDataConfig(
+        data_format='image_csv',
+        uri=data_uri,
+        img_sz=200,
+        labels=['has_buildings'])
+    learner = RegressionLearnerConfig(
+        model=model, solver=solver, data=data, test_mode=test)
+
+    pipeline = LearnerPipelineConfig(root_uri=root_uri, learner=learner)
+    return pipeline
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="14" similarity="86">
+<source file="systems/raster-vision-0.13.1/tests/pytorch_learner/dataset/test_transform.py" startline="10" endline="26" pcid="253">
+    def test_box_format_conversions_yxyx(self):
+        boxes = np.array(
+            [
+                [1, 2, 3, 4],
+                [2, 3, 4, 10],
+            ], dtype=np.float32)
+        boxes_albu_gt = np.array(
+            [
+                [.2, .1, .4, .3],
+                [.3, .2, 1., .4],
+            ], dtype=np.float32)
+        boxes_albu = yxyx_to_albu(boxes, (10, 10))
+        self.assertTrue(np.all(boxes_albu == boxes_albu_gt))
+
+        boxes_yxyx = albu_to_yxyx(boxes_albu, (10, 10))
+        self.assertTrue(np.all(boxes_yxyx == boxes))
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/pytorch_learner/dataset/test_transform.py" startline="27" endline="41" pcid="254">
+    def test_box_format_conversions_xywh(self):
+        boxes = np.array(
+            [
+                [1, 2, 3, 4],
+                [2, 3, 4, 10],
+            ], dtype=np.float32)
+        boxes_albu_gt = np.array(
+            [
+                [.1, .2, .4, .6],
+                [.2, .3, .6, 1.],
+            ], dtype=np.float32)
+        boxes_albu = xywh_to_albu(boxes, (10, 10))
+        self.assertTrue(np.all(boxes_albu == boxes_albu_gt))
+
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="15" similarity="93">
+<source file="systems/raster-vision-0.13.1/tests/pytorch_learner/test_utils.py" startline="29" endline="45" pcid="257">
+    def test1(self):
+        label_names = ['a', 'b']
+        conf_mat = torch.tensor([[2., 0], [0, 2]])
+        metrics = compute_conf_mat_metrics(conf_mat, label_names)
+        exp_metrics = {
+            'avg_precision': 1.0,
+            'avg_recall': 1.0,
+            'avg_f1': 1.0,
+            'a_precision': 1.0,
+            'a_recall': 1.0,
+            'a_f1': 1.0,
+            'b_precision': 1.0,
+            'b_recall': 1.0,
+            'b_f1': 1.0
+        }
+        self.assertDictEqual(metrics, exp_metrics)
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/pytorch_learner/test_utils.py" startline="46" endline="62" pcid="258">
+    def test2(self):
+        label_names = ['a', 'b']
+        conf_mat = torch.tensor([[0, 2.], [2, 0]])
+        metrics = compute_conf_mat_metrics(conf_mat, label_names)
+        exp_metrics = {
+            'avg_precision': 0.0,
+            'avg_recall': 0.0,
+            'avg_f1': 0.0,
+            'a_precision': 0.0,
+            'a_recall': 0.0,
+            'a_f1': 0.0,
+            'b_precision': 0.0,
+            'b_recall': 0.0,
+            'b_f1': 0.0
+        }
+        self.assertDictEqual(metrics, exp_metrics)
+
+</source>
+</class>
+
+<class classid="7" nclones="3" nlines="11" similarity="81">
+<source file="systems/raster-vision-0.13.1/tests/pipeline/test_file_system.py" startline="136" endline="150" pcid="290">
+    def setUp(self):
+        # Setup mock S3 bucket.
+        self.mock_s3 = mock_s3()
+        self.mock_s3.start()
+        self.s3 = boto3.client('s3')
+        self.bucket_name = 'mock_bucket'
+        self.s3.create_bucket(Bucket=self.bucket_name)
+
+        self.content_str = 'hello'
+        self.file_name = 'hello.txt'
+        self.s3_path = 's3://{}/{}'.format(self.bucket_name, self.file_name)
+
+        self.tmp_dir = rv_config.get_tmp_dir()
+        self.local_path = os.path.join(self.tmp_dir.name, self.file_name)
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/pipeline/test_file_system.py" startline="181" endline="195" pcid="294">
+    def setUp(self):
+        # Setup mock S3 bucket.
+        self.mock_s3 = mock_s3()
+        self.mock_s3.start()
+        self.s3 = boto3.client('s3')
+        self.bucket_name = 'mock_bucket'
+        self.s3.create_bucket(Bucket=self.bucket_name)
+
+        self.content_str = 'hello'
+        self.file_name = 'hello.txt'
+        self.s3_path = 's3://{}/{}'.format(self.bucket_name, self.file_name)
+
+        self.tmp_dir = rv_config.get_tmp_dir()
+        self.local_path = os.path.join(self.tmp_dir.name, self.file_name)
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/pipeline/test_file_system.py" startline="459" endline="471" pcid="324">
+    def setUp(self):
+        # Setup mock S3 bucket.
+        self.mock_s3 = mock_s3()
+        self.mock_s3.start()
+        self.s3 = boto3.client('s3')
+        self.bucket_name = 'mock_bucket'
+        self.s3.create_bucket(Bucket=self.bucket_name)
+
+        self.content_str = 'hello'
+        self.file_name = 'hello.txt'
+        self.tmp_dir = rv_config.get_tmp_dir()
+        self.cache_dir = os.path.join(self.tmp_dir.name, 'cache')
+
+</source>
+</class>
+
+<class classid="8" nclones="3" nlines="10" similarity="70">
+<source file="systems/raster-vision-0.13.1/tests/pipeline/test_file_system.py" startline="242" endline="255" pcid="300">
+    def test_last_modified_s3(self):
+        path = os.path.join(self.tmp_dir.name, 'lorem', 'ipsum1.txt')
+        s3_path = 's3://{}/lorem1.txt'.format(self.bucket_name)
+        directory = os.path.dirname(path)
+        make_dir(directory, check_empty=False)
+
+        fs = FileSystem.get_file_system(s3_path, 'r')
+
+        str_to_file(self.lorem, path)
+        upload_or_copy(path, s3_path)
+        stamp = fs.last_modified(s3_path)
+
+        self.assertTrue(isinstance(stamp, datetime.datetime))
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/pipeline/test_file_system.py" startline="256" endline="268" pcid="301">
+    def test_list_paths_s3(self):
+        path = os.path.join(self.tmp_dir.name, 'lorem', 'ipsum.txt')
+        s3_path = 's3://{}/xxx/lorem.txt'.format(self.bucket_name)
+        s3_directory = 's3://{}/xxx/'.format(self.bucket_name)
+        directory = os.path.dirname(path)
+        make_dir(directory, check_empty=False)
+
+        str_to_file(self.lorem, path)
+        upload_or_copy(path, s3_path)
+
+        list_paths(s3_directory)
+        self.assertEqual(len(list_paths(s3_directory)), 1)
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/pipeline/test_file_system.py" startline="350" endline="362" pcid="310">
+    def test_copy_to_local(self):
+        path1 = os.path.join(self.tmp_dir.name, 'lorem', 'ipsum.txt')
+        path2 = os.path.join(self.tmp_dir.name, 'yyy', 'ipsum.txt')
+        dir1 = os.path.dirname(path1)
+        dir2 = os.path.dirname(path2)
+        make_dir(dir1, check_empty=False)
+        make_dir(dir2, check_empty=False)
+
+        str_to_file(self.lorem, path1)
+
+        upload_or_copy(path1, path2)
+        self.assertEqual(len(list_paths(dir2)), 1)
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="10" similarity="100">
+<source file="systems/raster-vision-0.13.1/tests/pipeline/test_file_system.py" startline="313" endline="325" pcid="307">
+    def test_sync_from_dir_local(self):
+        path = os.path.join(self.tmp_dir.name, 'lorem', 'ipsum.txt')
+        src = os.path.dirname(path)
+        dst = os.path.join(self.tmp_dir.name, 'xxx')
+        make_dir(src, check_empty=False)
+        make_dir(dst, check_empty=False)
+
+        fs = FileSystem.get_file_system(path, 'r')
+        fs.write_bytes(path, bytes([0x00, 0x01]))
+        sync_from_dir(src, dst, delete=True)
+
+        self.assertEqual(len(list_paths(dst)), 1)
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/pipeline/test_file_system.py" startline="337" endline="349" pcid="309">
+    def test_sync_to_dir_local(self):
+        path = os.path.join(self.tmp_dir.name, 'lorem', 'ipsum.txt')
+        src = os.path.dirname(path)
+        dst = os.path.join(self.tmp_dir.name, 'xxx')
+        make_dir(src, check_empty=False)
+        make_dir(dst, check_empty=False)
+
+        fs = FileSystem.get_file_system(path, 'r')
+        fs.write_bytes(path, bytes([0x00, 0x01]))
+        sync_to_dir(src, dst, delete=True)
+
+        self.assertEqual(len(list_paths(dst)), 1)
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="12" similarity="83">
+<source file="systems/raster-vision-0.13.1/tests/core/data/label_source/test_semantic_segmentation_label_source.py" startline="11" endline="22" pcid="329">
+    def test_enough_target_pixels_true(self):
+        data = np.zeros((10, 10, 1), dtype=np.uint8)
+        data[4:, 4:, :] = 1
+        null_class_id = 2
+        raster_source = MockRasterSource([0], 1)
+        raster_source.set_raster(data)
+        label_source = SemanticSegmentationLabelSource(raster_source,
+                                                       null_class_id)
+        with label_source.activate():
+            extent = Box(0, 0, 10, 10)
+            self.assertTrue(label_source.enough_target_pixels(extent, 30, [1]))
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/core/data/label_source/test_semantic_segmentation_label_source.py" startline="23" endline="35" pcid="330">
+    def test_enough_target_pixels_false(self):
+        data = np.zeros((10, 10, 1), dtype=np.uint8)
+        data[7:, 7:, :] = 1
+        null_class_id = 2
+        raster_source = MockRasterSource([0], 1)
+        raster_source.set_raster(data)
+        label_source = SemanticSegmentationLabelSource(raster_source,
+                                                       null_class_id)
+        with label_source.activate():
+            extent = Box(0, 0, 10, 10)
+            self.assertFalse(
+                label_source.enough_target_pixels(extent, 30, [1]))
+
+</source>
+</class>
+
+<class classid="11" nclones="2" nlines="15" similarity="86">
+<source file="systems/raster-vision-0.13.1/tests/core/data/label_source/test_semantic_segmentation_label_source.py" startline="36" endline="50" pcid="331">
+    def test_get_labels(self):
+        data = np.zeros((10, 10, 1), dtype=np.uint8)
+        data[7:, 7:, 0] = 1
+        null_class_id = 2
+        raster_source = MockRasterSource([0], 1)
+        raster_source.set_raster(data)
+        label_source = SemanticSegmentationLabelSource(raster_source,
+                                                       null_class_id)
+        with label_source.activate():
+            window = Box.make_square(7, 7, 3)
+            labels = label_source.get_labels(window=window)
+            label_arr = labels.get_label_arr(window)
+            expected_label_arr = np.ones((3, 3))
+            np.testing.assert_array_equal(label_arr, expected_label_arr)
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/core/data/label_source/test_semantic_segmentation_label_source.py" startline="51" endline="66" pcid="332">
+    def test_get_labels_off_edge(self):
+        data = np.zeros((10, 10, 1), dtype=np.uint8)
+        data[7:, 7:, 0] = 1
+        null_class_id = 2
+        raster_source = MockRasterSource([0], 1)
+        raster_source.set_raster(data)
+        label_source = SemanticSegmentationLabelSource(raster_source,
+                                                       null_class_id)
+        with label_source.activate():
+            window = Box.make_square(7, 7, 6)
+            labels = label_source.get_labels(window=window)
+            label_arr = labels.get_label_arr(window)
+            expected_label_arr = np.full((6, 6), 2)
+            expected_label_arr[0:3, 0:3] = 1
+            np.testing.assert_array_equal(label_arr, expected_label_arr)
+
+</source>
+</class>
+
+<class classid="12" nclones="8" nlines="10" similarity="90">
+<source file="systems/raster-vision-0.13.1/tests/core/data/label_source/test_chip_classification_label_source.py" startline="75" endline="87" pcid="336">
+    def test_infer_cell1(self):
+        # More of box 1 is in cell.
+        cell = Box.make_square(0, 0, 3)
+        ioa_thresh = 0.5
+        use_intersection_over_cell = False
+        background_class_id = None
+        pick_min_class_id = False
+
+        class_id = infer_cell(cell, self.str_tree, ioa_thresh,
+                              use_intersection_over_cell, background_class_id,
+                              pick_min_class_id)
+        self.assertEqual(class_id, self.class_id1)
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/core/data/label_source/test_chip_classification_label_source.py" startline="88" endline="100" pcid="337">
+    def test_infer_cell2(self):
+        # More of box 2 is in cell.
+        cell = Box.make_square(1, 1, 3)
+        ioa_thresh = 0.5
+        use_intersection_over_cell = False
+        background_class_id = None
+        pick_min_class_id = False
+
+        class_id = infer_cell(cell, self.str_tree, ioa_thresh,
+                              use_intersection_over_cell, background_class_id,
+                              pick_min_class_id)
+        self.assertEqual(class_id, self.class_id2)
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/core/data/label_source/test_chip_classification_label_source.py" startline="101" endline="113" pcid="338">
+    def test_infer_cell3(self):
+        # Only box 2 is in cell, but IOA isn't high enough.
+        cell = Box.make_square(3, 3, 3)
+        ioa_thresh = 0.5
+        use_intersection_over_cell = False
+        background_class_id = None
+        pick_min_class_id = False
+
+        class_id = infer_cell(cell, self.str_tree, ioa_thresh,
+                              use_intersection_over_cell, background_class_id,
+                              pick_min_class_id)
+        self.assertEqual(class_id, None)
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/core/data/label_source/test_chip_classification_label_source.py" startline="155" endline="167" pcid="342">
+    def test_infer_cell7(self):
+        # Cell doesn't overlap with any boxes.
+        cell = Box.make_square(10, 10, 1)
+        ioa_thresh = 0.5
+        use_intersection_over_cell = True
+        background_class_id = None
+        pick_min_class_id = False
+
+        class_id = infer_cell(cell, self.str_tree, ioa_thresh,
+                              use_intersection_over_cell, background_class_id,
+                              pick_min_class_id)
+        self.assertEqual(class_id, None)
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/core/data/label_source/test_chip_classification_label_source.py" startline="128" endline="141" pcid="340">
+    def test_infer_cell5(self):
+        # More of box1 in cell, using intersection_over_cell with the
+        # IOA high enough.
+        cell = Box.make_square(0, 0, 3)
+        ioa_thresh = 0.4
+        use_intersection_over_cell = True
+        background_class_id = None
+        pick_min_class_id = False
+
+        class_id = infer_cell(cell, self.str_tree, ioa_thresh,
+                              use_intersection_over_cell, background_class_id,
+                              pick_min_class_id)
+        self.assertEqual(class_id, self.class_id1)
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/core/data/label_source/test_chip_classification_label_source.py" startline="114" endline="127" pcid="339">
+    def test_infer_cell4(self):
+        # Both boxes inside cell, but using intersection_over_cell,
+        # the IOA isn't high enough.
+        cell = Box.make_square(0, 0, 10)
+        ioa_thresh = 0.5
+        use_intersection_over_cell = True
+        background_class_id = None
+        pick_min_class_id = False
+
+        class_id = infer_cell(cell, self.str_tree, ioa_thresh,
+                              use_intersection_over_cell, background_class_id,
+                              pick_min_class_id)
+        self.assertEqual(class_id, None)
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/core/data/label_source/test_chip_classification_label_source.py" startline="168" endline="181" pcid="343">
+    def test_infer_cell8(self):
+        # box2 overlaps more than box1, but using pick_min_class_id, so
+        # picks box1.
+        cell = Box.make_square(1, 1, 3)
+        ioa_thresh = 0.5
+        use_intersection_over_cell = False
+        background_class_id = None
+        pick_min_class_id = True
+
+        class_id = infer_cell(cell, self.str_tree, ioa_thresh,
+                              use_intersection_over_cell, background_class_id,
+                              pick_min_class_id)
+        self.assertEqual(class_id, self.class_id2)
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/core/data/label_source/test_chip_classification_label_source.py" startline="142" endline="154" pcid="341">
+    def test_infer_cell6(self):
+        # No boxes overlap enough, use background_class_id
+        cell = Box.make_square(0, 0, 10)
+        ioa_thresh = 0.5
+        use_intersection_over_cell = True
+        background_class_id = self.background_class_id
+        pick_min_class_id = False
+
+        class_id = infer_cell(cell, self.str_tree, ioa_thresh,
+                              use_intersection_over_cell, background_class_id,
+                              pick_min_class_id)
+        self.assertEqual(class_id, self.background_class_id)
+
+</source>
+</class>
+
+<class classid="13" nclones="3" nlines="13" similarity="71">
+<source file="systems/raster-vision-0.13.1/tests/core/data/label_source/test_chip_classification_label_source.py" startline="209" endline="226" pcid="345">
+    def test_get_labels_small_extent(self):
+        # Extent only has enough of first box in it.
+        extent = Box.make_square(0, 0, 2)
+
+        config = ChipClassificationLabelSourceConfig(
+            vector_source=GeoJSONVectorSourceConfig(
+                uri=self.uri, default_class_id=None))
+        source = config.build(self.class_config, self.crs_transformer, extent,
+                              self.tmp_dir.name)
+        labels = source.get_labels()
+
+        cells = labels.get_cells()
+        self.assertEqual(len(cells), 1)
+        class_id = labels.get_cell_class_id(self.box1)
+        self.assertEqual(class_id, self.class_id1)
+        class_id = labels.get_cell_class_id(self.box2)
+        self.assertEqual(class_id, None)
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/core/data/label_source/test_chip_classification_label_source.py" startline="245" endline="261" pcid="347">
+    def test_getitem(self):
+        # Extent contains both boxes.
+        extent = Box.make_square(0, 0, 8)
+
+        config = ChipClassificationLabelSourceConfig(
+            vector_source=GeoJSONVectorSourceConfig(
+                uri=self.uri, default_class_id=None))
+        source = config.build(self.class_config, self.crs_transformer, extent,
+                              self.tmp_dir.name)
+        labels = source.get_labels()
+
+        cells = labels.get_cells()
+        self.assertEqual(len(cells), 2)
+        self.assertEqual(source[cells[0]], self.class_id1)
+        self.assertEqual(source[cells[1]], self.class_id2)
+
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/core/data/label_source/test_chip_classification_label_source.py" startline="227" endline="244" pcid="346">
+    def test_get_labels(self):
+        # Extent contains both boxes.
+        extent = Box.make_square(0, 0, 8)
+
+        config = ChipClassificationLabelSourceConfig(
+            vector_source=GeoJSONVectorSourceConfig(
+                uri=self.uri, default_class_id=None))
+        source = config.build(self.class_config, self.crs_transformer, extent,
+                              self.tmp_dir.name)
+        labels = source.get_labels()
+
+        cells = labels.get_cells()
+        self.assertEqual(len(cells), 2)
+        class_id = labels.get_cell_class_id(self.box1)
+        self.assertEqual(class_id, self.class_id1)
+        class_id = labels.get_cell_class_id(self.box2)
+        self.assertEqual(class_id, self.class_id2)
+
+</source>
+</class>
+
+<class classid="14" nclones="2" nlines="24" similarity="91">
+<source file="systems/raster-vision-0.13.1/tests/core/data/raster_source/test_rasterio_source.py" startline="29" endline="55" pcid="359">
+    def test_nodata_val(self):
+        # make geotiff filled with ones and zeros with nodata == 1
+        img_path = join(self.tmp_dir, 'tmp.tif')
+        height = 100
+        width = 100
+        nb_channels = 3
+        with rasterio.open(
+                img_path,
+                'w',
+                driver='GTiff',
+                height=height,
+                width=width,
+                count=nb_channels,
+                dtype=np.uint8,
+                nodata=1) as img_dataset:
+            im = np.random.randint(0, 2, (height, width, nb_channels)).astype(
+                np.uint8)
+            for channel in range(nb_channels):
+                img_dataset.write(im[:, :, channel], channel + 1)
+
+        config = RasterioSourceConfig(uris=[img_path])
+        source = config.build(tmp_dir=self.tmp_dir)
+        with source.activate():
+            out_chip = source.get_image_array()
+            expected_out_chip = np.zeros((height, width, nb_channels))
+            np.testing.assert_equal(out_chip, expected_out_chip)
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/core/data/raster_source/test_rasterio_source.py" startline="56" endline="82" pcid="360">
+    def test_mask(self):
+        # make geotiff filled with ones and zeros and mask the whole image
+        img_path = join(self.tmp_dir, 'tmp.tif')
+        height = 100
+        width = 100
+        nb_channels = 3
+        with rasterio.open(
+                img_path,
+                'w',
+                driver='GTiff',
+                height=height,
+                width=width,
+                count=nb_channels,
+                dtype=np.uint8) as img_dataset:
+            im = np.random.randint(0, 2, (height, width, nb_channels)).astype(
+                np.uint8)
+            for channel in range(nb_channels):
+                img_dataset.write(im[:, :, channel], channel + 1)
+            img_dataset.write_mask(np.zeros(im.shape[0:2]).astype(np.bool))
+
+        config = RasterioSourceConfig(uris=[img_path])
+        source = config.build(tmp_dir=self.tmp_dir)
+        with source.activate():
+            out_chip = source.get_image_array()
+            expected_out_chip = np.zeros((height, width, nb_channels))
+            np.testing.assert_equal(out_chip, expected_out_chip)
+
+</source>
+</class>
+
+<class classid="15" nclones="2" nlines="15" similarity="93">
+<source file="systems/raster-vision-0.13.1/tests/core/data/raster_source/test_rasterio_source.py" startline="100" endline="119" pcid="363">
+    def test_shift_x(self):
+        # Specially-engineered image w/ one meter per pixel resolution
+        # in the x direction.
+        img_path = data_file_path('ones.tif')
+        channel_order = [0]
+
+        config = RasterioSourceConfig(
+            uris=[img_path],
+            channel_order=channel_order,
+            x_shift=1.0,
+            y_shift=0.0)
+        source = config.build(tmp_dir=self.tmp_dir)
+
+        with source.activate():
+            extent = source.get_extent()
+            data = source.get_chip(extent)
+            self.assertEqual(data.sum(), 2**16 - 256)
+            column = data[:, 255, 0]
+            self.assertEqual(column.sum(), 0)
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/core/data/raster_source/test_rasterio_source.py" startline="120" endline="139" pcid="364">
+    def test_shift_y(self):
+        # Specially-engineered image w/ one meter per pixel resolution
+        # in the y direction.
+        img_path = data_file_path('ones.tif')
+        channel_order = [0]
+
+        config = RasterioSourceConfig(
+            uris=[img_path],
+            channel_order=channel_order,
+            x_shift=0.0,
+            y_shift=1.0)
+        source = config.build(tmp_dir=self.tmp_dir)
+
+        with source.activate():
+            extent = source.get_extent()
+            data = source.get_chip(extent)
+            self.assertEqual(data.sum(), 2**16 - 256)
+            row = data[0, :, 0]
+            self.assertEqual(row.sum(), 0)
+
+</source>
+</class>
+
+<class classid="16" nclones="2" nlines="13" similarity="92">
+<source file="systems/raster-vision-0.13.1/tests/core/data/raster_source/test_rasterio_source.py" startline="259" endline="272" pcid="371">
+    def test_extent(self):
+        img_path = data_file_path('small-rgb-tile.tif')
+        cfg = RasterioSourceConfig(uris=[img_path])
+        rs = cfg.build(tmp_dir=self.tmp_dir)
+        extent = rs.get_extent()
+        h, w = extent.get_height(), extent.get_width()
+        ymin, xmin, ymax, xmax = extent
+        self.assertEqual(h, 256)
+        self.assertEqual(w, 256)
+        self.assertEqual(ymin, 0)
+        self.assertEqual(xmin, 0)
+        self.assertEqual(ymax, 256)
+        self.assertEqual(xmax, 256)
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/core/data/raster_source/test_multi_raster_source.py" startline="36" endline="48" pcid="385">
+    def test_extent(self):
+        cfg = make_cfg('small-rgb-tile.tif')
+        rs = cfg.build(tmp_dir=self.tmp_dir)
+        extent = rs.get_extent()
+        h, w = extent.get_height(), extent.get_width()
+        ymin, xmin, ymax, xmax = extent
+        self.assertEqual(h, 256)
+        self.assertEqual(w, 256)
+        self.assertEqual(ymin, 0)
+        self.assertEqual(xmin, 0)
+        self.assertEqual(ymax, 256)
+        self.assertEqual(xmax, 256)
+
+</source>
+</class>
+
+<class classid="17" nclones="2" nlines="37" similarity="76">
+<source file="systems/raster-vision-0.13.1/tests/core/data/raster_source/test_rasterio_source.py" startline="273" endline="325" pcid="372">
+    def test_extent_crop(self):
+        f = 1 / 4
+        img_path = data_file_path('small-rgb-tile.tif')
+
+        cfg_crop = RasterioSourceConfig(
+            uris=[img_path], extent_crop=(f, f, f, f))
+        rs_crop = cfg_crop.build(tmp_dir=self.tmp_dir)
+
+        # test extent box
+        extent_crop = rs_crop.get_extent()
+        self.assertEqual(extent_crop.ymin, 64)
+        self.assertEqual(extent_crop.xmin, 64)
+        self.assertEqual(extent_crop.ymax, 192)
+        self.assertEqual(extent_crop.xmax, 192)
+
+        # test windows
+        windows = extent_crop.get_windows(64, 64)
+        self.assertEqual(windows[0].ymin, 64)
+        self.assertEqual(windows[0].xmin, 64)
+        self.assertEqual(windows[-1].ymax, 192)
+        self.assertEqual(windows[-1].xmax, 192)
+
+        # test CropOffsets class
+        cfg_crop = RasterioSourceConfig(
+            uris=[img_path],
+            extent_crop=CropOffsets(skip_top=.5, skip_right=.5))
+        rs_crop = cfg_crop.build(tmp_dir=self.tmp_dir)
+        extent_crop = rs_crop.get_extent()
+
+        self.assertEqual(extent_crop.ymin, 128)
+        self.assertEqual(extent_crop.xmin, 0)
+        self.assertEqual(extent_crop.ymax, 256)
+        self.assertEqual(extent_crop.xmax, 128)
+
+        # test validation
+        extent_crop = CropOffsets(skip_top=.5, skip_bottom=.5)
+        self.assertRaises(
+            ValidationError,
+            lambda: RasterioSourceConfig(uris=[img_path],
+                                            extent_crop=extent_crop))
+
+        extent_crop = CropOffsets(skip_left=.5, skip_right=.5)
+        self.assertRaises(
+            ValidationError,
+            lambda: RasterioSourceConfig(uris=[img_path],
+                                            extent_crop=extent_crop))
+
+        # test extent_crop=None
+        try:
+            _ = RasterioSourceConfig(uris=[img_path], extent_crop=None)  # noqa
+        except Exception:
+            self.fail('extent_crop=None caused an error.')
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/core/data/raster_source/test_multi_raster_source.py" startline="49" endline="97" pcid="386">
+    def test_extent_crop(self):
+        f = 1 / 4
+        cfg_crop = make_cfg('small-rgb-tile.tif', extent_crop=(f, f, f, f))
+        rs_crop = cfg_crop.build(tmp_dir=self.tmp_dir)
+
+        # test extent box
+        extent_crop = rs_crop.get_extent()
+        self.assertEqual(extent_crop.ymin, 64)
+        self.assertEqual(extent_crop.xmin, 64)
+        self.assertEqual(extent_crop.ymax, 192)
+        self.assertEqual(extent_crop.xmax, 192)
+
+        # test windows
+        windows = extent_crop.get_windows(64, 64)
+        self.assertEqual(windows[0].ymin, 64)
+        self.assertEqual(windows[0].xmin, 64)
+        self.assertEqual(windows[-1].ymax, 192)
+        self.assertEqual(windows[-1].xmax, 192)
+
+        # test CropOffsets class
+        cfg_crop = make_cfg(
+            'small-rgb-tile.tif',
+            extent_crop=CropOffsets(skip_top=.5, skip_right=.5))
+        rs_crop = cfg_crop.build(tmp_dir=self.tmp_dir)
+        extent_crop = rs_crop.get_extent()
+
+        self.assertEqual(extent_crop.ymin, 128)
+        self.assertEqual(extent_crop.xmin, 0)
+        self.assertEqual(extent_crop.ymax, 256)
+        self.assertEqual(extent_crop.xmax, 128)
+
+        # test validation
+        extent_crop = CropOffsets(skip_top=.5, skip_bottom=.5)
+        self.assertRaises(
+            ValidationError,
+            lambda: make_cfg('small-rgb-tile.tif', extent_crop=extent_crop))
+
+        extent_crop = CropOffsets(skip_left=.5, skip_right=.5)
+        self.assertRaises(
+            ValidationError,
+            lambda: make_cfg('small-rgb-tile.tif', extent_crop=extent_crop))
+
+        # test extent_crop=None
+        try:
+            _ = make_cfg('small-rgb-tile.tif', extent_crop=None)  # noqa
+        except Exception:
+            self.fail('extent_crop=None caused an error.')
+
+
+</source>
+</class>
+
+<class classid="18" nclones="2" nlines="12" similarity="91">
+<source file="systems/raster-vision-0.13.1/tests/core/data/vector_source/test_geojson_vector_source.py" startline="124" endline="139" pcid="413">
+    def test_transform_geojson_line_buf(self):
+        geom = {'type': 'LineString', 'coordinates': [[10, 10], [10, 20]]}
+        geojson = self.geom_to_geojson(geom)
+
+        trans_geojson = self.transform_geojson(geojson, line_bufs={0: 5.0})
+        trans_geom = trans_geojson['features'][0]['geometry']
+        self.assertTrue(shape(geom).buffer(5.0).equals(shape(trans_geom)))
+
+        trans_geojson = self.transform_geojson(geojson, line_bufs={1: 5.0})
+        trans_geom = trans_geojson['features'][0]['geometry']
+        self.assertTrue(shape(geom).buffer(1.0).equals(shape(trans_geom)))
+
+        trans_geojson = self.transform_geojson(geojson, line_bufs={0: None})
+        trans_geom = trans_geojson['features'][0]['geometry']
+        self.assertTrue(shape(geom).equals(shape(trans_geom)))
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/core/data/vector_source/test_geojson_vector_source.py" startline="140" endline="155" pcid="414">
+    def test_transform_point_buf(self):
+        geom = {'type': 'Point', 'coordinates': [10, 10]}
+        geojson = self.geom_to_geojson(geom)
+
+        trans_geojson = self.transform_geojson(geojson, point_bufs={0: 5.0})
+        trans_geom = trans_geojson['features'][0]['geometry']
+        self.assertTrue(shape(geom).buffer(5.0).equals(shape(trans_geom)))
+
+        trans_geojson = self.transform_geojson(geojson, point_bufs={1: 5.0})
+        trans_geom = trans_geojson['features'][0]['geometry']
+        self.assertTrue(shape(geom).buffer(1.0).equals(shape(trans_geom)))
+
+        trans_geojson = self.transform_geojson(geojson, point_bufs={0: None})
+        trans_geom = trans_geojson['features'][0]['geometry']
+        self.assertTrue(shape(geom).equals(shape(trans_geom)))
+
+</source>
+</class>
+
+<class classid="19" nclones="2" nlines="10" similarity="90">
+<source file="systems/raster-vision-0.13.1/tests/core/evaluation/test_class_evaluation_item.py" startline="20" endline="30" pcid="491">
+    def test_merge_first_empty(self):
+        a = ClassEvaluationItem()
+        b = ClassEvaluationItem(
+            precision=1, recall=1, f1=1, count_error=0, gt_count=1)
+        a.merge(b)
+        self.assertEqual(a.precision, 1)
+        self.assertEqual(a.recall, 1)
+        self.assertEqual(a.f1, 1)
+        self.assertEqual(a.count_error, 0)
+        self.assertEqual(a.gt_count, 1)
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/core/evaluation/test_class_evaluation_item.py" startline="31" endline="41" pcid="492">
+    def test_merge_second_empty(self):
+        a = ClassEvaluationItem(
+            precision=1, recall=1, f1=1, count_error=0, gt_count=1)
+        b = ClassEvaluationItem()
+        a.merge(b)
+        self.assertEqual(a.precision, 1)
+        self.assertEqual(a.recall, 1)
+        self.assertEqual(a.f1, 1)
+        self.assertEqual(a.count_error, 0)
+        self.assertEqual(a.gt_count, 1)
+
+</source>
+</class>
+
+<class classid="20" nclones="3" nlines="21" similarity="76">
+<source file="systems/raster-vision-0.13.1/tests/core/evaluation/test_object_detection_evaluation.py" startline="36" endline="60" pcid="498">
+    def test_compute(self):
+        class_config = self.make_class_config()
+        eval = ObjectDetectionEvaluation(class_config)
+        gt_labels = self.make_ground_truth_labels()
+        pred_labels = self.make_predicted_labels()
+
+        eval.compute(gt_labels, pred_labels)
+        eval_item1 = eval.class_to_eval_item[0]
+        self.assertEqual(eval_item1.gt_count, 2)
+        self.assertEqual(eval_item1.precision, 1.0)
+        self.assertEqual(eval_item1.recall, 1.0)
+        self.assertEqual(eval_item1.f1, 1.0)
+
+        eval_item2 = eval.class_to_eval_item[1]
+        self.assertEqual(eval_item2.gt_count, 2)
+        self.assertEqual(eval_item2.precision, 1.0)
+        self.assertEqual(eval_item2.recall, 0.5)
+        self.assertEqual(eval_item2.f1, 2 / 3)
+
+        avg_item = eval.avg_item
+        self.assertEqual(avg_item.gt_count, 4)
+        self.assertAlmostEqual(avg_item.precision, 1.0)
+        self.assertEqual(avg_item.recall, 0.75)
+        self.assertAlmostEqual(avg_item.f1, 0.83, places=2)
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/core/evaluation/test_object_detection_evaluation.py" startline="61" endline="85" pcid="499">
+    def test_compute_no_preds(self):
+        class_config = self.make_class_config()
+        eval = ObjectDetectionEvaluation(class_config)
+        gt_labels = self.make_ground_truth_labels()
+        pred_labels = ObjectDetectionLabels.make_empty()
+
+        eval.compute(gt_labels, pred_labels)
+        eval_item1 = eval.class_to_eval_item[0]
+        self.assertEqual(eval_item1.gt_count, 2)
+        self.assertEqual(eval_item1.precision, None)
+        self.assertEqual(eval_item1.recall, 0.0)
+        self.assertEqual(eval_item1.f1, None)
+
+        eval_item2 = eval.class_to_eval_item[1]
+        self.assertEqual(eval_item2.gt_count, 2)
+        self.assertEqual(eval_item2.precision, None)
+        self.assertEqual(eval_item2.recall, 0.0)
+        self.assertEqual(eval_item2.f1, None)
+
+        avg_item = eval.avg_item
+        self.assertEqual(avg_item.gt_count, 4)
+        self.assertEqual(avg_item.precision, 0.0)
+        self.assertEqual(avg_item.recall, 0.0)
+        self.assertEqual(avg_item.f1, 0.0)
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/core/evaluation/test_object_detection_evaluation.py" startline="86" endline="111" pcid="500">
+    def test_compute_no_ground_truth(self):
+        class_config = self.make_class_config()
+        eval = ObjectDetectionEvaluation(class_config)
+        gt_labels = ObjectDetectionLabels.make_empty()
+        pred_labels = self.make_predicted_labels()
+
+        eval.compute(gt_labels, pred_labels)
+        eval_item1 = eval.class_to_eval_item[0]
+        self.assertEqual(eval_item1.gt_count, 0)
+        self.assertEqual(eval_item1.precision, None)
+        self.assertEqual(eval_item1.recall, None)
+        self.assertEqual(eval_item1.f1, None)
+
+        eval_item2 = eval.class_to_eval_item[1]
+        self.assertEqual(eval_item2.gt_count, 0)
+        self.assertEqual(eval_item2.precision, None)
+        self.assertEqual(eval_item2.recall, None)
+        self.assertEqual(eval_item2.f1, None)
+
+        avg_item = eval.avg_item
+        self.assertEqual(avg_item.gt_count, 0)
+        self.assertEqual(avg_item.precision, None)
+        self.assertEqual(avg_item.recall, None)
+        self.assertEqual(avg_item.f1, None)
+
+
+</source>
+</class>
+
+<class classid="21" nclones="2" nlines="11" similarity="90">
+<source file="systems/raster-vision-0.13.1/tests/core/evaluation/test_semantic_segmentation_evaluator.py" startline="100" endline="116" pcid="506">
+    def test_vector_evaluator(self):
+        output_uri = join(self.tmp_dir.name, 'raster-out.json')
+        vector_output_uri = join(self.tmp_dir.name, 'vector-out.json')
+        scenes = [self.get_vector_scene(0), self.get_vector_scene(1)]
+        evaluator = SemanticSegmentationEvaluator(
+            self.class_config, output_uri, vector_output_uri)
+        evaluator.process(scenes, self.tmp_dir.name)
+        vector_eval_json = file_to_json(vector_output_uri)
+        exp_vector_eval_json = file_to_json(
+            data_file_path('expected-vector-eval.json'))
+
+        # NOTE:  The precision  and recall  values found  in the  file
+        # `expected-vector-eval.json`  are equal to fractions of  the
+        # form (n-1)/n for  n <= 7 which  can be seen to  be (and have
+        # been manually verified to be) correct.
+        self.assertDictEqual(vector_eval_json, exp_vector_eval_json)
+
+</source>
+<source file="systems/raster-vision-0.13.1/tests/core/evaluation/test_semantic_segmentation_evaluator.py" startline="117" endline="134" pcid="507">
+    def test_vector_evaluator_with_aoi(self):
+        output_uri = join(self.tmp_dir.name, 'raster-out.json')
+        vector_output_uri = join(self.tmp_dir.name, 'vector-out.json')
+        scenes = [self.get_vector_scene(0, use_aoi=True)]
+        evaluator = SemanticSegmentationEvaluator(
+            self.class_config, output_uri, vector_output_uri)
+        evaluator.process(scenes, self.tmp_dir.name)
+        vector_eval_json = file_to_json(vector_output_uri)
+        exp_vector_eval_json = file_to_json(
+            data_file_path('expected-vector-eval-with-aoi.json'))
+
+        # NOTE:  The precision  and recall  values found  in the  file
+        # `expected-vector-eval.json`  are equal to fractions of  the
+        # form (n-1)/n for  n <= 7 which  can be seen to  be (and have
+        # been manually verified to be) correct.
+        self.assertDictEqual(vector_eval_json, exp_vector_eval_json)
+
+
+</source>
+</class>
+
+<class classid="22" nclones="2" nlines="11" similarity="81">
+<source file="systems/raster-vision-0.13.1/rastervision_core/rastervision/core/data/label_store/chip_classification_geojson_store.py" startline="26" endline="42" pcid="765">
+    def save(self, labels):
+        """Save labels to URI if writable.
+
+        Note that if the grid is inferred from polygons, only the grid will be
+        written, not the original polygons.
+        """
+        boxes = labels.get_cells()
+        class_ids = labels.get_class_ids()
+        scores = list(labels.get_scores())
+        geojson = boxes_to_geojson(
+            boxes,
+            class_ids,
+            self.crs_transformer,
+            self.class_config,
+            scores=scores)
+        json_to_file(geojson, self.uri)
+
+</source>
+<source file="systems/raster-vision-0.13.1/rastervision_core/rastervision/core/data/label_store/object_detection_geojson_store.py" startline="25" endline="37" pcid="775">
+    def save(self, labels):
+        """Save labels to URI."""
+        boxes = labels.get_boxes()
+        class_ids = labels.get_class_ids().tolist()
+        scores = labels.get_scores().tolist()
+        geojson = boxes_to_geojson(
+            boxes,
+            class_ids,
+            self.crs_transformer,
+            self.class_config,
+            scores=scores)
+        json_to_file(geojson, self.uri)
+
+</source>
+</class>
+
+<class classid="23" nclones="3" nlines="80" similarity="72">
+<source file="systems/raster-vision-0.13.1/integration_tests/semantic_segmentation/config.py" startline="17" endline="111" pcid="933">
+def get_config(runner, root_uri, data_uri=None, full_train=False,
+               nochip=False):
+    def get_path(part):
+        if full_train:
+            return join(data_uri, part)
+        else:
+            return join(dirname(__file__), part)
+
+    class_config = ClassConfig(names=['red', 'green'], colors=['red', 'green'])
+
+    def make_scene(id, img_path, label_path):
+        raster_source = RasterioSourceConfig(
+            channel_order=[0, 1, 2], uris=[img_path])
+        label_source = SemanticSegmentationLabelSourceConfig(
+            rgb_class_config=class_config,
+            raster_source=RasterioSourceConfig(uris=[label_path]))
+        label_store = SemanticSegmentationLabelStoreConfig(
+            rgb=True,
+            vector_output=[
+                PolygonVectorOutputConfig(class_id=0),
+                BuildingVectorOutputConfig(class_id=1)
+            ])
+
+        return SceneConfig(
+            id=id,
+            raster_source=raster_source,
+            label_source=label_source,
+            label_store=label_store)
+
+    chip_sz = 300
+    img_sz = chip_sz
+
+    scenes = [
+        make_scene('test-scene', get_path('scene/image.tif'),
+                   get_path('scene/labels.tif')),
+        make_scene('test-scene2', get_path('scene/image2.tif'),
+                   get_path('scene/labels2.tif'))
+    ]
+    scene_dataset = DatasetConfig(
+        class_config=class_config,
+        train_scenes=scenes,
+        validation_scenes=scenes)
+
+    chip_options = SemanticSegmentationChipOptions(
+        window_method=SemanticSegmentationWindowMethod.sliding, stride=chip_sz)
+
+    if nochip:
+        window_opts = GeoDataWindowConfig(
+            method=GeoDataWindowMethod.sliding,
+            stride=chip_options.stride,
+            size=chip_sz)
+
+        data = SemanticSegmentationGeoDataConfig(
+            scene_dataset=scene_dataset,
+            window_opts=window_opts,
+            img_sz=img_sz,
+            augmentors=[])
+    else:
+        data = SemanticSegmentationImageDataConfig(
+            img_sz=img_sz, augmentors=[])
+
+    if full_train:
+        model = SemanticSegmentationModelConfig(backbone=Backbone.resnet50)
+        solver = SolverConfig(
+            lr=1e-4,
+            num_epochs=300,
+            batch_sz=8,
+            one_cycle=True,
+            sync_interval=300)
+    else:
+        pretrained_uri = (
+            'https://github.com/azavea/raster-vision-data/releases/download/v0.12/'
+            'semantic-segmentation.pth')
+        model = SemanticSegmentationModelConfig(
+            backbone=Backbone.resnet50, init_weights=pretrained_uri)
+        solver = SolverConfig(
+            lr=1e-9,
+            num_epochs=1,
+            batch_sz=2,
+            one_cycle=True,
+            sync_interval=200)
+    backend = PyTorchSemanticSegmentationConfig(
+        data=data,
+        model=model,
+        solver=solver,
+        log_tensorboard=False,
+        run_tensorboard=False)
+
+    return SemanticSegmentationConfig(
+        root_uri=root_uri,
+        dataset=scene_dataset,
+        backend=backend,
+        train_chip_sz=chip_sz,
+        predict_chip_sz=chip_sz,
+        chip_options=chip_options)
+</source>
+<source file="systems/raster-vision-0.13.1/integration_tests/object_detection/config.py" startline="16" endline="107" pcid="936">
+def get_config(runner, root_uri, data_uri=None, full_train=False,
+               nochip=False):
+    def get_path(part):
+        if full_train:
+            return join(data_uri, part)
+        else:
+            return join(dirname(__file__), part)
+
+    class_config = ClassConfig(
+        names=['car', 'building'], colors=['blue', 'red'])
+
+    def make_scene(scene_id, img_path, label_path):
+        raster_source = RasterioSourceConfig(
+            channel_order=[0, 1, 2], uris=[img_path])
+        label_source = ObjectDetectionLabelSourceConfig(
+            vector_source=GeoJSONVectorSourceConfig(
+                uri=label_path, default_class_id=None))
+        return SceneConfig(
+            id=scene_id,
+            raster_source=raster_source,
+            label_source=label_source)
+
+    chip_sz = 300
+    img_sz = chip_sz
+
+    scenes = [
+        make_scene('od_test', get_path('scene/image.tif'),
+                   get_path('scene/labels.json')),
+        make_scene('od_test-2', get_path('scene/image2.tif'),
+                   get_path('scene/labels2.json'))
+    ]
+    scene_dataset = DatasetConfig(
+        class_config=class_config,
+        train_scenes=scenes,
+        validation_scenes=scenes)
+
+    chip_options = ObjectDetectionChipOptions(neg_ratio=1.0, ioa_thresh=1.0)
+
+    if nochip:
+        window_opts = ObjectDetectionGeoDataWindowConfig(
+            method=GeoDataWindowMethod.sliding,
+            stride=chip_sz,
+            size=chip_sz,
+            neg_ratio=chip_options.neg_ratio,
+            ioa_thresh=chip_options.ioa_thresh)
+
+        data = ObjectDetectionGeoDataConfig(
+            scene_dataset=scene_dataset,
+            window_opts=window_opts,
+            img_sz=img_sz,
+            augmentors=[])
+    else:
+        data = ObjectDetectionImageDataConfig(img_sz=img_sz, augmentors=[])
+
+    if full_train:
+        model = ObjectDetectionModelConfig(backbone=Backbone.resnet18)
+        solver = SolverConfig(
+            lr=1e-4,
+            num_epochs=300,
+            batch_sz=8,
+            one_cycle=True,
+            sync_interval=300)
+    else:
+        pretrained_uri = (
+            'https://github.com/azavea/raster-vision-data/releases/download/v0.12/'
+            'object-detection.pth')
+        model = ObjectDetectionModelConfig(
+            backbone=Backbone.resnet18, init_weights=pretrained_uri)
+        solver = SolverConfig(
+            lr=1e-9,
+            num_epochs=1,
+            batch_sz=2,
+            one_cycle=True,
+            sync_interval=200)
+    backend = PyTorchObjectDetectionConfig(
+        data=data,
+        model=model,
+        solver=solver,
+        log_tensorboard=False,
+        run_tensorboard=False)
+
+    predict_options = ObjectDetectionPredictOptions(
+        merge_thresh=0.1, score_thresh=0.5)
+
+    return ObjectDetectionConfig(
+        root_uri=root_uri,
+        dataset=scene_dataset,
+        backend=backend,
+        train_chip_sz=chip_sz,
+        predict_chip_sz=chip_sz,
+        chip_options=chip_options,
+        predict_options=predict_options)
+</source>
+<source file="systems/raster-vision-0.13.1/integration_tests/chip_classification/config.py" startline="15" endline="105" pcid="939">
+def get_config(runner, root_uri, data_uri=None, full_train=False,
+               nochip=False):
+    def get_path(part):
+        if full_train:
+            return join(data_uri, part)
+        else:
+            return join(dirname(__file__), part)
+
+    class_config = ClassConfig(
+        names=['car', 'building', 'background'],
+        colors=['red', 'blue', 'black'])
+
+    def make_scene(img_path, label_path):
+        id = basename(img_path)
+        label_source = ChipClassificationLabelSourceConfig(
+            vector_source=GeoJSONVectorSourceConfig(
+                uri=label_path, default_class_id=None, ignore_crs_field=True),
+            ioa_thresh=0.5,
+            use_intersection_over_cell=False,
+            pick_min_class_id=True,
+            background_class_id=2,
+            infer_cells=True)
+
+        raster_source = RasterioSourceConfig(
+            channel_order=[0, 1, 2],
+            uris=[img_path],
+            transformers=[StatsTransformerConfig()])
+
+        return SceneConfig(
+            id=id, raster_source=raster_source, label_source=label_source)
+
+    scenes = [
+        make_scene(get_path('scene/image.tif'), get_path('scene/labels.json')),
+        make_scene(
+            get_path('scene/image2.tif'), get_path('scene/labels2.json'))
+    ]
+    scene_dataset = DatasetConfig(
+        class_config=class_config,
+        train_scenes=scenes,
+        validation_scenes=scenes)
+
+    chip_sz = 200
+    img_sz = chip_sz
+
+    if nochip:
+        window_opts = GeoDataWindowConfig(
+            method=GeoDataWindowMethod.sliding, stride=chip_sz, size=chip_sz)
+
+        data = ClassificationGeoDataConfig(
+            scene_dataset=scene_dataset,
+            window_opts=window_opts,
+            img_sz=img_sz,
+            augmentors=[])
+    else:
+        data = ClassificationImageDataConfig(img_sz=img_sz, augmentors=[])
+
+    if full_train:
+        model = ClassificationModelConfig(backbone=Backbone.resnet18)
+        solver = SolverConfig(
+            lr=1e-4,
+            num_epochs=300,
+            batch_sz=8,
+            one_cycle=True,
+            sync_interval=300)
+    else:
+        pretrained_uri = (
+            'https://github.com/azavea/raster-vision-data/releases/download/v0.12/'
+            'chip-classification.pth')
+        model = ClassificationModelConfig(
+            backbone=Backbone.resnet18, init_weights=pretrained_uri)
+        solver = SolverConfig(
+            lr=1e-9,
+            num_epochs=1,
+            batch_sz=2,
+            one_cycle=True,
+            sync_interval=200)
+    backend = PyTorchChipClassificationConfig(
+        data=data,
+        model=model,
+        solver=solver,
+        log_tensorboard=False,
+        run_tensorboard=False)
+
+    config = ChipClassificationConfig(
+        root_uri=root_uri,
+        dataset=scene_dataset,
+        backend=backend,
+        train_chip_sz=chip_sz,
+        predict_chip_sz=chip_sz)
+
+    return config
+</source>
+</class>
+
+</clones>

@@ -1,0 +1,299 @@
+<html>
+<head>
+    <title>NiCad6 Clone Report</title>
+    <style type="text/css">
+        body {font-family:sans-serif;}
+        table {background-color:white; border:0px; padding:0px; border-spacing:4px; width:auto; margin-left:30px; margin-right:auto;}
+        td {background-color:rgba(192,212,238,0.8); border:0px; padding:8px; width:auto; vertical-align:top; border-radius:8px}
+        pre {background-color:white; padding:4px;}
+        a {color:darkblue;}
+    </style>
+</head>
+<body>
+<h2>NiCad6 Clone Report</h2>
+<table>
+<tr style="font-size:14pt">
+<td><b>System:</b> &nbsp; celery-5.2.3</td>
+<td><b>Clone pairs:</b> &nbsp; 4</td>
+<td><b>Clone classes:</b> &nbsp; 4</td>
+</tr>
+<tr style="font-size:12pt">
+<td style="background-color:white">Clone type: &nbsp; 2</td>
+<td style="background-color:white">Granularity: &nbsp; functions-blind</td>
+<td style="background-color:white">Max diff threshold: &nbsp; 0%</td>
+<td style="background-color:white">Clone size: &nbsp; 10 - 2500 lines</td>
+<td style="background-color:white">Total functions-blind: &nbsp; 2666</td>
+</tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 1:</b> &nbsp; 2 fragments, nominal size 10 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag697')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_mongodb.py: 321-335
+</a>
+<div class="mid" id="frag697" style="display:none"><pre>
+    @patch('celery.backends.mongodb.MongoBackend._get_connection')
+    def test_get_database_no_existing(self, mock_get_connection):
+        # Should really check for combinations of these two, to be complete.
+        self.backend.user = MONGODB_USER
+        self.backend.password = MONGODB_PASSWORD
+
+        mock_database = Mock()
+        mock_connection = MagicMock(spec=['__getitem__'])
+        mock_connection.__getitem__.return_value = mock_database
+        mock_get_connection.return_value = mock_connection
+
+        database = self.backend.database
+
+        assert database is mock_database
+        assert self.backend.__dict__['database'] is mock_database
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag698')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_mongodb.py: 337-351
+</a>
+<div class="mid" id="frag698" style="display:none"><pre>
+    @patch('celery.backends.mongodb.MongoBackend._get_connection')
+    def test_get_database_no_existing_no_auth(self, mock_get_connection):
+        # Should really check for combinations of these two, to be complete.
+        self.backend.user = None
+        self.backend.password = None
+
+        mock_database = Mock()
+        mock_connection = MagicMock(spec=['__getitem__'])
+        mock_connection.__getitem__.return_value = mock_database
+        mock_get_connection.return_value = mock_connection
+
+        database = self.backend.database
+
+        assert database is mock_database
+        assert self.backend.__dict__['database'] is mock_database
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 2:</b> &nbsp; 2 fragments, nominal size 30 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag849')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_elasticsearch.py: 156-194
+</a>
+<div class="mid" id="frag849" style="display:none"><pre>
+    def test_index_conflict_without_state(self, datetime_mock):
+        expected_dt = datetime.datetime(2020, 6, 1, 18, 43, 24, 123456, None)
+        datetime_mock.utcnow.return_value = expected_dt
+
+        x = ElasticsearchBackend(app=self.app)
+        x._server = Mock()
+        x._server.index.side_effect = [
+            exceptions.ConflictError(409, "concurrent update", {})
+        ]
+
+        x._server.get.return_value = {
+            'found': True,
+            '_source': {"result": _RESULT_RETRY},
+            '_seq_no': 2,
+            '_primary_term': 1,
+        }
+
+        x._server.update.return_value = {
+            'result': 'updated'
+        }
+
+        x.set(sentinel.task_id, sentinel.result)
+
+        assert x._server.get.call_count == 1
+        x._server.index.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'},
+            params={'op_type': 'create'},
+        )
+        x._server.update.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'doc': {'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'}},
+            params={'if_seq_no': 2, 'if_primary_term': 1}
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag850')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_elasticsearch.py: 196-239
+</a>
+<div class="mid" id="frag850" style="display:none"><pre>
+    def test_index_conflict_with_ready_state_on_backend_without_state(self, datetime_mock):
+        """Even if the backend already have a ready state saved (FAILURE in this test case)
+        as we are calling ElasticsearchBackend.set directly, it does not have state,
+        so it cannot protect overriding a ready state by any other state.
+        As a result, server.update will be called no matter what.
+        """
+        expected_dt = datetime.datetime(2020, 6, 1, 18, 43, 24, 123456, None)
+        datetime_mock.utcnow.return_value = expected_dt
+
+        x = ElasticsearchBackend(app=self.app)
+        x._server = Mock()
+        x._server.index.side_effect = [
+            exceptions.ConflictError(409, "concurrent update", {})
+        ]
+
+        x._server.get.return_value = {
+            'found': True,
+            '_source': {"result": _RESULT_FAILURE},
+            '_seq_no': 2,
+            '_primary_term': 1,
+        }
+
+        x._server.update.return_value = {
+            'result': 'updated'
+        }
+
+        x.set(sentinel.task_id, sentinel.result)
+
+        assert x._server.get.call_count == 1
+        x._server.index.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'},
+            params={'op_type': 'create'},
+        )
+        x._server.update.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'doc': {'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'}},
+            params={'if_seq_no': 2, 'if_primary_term': 1}
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 3:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag876')" href="javascript:;">
+celery-5.2.3/t/unit/security/test_key.py: 18-29
+</a>
+<div class="mid" id="frag876" style="display:none"><pre>
+    def test_invalid_private_key(self):
+        with pytest.raises((SecurityError, TypeError)):
+            PrivateKey(None)
+        with pytest.raises(SecurityError):
+            PrivateKey('')
+        with pytest.raises(SecurityError):
+            PrivateKey('foo')
+        with pytest.raises(SecurityError):
+            PrivateKey(KEY1[:20] + KEY1[21:])
+        with pytest.raises(SecurityError):
+            PrivateKey(CERT1)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag889')" href="javascript:;">
+celery-5.2.3/t/unit/security/test_certificate.py: 21-32
+</a>
+<div class="mid" id="frag889" style="display:none"><pre>
+    def test_invalid_certificate(self):
+        with pytest.raises((SecurityError, TypeError)):
+            Certificate(None)
+        with pytest.raises(SecurityError):
+            Certificate('')
+        with pytest.raises(SecurityError):
+            Certificate('foo')
+        with pytest.raises(SecurityError):
+            Certificate(CERT1[:20] + CERT1[21:])
+        with pytest.raises(SecurityError):
+            Certificate(KEY1)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 4:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1162')" href="javascript:;">
+celery-5.2.3/t/unit/worker/test_loops.py: 353-364
+</a>
+<div class="mid" id="frag1162" style="display:none"><pre>
+    def test_poll_err_writable(self):
+        x = X(self.app)
+        writer = Mock(name='writer')
+        x.hub.add_writer(6, writer, 6, 48)
+        x.hub.on_tick.add(x.close_then_error(Mock(), 2))
+        poller = x.hub.poller
+        poller.poll.return_value = [(6, ERR)]
+        with pytest.raises(socket.error):
+            asynloop(*x.args)
+        writer.assert_called_with(6, 48)
+        poller.poll.assert_called()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1169')" href="javascript:;">
+celery-5.2.3/t/unit/worker/test_loops.py: 413-424
+</a>
+<div class="mid" id="frag1169" style="display:none"><pre>
+    def test_poll_err_readable(self):
+        x = X(self.app)
+        reader = Mock(name='reader')
+        x.hub.add_reader(6, reader, 6, 24)
+        x.hub.on_tick.add(x.close_then_error(Mock(), 2))
+        poller = x.hub.poller
+        poller.poll.return_value = [(6, ERR)]
+        with pytest.raises(socket.error):
+            asynloop(*x.args)
+        reader.assert_called_with(6, 24)
+        poller.poll.assert_called()
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<script language="JavaScript">
+function ShowHide(divId) { 
+    if(document.getElementById(divId).style.display == 'none') {
+        document.getElementById(divId).style.display='block';
+    } else { 
+        document.getElementById(divId).style.display = 'none';
+    } 
+}
+</script>
+</body>
+</html>

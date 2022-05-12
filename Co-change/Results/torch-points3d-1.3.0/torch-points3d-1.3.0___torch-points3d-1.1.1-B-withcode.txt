@@ -1,0 +1,468 @@
+<clonepair1>
+<source file="systems/torch-points3d-1.1.1/test/test_api.py" startline="197" endline="253" pcid="1183"></source>
+    def test_kpconv(self):
+        from torch_points3d.applications.kpconv import KPConv
+
+        input_nc = 3
+        num_layers = 4
+        grid_sampling = 0.02
+        in_feat = 16
+        model = KPConv(
+            architecture="encoder",
+            input_nc=input_nc,
+            in_feat=in_feat,
+            in_grid_size=grid_sampling,
+            num_layers=num_layers,
+            config=None,
+        )
+        dataset = MockDatasetGeometric(input_nc + 1, transform=GridSampling3D(0.01), num_points=128)
+        self.assertEqual(len(model._modules["down_modules"]), num_layers + 1)
+        self.assertEqual(len(model._modules["inner_modules"]), 1)
+        self.assertFalse(model.has_mlp_head)
+        self.assertEqual(model.output_nc, 32 * in_feat)
+
+        try:
+            data_out = model.forward(dataset[0])
+            self.assertEqual(data_out.x.shape[1], 32 * in_feat)
+        except Exception as e:
+            print("Model failing:")
+            print(model)
+            raise e
+
+        input_nc = 3
+        num_layers = 4
+        grid_sampling = 0.02
+        in_feat = 32
+        output_nc = 5
+        model = KPConv(
+            architecture="encoder",
+            input_nc=input_nc,
+            output_nc=output_nc,
+            in_feat=in_feat,
+            in_grid_size=grid_sampling,
+            num_layers=num_layers,
+            config=None,
+        )
+        dataset = MockDatasetGeometric(input_nc + 1, transform=GridSampling3D(0.01), num_points=128)
+        self.assertEqual(len(model._modules["down_modules"]), num_layers + 1)
+        self.assertEqual(len(model._modules["inner_modules"]), 1)
+        self.assertTrue(model.has_mlp_head)
+        self.assertEqual(model.output_nc, output_nc)
+
+        try:
+            data_out = model.forward(dataset[0])
+            self.assertEqual(data_out.x.shape[1], output_nc)
+        except Exception as e:
+            print("Model failing:")
+            print(model)
+            raise e
+
+</clonepair1>
+
+<clonepair1>
+<source file="systems/torch-points3d-1.1.1/test/test_api.py" startline="306" endline="357" pcid="1186"></source>
+    def test_minkowski(self):
+        from torch_points3d.applications.minkowski import Minkowski
+
+        input_nc = 3
+        num_layers = 4
+        in_feat = 16
+        model = Minkowski(
+            architecture="encoder", input_nc=input_nc, in_feat=in_feat, num_layers=num_layers, config=None,
+        )
+        dataset = MockDatasetGeometric(input_nc, transform=GridSampling3D(0.01, quantize_coords=True), num_points=128)
+        self.assertEqual(len(model._modules["down_modules"]), num_layers)
+        self.assertEqual(len(model._modules["inner_modules"]), 1)
+        self.assertFalse(model.has_mlp_head)
+        self.assertEqual(model.output_nc, 8 * in_feat)
+
+        try:
+            data_out = model.forward(dataset[0])
+            # self.assertEqual(data_out.x.shape[1], 8 * in_feat)
+        except Exception as e:
+            print("Model failing:")
+            print(model)
+            raise e
+
+        input_nc = 3
+        num_layers = 4
+        grid_sampling = 0.02
+        in_feat = 32
+        output_nc = 5
+        model = Minkowski(
+            architecture="encoder",
+            input_nc=input_nc,
+            output_nc=output_nc,
+            in_feat=in_feat,
+            in_grid_size=grid_sampling,
+            num_layers=num_layers,
+            config=None,
+        )
+        dataset = MockDatasetGeometric(input_nc, transform=GridSampling3D(0.01, quantize_coords=True), num_points=128)
+        self.assertEqual(len(model._modules["down_modules"]), num_layers)
+        self.assertEqual(len(model._modules["inner_modules"]), 1)
+        self.assertTrue(model.has_mlp_head)
+        self.assertEqual(model.output_nc, output_nc)
+
+        try:
+            data_out = model.forward(dataset[0])
+            self.assertEqual(data_out.x.shape[1], output_nc)
+        except Exception as e:
+            print("Model failing:")
+            print(model)
+            raise e
+
+
+</clonepair1>
+<clonepair2>
+<source file="systems/torch-points3d-1.1.1/torch_points3d/models/segmentation/rsconv.py" startline="18" endline="48" pcid="190"></source>
+    def __init__(self, option, model_type, dataset, modules):
+        # call the initialization method of UnwrappedUnetBasedModel
+        UnwrappedUnetBasedModel.__init__(self, option, model_type, dataset, modules)
+        self._num_classes = dataset.num_classes
+        self._weight_classes = dataset.weight_classes
+        self._use_category = getattr(option, "use_category", False)
+        if self._use_category:
+            if not dataset.class_to_segments:
+                raise ValueError(
+                    "The dataset needs to specify a class_to_segments property when using category information for segmentation"
+                )
+            self._num_categories = len(dataset.class_to_segments.keys())
+            log.info("Using category information for the predictions with %i categories", self._num_categories)
+        else:
+            self._num_categories = 0
+
+        # Last MLP
+        last_mlp_opt = option.mlp_cls
+
+        self.FC_layer = Seq()
+        last_mlp_opt.nn[0] += self._num_categories
+        for i in range(1, len(last_mlp_opt.nn)):
+            self.FC_layer.append(Conv1D(last_mlp_opt.nn[i - 1], last_mlp_opt.nn[i], bn=True, bias=False))
+        if last_mlp_opt.dropout:
+            self.FC_layer.append(torch.nn.Dropout(p=last_mlp_opt.dropout))
+
+        self.FC_layer.append(Conv1D(last_mlp_opt.nn[-1], self._num_classes, activation=None, bias=True, bn=False))
+        self.loss_names = ["loss_seg"]
+
+        self.visual_names = ["data_visual"]
+
+</clonepair2>
+
+<clonepair2>
+<source file="systems/torch-points3d-1.1.1/torch_points3d/models/segmentation/pointnet2.py" startline="34" endline="64" pcid="222"></source>
+    def __init__(self, option, model_type, dataset, modules):
+        # call the initialization method of UnetBasedModel
+        UnetBasedModel.__init__(self, option, model_type, dataset, modules)
+        self._num_classes = dataset.num_classes
+        self._weight_classes = dataset.weight_classes
+        self._use_category = getattr(option, "use_category", False)
+        if self._use_category:
+            if not dataset.class_to_segments:
+                raise ValueError(
+                    "The dataset needs to specify a class_to_segments property when using category information for segmentation"
+                )
+            self._num_categories = len(dataset.class_to_segments.keys())
+            log.info("Using category information for the predictions with %i categories", self._num_categories)
+        else:
+            self._num_categories = 0
+
+        # Last MLP
+        last_mlp_opt = option.mlp_cls
+
+        self.FC_layer = Seq()
+        last_mlp_opt.nn[0] += self._num_categories
+        for i in range(1, len(last_mlp_opt.nn)):
+            self.FC_layer.append(Conv1D(last_mlp_opt.nn[i - 1], last_mlp_opt.nn[i], bn=True, bias=False))
+        if last_mlp_opt.dropout:
+            self.FC_layer.append(torch.nn.Dropout(p=last_mlp_opt.dropout))
+
+        self.FC_layer.append(Conv1D(last_mlp_opt.nn[-1], self._num_classes, activation=None, bias=True, bn=False))
+        self.loss_names = ["loss_seg"]
+
+        self.visual_names = ["data_visual"]
+
+</clonepair2>
+<clonepair3>
+<source file="systems/torch-points3d-1.1.1/test/test_lr_scheduler.py" startline="25" endline="48" pcid="1094"></source>
+    def test_update_scheduler_on_epoch(self):
+
+        base_lr = 0.1
+        gamma = 0.9
+        conf = os.path.join(DIR, "test_config/lr_scheduler.yaml")
+        opt = OmegaConf.load(conf)
+        opt.update_lr_scheduler_on = "on_epoch"
+        model = DifferentiableMockModel(opt)
+        model.instantiate_optimizers(opt)
+        model.schedulers.__repr__()
+
+        data = Data(pos=torch.randn((1, 3)))
+        model.set_input(data, torch.device("cpu"))
+
+        num_epochs = 5
+        num_samples_epoch = 32
+        batch_size = 4
+        steps = num_samples_epoch // batch_size
+
+        for epoch in range(num_epochs):
+            for step in range(steps):
+                model.optimize_parameters(epoch, batch_size)
+        self.assertEqual(get_lr(model._optimizer), base_lr * gamma ** (num_epochs - 1))
+
+</clonepair3>
+
+<clonepair3>
+<source file="systems/torch-points3d-1.1.1/test/test_lr_scheduler.py" startline="72" endline="96" pcid="1096"></source>
+    def test_update_scheduler_on_batch(self):
+        base_lr = 0.1
+        gamma = 0.9
+        conf = os.path.join(DIR, "test_config/lr_scheduler.yaml")
+        opt = OmegaConf.load(conf)
+        opt.update_lr_scheduler_on = "on_num_batch"
+        model = DifferentiableMockModel(opt)
+        model.instantiate_optimizers(opt)
+
+        data = Data(pos=torch.randn((1, 3)))
+        model.set_input(data, torch.device("cpu"))
+
+        num_epochs = 5
+        num_samples_epoch = 32
+        batch_size = 4
+        steps = num_samples_epoch // batch_size
+
+        count_batch = 0
+        for epoch in range(num_epochs):
+            for step in range(steps):
+                count_batch += 1
+                model.optimize_parameters(epoch, batch_size)
+        self.assertEqual(get_lr(model._optimizer), base_lr * gamma ** (count_batch))
+
+
+</clonepair3>
+<clonepair4>
+<source file="systems/torch-points3d-1.1.1/test/test_lr_scheduler.py" startline="49" endline="71" pcid="1095"></source>
+    def test_update_scheduler_on_sample(self):
+        base_lr = 0.1
+        gamma = 0.9
+        conf = os.path.join(DIR, "test_config/lr_scheduler.yaml")
+        opt = OmegaConf.load(conf)
+        opt.update_lr_scheduler_on = "on_num_sample"
+        model = DifferentiableMockModel(opt)
+        model.instantiate_optimizers(opt)
+
+        data = Data(pos=torch.randn((1, 3)))
+        model.set_input(data, torch.device("cpu"))
+
+        num_epochs = 5
+        num_samples_epoch = 32
+        batch_size = 4
+        steps = num_samples_epoch // batch_size
+
+        for epoch in range(num_epochs):
+            for step in range(steps):
+                model.optimize_parameters(epoch, batch_size)
+
+        self.assertEqual(get_lr(model._optimizer), base_lr * gamma ** (num_epochs - 1))
+
+</clonepair4>
+
+<clonepair4>
+<source file="systems/torch-points3d-1.1.1/test/test_lr_scheduler.py" startline="72" endline="96" pcid="1096"></source>
+    def test_update_scheduler_on_batch(self):
+        base_lr = 0.1
+        gamma = 0.9
+        conf = os.path.join(DIR, "test_config/lr_scheduler.yaml")
+        opt = OmegaConf.load(conf)
+        opt.update_lr_scheduler_on = "on_num_batch"
+        model = DifferentiableMockModel(opt)
+        model.instantiate_optimizers(opt)
+
+        data = Data(pos=torch.randn((1, 3)))
+        model.set_input(data, torch.device("cpu"))
+
+        num_epochs = 5
+        num_samples_epoch = 32
+        batch_size = 4
+        steps = num_samples_epoch // batch_size
+
+        count_batch = 0
+        for epoch in range(num_epochs):
+            for step in range(steps):
+                count_batch += 1
+                model.optimize_parameters(epoch, batch_size)
+        self.assertEqual(get_lr(model._optimizer), base_lr * gamma ** (count_batch))
+
+
+</clonepair4>
+<clonepair5>
+<source file="systems/torch-points3d-1.1.1/test/test_lr_scheduler.py" startline="25" endline="48" pcid="1094"></source>
+    def test_update_scheduler_on_epoch(self):
+
+        base_lr = 0.1
+        gamma = 0.9
+        conf = os.path.join(DIR, "test_config/lr_scheduler.yaml")
+        opt = OmegaConf.load(conf)
+        opt.update_lr_scheduler_on = "on_epoch"
+        model = DifferentiableMockModel(opt)
+        model.instantiate_optimizers(opt)
+        model.schedulers.__repr__()
+
+        data = Data(pos=torch.randn((1, 3)))
+        model.set_input(data, torch.device("cpu"))
+
+        num_epochs = 5
+        num_samples_epoch = 32
+        batch_size = 4
+        steps = num_samples_epoch // batch_size
+
+        for epoch in range(num_epochs):
+            for step in range(steps):
+                model.optimize_parameters(epoch, batch_size)
+        self.assertEqual(get_lr(model._optimizer), base_lr * gamma ** (num_epochs - 1))
+
+</clonepair5>
+
+<clonepair5>
+<source file="systems/torch-points3d-1.1.1/test/test_lr_scheduler.py" startline="49" endline="71" pcid="1095"></source>
+    def test_update_scheduler_on_sample(self):
+        base_lr = 0.1
+        gamma = 0.9
+        conf = os.path.join(DIR, "test_config/lr_scheduler.yaml")
+        opt = OmegaConf.load(conf)
+        opt.update_lr_scheduler_on = "on_num_sample"
+        model = DifferentiableMockModel(opt)
+        model.instantiate_optimizers(opt)
+
+        data = Data(pos=torch.randn((1, 3)))
+        model.set_input(data, torch.device("cpu"))
+
+        num_epochs = 5
+        num_samples_epoch = 32
+        batch_size = 4
+        steps = num_samples_epoch // batch_size
+
+        for epoch in range(num_epochs):
+            for step in range(steps):
+                model.optimize_parameters(epoch, batch_size)
+
+        self.assertEqual(get_lr(model._optimizer), base_lr * gamma ** (num_epochs - 1))
+
+</clonepair5>
+<clonepair6>
+<source file="systems/torch-points3d-1.1.1/torch_points3d/modules/MinkowskiEngine/modules.py" startline="42" endline="60" pcid="953"></source>
+    def forward(self, x):
+        residual = x
+
+        out = self.conv1(x)
+        out = self.norm1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.norm2(out)
+
+        if self.downsample is not None:
+            residual = self.downsample(x)
+
+        out += residual
+        out = self.relu(out)
+
+        return out
+
+
+</clonepair6>
+
+<clonepair6>
+<source file="systems/torch-points3d-1.1.1/torch_points3d/modules/MinkowskiEngine/res16unet.py" startline="231" endline="245" pcid="978"></source>
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.pool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        x = self.final(x)
+        return x
+
+
+</clonepair6>
+<clonepair7>
+<source file="systems/torch-points3d-1.1.1/torch_points3d/modules/MinkowskiEngine/modules.py" startline="42" endline="60" pcid="953"></source>
+    def forward(self, x):
+        residual = x
+
+        out = self.conv1(x)
+        out = self.norm1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.norm2(out)
+
+        if self.downsample is not None:
+            residual = self.downsample(x)
+
+        out += residual
+        out = self.relu(out)
+
+        return out
+
+
+</clonepair7>
+
+<clonepair7>
+<source file="systems/torch-points3d-1.1.1/torch_points3d/modules/MinkowskiEngine/res16unet.py" startline="231" endline="245" pcid="978"></source>
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.pool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        x = self.final(x)
+        return x
+
+
+</clonepair7>
+<clonepair8>
+<source file="systems/torch-points3d-1.1.1/test/test_sampler.py" startline="45" endline="58" pcid="1100"></source>
+    def test_multi_radius_search(self):
+        x = torch.Tensor([[-1, -1], [-1, 1], [1, -1], [1, 1]])
+        batch_x = torch.tensor([0, 0, 0, 0])
+        y = torch.Tensor([[-1, 0], [1, 0]])
+        batch_y = torch.tensor([0, 0])
+        nei_finder = MultiscaleRadiusNeighbourFinder([1, 10], 4)
+        multiscale = []
+        for i in range(2):
+            multiscale.append(nei_finder(x, y, batch_x, batch_y, i))
+
+        self.assertEqual(len(multiscale), 2)
+        self.assertEqual(multiscale[0][1, :].shape[0], 4)
+        self.assertEqual(multiscale[1][1, :].shape[0], 8)
+
+</clonepair8>
+
+<clonepair8>
+<source file="systems/torch-points3d-1.1.1/test/test_sampler.py" startline="73" endline="87" pcid="1102"></source>
+    def test_multiall(self):
+        x = torch.Tensor([[-1, -1], [-1, 1], [1, -1], [1, 1]])
+        batch_x = torch.tensor([0, 0, 0, 0])
+        y = torch.Tensor([[-1, 0], [1, 0]])
+        batch_y = torch.tensor([0, 0])
+
+        nei_finder = MultiscaleRadiusNeighbourFinder([1, 10], [3, 4])
+        multiscale = []
+        for i in range(2):
+            multiscale.append(nei_finder(x, y, batch_x, batch_y, i))
+
+        self.assertEqual(len(multiscale), 2)
+        self.assertEqual(multiscale[0][1, :].shape[0], 4)
+        self.assertEqual(multiscale[1][1, :].shape[0], 8)
+
+</clonepair8>

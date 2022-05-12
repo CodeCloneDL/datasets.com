@@ -1,0 +1,340 @@
+<clonepair1>
+<source file="systems/coach-0.12.1/rl_coach/tests/test_coach_args.py" startline="158" endline="201" pcid="763"></source>
+def test_preset_n_and_ew(preset_args, clres, start_time=time.time(),
+                         time_limit=Def.TimeOuts.test_time_limit):
+    """
+    Test command arguments - check evaluation worker with number of workers
+    """
+
+    ew_flag = ['-ew']
+    n_flag = ['-n', Def.Flags.enw]
+    p_valid_params = p_utils.validation_params(preset_args)
+
+    run_cmd = [
+        'python3', 'rl_coach/coach.py',
+        '-p', '{}'.format(preset_args),
+        '-e', '{}'.format("ExpName_" + preset_args),
+    ]
+
+    # add flags to run command
+    test_ew_flag = a_utils.add_one_flag_value(flag=ew_flag)
+    test_n_flag = a_utils.add_one_flag_value(flag=n_flag)
+    run_cmd.extend(test_ew_flag)
+    run_cmd.extend(test_n_flag)
+
+    print(str(run_cmd))
+
+    proc = subprocess.Popen(run_cmd, stdout=clres.stdout, stderr=clres.stdout)
+
+    try:
+        a_utils.validate_arg_result(flag=test_ew_flag,
+                                    p_valid_params=p_valid_params, clres=clres,
+                                    process=proc, start_time=start_time,
+                                    timeout=time_limit)
+
+        a_utils.validate_arg_result(flag=test_n_flag,
+                                    p_valid_params=p_valid_params, clres=clres,
+                                    process=proc, start_time=start_time,
+                                    timeout=time_limit)
+    except AssertionError:
+        # close process once get assert false
+        proc.kill()
+        assert False
+
+    proc.kill()
+
+
+</clonepair1>
+
+<clonepair1>
+<source file="systems/coach-0.12.1/rl_coach/tests/test_coach_args.py" startline="204" endline="264" pcid="764"></source>
+def test_preset_n_and_ew_and_onnx(preset_args, clres, start_time=time.time(),
+                                  time_limit=Def.TimeOuts.test_time_limit):
+    """
+    Test command arguments - check evaluation worker, number of workers and
+                             onnx.
+    """
+
+    ew_flag = ['-ew']
+    n_flag = ['-n', Def.Flags.enw]
+    onnx_flag = ['-onnx']
+    s_flag = ['-s', Def.Flags.css]
+    p_valid_params = p_utils.validation_params(preset_args)
+
+    run_cmd = [
+        'python3', 'rl_coach/coach.py',
+        '-p', '{}'.format(preset_args),
+        '-e', '{}'.format("ExpName_" + preset_args),
+    ]
+
+    # add flags to run command
+    test_ew_flag = a_utils.add_one_flag_value(flag=ew_flag)
+    test_n_flag = a_utils.add_one_flag_value(flag=n_flag)
+    test_onnx_flag = a_utils.add_one_flag_value(flag=onnx_flag)
+    test_s_flag = a_utils.add_one_flag_value(flag=s_flag)
+
+    run_cmd.extend(test_ew_flag)
+    run_cmd.extend(test_n_flag)
+    run_cmd.extend(test_onnx_flag)
+    run_cmd.extend(test_s_flag)
+
+    print(str(run_cmd))
+
+    proc = subprocess.Popen(run_cmd, stdout=clres.stdout, stderr=clres.stdout)
+
+    try:
+        # Check csv files has been created
+        a_utils.validate_arg_result(flag=test_ew_flag,
+                                    p_valid_params=p_valid_params, clres=clres,
+                                    process=proc, start_time=start_time,
+                                    timeout=time_limit)
+
+        # Check csv files created same as the number of the workers
+        a_utils.validate_arg_result(flag=test_n_flag,
+                                    p_valid_params=p_valid_params, clres=clres,
+                                    process=proc, start_time=start_time,
+                                    timeout=time_limit)
+
+        # Check checkpoint files
+        a_utils.validate_arg_result(flag=test_s_flag,
+                                    p_valid_params=p_valid_params, clres=clres,
+                                    process=proc, start_time=start_time,
+                                    timeout=time_limit)
+
+        # TODO: add onnx check; issue found #257
+
+    except AssertionError:
+        # close process once get assert false
+        proc.kill()
+        assert False
+
+    proc.kill()
+</clonepair1>
+<clonepair2>
+<source file="systems/coach-0.12.1/rl_coach/tests/test_coach_args.py" startline="26" endline="69" pcid="759"></source>
+def test_preset_args(preset_args, flag, clres, start_time=time.time(),
+                     time_limit=Def.TimeOuts.test_time_limit):
+    """ Test command arguments - the test will check all flags one-by-one."""
+
+    p_valid_params = p_utils.validation_params(preset_args)
+
+    run_cmd = [
+        'python3', 'rl_coach/coach.py',
+        '-p', '{}'.format(preset_args),
+        '-e', '{}'.format("ExpName_" + preset_args),
+    ]
+
+    if p_valid_params.reward_test_level:
+        lvl = ['-lvl', '{}'.format(p_valid_params.reward_test_level)]
+        run_cmd.extend(lvl)
+
+    # add flags to run command
+    test_flag = a_utils.add_one_flag_value(flag=flag)
+
+    if flag[0] == "-cp":
+        seed = ['--seed', '42']
+        seed_flag = a_utils.add_one_flag_value(flag=seed)
+        run_cmd.extend(seed_flag)
+
+    run_cmd.extend(test_flag)
+    print(str(run_cmd))
+
+    proc = subprocess.Popen(run_cmd, stdout=clres.stdout, stderr=clres.stdout)
+
+    try:
+        a_utils.validate_arg_result(flag=test_flag,
+                                    p_valid_params=p_valid_params, clres=clres,
+                                    process=proc, start_time=start_time,
+                                    timeout=time_limit)
+    except AssertionError:
+        # close process once get assert false
+        proc.kill()
+        # if test failed - print logs
+        screen.error(open(clres.stdout.name).read(), crash=False)
+        assert False
+
+    proc.kill()
+
+
+</clonepair2>
+
+<clonepair2>
+<source file="systems/coach-0.12.1/rl_coach/tests/test_coach_args.py" startline="158" endline="201" pcid="763"></source>
+def test_preset_n_and_ew(preset_args, clres, start_time=time.time(),
+                         time_limit=Def.TimeOuts.test_time_limit):
+    """
+    Test command arguments - check evaluation worker with number of workers
+    """
+
+    ew_flag = ['-ew']
+    n_flag = ['-n', Def.Flags.enw]
+    p_valid_params = p_utils.validation_params(preset_args)
+
+    run_cmd = [
+        'python3', 'rl_coach/coach.py',
+        '-p', '{}'.format(preset_args),
+        '-e', '{}'.format("ExpName_" + preset_args),
+    ]
+
+    # add flags to run command
+    test_ew_flag = a_utils.add_one_flag_value(flag=ew_flag)
+    test_n_flag = a_utils.add_one_flag_value(flag=n_flag)
+    run_cmd.extend(test_ew_flag)
+    run_cmd.extend(test_n_flag)
+
+    print(str(run_cmd))
+
+    proc = subprocess.Popen(run_cmd, stdout=clres.stdout, stderr=clres.stdout)
+
+    try:
+        a_utils.validate_arg_result(flag=test_ew_flag,
+                                    p_valid_params=p_valid_params, clres=clres,
+                                    process=proc, start_time=start_time,
+                                    timeout=time_limit)
+
+        a_utils.validate_arg_result(flag=test_n_flag,
+                                    p_valid_params=p_valid_params, clres=clres,
+                                    process=proc, start_time=start_time,
+                                    timeout=time_limit)
+    except AssertionError:
+        # close process once get assert false
+        proc.kill()
+        assert False
+
+    proc.kill()
+
+
+</clonepair2>
+<clonepair3>
+<source file="systems/coach-0.12.1/rl_coach/exploration_policies/truncated_normal.py" startline="75" endline="107" pcid="1373"></source>
+    def get_action(self, action_values: List[ActionType]) -> ActionType:
+        # set the current noise percentage
+        if self.phase == RunPhase.TEST:
+            current_noise_precentage = self.evaluation_noise_percentage
+        else:
+            current_noise_precentage = self.noise_percentage_schedule.current_value
+
+        # scale the noise to the action space range
+        action_values_std = current_noise_precentage * (self.action_space.high - self.action_space.low)
+
+        # extract the mean values
+        if isinstance(action_values, list):
+            # the action values are expected to be a list with the action mean and optionally the action stdev
+            action_values_mean = action_values[0].squeeze()
+        else:
+            # the action values are expected to be a numpy array representing the action mean
+            action_values_mean = action_values.squeeze()
+
+        # step the noise schedule
+        if self.phase is not RunPhase.TEST:
+            self.noise_percentage_schedule.step()
+            # the second element of the list is assumed to be the standard deviation
+            if isinstance(action_values, list) and len(action_values) > 1:
+                action_values_std = action_values[1].squeeze()
+
+        # sample from truncated normal distribution
+        normalized_low = (self.clip_low - action_values_mean) / action_values_std
+        normalized_high = (self.clip_high - action_values_mean) / action_values_std
+        distribution = truncnorm(normalized_low, normalized_high, loc=action_values_mean, scale=action_values_std)
+        action = distribution.rvs(1)
+
+        return action
+</clonepair3>
+
+<clonepair3>
+<source file="systems/coach-0.12.1/rl_coach/exploration_policies/additive_noise.py" startline="72" endline="103" pcid="1335"></source>
+    def get_action(self, action_values: List[ActionType]) -> ActionType:
+        # TODO-potential-bug consider separating internally defined stdev and externally defined stdev into 2 policies
+
+        # set the current noise percentage
+        if self.phase == RunPhase.TEST:
+            current_noise_precentage = self.evaluation_noise_percentage
+        else:
+            current_noise_precentage = self.noise_percentage_schedule.current_value
+
+        # scale the noise to the action space range
+        action_values_std = current_noise_precentage * (self.action_space.high - self.action_space.low)
+
+        # extract the mean values
+        if isinstance(action_values, list):
+            # the action values are expected to be a list with the action mean and optionally the action stdev
+            action_values_mean = action_values[0].squeeze()
+        else:
+            # the action values are expected to be a numpy array representing the action mean
+            action_values_mean = action_values.squeeze()
+
+        # step the noise schedule
+        if self.phase is not RunPhase.TEST:
+            self.noise_percentage_schedule.step()
+            # the second element of the list is assumed to be the standard deviation
+            if isinstance(action_values, list) and len(action_values) > 1:
+                action_values_std = action_values[1].squeeze()
+
+        # add noise to the action means
+        action = np.random.normal(action_values_mean, action_values_std)
+
+        return action
+</clonepair3>
+<clonepair4>
+<source file="systems/coach-0.12.1/rl_coach/tests/architectures/tensorflow_components/embedders/test_vector_embedder.py" startline="68" endline="95" pcid="919"></source>
+def test_activation_function(reset):
+    # creating a deep vector embedder with relu
+    embedder = VectorEmbedder(np.array([10]), name="relu", scheme=EmbedderScheme.Deep,
+                              activation_function=tf.nn.relu)
+
+    # call the embedder
+    embedder()
+
+    # try feeding a batch of one example
+    input = np.random.rand(1, 10)
+    sess = tf.Session()
+    sess.run(tf.global_variables_initializer())
+    output = sess.run(embedder.output, {embedder.input: input})
+    assert np.all(output >= 0)  # should have flattened the input
+
+    # creating a deep vector embedder with tanh
+    embedder_tanh = VectorEmbedder(np.array([10]), name="tanh", scheme=EmbedderScheme.Deep,
+                                   activation_function=tf.nn.tanh)
+
+    # call the embedder
+    embedder_tanh()
+
+    # try feeding a batch of one example
+    input = np.random.rand(1, 10)
+    sess = tf.Session()
+    sess.run(tf.global_variables_initializer())
+    output = sess.run(embedder_tanh.output, {embedder_tanh.input: input})
+    assert np.all(output >= -1) and np.all(output <= 1)
+</clonepair4>
+
+<clonepair4>
+<source file="systems/coach-0.12.1/rl_coach/tests/architectures/tensorflow_components/embedders/test_image_embedder.py" startline="72" endline="99" pcid="915"></source>
+def test_activation_function(reset):
+    # creating a deep image embedder with relu
+    embedder = ImageEmbedder(np.array([100, 100, 10]), name="relu", scheme=EmbedderScheme.Deep,
+                             activation_function=tf.nn.relu)
+
+    # call the embedder
+    embedder()
+
+    # try feeding a batch of one example
+    input = np.random.rand(1, 100, 100, 10)
+    sess = tf.Session()
+    sess.run(tf.global_variables_initializer())
+    output = sess.run(embedder.output, {embedder.input: input})
+    assert np.all(output >= 0)  # should have flattened the input
+
+    # creating a deep image embedder with tanh
+    embedder_tanh = ImageEmbedder(np.array([100, 100, 10]), name="tanh", scheme=EmbedderScheme.Deep,
+                                  activation_function=tf.nn.tanh)
+
+    # call the embedder
+    embedder_tanh()
+
+    # try feeding a batch of one example
+    input = np.random.rand(1, 100, 100, 10)
+    sess = tf.Session()
+    sess.run(tf.global_variables_initializer())
+    output = sess.run(embedder_tanh.output, {embedder_tanh.input: input})
+    assert np.all(output >= -1) and np.all(output <= 1)
+</clonepair4>

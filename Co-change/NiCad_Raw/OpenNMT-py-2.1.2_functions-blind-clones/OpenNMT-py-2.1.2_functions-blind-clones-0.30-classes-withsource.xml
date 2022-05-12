@@ -1,0 +1,538 @@
+<clones>
+<systeminfo processor="nicad6" system="OpenNMT-py-2.1.2" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="600" npairs="9"/>
+<runinfo ncompares="8728" cputime="43401"/>
+<classinfo nclasses="7"/>
+
+<class classid="1" nclones="2" nlines="14" similarity="80">
+<source file="systems/OpenNMT-py-2.1.2/onmt/decoders/decoder.py" startline="142" endline="159" pcid="26">
+    def from_opt(cls, opt, embeddings):
+        """Alternate constructor."""
+        return cls(
+            opt.rnn_type,
+            opt.brnn,
+            opt.dec_layers,
+            opt.dec_rnn_size,
+            opt.global_attention,
+            opt.global_attention_function,
+            opt.coverage_attn,
+            opt.context_gate,
+            opt.copy_attn,
+            opt.dropout[0] if type(opt.dropout) is list
+            else opt.dropout,
+            embeddings,
+            opt.reuse_copy_attn,
+            opt.copy_attn_type)
+
+</source>
+<source file="systems/OpenNMT-py-2.1.2/onmt/encoders/ggnn_encoder.py" startline="166" endline="179" pcid="76">
+                "Embedding size must be smaller than state_dim"
+        else:
+            assert self.DELIMITER < self.state_dim, \
+                "Vocabulary too large, consider -src_ggnn_size"
+
+    @classmethod
+    def from_opt(cls, opt, embeddings):
+        """Alternate constructor."""
+        return cls(
+            opt.rnn_type,
+            opt.src_word_vec_size,
+            opt.src_ggnn_size,
+            opt.state_dim,
+            opt.bidir_edges,
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="10" similarity="100">
+<source file="systems/OpenNMT-py-2.1.2/onmt/encoders/ggnn_encoder.py" startline="302" endline="317" pcid="80">
+        self.total_hidden_dim = hidden_size * num_layers
+
+        # Build a linear layer for each
+        self.bridge = nn.ModuleList([nn.Linear(self.total_hidden_dim,
+                                               self.total_hidden_dim,
+                                               bias=True)
+                                     for _ in range(number_of_states)])
+
+    def _bridge(self, hidden):
+        """Forward hidden state through bridge."""
+        def bottle_hidden(linear, states):
+            """
+            Transform from 3D to 2D, apply linear and return initial size
+            """
+            size = states.size()
+            result = linear(states.view(-1, self.total_hidden_dim))
+</source>
+<source file="systems/OpenNMT-py-2.1.2/onmt/encoders/rnn_encoder.py" startline="99" endline="115" pcid="86">
+
+    def _bridge(self, hidden):
+        """Forward hidden state through bridge."""
+        def bottle_hidden(linear, states):
+            """
+            Transform from 3D to 2D, apply linear and return initial size
+            """
+            size = states.size()
+            result = linear(states.view(-1, self.total_hidden_dim))
+            return F.relu(result).view(size)
+
+        if isinstance(hidden, tuple):  # LSTM
+            outs = tuple([bottle_hidden(layer, hidden[ix])
+                          for ix, layer in enumerate(self.bridge)])
+        else:
+            outs = bottle_hidden(self.bridge[0], hidden)
+        return outs
+</source>
+</class>
+
+<class classid="3" nclones="3" nlines="61" similarity="73">
+<source file="systems/OpenNMT-py-2.1.2/onmt/tests/test_greedy_search.py" startline="73" endline="143" pcid="284">
+    def test_returns_correct_scores_deterministic(self):
+        for batch_sz in [1, 13]:
+            for temp in [1., 3.]:
+                n_words = 100
+                _non_eos_idxs = [47, 51, 13, 88, 99]
+                valid_score_dist_1 = torch.log_softmax(torch.tensor(
+                    [6., 5., 4., 3., 2., 1.]), dim=0)
+                valid_score_dist_2 = torch.log_softmax(torch.tensor(
+                    [6., 1.]), dim=0)
+                eos_idx = 2
+                lengths = torch.randint(0, 30, (batch_sz,))
+                samp = GreedySearch(
+                    0, 1, 2, 3, batch_sz, GlobalScorerStub(), 0,
+                    False, set(), False, 30, temp, 1, 0, 1, False)
+                samp.initialize(torch.zeros((1, 1)), lengths)
+                # initial step
+                i = 0
+                word_probs = torch.full(
+                    (batch_sz, n_words), -float('inf'))
+                # batch 0 dies on step 0
+                word_probs[0, eos_idx] = valid_score_dist_1[0]
+                # include at least one prediction OTHER than EOS
+                # that is greater than -1e20
+                word_probs[0, _non_eos_idxs] = valid_score_dist_1[1:]
+                word_probs[1:, _non_eos_idxs[0] + i] = 0
+
+                attns = torch.randn(1, batch_sz, 53)
+                samp.advance(word_probs, attns)
+                self.assertTrue(samp.is_finished[0].eq(1).all())
+                samp.update_finished()
+                self.assertEqual(
+                    [score for score, _, _ in samp.hypotheses[0]],
+                    [valid_score_dist_1[0] / temp])
+                if batch_sz == 1:
+                    self.assertTrue(samp.done)
+                    continue
+                else:
+                    self.assertFalse(samp.done)
+
+                # step 2
+                i = 1
+                word_probs = torch.full(
+                    (batch_sz - 1, n_words), -float('inf'))
+                # (old) batch 8 dies on step 1
+                word_probs[7, eos_idx] = valid_score_dist_2[0]
+                word_probs[0:7, _non_eos_idxs[:2]] = valid_score_dist_2
+                word_probs[8:, _non_eos_idxs[:2]] = valid_score_dist_2
+
+                attns = torch.randn(1, batch_sz, 53)
+                samp.advance(word_probs, attns)
+
+                self.assertTrue(samp.is_finished[7].eq(1).all())
+                samp.update_finished()
+                self.assertEqual(
+                    [score for score, _, _ in samp.hypotheses[8]],
+                    [valid_score_dist_2[0] / temp])
+
+                # step 3
+                i = 2
+                word_probs = torch.full(
+                    (batch_sz - 2, n_words), -float('inf'))
+                # everything dies
+                word_probs[:, eos_idx] = 0
+
+                attns = torch.randn(1, batch_sz, 53)
+                samp.advance(word_probs, attns)
+
+                self.assertTrue(samp.is_finished.eq(1).all())
+                samp.update_finished()
+                self.assertTrue(samp.done)
+
+</source>
+<source file="systems/OpenNMT-py-2.1.2/onmt/tests/test_greedy_search.py" startline="144" endline="232" pcid="285">
+    def test_returns_correct_scores_non_deterministic(self):
+        for batch_sz in [1, 13]:
+            for temp in [1., 3.]:
+                n_words = 100
+                _non_eos_idxs = [47, 51, 13, 88, 99]
+                valid_score_dist_1 = torch.log_softmax(torch.tensor(
+                    [6., 5., 4., 3., 2., 1.]), dim=0)
+                valid_score_dist_2 = torch.log_softmax(torch.tensor(
+                    [6., 1.]), dim=0)
+                eos_idx = 2
+                lengths = torch.randint(0, 30, (batch_sz,))
+                samp = GreedySearch(
+                    0, 1, 2, 3, batch_sz, GlobalScorerStub(), 0,
+                    False, set(), False, 30, temp, 2, 0, 1, False)
+                samp.initialize(torch.zeros((1, 1)), lengths)
+                # initial step
+                i = 0
+                for _ in range(100):
+                    word_probs = torch.full(
+                        (batch_sz, n_words), -float('inf'))
+                    # batch 0 dies on step 0
+                    word_probs[0, eos_idx] = valid_score_dist_1[0]
+                    # include at least one prediction OTHER than EOS
+                    # that is greater than -1e20
+                    word_probs[0, _non_eos_idxs] = valid_score_dist_1[1:]
+                    word_probs[1:, _non_eos_idxs[0] + i] = 0
+
+                    attns = torch.randn(1, batch_sz, 53)
+                    samp.advance(word_probs, attns)
+                    if samp.is_finished[0].eq(1).all():
+                        break
+                else:
+                    self.fail("Batch 0 never ended (very unlikely but maybe "
+                              "due to stochasticisty. If so, please increase "
+                              "the range of the for-loop.")
+                samp.update_finished()
+                self.assertEqual(
+                    [samp.topk_scores[0]], [valid_score_dist_1[0] / temp])
+                if batch_sz == 1:
+                    self.assertTrue(samp.done)
+                    continue
+                else:
+                    self.assertFalse(samp.done)
+
+                # step 2
+                i = 1
+                for _ in range(100):
+                    word_probs = torch.full(
+                        (batch_sz - 1, n_words), -float('inf'))
+                    # (old) batch 8 dies on step 1
+                    word_probs[7, eos_idx] = valid_score_dist_2[0]
+                    word_probs[0:7, _non_eos_idxs[:2]] = valid_score_dist_2
+                    word_probs[8:, _non_eos_idxs[:2]] = valid_score_dist_2
+
+                    attns = torch.randn(1, batch_sz, 53)
+                    samp.advance(word_probs, attns)
+                    if samp.is_finished[7].eq(1).all():
+                        break
+                else:
+                    self.fail("Batch 8 never ended (very unlikely but maybe "
+                              "due to stochasticisty. If so, please increase "
+                              "the range of the for-loop.")
+
+                samp.update_finished()
+                self.assertEqual(
+                    [score for score, _, _ in samp.hypotheses[8]],
+                    [valid_score_dist_2[0] / temp])
+
+                # step 3
+                i = 2
+                for _ in range(250):
+                    word_probs = torch.full(
+                        (samp.alive_seq.shape[0], n_words), -float('inf'))
+                    # everything dies
+                    word_probs[:, eos_idx] = 0
+
+                    attns = torch.randn(1, batch_sz, 53)
+                    samp.advance(word_probs, attns)
+                    if samp.is_finished.any():
+                        samp.update_finished()
+                    if samp.is_finished.eq(1).all():
+                        break
+                else:
+                    self.fail("All batches never ended (very unlikely but "
+                              "maybe due to stochasticisty. If so, please "
+                              "increase the range of the for-loop.")
+
+                self.assertTrue(samp.done)
+
+</source>
+<source file="systems/OpenNMT-py-2.1.2/onmt/tests/test_greedy_search.py" startline="336" endline="424" pcid="287">
+    def test_returns_correct_scores_non_deterministic_topp(self):
+        for batch_sz in [1, 13]:
+            for temp in [1., 0.3]:
+                n_words = 100
+                _non_eos_idxs = [47, 51, 13, 88, 99]
+                valid_score_dist_1 = torch.log_softmax(torch.tensor(
+                    [6., 5., 4., 3., 2., 1.]), dim=0)
+                valid_score_dist_2 = torch.log_softmax(torch.tensor(
+                    [6., 1.]), dim=0)
+                eos_idx = 2
+                lengths = torch.randint(0, 30, (batch_sz,))
+                samp = GreedySearch(
+                    0, 1, 2, 3, batch_sz, GlobalScorerStub(), 0,
+                    False, set(), False, -1, temp, 50, 0.5, 1, False)
+                samp.initialize(torch.zeros((1, 1)), lengths)
+                # initial step
+                i = 0
+                for _ in range(100):
+                    word_probs = torch.full(
+                        (batch_sz, n_words), -float('inf'))
+                    # batch 0 dies on step 0
+                    word_probs[0, eos_idx] = valid_score_dist_1[0]
+                    # include at least one prediction OTHER than EOS
+                    # that is greater than -1e20
+                    word_probs[0, _non_eos_idxs] = valid_score_dist_1[1:]
+                    word_probs[1:, _non_eos_idxs[0] + i] = 0
+
+                    attns = torch.randn(1, batch_sz, 53)
+                    samp.advance(word_probs, attns)
+                    if samp.is_finished[0].eq(1).all():
+                        break
+                else:
+                    self.fail("Batch 0 never ended (very unlikely but maybe "
+                              "due to stochasticisty. If so, please increase "
+                              "the range of the for-loop.")
+                samp.update_finished()
+                self.assertEqual(
+                    [score for score, _, _ in samp.hypotheses[0]],
+                    [valid_score_dist_1[0] / temp])
+                if batch_sz == 1:
+                    self.assertTrue(samp.done)
+                    continue
+                else:
+                    self.assertFalse(samp.done)
+
+                # step 2
+                i = 1
+                for _ in range(200):
+                    word_probs = torch.full(
+                        (batch_sz - 1, n_words), -float('inf'))
+                    # (old) batch 8 dies on step 1
+                    word_probs[7, eos_idx] = valid_score_dist_2[0]
+                    word_probs[0:7, _non_eos_idxs[:2]] = valid_score_dist_2
+                    word_probs[8:, _non_eos_idxs[:2]] = valid_score_dist_2
+
+                    attns = torch.randn(1, batch_sz, 53)
+                    samp.advance(word_probs, attns)
+                    if samp.is_finished[7].eq(1).all():
+                        break
+                else:
+                    self.fail("Batch 8 never ended (very unlikely but maybe "
+                              "due to stochasticisty. If so, please increase "
+                              "the range of the for-loop.")
+
+                samp.update_finished()
+                self.assertEqual(
+                    [score for score, _, _ in samp.hypotheses[8]],
+                    [valid_score_dist_2[0] / temp])
+
+                # step 3
+                i = 2
+                for _ in range(250):
+                    word_probs = torch.full(
+                        (samp.alive_seq.shape[0], n_words), -float('inf'))
+                    # everything dies
+                    word_probs[:, eos_idx] = 0
+
+                    attns = torch.randn(1, batch_sz, 53)
+                    samp.advance(word_probs, attns)
+                    if samp.is_finished.any():
+                        samp.update_finished()
+                    if samp.is_finished.eq(1).all():
+                        break
+                else:
+                    self.fail("All batches never ended (very unlikely but "
+                              "maybe due to stochasticisty. If so, please "
+                              "increase the range of the for-loop.")
+
+                self.assertTrue(samp.done)
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="16" similarity="81">
+<source file="systems/OpenNMT-py-2.1.2/onmt/tests/test_data_prepare.py" startline="68" endline="93" pcid="292">
+def _add_test(param_setting, methodname):
+    """
+    Adds a Test to TestData according to settings
+
+    Args:
+        param_setting: list of tuples of (param, setting)
+        methodname: name of the method that gets called
+    """
+
+    def test_method(self):
+        if param_setting:
+            opt = copy.deepcopy(self.opt)
+            for param, setting in param_setting:
+                setattr(opt, param, setting)
+        else:
+            opt = self.opt
+        getattr(self, methodname)(opt)
+    if param_setting:
+        name = 'test_' + methodname + "_" + "_".join(
+            str(param_setting).split())
+    else:
+        name = 'test_' + methodname + '_standard'
+    setattr(TestData, name, test_method)
+    test_method.__name__ = name
+
+
+</source>
+<source file="systems/OpenNMT-py-2.1.2/onmt/tests/test_models.py" startline="124" endline="148" pcid="300">
+
+def _add_test(param_setting, methodname):
+    """
+    Adds a Test to TestModel according to settings
+
+    Args:
+        param_setting: list of tuples of (param, setting)
+        methodname: name of the method that gets called
+    """
+
+    def test_method(self):
+        opt = copy.deepcopy(self.opt)
+        if param_setting:
+            for param, setting in param_setting:
+                setattr(opt, param, setting)
+        ArgumentParser.update_model_opts(opt)
+        getattr(self, methodname)(opt)
+    if param_setting:
+        name = 'test_' + methodname + "_" + "_".join(
+            str(param_setting).split())
+    else:
+        name = 'test_' + methodname + '_standard'
+    setattr(TestModel, name, test_method)
+    test_method.__name__ = name
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="10" similarity="100">
+<source file="systems/OpenNMT-py-2.1.2/onmt/translate/penalties.py" startline="34" endline="44" pcid="429">
+    def _coverage_penalty(self, cov_pen):
+        if cov_pen == "wu":
+            return self.coverage_wu
+        elif cov_pen == "summary":
+            return self.coverage_summary
+        elif self._pen_is_none(cov_pen):
+            return self.coverage_none
+        else:
+            raise NotImplementedError("No '{:s}' coverage penalty.".format(
+                cov_pen))
+
+</source>
+<source file="systems/OpenNMT-py-2.1.2/onmt/translate/penalties.py" startline="45" endline="59" pcid="430">
+    def _length_penalty(self, length_pen):
+        if length_pen == "wu":
+            return self.length_wu
+        elif length_pen == "avg":
+            return self.length_average
+        elif self._pen_is_none(length_pen):
+            return self.length_none
+        else:
+            raise NotImplementedError("No '{:s}' length penalty.".format(
+                length_pen))
+
+    # Below are all the different penalty terms implemented so far.
+    # Subtract coverage penalty from topk log probs.
+    # Divide topk log probs by length penalty.
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="16" similarity="70">
+<source file="systems/OpenNMT-py-2.1.2/onmt/modules/weight_norm.py" startline="98" endline="116" pcid="540">
+            return x
+
+
+class WeightNormConv2d(nn.Conv2d):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1,
+                 padding=0, dilation=1, groups=1, init_scale=1.,
+                 polyak_decay=0.9995):
+        super(WeightNormConv2d, self).__init__(in_channels, out_channels,
+                                               kernel_size, stride, padding,
+                                               dilation, groups)
+
+        self.V = self.weight
+        self.g = Parameter(torch.Tensor(out_channels))
+        self.b = self.bias
+
+        self.register_buffer('V_avg', torch.zeros(self.V.size()))
+        self.register_buffer('g_avg', torch.zeros(out_channels))
+        self.register_buffer('b_avg', torch.zeros(out_channels))
+
+</source>
+<source file="systems/OpenNMT-py-2.1.2/onmt/modules/weight_norm.py" startline="169" endline="189" pcid="543">
+            return x
+
+# This is used nowhere in the code at the moment (Vincent Nguyen 05/18/2018)
+
+
+class WeightNormConvTranspose2d(nn.ConvTranspose2d):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1,
+                 padding=0, output_padding=0, groups=1, init_scale=1.,
+                 polyak_decay=0.9995):
+        super(WeightNormConvTranspose2d, self).__init__(
+            in_channels, out_channels,
+            kernel_size, stride,
+            padding, output_padding,
+            groups)
+        # in_channels, out_channels, *kernel_size
+        self.V = self.weight
+        self.g = Parameter(torch.Tensor(out_channels))
+        self.b = self.bias
+
+        self.register_buffer('V_avg', torch.zeros(self.V.size()))
+        self.register_buffer('g_avg', torch.zeros(out_channels))
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="19" similarity="100">
+<source file="systems/OpenNMT-py-2.1.2/onmt/modules/embeddings.py" startline="264" endline="289" pcid="557">
+
+def read_embeddings(path, skip_lines=0, filter_set=None):
+    """
+    Read an embeddings file in the glove format.
+    """
+    embs = dict()
+    total_vectors_in_file = 0
+    with open(path, 'rb') as f:
+        for i, line in enumerate(f):
+            if i < skip_lines:
+                continue
+            if not line:
+                break
+            if len(line) == 0:
+                # is this reachable?
+                continue
+
+            l_split = line.decode('utf8').strip().split(' ')
+            if len(l_split) == 2:
+                continue
+            total_vectors_in_file += 1
+            if filter_set is not None and l_split[0] not in filter_set:
+                continue
+            embs[l_split[0]] = [float(em) for em in l_split[1:]]
+    return embs, total_vectors_in_file
+
+</source>
+<source file="systems/OpenNMT-py-2.1.2/tools/embeddings_to_torch.py" startline="29" endline="51" pcid="573">
+def read_embeddings(file_enc, skip_lines=0, filter_set=None):
+    embs = dict()
+    total_vectors_in_file = 0
+    with open(file_enc, 'rb') as f:
+        for i, line in enumerate(f):
+            if i < skip_lines:
+                continue
+            if not line:
+                break
+            if len(line) == 0:
+                # is this reachable?
+                continue
+
+            l_split = line.decode('utf8').strip().split(' ')
+            if len(l_split) == 2:
+                continue
+            total_vectors_in_file += 1
+            if filter_set is not None and l_split[0] not in filter_set:
+                continue
+            embs[l_split[0]] = [float(em) for em in l_split[1:]]
+    return embs, total_vectors_in_file
+
+
+</source>
+</class>
+
+</clones>

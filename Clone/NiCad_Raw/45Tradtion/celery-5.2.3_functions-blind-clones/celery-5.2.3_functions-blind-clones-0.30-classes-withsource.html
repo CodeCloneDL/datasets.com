@@ -1,0 +1,2690 @@
+<html>
+<head>
+    <title>NiCad6 Clone Report</title>
+    <style type="text/css">
+        body {font-family:sans-serif;}
+        table {background-color:white; border:0px; padding:0px; border-spacing:4px; width:auto; margin-left:30px; margin-right:auto;}
+        td {background-color:rgba(192,212,238,0.8); border:0px; padding:8px; width:auto; vertical-align:top; border-radius:8px}
+        pre {background-color:white; padding:4px;}
+        a {color:darkblue;}
+    </style>
+</head>
+<body>
+<h2>NiCad6 Clone Report</h2>
+<table>
+<tr style="font-size:14pt">
+<td><b>System:</b> &nbsp; celery-5.2.3</td>
+<td><b>Clone pairs:</b> &nbsp; 81</td>
+<td><b>Clone classes:</b> &nbsp; 34</td>
+</tr>
+<tr style="font-size:12pt">
+<td style="background-color:white">Clone type: &nbsp; 3-2</td>
+<td style="background-color:white">Granularity: &nbsp; functions-blind</td>
+<td style="background-color:white">Max diff threshold: &nbsp; 30%</td>
+<td style="background-color:white">Clone size: &nbsp; 10 - 2500 lines</td>
+<td style="background-color:white">Total functions-blind: &nbsp; 2666</td>
+</tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 1:</b> &nbsp; 2 fragments, nominal size 13 lines, similarity 92%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag140')" href="javascript:;">
+celery-5.2.3/t/unit/tasks/test_trace.py: 164-180
+</a>
+<div class="mid" id="frag140" style="display:none"><pre>
+    def test_eager_task_does_not_store_result_even_if_not_ignore_result(self):
+        @self.app.task(shared=False)
+        def add(x, y):
+            return x + y
+
+        add.backend = Mock(name='backend')
+        add.ignore_result = False
+
+        self.trace(add, (2, 2), {}, eager=True)
+
+        add.backend.mark_as_done.assert_called_once_with(
+            'id-1',     # task_id
+            4,          # result
+            ANY,        # request
+            False       # store_result
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag144')" href="javascript:;">
+celery-5.2.3/t/unit/tasks/test_trace.py: 195-212
+</a>
+<div class="mid" id="frag144" style="display:none"><pre>
+    def test_eager_task_will_store_result_if_proper_setting_is_set(self):
+        @self.app.task(shared=False)
+        def add(x, y):
+            return x + y
+
+        add.backend = Mock(name='backend')
+        add.store_eager_result = True
+        add.ignore_result = False
+
+        self.trace(add, (2, 2), {}, eager=True)
+
+        add.backend.mark_as_done.assert_called_once_with(
+            'id-1',     # task_id
+            4,          # result
+            ANY,        # request
+            True        # store_result
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 2:</b> &nbsp; 4 fragments, nominal size 16 lines, similarity 76%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag175')" href="javascript:;">
+celery-5.2.3/t/unit/tasks/test_trace.py: 482-501
+</a>
+<div class="mid" id="frag175" style="display:none"><pre>
+    def test_deduplicate_successful_tasks__deduplication(self):
+        @self.app.task(shared=False)
+        def add(x, y):
+            return x + y
+
+        backend = CacheBackend(app=self.app, backend='memory')
+        add.backend = backend
+        add.store_eager_result = True
+        add.ignore_result = False
+        add.acks_late = True
+
+        self.app.conf.worker_deduplicate_successful_tasks = True
+        task_id = str(uuid4())
+        request = {'id': task_id, 'delivery_info': {'redelivered': True}}
+
+        assert trace(self.app, add, (1, 1), task_id=task_id, request=request) == (2, None)
+        assert trace(self.app, add, (1, 1), task_id=task_id, request=request) == (None, None)
+
+        self.app.conf.worker_deduplicate_successful_tasks = False
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag177')" href="javascript:;">
+celery-5.2.3/t/unit/tasks/test_trace.py: 502-523
+</a>
+<div class="mid" id="frag177" style="display:none"><pre>
+    def test_deduplicate_successful_tasks__no_deduplication(self):
+        @self.app.task(shared=False)
+        def add(x, y):
+            return x + y
+
+        backend = CacheBackend(app=self.app, backend='memory')
+        add.backend = backend
+        add.store_eager_result = True
+        add.ignore_result = False
+        add.acks_late = True
+
+        self.app.conf.worker_deduplicate_successful_tasks = True
+        task_id = str(uuid4())
+        request = {'id': task_id, 'delivery_info': {'redelivered': True}}
+
+        with patch('celery.app.trace.AsyncResult') as async_result_mock:
+            async_result_mock().state.return_value = PENDING
+            assert trace(self.app, add, (1, 1), task_id=task_id, request=request) == (2, None)
+            assert trace(self.app, add, (1, 1), task_id=task_id, request=request) == (2, None)
+
+        self.app.conf.worker_deduplicate_successful_tasks = False
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag181')" href="javascript:;">
+celery-5.2.3/t/unit/tasks/test_trace.py: 547-571
+</a>
+<div class="mid" id="frag181" style="display:none"><pre>
+    def test_deduplicate_successful_tasks__cached_request(self):
+        @self.app.task(shared=False)
+        def add(x, y):
+            return x + y
+
+        backend = CacheBackend(app=self.app, backend='memory')
+        add.backend = backend
+        add.store_eager_result = True
+        add.ignore_result = False
+        add.acks_late = True
+
+        self.app.conf.worker_deduplicate_successful_tasks = True
+
+        task_id = str(uuid4())
+        request = {'id': task_id, 'delivery_info': {'redelivered': True}}
+
+        successful_requests.add(task_id)
+
+        assert trace(self.app, add, (1, 1), task_id=task_id,
+                     request=request) == (None, None)
+
+        successful_requests.clear()
+        self.app.conf.worker_deduplicate_successful_tasks = False
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag179')" href="javascript:;">
+celery-5.2.3/t/unit/tasks/test_trace.py: 524-546
+</a>
+<div class="mid" id="frag179" style="display:none"><pre>
+    def test_deduplicate_successful_tasks__result_not_found(self):
+        @self.app.task(shared=False)
+        def add(x, y):
+            return x + y
+
+        backend = CacheBackend(app=self.app, backend='memory')
+        add.backend = backend
+        add.store_eager_result = True
+        add.ignore_result = False
+        add.acks_late = True
+
+        self.app.conf.worker_deduplicate_successful_tasks = True
+        task_id = str(uuid4())
+        request = {'id': task_id, 'delivery_info': {'redelivered': True}}
+
+        with patch('celery.app.trace.AsyncResult') as async_result_mock:
+            assert trace(self.app, add, (1, 1), task_id=task_id, request=request) == (2, None)
+            state_property = PropertyMock(side_effect=BackendGetMetaError)
+            type(async_result_mock()).state = state_property
+            assert trace(self.app, add, (1, 1), task_id=task_id, request=request) == (2, None)
+
+        self.app.conf.worker_deduplicate_successful_tasks = False
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 3:</b> &nbsp; 3 fragments, nominal size 10 lines, similarity 72%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag183')" href="javascript:;">
+celery-5.2.3/t/unit/tasks/test_trace.py: 576-586
+</a>
+<div class="mid" id="frag183" style="display:none"><pre>
+    def test_handle_error_state(self):
+        x = self.TI(states.FAILURE)
+        x.handle_failure = Mock()
+        x.handle_error_state(self.add_cast, self.add_cast.request)
+        x.handle_failure.assert_called_with(
+            self.add_cast,
+            self.add_cast.request,
+            store_errors=self.add_cast.store_errors_even_if_ignored,
+            call_errbacks=True,
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag184')" href="javascript:;">
+celery-5.2.3/t/unit/tasks/test_trace.py: 587-598
+</a>
+<div class="mid" id="frag184" style="display:none"><pre>
+    def test_handle_error_state_for_eager_task(self):
+        x = self.TI(states.FAILURE)
+        x.handle_failure = Mock()
+
+        x.handle_error_state(self.add, self.add.request, eager=True)
+        x.handle_failure.assert_called_once_with(
+            self.add,
+            self.add.request,
+            store_errors=False,
+            call_errbacks=True,
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag185')" href="javascript:;">
+celery-5.2.3/t/unit/tasks/test_trace.py: 599-612
+</a>
+<div class="mid" id="frag185" style="display:none"><pre>
+    def test_handle_error_for_eager_saved_to_backend(self):
+        x = self.TI(states.FAILURE)
+        x.handle_failure = Mock()
+
+        self.add.store_eager_result = True
+
+        x.handle_error_state(self.add, self.add.request, eager=True)
+        x.handle_failure.assert_called_with(
+            self.add,
+            self.add.request,
+            store_errors=True,
+            call_errbacks=True,
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 4:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 72%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag272')" href="javascript:;">
+celery-5.2.3/t/unit/tasks/test_result.py: 459-470
+</a>
+<div class="mid" id="frag272" style="display:none"><pre>
+    def test_get(self):
+        x = self.app.ResultSet([self.app.AsyncResult(t) for t in [1, 2, 3]])
+        b = x.results[0].backend = Mock()
+        b.supports_native_join = False
+        x.join_native = Mock()
+        x.join = Mock()
+        x.get()
+        x.join.assert_called()
+        b.supports_native_join = True
+        x.get()
+        x.join_native.assert_called()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag415')" href="javascript:;">
+celery-5.2.3/t/unit/utils/test_timer2.py: 34-45
+</a>
+<div class="mid" id="frag415" style="display:none"><pre>
+    def test_ensure_started_not_started(self):
+        t = timer2.Timer()
+        t.running = True
+        t.start = Mock()
+        t.ensure_started()
+        t.start.assert_not_called()
+        t.running = False
+        t.on_start = Mock()
+        t.ensure_started()
+        t.on_start.assert_called_with(t)
+        t.start.assert_called_with()
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 5:</b> &nbsp; 2 fragments, nominal size 18 lines, similarity 89%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag565')" href="javascript:;">
+celery-5.2.3/t/unit/utils/test_imports.py: 26-47
+</a>
+<div class="mid" id="frag565" style="display:none"><pre>
+def test_find_module_legacy_namespace_package(tmp_path, monkeypatch):
+    monkeypatch.chdir(str(tmp_path))
+    (tmp_path / 'pkg' / 'foo').mkdir(parents=True)
+    (tmp_path / 'pkg' / '__init__.py').write_text(
+        'from pkgutil import extend_path\n'
+        '__path__ = extend_path(__path__, __name__)\n')
+    (tmp_path / 'pkg' / 'foo' / '__init__.py').write_text('')
+    (tmp_path / 'pkg' / 'foo' / 'bar.py').write_text('')
+    with patch.dict(sys.modules):
+        for modname in list(sys.modules):
+            if modname == 'pkg' or modname.startswith('pkg.'):
+                del sys.modules[modname]
+        with pytest.raises(ImportError):
+            find_module('pkg.missing')
+        with pytest.raises(ImportError):
+            find_module('pkg.foo.missing')
+        assert find_module('pkg.foo.bar')
+        with pytest.raises(NotAPackage) as exc_info:
+            find_module('pkg.foo.bar.missing')
+        assert exc_info.value.args[0] == 'pkg.foo.bar'
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag566')" href="javascript:;">
+celery-5.2.3/t/unit/utils/test_imports.py: 48-66
+</a>
+<div class="mid" id="frag566" style="display:none"><pre>
+def test_find_module_pep420_namespace_package(tmp_path, monkeypatch):
+    monkeypatch.chdir(str(tmp_path))
+    (tmp_path / 'pkg' / 'foo').mkdir(parents=True)
+    (tmp_path / 'pkg' / 'foo' / '__init__.py').write_text('')
+    (tmp_path / 'pkg' / 'foo' / 'bar.py').write_text('')
+    with patch.dict(sys.modules):
+        for modname in list(sys.modules):
+            if modname == 'pkg' or modname.startswith('pkg.'):
+                del sys.modules[modname]
+        with pytest.raises(ImportError):
+            find_module('pkg.missing')
+        with pytest.raises(ImportError):
+            find_module('pkg.foo.missing')
+        assert find_module('pkg.foo.bar')
+        with pytest.raises(NotAPackage) as exc_info:
+            find_module('pkg.foo.bar.missing')
+        assert exc_info.value.args[0] == 'pkg.foo.bar'
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 6:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 81%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag638')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_cache.py: 175-185
+</a>
+<div class="mid" id="frag638" style="display:none"><pre>
+    def mock_memcache(self):
+        memcache = types.ModuleType('memcache')
+        memcache.Client = MemcachedClient
+        memcache.Client.__module__ = memcache.__name__
+        prev, sys.modules['memcache'] = sys.modules.get('memcache'), memcache
+        try:
+            yield True
+        finally:
+            if prev is not None:
+                sys.modules['memcache'] = prev
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag639')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_cache.py: 187-199
+</a>
+<div class="mid" id="frag639" style="display:none"><pre>
+    def mock_pylibmc(self):
+        pylibmc = types.ModuleType('pylibmc')
+        pylibmc.Client = MemcachedClient
+        pylibmc.Client.__module__ = pylibmc.__name__
+        prev = sys.modules.get('pylibmc')
+        sys.modules['pylibmc'] = pylibmc
+        try:
+            yield True
+        finally:
+            if prev is not None:
+                sys.modules['pylibmc'] = prev
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 7:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 72%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag693')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_mongodb.py: 256-269
+</a>
+<div class="mid" id="frag693" style="display:none"><pre>
+
+    def test_get_connection_no_connection_host(self):
+        with patch('pymongo.MongoClient') as mock_Connection:
+            self.backend._connection = None
+            self.backend.host = MONGODB_HOST
+            self.backend.port = MONGODB_PORT
+            mock_Connection.return_value = sentinel.connection
+
+            connection = self.backend._get_connection()
+            mock_Connection.assert_called_once_with(
+                host='mongodb://localhost:27017',
+                **self.backend._prepare_client_options()
+            )
+            assert sentinel.connection == connection
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag694')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_mongodb.py: 270-283
+</a>
+<div class="mid" id="frag694" style="display:none"><pre>
+
+    def test_get_connection_no_connection_mongodb_uri(self):
+        with patch('pymongo.MongoClient') as mock_Connection:
+            mongodb_uri = 'mongodb://%s:%d' % (MONGODB_HOST, MONGODB_PORT)
+            self.backend._connection = None
+            self.backend.host = mongodb_uri
+
+            mock_Connection.return_value = sentinel.connection
+
+            connection = self.backend._get_connection()
+            mock_Connection.assert_called_once_with(
+                host=mongodb_uri, **self.backend._prepare_client_options()
+            )
+            assert sentinel.connection == connection
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 8:</b> &nbsp; 2 fragments, nominal size 10 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag697')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_mongodb.py: 321-335
+</a>
+<div class="mid" id="frag697" style="display:none"><pre>
+    @patch('celery.backends.mongodb.MongoBackend._get_connection')
+    def test_get_database_no_existing(self, mock_get_connection):
+        # Should really check for combinations of these two, to be complete.
+        self.backend.user = MONGODB_USER
+        self.backend.password = MONGODB_PASSWORD
+
+        mock_database = Mock()
+        mock_connection = MagicMock(spec=['__getitem__'])
+        mock_connection.__getitem__.return_value = mock_database
+        mock_get_connection.return_value = mock_connection
+
+        database = self.backend.database
+
+        assert database is mock_database
+        assert self.backend.__dict__['database'] is mock_database
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag698')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_mongodb.py: 337-351
+</a>
+<div class="mid" id="frag698" style="display:none"><pre>
+    @patch('celery.backends.mongodb.MongoBackend._get_connection')
+    def test_get_database_no_existing_no_auth(self, mock_get_connection):
+        # Should really check for combinations of these two, to be complete.
+        self.backend.user = None
+        self.backend.password = None
+
+        mock_database = Mock()
+        mock_connection = MagicMock(spec=['__getitem__'])
+        mock_connection.__getitem__.return_value = mock_database
+        mock_get_connection.return_value = mock_connection
+
+        database = self.backend.database
+
+        assert database is mock_database
+        assert self.backend.__dict__['database'] is mock_database
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 9:</b> &nbsp; 2 fragments, nominal size 19 lines, similarity 70%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag699')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_mongodb.py: 353-375
+</a>
+<div class="mid" id="frag699" style="display:none"><pre>
+    @patch('celery.backends.mongodb.MongoBackend._get_database')
+    def test_store_result(self, mock_get_database):
+        self.backend.taskmeta_collection = MONGODB_COLLECTION
+
+        mock_database = MagicMock(spec=['__getitem__', '__setitem__'])
+        mock_collection = Mock()
+
+        mock_get_database.return_value = mock_database
+        mock_database.__getitem__.return_value = mock_collection
+
+        ret_val = self.backend._store_result(
+            sentinel.task_id, sentinel.result, sentinel.status)
+
+        mock_get_database.assert_called_once_with()
+        mock_database.__getitem__.assert_called_once_with(MONGODB_COLLECTION)
+        mock_collection.replace_one.assert_called_once_with(ANY, ANY,
+                                                            upsert=True)
+        assert sentinel.result == ret_val
+
+        mock_collection.replace_one.side_effect = InvalidDocument()
+        with pytest.raises(EncodeError):
+            self.backend._store_result(
+                sentinel.task_id, sentinel.result, sentinel.status)
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag700')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_mongodb.py: 377-402
+</a>
+<div class="mid" id="frag700" style="display:none"><pre>
+    @patch('celery.backends.mongodb.MongoBackend._get_database')
+    def test_store_result_with_request(self, mock_get_database):
+        self.backend.taskmeta_collection = MONGODB_COLLECTION
+
+        mock_database = MagicMock(spec=['__getitem__', '__setitem__'])
+        mock_collection = Mock()
+        mock_request = MagicMock(spec=['parent_id'])
+
+        mock_get_database.return_value = mock_database
+        mock_database.__getitem__.return_value = mock_collection
+        mock_request.parent_id = sentinel.parent_id
+
+        ret_val = self.backend._store_result(
+            sentinel.task_id, sentinel.result, sentinel.status,
+            request=mock_request)
+
+        mock_get_database.assert_called_once_with()
+        mock_database.__getitem__.assert_called_once_with(MONGODB_COLLECTION)
+        parameters = mock_collection.replace_one.call_args[0][1]
+        assert parameters['parent_id'] == sentinel.parent_id
+        assert sentinel.result == ret_val
+
+        mock_collection.replace_one.side_effect = InvalidDocument()
+        with pytest.raises(EncodeError):
+            self.backend._store_result(
+                sentinel.task_id, sentinel.result, sentinel.status)
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 10:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 83%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag705')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_mongodb.py: 489-503
+</a>
+<div class="mid" id="frag705" style="display:none"><pre>
+    @patch('celery.backends.mongodb.MongoBackend._get_database')
+    def test_delete_group(self, mock_get_database):
+        self.backend.taskmeta_collection = MONGODB_COLLECTION
+
+        mock_database = MagicMock(spec=['__getitem__', '__setitem__'])
+        mock_collection = Mock()
+
+        mock_get_database.return_value = mock_database
+        mock_database.__getitem__.return_value = mock_collection
+
+        self.backend._delete_group(sentinel.taskset_id)
+
+        mock_get_database.assert_called_once_with()
+        mock_collection.delete_one.assert_called_once_with(
+            {'_id': sentinel.taskset_id})
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag706')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_mongodb.py: 505-522
+</a>
+<div class="mid" id="frag706" style="display:none"><pre>
+    @patch('celery.backends.mongodb.MongoBackend._get_database')
+    def test__forget(self, mock_get_database):
+        # note: here tested _forget method, not forget method
+        self.backend.taskmeta_collection = MONGODB_COLLECTION
+
+        mock_database = MagicMock(spec=['__getitem__', '__setitem__'])
+        mock_collection = Mock()
+
+        mock_get_database.return_value = mock_database
+        mock_database.__getitem__.return_value = mock_collection
+
+        self.backend._forget(sentinel.task_id)
+
+        mock_get_database.assert_called_once_with()
+        mock_database.__getitem__.assert_called_once_with(
+            MONGODB_COLLECTION)
+        mock_collection.delete_one.assert_called_once_with(
+            {'_id': sentinel.task_id})
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 11:</b> &nbsp; 3 fragments, nominal size 12 lines, similarity 76%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag842')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_elasticsearch.py: 45-60
+</a>
+<div class="mid" id="frag842" style="display:none"><pre>
+    def test_get(self):
+        x = ElasticsearchBackend(app=self.app)
+        x._server = Mock()
+        x._server.get = Mock()
+        # expected result
+        r = {'found': True, '_source': {'result': sentinel.result}}
+        x._server.get.return_value = r
+        dict_result = x.get(sentinel.task_id)
+
+        assert dict_result == sentinel.result
+        x._server.get.assert_called_once_with(
+            doc_type=x.doc_type,
+            id=sentinel.task_id,
+            index=x.index,
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag843')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_elasticsearch.py: 61-74
+</a>
+<div class="mid" id="frag843" style="display:none"><pre>
+    def test_get_none(self):
+        x = ElasticsearchBackend(app=self.app)
+        x._server = Mock()
+        x._server.get = Mock()
+        x._server.get.return_value = sentinel.result
+        none_result = x.get(sentinel.task_id)
+
+        assert none_result is None
+        x._server.get.assert_called_once_with(
+            doc_type=x.doc_type,
+            id=sentinel.task_id,
+            index=x.index,
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag846')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_elasticsearch.py: 96-108
+</a>
+<div class="mid" id="frag846" style="display:none"><pre>
+    def test_delete(self):
+        x = ElasticsearchBackend(app=self.app)
+        x._server = Mock()
+        x._server.delete = Mock()
+        x._server.delete.return_value = sentinel.result
+
+        assert x.delete(sentinel.task_id) is None
+        x._server.delete.assert_called_once_with(
+            doc_type=x.doc_type,
+            id=sentinel.task_id,
+            index=x.index,
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 12:</b> &nbsp; 5 fragments, nominal size 28 lines, similarity 75%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag848')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_elasticsearch.py: 116-154
+</a>
+<div class="mid" id="frag848" style="display:none"><pre>
+    def test_index_conflict(self, datetime_mock):
+        expected_dt = datetime.datetime(2020, 6, 1, 18, 43, 24, 123456, None)
+        datetime_mock.utcnow.return_value = expected_dt
+
+        x = ElasticsearchBackend(app=self.app)
+        x._server = Mock()
+        x._server.index.side_effect = [
+            exceptions.ConflictError(409, "concurrent update", {})
+        ]
+
+        x._server.get.return_value = {
+            'found': True,
+            '_source': {"result": _RESULT_RETRY},
+            '_seq_no': 2,
+            '_primary_term': 1,
+        }
+
+        x._server.update.return_value = {
+            'result': 'updated'
+        }
+
+        x._set_with_state(sentinel.task_id, sentinel.result, sentinel.state)
+
+        assert x._server.get.call_count == 1
+        x._server.index.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'},
+            params={'op_type': 'create'},
+        )
+        x._server.update.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'doc': {'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'}},
+            params={'if_seq_no': 2, 'if_primary_term': 1}
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag852')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_elasticsearch.py: 277-309
+</a>
+<div class="mid" id="frag852" style="display:none"><pre>
+    def test_index_conflict_with_existing_ready_state(self, datetime_mock):
+        expected_dt = datetime.datetime(2020, 6, 1, 18, 43, 24, 123456, None)
+        datetime_mock.utcnow.return_value = expected_dt
+
+        x = ElasticsearchBackend(app=self.app)
+        x._server = Mock()
+        x._server.index.side_effect = [
+            exceptions.ConflictError(409, "concurrent update", {})
+        ]
+
+        x._server.get.return_value = {
+            'found': True,
+            '_source': {"result": _RESULT_FAILURE},
+            '_seq_no': 2,
+            '_primary_term': 1,
+        }
+
+        x._server.update.return_value = {
+            'result': 'updated'
+        }
+
+        x._set_with_state(sentinel.task_id, sentinel.result, states.RETRY)
+
+        assert x._server.get.call_count == 1
+        x._server.index.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'},
+            params={'op_type': 'create'},
+        )
+        x._server.update.assert_not_called()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag851')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_elasticsearch.py: 241-275
+</a>
+<div class="mid" id="frag851" style="display:none"><pre>
+    def test_index_conflict_with_existing_success(self, datetime_mock):
+        expected_dt = datetime.datetime(2020, 6, 1, 18, 43, 24, 123456, None)
+        datetime_mock.utcnow.return_value = expected_dt
+
+        x = ElasticsearchBackend(app=self.app)
+        x._server = Mock()
+        x._server.index.side_effect = [
+            exceptions.ConflictError(409, "concurrent update", {})
+        ]
+
+        x._server.get.return_value = {
+            'found': True,
+            '_source': {
+                'result': """{"status":"SUCCESS","result":42}"""
+            },
+            '_seq_no': 2,
+            '_primary_term': 1,
+        }
+
+        x._server.update.return_value = {
+            'result': 'updated'
+        }
+
+        x._set_with_state(sentinel.task_id, sentinel.result, sentinel.state)
+
+        assert x._server.get.call_count == 1
+        x._server.index.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'},
+            params={'op_type': 'create'},
+        )
+        x._server.update.assert_not_called()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag850')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_elasticsearch.py: 196-239
+</a>
+<div class="mid" id="frag850" style="display:none"><pre>
+    def test_index_conflict_with_ready_state_on_backend_without_state(self, datetime_mock):
+        """Even if the backend already have a ready state saved (FAILURE in this test case)
+        as we are calling ElasticsearchBackend.set directly, it does not have state,
+        so it cannot protect overriding a ready state by any other state.
+        As a result, server.update will be called no matter what.
+        """
+        expected_dt = datetime.datetime(2020, 6, 1, 18, 43, 24, 123456, None)
+        datetime_mock.utcnow.return_value = expected_dt
+
+        x = ElasticsearchBackend(app=self.app)
+        x._server = Mock()
+        x._server.index.side_effect = [
+            exceptions.ConflictError(409, "concurrent update", {})
+        ]
+
+        x._server.get.return_value = {
+            'found': True,
+            '_source': {"result": _RESULT_FAILURE},
+            '_seq_no': 2,
+            '_primary_term': 1,
+        }
+
+        x._server.update.return_value = {
+            'result': 'updated'
+        }
+
+        x.set(sentinel.task_id, sentinel.result)
+
+        assert x._server.get.call_count == 1
+        x._server.index.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'},
+            params={'op_type': 'create'},
+        )
+        x._server.update.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'doc': {'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'}},
+            params={'if_seq_no': 2, 'if_primary_term': 1}
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag849')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_elasticsearch.py: 156-194
+</a>
+<div class="mid" id="frag849" style="display:none"><pre>
+    def test_index_conflict_without_state(self, datetime_mock):
+        expected_dt = datetime.datetime(2020, 6, 1, 18, 43, 24, 123456, None)
+        datetime_mock.utcnow.return_value = expected_dt
+
+        x = ElasticsearchBackend(app=self.app)
+        x._server = Mock()
+        x._server.index.side_effect = [
+            exceptions.ConflictError(409, "concurrent update", {})
+        ]
+
+        x._server.get.return_value = {
+            'found': True,
+            '_source': {"result": _RESULT_RETRY},
+            '_seq_no': 2,
+            '_primary_term': 1,
+        }
+
+        x._server.update.return_value = {
+            'result': 'updated'
+        }
+
+        x.set(sentinel.task_id, sentinel.result)
+
+        assert x._server.get.call_count == 1
+        x._server.index.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'},
+            params={'op_type': 'create'},
+        )
+        x._server.update.assert_called_once_with(
+            id=sentinel.task_id,
+            index=x.index,
+            doc_type=x.doc_type,
+            body={'doc': {'result': sentinel.result, '@timestamp': expected_dt.isoformat()[:-3] + 'Z'}},
+            params={'if_seq_no': 2, 'if_primary_term': 1}
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 13:</b> &nbsp; 2 fragments, nominal size 54 lines, similarity 92%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag854')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_elasticsearch.py: 424-492
+</a>
+<div class="mid" id="frag854" style="display:none"><pre>
+    def test_backend_index_conflicting_document_removed(self, base_datetime_mock, es_datetime_mock):
+        expected_dt = datetime.datetime(2020, 6, 1, 18, 43, 24, 123456, None)
+        es_datetime_mock.utcnow.return_value = expected_dt
+
+        expected_done_dt = datetime.datetime(2020, 6, 1, 18, 45, 34, 654321, None)
+        base_datetime_mock.utcnow.return_value = expected_done_dt
+
+        self.app.conf.result_backend_always_retry, prev = True, self.app.conf.result_backend_always_retry
+        try:
+            x = ElasticsearchBackend(app=self.app)
+
+            task_id = str(sentinel.task_id)
+            encoded_task_id = bytes_to_str(x.get_key_for_task(task_id))
+            result = str(sentinel.result)
+
+            sleep_mock = Mock()
+            x._sleep = sleep_mock
+            x._server = Mock()
+            x._server.index.side_effect = [
+                exceptions.ConflictError(409, "concurrent update", {}),
+                {'result': 'created'}
+            ]
+
+            x._server.get.side_effect = [
+                {
+                    'found': True,
+                    '_source': {"result": _RESULT_RETRY},
+                    '_seq_no': 2,
+                    '_primary_term': 1,
+                },
+                exceptions.NotFoundError(404,
+                                         '{"_index":"celery","_type":"_doc","_id":"toto","found":false}',
+                                         {'_index': 'celery', '_type': '_doc',
+                                          '_id': 'toto', 'found': False}),
+            ]
+
+            result_meta = x._get_result_meta(result, states.SUCCESS, None, None)
+            result_meta['task_id'] = bytes_to_str(task_id)
+
+            expected_result = x.encode(result_meta)
+
+            x.store_result(task_id, result, states.SUCCESS)
+            x._server.index.assert_has_calls([
+                call(
+                    id=encoded_task_id,
+                    index=x.index,
+                    doc_type=x.doc_type,
+                    body={
+                        'result': expected_result,
+                        '@timestamp': expected_dt.isoformat()[:-3] + 'Z'
+                    },
+                    params={'op_type': 'create'}
+                ),
+                call(
+                    id=encoded_task_id,
+                    index=x.index,
+                    doc_type=x.doc_type,
+                    body={
+                        'result': expected_result,
+                        '@timestamp': expected_dt.isoformat()[:-3] + 'Z'
+                    },
+                    params={'op_type': 'create'}
+                ),
+            ])
+            x._server.update.assert_not_called()
+            sleep_mock.assert_not_called()
+        finally:
+            self.app.conf.result_backend_always_retry = prev
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag855')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_elasticsearch.py: 495-560
+</a>
+<div class="mid" id="frag855" style="display:none"><pre>
+    def test_backend_index_conflicting_document_removed_not_throwing(self, base_datetime_mock, es_datetime_mock):
+        expected_dt = datetime.datetime(2020, 6, 1, 18, 43, 24, 123456, None)
+        es_datetime_mock.utcnow.return_value = expected_dt
+
+        expected_done_dt = datetime.datetime(2020, 6, 1, 18, 45, 34, 654321, None)
+        base_datetime_mock.utcnow.return_value = expected_done_dt
+
+        self.app.conf.result_backend_always_retry, prev = True, self.app.conf.result_backend_always_retry
+        try:
+            x = ElasticsearchBackend(app=self.app)
+
+            task_id = str(sentinel.task_id)
+            encoded_task_id = bytes_to_str(x.get_key_for_task(task_id))
+            result = str(sentinel.result)
+
+            sleep_mock = Mock()
+            x._sleep = sleep_mock
+            x._server = Mock()
+            x._server.index.side_effect = [
+                exceptions.ConflictError(409, "concurrent update", {}),
+                {'result': 'created'}
+            ]
+
+            x._server.get.side_effect = [
+                {
+                    'found': True,
+                    '_source': {'result': _RESULT_RETRY},
+                    '_seq_no': 2,
+                    '_primary_term': 1,
+                },
+                {'_index': 'celery', '_type': '_doc', '_id': 'toto', 'found': False},
+            ]
+
+            result_meta = x._get_result_meta(result, states.SUCCESS, None, None)
+            result_meta['task_id'] = bytes_to_str(task_id)
+
+            expected_result = x.encode(result_meta)
+
+            x.store_result(task_id, result, states.SUCCESS)
+            x._server.index.assert_has_calls([
+                call(
+                    id=encoded_task_id,
+                    index=x.index,
+                    doc_type=x.doc_type,
+                    body={
+                        'result': expected_result,
+                        '@timestamp': expected_dt.isoformat()[:-3] + 'Z'
+                    },
+                    params={'op_type': 'create'}
+                ),
+                call(
+                    id=encoded_task_id,
+                    index=x.index,
+                    doc_type=x.doc_type,
+                    body={
+                        'result': expected_result,
+                        '@timestamp': expected_dt.isoformat()[:-3] + 'Z'
+                    },
+                    params={'op_type': 'create'}
+                ),
+            ])
+            x._server.update.assert_not_called()
+            sleep_mock.assert_not_called()
+        finally:
+            self.app.conf.result_backend_always_retry = prev
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 14:</b> &nbsp; 2 fragments, nominal size 15 lines, similarity 75%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag859')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_elasticsearch.py: 649-667
+</a>
+<div class="mid" id="frag859" style="display:none"><pre>
+    def test_get_server_with_auth(self, mock_es_client):
+        url = 'elasticsearch+https://fake_user:fake_pass@localhost:9200/index/doc_type'
+        with self.Celery(backend=url) as app:
+            x = app.backend
+
+            assert x.username == 'fake_user'
+            assert x.password == 'fake_pass'
+            assert x.scheme == 'https'
+
+            x._get_server()
+            mock_es_client.assert_called_once_with(
+                'localhost:9200',
+                http_auth=('fake_user', 'fake_pass'),
+                max_retries=x.es_max_retries,
+                retry_on_timeout=x.es_retry_on_timeout,
+                scheme='https',
+                timeout=x.es_timeout,
+            )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag860')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_elasticsearch.py: 669-682
+</a>
+<div class="mid" id="frag860" style="display:none"><pre>
+    def test_get_server_without_auth(self, mock_es_client):
+        url = 'elasticsearch://localhost:9200/index/doc_type'
+        with self.Celery(backend=url) as app:
+            x = app.backend
+            x._get_server()
+            mock_es_client.assert_called_once_with(
+                'localhost:9200',
+                http_auth=None,
+                max_retries=x.es_max_retries,
+                retry_on_timeout=x.es_retry_on_timeout,
+                scheme='http',
+                timeout=x.es_timeout,
+            )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 15:</b> &nbsp; 2 fragments, nominal size 21 lines, similarity 95%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag861')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_elasticsearch.py: 683-708
+</a>
+<div class="mid" id="frag861" style="display:none"><pre>
+    def test_index(self):
+        x = ElasticsearchBackend(app=self.app)
+        x.doc_type = 'test-doc-type'
+        x._server = Mock()
+        x._server.index = Mock()
+        expected_result = {
+            '_id': sentinel.task_id,
+            '_source': {'result': sentinel.result}
+        }
+        x._server.index.return_value = expected_result
+
+        body = {"field1": "value1"}
+        x._index(
+            id=str(sentinel.task_id).encode(),
+            body=body,
+            kwarg1='test1'
+        )
+        x._server.index.assert_called_once_with(
+            id=str(sentinel.task_id),
+            doc_type=x.doc_type,
+            index=x.index,
+            body=body,
+            params={'op_type': 'create'},
+            kwarg1='test1'
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag862')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_elasticsearch.py: 709-734
+</a>
+<div class="mid" id="frag862" style="display:none"><pre>
+    def test_index_bytes_key(self):
+        x = ElasticsearchBackend(app=self.app)
+        x.doc_type = 'test-doc-type'
+        x._server = Mock()
+        x._server.index = Mock()
+        expected_result = {
+            '_id': sentinel.task_id,
+            '_source': {'result': sentinel.result}
+        }
+        x._server.index.return_value = expected_result
+
+        body = {b"field1": "value1"}
+        x._index(
+            id=str(sentinel.task_id).encode(),
+            body=body,
+            kwarg1='test1'
+        )
+        x._server.index.assert_called_once_with(
+            id=str(sentinel.task_id),
+            doc_type=x.doc_type,
+            index=x.index,
+            body={"field1": "value1"},
+            params={'op_type': 'create'},
+            kwarg1='test1'
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 16:</b> &nbsp; 2 fragments, nominal size 17 lines, similarity 94%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag865')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_elasticsearch.py: 753-770
+</a>
+<div class="mid" id="frag865" style="display:none"><pre>
+    def test_encode_exception_as_json(self):
+        self.app.conf.elasticsearch_save_meta_as_text, prev = False, self.app.conf.elasticsearch_save_meta_as_text
+        try:
+            x = ElasticsearchBackend(app=self.app)
+            try:
+                raise Exception("failed")
+            except Exception as exc:
+                einfo = ExceptionInfo()
+                result_meta = x._get_result_meta(
+                    x.encode_result(exc, states.FAILURE),
+                    states.FAILURE,
+                    einfo.traceback,
+                    None,
+                )
+                assert x.encode(result_meta) == result_meta
+        finally:
+            self.app.conf.elasticsearch_save_meta_as_text = prev
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag869')" href="javascript:;">
+celery-5.2.3/t/unit/backends/test_elasticsearch.py: 800-817
+</a>
+<div class="mid" id="frag869" style="display:none"><pre>
+    def test_decode_encoded_exception_as_json(self):
+        self.app.conf.elasticsearch_save_meta_as_text, prev = False, self.app.conf.elasticsearch_save_meta_as_text
+        try:
+            x = ElasticsearchBackend(app=self.app)
+            try:
+                raise Exception("failed")
+            except Exception as exc:
+                einfo = ExceptionInfo()
+                result_meta = x._get_result_meta(
+                    x.encode_result(exc, states.FAILURE),
+                    states.FAILURE,
+                    einfo.traceback,
+                    None,
+                )
+                assert x.decode(x.encode(result_meta)) == result_meta
+        finally:
+            self.app.conf.elasticsearch_save_meta_as_text = prev
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 17:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 100%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag876')" href="javascript:;">
+celery-5.2.3/t/unit/security/test_key.py: 18-29
+</a>
+<div class="mid" id="frag876" style="display:none"><pre>
+    def test_invalid_private_key(self):
+        with pytest.raises((SecurityError, TypeError)):
+            PrivateKey(None)
+        with pytest.raises(SecurityError):
+            PrivateKey('')
+        with pytest.raises(SecurityError):
+            PrivateKey('foo')
+        with pytest.raises(SecurityError):
+            PrivateKey(KEY1[:20] + KEY1[21:])
+        with pytest.raises(SecurityError):
+            PrivateKey(CERT1)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag889')" href="javascript:;">
+celery-5.2.3/t/unit/security/test_certificate.py: 21-32
+</a>
+<div class="mid" id="frag889" style="display:none"><pre>
+    def test_invalid_certificate(self):
+        with pytest.raises((SecurityError, TypeError)):
+            Certificate(None)
+        with pytest.raises(SecurityError):
+            Certificate('')
+        with pytest.raises(SecurityError):
+            Certificate('foo')
+        with pytest.raises(SecurityError):
+            Certificate(CERT1[:20] + CERT1[21:])
+        with pytest.raises(SecurityError):
+            Certificate(KEY1)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 18:</b> &nbsp; 2 fragments, nominal size 12 lines, similarity 83%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag949')" href="javascript:;">
+celery-5.2.3/t/unit/concurrency/test_concurrency.py: 162-173
+</a>
+<div class="mid" id="frag949" style="display:none"><pre>
+    def test_no_concurrent_futures__returns_no_threads_pool_name(self):
+        expected_pool_names = (
+            'prefork',
+            'eventlet',
+            'gevent',
+            'solo',
+            'processes',
+        )
+        with patch.dict(sys.modules, {'concurrent.futures': None}):
+            importlib.reload(concurrency)
+            assert concurrency.get_available_pool_names() == expected_pool_names
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag950')" href="javascript:;">
+celery-5.2.3/t/unit/concurrency/test_concurrency.py: 174-185
+</a>
+<div class="mid" id="frag950" style="display:none"><pre>
+    def test_concurrent_futures__returns_threads_pool_name(self):
+        expected_pool_names = (
+            'prefork',
+            'eventlet',
+            'gevent',
+            'solo',
+            'processes',
+            'threads',
+        )
+        with patch.dict(sys.modules, {'concurrent.futures': Mock()}):
+            importlib.reload(concurrency)
+            assert concurrency.get_available_pool_names() == expected_pool_names
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 19:</b> &nbsp; 2 fragments, nominal size 18 lines, similarity 88%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1011')" href="javascript:;">
+celery-5.2.3/t/unit/events/test_state.py: 324-342
+</a>
+<div class="mid" id="frag1011" style="display:none"><pre>
+    def test_task_logical_clock_ordering(self):
+        state = State()
+        r = ev_logical_clock_ordering(state)
+        tA, tB, tC = r.uids
+        r.play()
+        now = list(state.tasks_by_time())
+        assert now[0][0] == tA
+        assert now[1][0] == tC
+        assert now[2][0] == tB
+        for _ in range(1000):
+            shuffle(r.uids)
+            tA, tB, tC = r.uids
+            r.rewind_with_offset(r.current_clock + 1, r.uids)
+            r.play()
+        now = list(state.tasks_by_time())
+        assert now[0][0] == tA
+        assert now[1][0] == tC
+        assert now[2][0] == tB
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1012')" href="javascript:;">
+celery-5.2.3/t/unit/events/test_state.py: 344-362
+</a>
+<div class="mid" id="frag1012" style="display:none"><pre>
+    def test_task_descending_clock_ordering(self):
+        state = State()
+        r = ev_logical_clock_ordering(state)
+        tA, tB, tC = r.uids
+        r.play()
+        now = list(state.tasks_by_time(reverse=False))
+        assert now[0][0] == tA
+        assert now[1][0] == tB
+        assert now[2][0] == tC
+        for _ in range(1000):
+            shuffle(r.uids)
+            tA, tB, tC = r.uids
+            r.rewind_with_offset(r.current_clock + 1, r.uids)
+            r.play()
+        now = list(state.tasks_by_time(reverse=False))
+        assert now[0][0] == tB
+        assert now[1][0] == tC
+        assert now[2][0] == tA
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 20:</b> &nbsp; 2 fragments, nominal size 11 lines, similarity 72%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1032')" href="javascript:;">
+celery-5.2.3/t/unit/events/test_state.py: 578-589
+</a>
+<div class="mid" id="frag1032" style="display:none"><pre>
+    def test_survives_unknown_worker_event(self):
+        s = State()
+        s.event({
+            'type': 'worker-unknown-event-xxx',
+            'foo': 'bar',
+        })
+        s.event({
+            'type': 'worker-unknown-event-xxx',
+            'hostname': 'xxx',
+            'foo': 'bar',
+        })
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1035')" href="javascript:;">
+celery-5.2.3/t/unit/events/test_state.py: 620-631
+</a>
+<div class="mid" id="frag1035" style="display:none"><pre>
+    def test_survives_unknown_task_event(self):
+        s = State()
+        s.event({
+            'type': 'task-unknown-event-xxx',
+            'foo': 'bar',
+            'uuid': 'x',
+            'hostname': 'y',
+            'timestamp': time(),
+            'local_received': time(),
+            'clock': 0,
+        })
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 21:</b> &nbsp; 2 fragments, nominal size 14 lines, similarity 78%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1033')" href="javascript:;">
+celery-5.2.3/t/unit/events/test_state.py: 590-604
+</a>
+<div class="mid" id="frag1033" style="display:none"><pre>
+    def test_survives_unknown_worker_leaving(self):
+        s = State(on_node_leave=Mock(name='on_node_leave'))
+        (worker, created), subject = s.event({
+            'type': 'worker-offline',
+            'hostname': 'unknown@vandelay.com',
+            'timestamp': time(),
+            'local_received': time(),
+            'clock': 301030134894833,
+        })
+        assert worker == Worker('unknown@vandelay.com')
+        assert not created
+        assert subject == 'offline'
+        assert 'unknown@vandelay.com' not in s.workers
+        s.on_node_leave.assert_called_with(worker)
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1034')" href="javascript:;">
+celery-5.2.3/t/unit/events/test_state.py: 605-619
+</a>
+<div class="mid" id="frag1034" style="display:none"><pre>
+    def test_on_node_join_callback(self):
+        s = State(on_node_join=Mock(name='on_node_join'))
+        (worker, created), subject = s.event({
+            'type': 'worker-online',
+            'hostname': 'george@vandelay.com',
+            'timestamp': time(),
+            'local_received': time(),
+            'clock': 34314,
+        })
+        assert worker
+        assert created
+        assert subject == 'online'
+        assert 'george@vandelay.com' in s.workers
+        s.on_node_join.assert_called_with(worker)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 22:</b> &nbsp; 2 fragments, nominal size 10 lines, similarity 80%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1043')" href="javascript:;">
+celery-5.2.3/t/unit/events/test_cursesmon.py: 31-42
+</a>
+<div class="mid" id="frag1043" style="display:none"><pre>
+    def test_format_row_with_truncated_uuid(self):
+        self.win.x, self.win.y = 80, 24
+        row = self.monitor.format_row(
+            '783da208-77d0-40ca-b3d6-37dd6dbb55d3',
+            'task.task.task.task.task.task.task.task.task.tas',
+            'workerworkerworkerworkerworkerworkerworkerworker',
+            '21:13:20',
+            'SUCCESS')
+        expected = ('783da208-77d0-40ca-b3d... workerworker... '
+                    'task.task.[.]tas 21:13:20 SUCCESS ')
+        assert row == expected
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1045')" href="javascript:;">
+celery-5.2.3/t/unit/events/test_cursesmon.py: 50-62
+</a>
+<div class="mid" id="frag1045" style="display:none"><pre>
+    def test_format_row_for_wide_screen_with_short_uuid(self):
+        self.win.x, self.win.y = 140, 24
+        row = self.monitor.format_row(
+            '783da208-77d0-40ca-b3d6-37dd6dbb55d3',
+            'task.task.task.task.task.task.task.task.task.tas',
+            'workerworkerworkerworkerworkerworkerworkerworker',
+            '21:13:20',
+            'SUCCESS')
+        assert len(row) == 136
+        assert ('783da208-77d0-40ca-b3d6-37dd6dbb55d3 '
+                'workerworkerworkerworkerworkerworker... '
+                'task.task.task.task.task.task.task.[.]tas '
+                '21:13:20 SUCCESS ' == row)
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 23:</b> &nbsp; 7 fragments, nominal size 11 lines, similarity 72%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1155')" href="javascript:;">
+celery-5.2.3/t/unit/worker/test_loops.py: 279-290
+</a>
+<div class="mid" id="frag1155" style="display:none"><pre>
+    def test_poll_readable(self):
+        x = X(self.app)
+        reader = Mock(name='reader')
+        x.hub.add_reader(6, reader, 6)
+        x.hub.on_tick.add(x.close_then_error(Mock(name='tick'), mod=4))
+        poller = x.hub.poller
+        poller.poll.return_value = [(6, READ)]
+        with pytest.raises(socket.error):
+            asynloop(*x.args)
+        reader.assert_called_with(6)
+        poller.poll.assert_called()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1169')" href="javascript:;">
+celery-5.2.3/t/unit/worker/test_loops.py: 413-424
+</a>
+<div class="mid" id="frag1169" style="display:none"><pre>
+    def test_poll_err_readable(self):
+        x = X(self.app)
+        reader = Mock(name='reader')
+        x.hub.add_reader(6, reader, 6, 24)
+        x.hub.on_tick.add(x.close_then_error(Mock(), 2))
+        poller = x.hub.poller
+        poller.poll.return_value = [(6, ERR)]
+        with pytest.raises(socket.error):
+            asynloop(*x.args)
+        reader.assert_called_with(6, 24)
+        poller.poll.assert_called()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1159')" href="javascript:;">
+celery-5.2.3/t/unit/worker/test_loops.py: 327-337
+</a>
+<div class="mid" id="frag1159" style="display:none"><pre>
+    def test_poll_unknown_event(self):
+        x = X(self.app)
+        writer = Mock(name='reader')
+        x.hub.add_writer(6, writer, 6)
+        x.hub.on_tick.add(x.close_then_error(Mock(name='tick'), 2))
+        poller = x.hub.poller
+        poller.poll.return_value = [(6, 0)]
+        with pytest.raises(socket.error):
+            asynloop(*x.args)
+        poller.poll.assert_called()
+
+</pre></div>
+</td>
+</tr><tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1156')" href="javascript:;">
+celery-5.2.3/t/unit/worker/test_loops.py: 291-303
+</a>
+<div class="mid" id="frag1156" style="display:none"><pre>
+    def test_poll_readable_raises_Empty(self):
+        x = X(self.app)
+        reader = Mock(name='reader')
+        x.hub.add_reader(6, reader, 6)
+        x.hub.on_tick.add(x.close_then_error(Mock(name='tick'), 2))
+        poller = x.hub.poller
+        poller.poll.return_value = [(6, READ)]
+        reader.side_effect = Empty()
+        with pytest.raises(socket.error):
+            asynloop(*x.args)
+        reader.assert_called_with(6)
+        poller.poll.assert_called()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1157')" href="javascript:;">
+celery-5.2.3/t/unit/worker/test_loops.py: 304-315
+</a>
+<div class="mid" id="frag1157" style="display:none"><pre>
+    def test_poll_writable(self):
+        x = X(self.app)
+        writer = Mock(name='writer')
+        x.hub.add_writer(6, writer, 6)
+        x.hub.on_tick.add(x.close_then_error(Mock(name='tick'), 2))
+        poller = x.hub.poller
+        poller.poll.return_value = [(6, WRITE)]
+        with pytest.raises(socket.error):
+            asynloop(*x.args)
+        writer.assert_called_with(6)
+        poller.poll.assert_called()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1158')" href="javascript:;">
+celery-5.2.3/t/unit/worker/test_loops.py: 316-326
+</a>
+<div class="mid" id="frag1158" style="display:none"><pre>
+    def test_poll_writable_none_registered(self):
+        x = X(self.app)
+        writer = Mock(name='writer')
+        x.hub.add_writer(6, writer, 6)
+        x.hub.on_tick.add(x.close_then_error(Mock(name='tick'), 2))
+        poller = x.hub.poller
+        poller.poll.return_value = [(7, WRITE)]
+        with pytest.raises(socket.error):
+            asynloop(*x.args)
+        poller.poll.assert_called()
+
+</pre></div>
+</td>
+</tr><tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1162')" href="javascript:;">
+celery-5.2.3/t/unit/worker/test_loops.py: 353-364
+</a>
+<div class="mid" id="frag1162" style="display:none"><pre>
+    def test_poll_err_writable(self):
+        x = X(self.app)
+        writer = Mock(name='writer')
+        x.hub.add_writer(6, writer, 6, 48)
+        x.hub.on_tick.add(x.close_then_error(Mock(), 2))
+        poller = x.hub.poller
+        poller.poll.return_value = [(6, ERR)]
+        with pytest.raises(socket.error):
+            asynloop(*x.args)
+        writer.assert_called_with(6, 48)
+        poller.poll.assert_called()
+
+</pre></div>
+</td>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 24:</b> &nbsp; 2 fragments, nominal size 14 lines, similarity 71%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1165')" href="javascript:;">
+celery-5.2.3/t/unit/worker/test_loops.py: 382-396
+</a>
+<div class="mid" id="frag1165" style="display:none"><pre>
+    def test_poll_write_generator_stopped(self):
+        x = X(self.app)
+
+        def Gen():
+            if 0:
+                yield
+        gen = Gen()
+        x.hub.add_writer(6, gen)
+        x.hub.on_tick.add(x.close_then_error(Mock(name='tick'), 2))
+        x.hub.poller.poll.return_value = [(6, WRITE)]
+        x.hub.remove = Mock(name='hub.remove()')
+        with pytest.raises(socket.error):
+            asynloop(*x.args)
+        assert gen.gi_frame is None
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1167')" href="javascript:;">
+celery-5.2.3/t/unit/worker/test_loops.py: 397-412
+</a>
+<div class="mid" id="frag1167" style="display:none"><pre>
+    def test_poll_write_generator_raises(self):
+        x = X(self.app)
+
+        def Gen():
+            raise ValueError('foo')
+            yield
+        gen = Gen()
+        x.hub.add_writer(6, gen)
+        x.hub.remove = Mock(name='hub.remove()')
+        x.hub.on_tick.add(x.close_then_error(Mock(name='tick'), 2))
+        x.hub.poller.poll.return_value = [(6, WRITE)]
+        with pytest.raises(ValueError):
+            asynloop(*x.args)
+        assert gen.gi_frame is None
+        x.hub.remove.assert_called_with(6)
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 25:</b> &nbsp; 2 fragments, nominal size 14 lines, similarity 85%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1216')" href="javascript:;">
+celery-5.2.3/t/unit/worker/test_consumer.py: 313-329
+</a>
+<div class="mid" id="frag1216" style="display:none"><pre>
+    def test_start(self):
+        c = Mock()
+        c.timer = Mock()
+        c.event_dispatcher = Mock()
+
+        with patch('celery.worker.heartbeat.Heart') as hcls:
+            h = Heart(c)
+            assert h.enabled
+            assert h.heartbeat_interval is None
+            assert c.heart is None
+
+            h.start(c)
+            assert c.heart
+            hcls.assert_called_with(c.timer, c.event_dispatcher,
+                                    h.heartbeat_interval)
+            c.heart.start.assert_called_with()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1217')" href="javascript:;">
+celery-5.2.3/t/unit/worker/test_consumer.py: 330-347
+</a>
+<div class="mid" id="frag1217" style="display:none"><pre>
+    def test_start_heartbeat_interval(self):
+        c = Mock()
+        c.timer = Mock()
+        c.event_dispatcher = Mock()
+
+        with patch('celery.worker.heartbeat.Heart') as hcls:
+            h = Heart(c, False, 20)
+            assert h.enabled
+            assert h.heartbeat_interval == 20
+            assert c.heart is None
+
+            h.start(c)
+            assert c.heart
+            hcls.assert_called_with(c.timer, c.event_dispatcher,
+                                    h.heartbeat_interval)
+            c.heart.start.assert_called_with()
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 26:</b> &nbsp; 2 fragments, nominal size 13 lines, similarity 73%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1267')" href="javascript:;">
+celery-5.2.3/t/unit/fixups/test_django.py: 162-174
+</a>
+<div class="mid" id="frag1267" style="display:none"><pre>
+    def test_on_task_prerun(self):
+        task = Mock()
+        with self.fixup_context(self.app) as (f, _, _):
+            task.request.is_eager = False
+            with patch.object(f, 'close_database'):
+                f.on_task_prerun(task)
+                f.close_database.assert_called_with()
+
+            task.request.is_eager = True
+            with patch.object(f, 'close_database'):
+                f.on_task_prerun(task)
+                f.close_database.assert_not_called()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1268')" href="javascript:;">
+celery-5.2.3/t/unit/fixups/test_django.py: 175-192
+</a>
+<div class="mid" id="frag1268" style="display:none"><pre>
+    def test_on_task_postrun(self):
+        task = Mock()
+        with self.fixup_context(self.app) as (f, _, _):
+            with patch.object(f, 'close_cache'):
+                task.request.is_eager = False
+                with patch.object(f, 'close_database'):
+                    f.on_task_postrun(task)
+                    f.close_database.assert_called()
+                    f.close_cache.assert_called()
+
+            # when a task is eager, don't close connections
+            with patch.object(f, 'close_cache'):
+                task.request.is_eager = True
+                with patch.object(f, 'close_database'):
+                    f.on_task_postrun(task)
+                    f.close_database.assert_not_called()
+                    f.close_cache.assert_not_called()
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 27:</b> &nbsp; 2 fragments, nominal size 23 lines, similarity 72%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1306')" href="javascript:;">
+celery-5.2.3/t/unit/app/test_log.py: 251-278
+</a>
+<div class="mid" id="frag1306" style="display:none"><pre>
+    def test_logging_proxy(self, restore_logging):
+        logger = self.setup_logger(loglevel=logging.ERROR, logfile=None,
+                                   root=False)
+
+        with conftest.wrap_logger(logger) as sio:
+            p = LoggingProxy(logger, loglevel=logging.ERROR)
+            p.close()
+            p.write('foo')
+            assert 'foo' not in sio.getvalue()
+            p.closed = False
+            p.write('\n')
+            assert sio.getvalue() == ''
+            write_res = p.write('foo ')
+            assert sio.getvalue() == 'foo \n'
+            assert write_res == 4
+            lines = ['baz', 'xuzzy']
+            p.writelines(lines)
+            for line in lines:
+                assert line in sio.getvalue()
+            p.flush()
+            p.close()
+            assert not p.isatty()
+
+            with conftest.stdouts() as (stdout, stderr):
+                with in_sighandler():
+                    p.write('foo')
+                    assert stderr.getvalue()
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1307')" href="javascript:;">
+celery-5.2.3/t/unit/app/test_log.py: 279-302
+</a>
+<div class="mid" id="frag1307" style="display:none"><pre>
+    def test_logging_proxy_bytes(self, restore_logging):
+        logger = self.setup_logger(loglevel=logging.ERROR, logfile=None,
+                                   root=False)
+
+        with conftest.wrap_logger(logger) as sio:
+            p = LoggingProxy(logger, loglevel=logging.ERROR)
+            p.close()
+            p.write(b'foo')
+            assert 'foo' not in str(sio.getvalue())
+            p.closed = False
+            p.write(b'\n')
+            assert str(sio.getvalue()) == ''
+            write_res = p.write(b'foo ')
+            assert str(sio.getvalue()) == 'foo \n'
+            assert write_res == 4
+            p.flush()
+            p.close()
+            assert not p.isatty()
+
+            with conftest.stdouts() as (stdout, stderr):
+                with in_sighandler():
+                    p.write(b'foo')
+                    assert stderr.getvalue()
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 28:</b> &nbsp; 2 fragments, nominal size 10 lines, similarity 70%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1485')" href="javascript:;">
+celery-5.2.3/t/unit/app/test_control.py: 303-313
+</a>
+<div class="mid" id="frag1485" style="display:none"><pre>
+    def test_add_consumer(self):
+        self.app.control.add_consumer('foo')
+        self.assert_control_called_with_args(
+            'add_consumer',
+            destination=None,
+            queue='foo',
+            exchange=None,
+            exchange_type='direct',
+            routing_key=None,
+        )
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1503')" href="javascript:;">
+celery-5.2.3/t/unit/app/test_control.py: 444-454
+</a>
+<div class="mid" id="frag1503" style="display:none"><pre>
+    def test_election(self):
+        self.app.control.election('some_id', 'topic', 'action')
+        self.assert_control_called_with_args(
+            'election',
+            destination=None,
+            topic='topic',
+            action='action',
+            id='some_id',
+            _options={'connection': None},
+        )
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 29:</b> &nbsp; 2 fragments, nominal size 29 lines, similarity 82%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1546')" href="javascript:;">
+celery-5.2.3/celery/contrib/testing/mocks.py: 11-44
+</a>
+<div class="mid" id="frag1546" style="display:none"><pre>
+def TaskMessage(
+    name,  # type: str
+    id=None,  # type: str
+    args=(),  # type: Sequence
+    kwargs=None,  # type: Mapping
+    callbacks=None,  # type: Sequence[Signature]
+    errbacks=None,  # type: Sequence[Signature]
+    chain=None,  # type: Sequence[Signature]
+    shadow=None,  # type: str
+    utc=None,  # type: bool
+    **options  # type: Any
+):
+    # type: (...) -&gt; Any
+    """Create task message in protocol 2 format."""
+    kwargs = {} if not kwargs else kwargs
+    from kombu.serialization import dumps
+
+    from celery import uuid
+    id = id or uuid()
+    message = Mock(name=f'TaskMessage-{id}')
+    message.headers = {
+        'id': id,
+        'task': name,
+        'shadow': shadow,
+    }
+    embed = {'callbacks': callbacks, 'errbacks': errbacks, 'chain': chain}
+    message.headers.update(options)
+    message.content_type, message.content_encoding, message.body = dumps(
+        (args, kwargs, embed), serializer='json',
+    )
+    message.payload = (args, kwargs, embed)
+    return message
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1547')" href="javascript:;">
+celery-5.2.3/celery/contrib/testing/mocks.py: 45-78
+</a>
+<div class="mid" id="frag1547" style="display:none"><pre>
+def TaskMessage1(
+    name,  # type: str
+    id=None,  # type: str
+    args=(),  # type: Sequence
+    kwargs=None,  # type: Mapping
+    callbacks=None,  # type: Sequence[Signature]
+    errbacks=None,  # type: Sequence[Signature]
+    chain=None,  # type: Sequence[Signature]
+    **options  # type: Any
+):
+    # type: (...) -&gt; Any
+    """Create task message in protocol 1 format."""
+    kwargs = {} if not kwargs else kwargs
+    from kombu.serialization import dumps
+
+    from celery import uuid
+    id = id or uuid()
+    message = Mock(name=f'TaskMessage-{id}')
+    message.headers = {}
+    message.payload = {
+        'task': name,
+        'id': id,
+        'args': args,
+        'kwargs': kwargs,
+        'callbacks': callbacks,
+        'errbacks': errbacks,
+    }
+    message.payload.update(options)
+    message.content_type, message.content_encoding, message.body = dumps(
+        message.payload,
+    )
+    return message
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 30:</b> &nbsp; 2 fragments, nominal size 14 lines, similarity 80%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1585')" href="javascript:;">
+celery-5.2.3/celery/contrib/pytest.py: 65-83
+</a>
+<div class="mid" id="frag1585" style="display:none"><pre>
+def celery_session_app(request,
+                       celery_config,
+                       celery_parameters,
+                       celery_enable_logging,
+                       use_celery_app_trap):
+    # type: (Any, Any, Any, Any, Any) -&gt; Celery
+    """Session Fixture: Return app for session fixtures."""
+    mark = request.node.get_closest_marker('celery')
+    config = dict(celery_config, **mark.kwargs if mark else {})
+    with _create_app(enable_logging=celery_enable_logging,
+                     use_trap=use_celery_app_trap,
+                     parameters=celery_parameters,
+                     **config) as app:
+        if not use_celery_app_trap:
+            app.set_default()
+            app.set_current()
+        yield app
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1593')" href="javascript:;">
+celery-5.2.3/celery/contrib/pytest.py: 173-187
+</a>
+<div class="mid" id="frag1593" style="display:none"><pre>
+def celery_app(request,
+               celery_config,
+               celery_parameters,
+               celery_enable_logging,
+               use_celery_app_trap):
+    """Fixture creating a Celery application instance."""
+    mark = request.node.get_closest_marker('celery')
+    config = dict(celery_config, **mark.kwargs if mark else {})
+    with _create_app(enable_logging=celery_enable_logging,
+                     use_trap=use_celery_app_trap,
+                     parameters=celery_parameters,
+                     **config) as app:
+        yield app
+
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 31:</b> &nbsp; 9 fragments, nominal size 16 lines, similarity 70%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1610')" href="javascript:;">
+celery-5.2.3/celery/bin/amqp.py: 89-107
+</a>
+<div class="mid" id="frag1610" style="display:none"><pre>
+def exchange_declare(amqp_context, exchange, type, passive, durable,
+                     auto_delete):
+    if amqp_context.channel is None:
+        amqp_context.echo_error('Not connected to broker. Please retry...')
+        amqp_context.reconnect()
+    else:
+        try:
+            amqp_context.channel.exchange_declare(exchange=exchange,
+                                                  type=type,
+                                                  passive=passive,
+                                                  durable=durable,
+                                                  auto_delete=auto_delete)
+        except Exception as e:
+            amqp_context.echo_error(e)
+            amqp_context.reconnect()
+        else:
+            amqp_context.echo_ok()
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1613')" href="javascript:;">
+celery-5.2.3/celery/bin/amqp.py: 166-185
+</a>
+<div class="mid" id="frag1613" style="display:none"><pre>
+def queue_declare(amqp_context, queue, passive, durable, auto_delete):
+    if amqp_context.channel is None:
+        amqp_context.echo_error('Not connected to broker. Please retry...')
+        amqp_context.reconnect()
+    else:
+        try:
+            retval = amqp_context.channel.queue_declare(queue=queue,
+                                                        passive=passive,
+                                                        durable=durable,
+                                                        auto_delete=auto_delete)
+        except Exception as e:
+            amqp_context.echo_error(e)
+            amqp_context.reconnect()
+        else:
+            amqp_context.cli_context.secho(
+                'queue:{} messages:{} consumers:{}'.format(*retval),
+                fg='cyan', bold=True)
+            amqp_context.echo_ok()
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1617')" href="javascript:;">
+celery-5.2.3/celery/bin/amqp.py: 272-293
+</a>
+<div class="mid" id="frag1617" style="display:none"><pre>
+def basic_publish(amqp_context, msg, exchange, routing_key, mandatory,
+                  immediate):
+    if amqp_context.channel is None:
+        amqp_context.echo_error('Not connected to broker. Please retry...')
+        amqp_context.reconnect()
+    else:
+        # XXX Hack to fix Issue #2013
+        if isinstance(amqp_context.connection.connection, Connection):
+            msg = Message(msg)
+        try:
+            amqp_context.channel.basic_publish(msg,
+                                               exchange=exchange,
+                                               routing_key=routing_key,
+                                               mandatory=mandatory,
+                                               immediate=immediate)
+        except Exception as e:
+            amqp_context.echo_error(e)
+            amqp_context.reconnect()
+        else:
+            amqp_context.echo_ok()
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1612')" href="javascript:;">
+celery-5.2.3/celery/bin/amqp.py: 137-152
+</a>
+<div class="mid" id="frag1612" style="display:none"><pre>
+def queue_bind(amqp_context, queue, exchange, routing_key):
+    if amqp_context.channel is None:
+        amqp_context.echo_error('Not connected to broker. Please retry...')
+        amqp_context.reconnect()
+    else:
+        try:
+            amqp_context.channel.queue_bind(queue=queue,
+                                            exchange=exchange,
+                                            routing_key=routing_key)
+        except Exception as e:
+            amqp_context.echo_error(e)
+            amqp_context.reconnect()
+        else:
+            amqp_context.echo_ok()
+
+
+</pre></div>
+</td>
+</tr><tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1611')" href="javascript:;">
+celery-5.2.3/celery/bin/amqp.py: 114-128
+</a>
+<div class="mid" id="frag1611" style="display:none"><pre>
+def exchange_delete(amqp_context, exchange, if_unused):
+    if amqp_context.channel is None:
+        amqp_context.echo_error('Not connected to broker. Please retry...')
+        amqp_context.reconnect()
+    else:
+        try:
+            amqp_context.channel.exchange_delete(exchange=exchange,
+                                                 if_unused=if_unused)
+        except Exception as e:
+            amqp_context.echo_error(e)
+            amqp_context.reconnect()
+        else:
+            amqp_context.echo_ok()
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1614')" href="javascript:;">
+celery-5.2.3/celery/bin/amqp.py: 196-214
+</a>
+<div class="mid" id="frag1614" style="display:none"><pre>
+def queue_delete(amqp_context, queue, if_unused, if_empty):
+    if amqp_context.channel is None:
+        amqp_context.echo_error('Not connected to broker. Please retry...')
+        amqp_context.reconnect()
+    else:
+        try:
+            retval = amqp_context.channel.queue_delete(queue=queue,
+                                                       if_unused=if_unused,
+                                                       if_empty=if_empty)
+        except Exception as e:
+            amqp_context.echo_error(e)
+            amqp_context.reconnect()
+        else:
+            amqp_context.cli_context.secho(
+                f'{retval} messages deleted.',
+                fg='cyan', bold=True)
+            amqp_context.echo_ok()
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1616')" href="javascript:;">
+celery-5.2.3/celery/bin/amqp.py: 243-257
+</a>
+<div class="mid" id="frag1616" style="display:none"><pre>
+def basic_get(amqp_context, queue, no_ack):
+    if amqp_context.channel is None:
+        amqp_context.echo_error('Not connected to broker. Please retry...')
+        amqp_context.reconnect()
+    else:
+        try:
+            message = amqp_context.channel.basic_get(queue, no_ack=no_ack)
+        except Exception as e:
+            amqp_context.echo_error(e)
+            amqp_context.reconnect()
+        else:
+            amqp_context.respond(dump_message(message))
+            amqp_context.echo_ok()
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1618')" href="javascript:;">
+celery-5.2.3/celery/bin/amqp.py: 298-311
+</a>
+<div class="mid" id="frag1618" style="display:none"><pre>
+def basic_ack(amqp_context, delivery_tag):
+    if amqp_context.channel is None:
+        amqp_context.echo_error('Not connected to broker. Please retry...')
+        amqp_context.reconnect()
+    else:
+        try:
+            amqp_context.channel.basic_ack(delivery_tag)
+        except Exception as e:
+            amqp_context.echo_error(e)
+            amqp_context.reconnect()
+        else:
+            amqp_context.echo_ok()
+
+
+</pre></div>
+</td>
+</tr><tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag1615')" href="javascript:;">
+celery-5.2.3/celery/bin/amqp.py: 219-235
+</a>
+<div class="mid" id="frag1615" style="display:none"><pre>
+def queue_purge(amqp_context, queue):
+    if amqp_context.channel is None:
+        amqp_context.echo_error('Not connected to broker. Please retry...')
+        amqp_context.reconnect()
+    else:
+        try:
+            retval = amqp_context.channel.queue_purge(queue=queue)
+        except Exception as e:
+            amqp_context.echo_error(e)
+            amqp_context.reconnect()
+        else:
+            amqp_context.cli_context.secho(
+                f'{retval} messages deleted.',
+                fg='cyan', bold=True)
+            amqp_context.echo_ok()
+
+
+</pre></div>
+</td>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 32:</b> &nbsp; 2 fragments, nominal size 10 lines, similarity 80%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2264')" href="javascript:;">
+celery-5.2.3/celery/concurrency/gevent.py: 46-56
+</a>
+<div class="mid" id="frag2264" style="display:none"><pre>
+    def _enter(self, eta, priority, entry, **kwargs):
+        secs = max(eta - monotonic(), 0)
+        g = self._Greenlet.spawn_later(secs, entry)
+        self._queue.add(g)
+        g.link(self._entry_exit)
+        g.entry = entry
+        g.eta = eta
+        g.priority = priority
+        g.canceled = False
+        return g
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2285')" href="javascript:;">
+celery-5.2.3/celery/concurrency/eventlet.py: 48-58
+</a>
+<div class="mid" id="frag2285" style="display:none"><pre>
+    def _enter(self, eta, priority, entry, **kwargs):
+        secs = max(eta - monotonic(), 0)
+        g = self._spawn_after(secs, entry)
+        self._queue.add(g)
+        g.link(self._entry_exit, entry)
+        g.entry = entry
+        g.eta = eta
+        g.priority = priority
+        g.canceled = False
+        return g
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 33:</b> &nbsp; 2 fragments, nominal size 20 lines, similarity 71%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2481')" href="javascript:;">
+celery-5.2.3/celery/worker/request.py: 323-355
+</a>
+<div class="mid" id="frag2481" style="display:none"><pre>
+    def execute_using_pool(self, pool, **kwargs):
+        """Used by the worker to send this task to the pool.
+
+        Arguments:
+            pool (~celery.concurrency.base.TaskPool): The execution pool
+                used to execute this request.
+
+        Raises:
+            celery.exceptions.TaskRevokedError: if the task was revoked.
+        """
+        task_id = self.id
+        task = self._task
+        if self.revoked():
+            raise TaskRevokedError(task_id)
+
+        time_limit, soft_time_limit = self.time_limits
+        trace = fast_trace_task if self._app.use_fast_trace_task else trace_task_ret
+        result = pool.apply_async(
+            trace,
+            args=(self._type, task_id, self._request_dict, self._body,
+                  self._content_type, self._content_encoding),
+            accept_callback=self.on_accepted,
+            timeout_callback=self.on_timeout,
+            callback=self.on_success,
+            error_callback=self.on_failure,
+            soft_timeout=soft_time_limit or task.soft_time_limit,
+            timeout=time_limit or task.time_limit,
+            correlation_id=task_id,
+        )
+        # cannot create weakref to None
+        self._apply_result = maybe(ref, result)
+        return result
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2508')" href="javascript:;">
+celery-5.2.3/celery/worker/request.py: 701-723
+</a>
+<div class="mid" id="frag2508" style="display:none"><pre>
+        def execute_using_pool(self, pool, **kwargs):
+            task_id = self.task_id
+            if (self.expires or task_id in revoked_tasks) and self.revoked():
+                raise TaskRevokedError(task_id)
+
+            time_limit, soft_time_limit = self.time_limits
+            result = apply_async(
+                trace,
+                args=(self.type, task_id, self.request_dict, self.body,
+                      self.content_type, self.content_encoding),
+                accept_callback=self.on_accepted,
+                timeout_callback=self.on_timeout,
+                callback=self.on_success,
+                error_callback=self.on_failure,
+                soft_timeout=soft_time_limit or default_soft_time_limit,
+                timeout=time_limit or default_time_limit,
+                correlation_id=task_id,
+            )
+            # cannot create weakref to None
+            # pylint: disable=attribute-defined-outside-init
+            self._apply_result = maybe(ref, result)
+            return result
+
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<br>
+<table style="width:1000px; border:2px solid lightgrey; border-radius:8px;">
+<tr><td style="background-color:white">
+<p style="font-size:14pt"><b>Class 34:</b> &nbsp; 2 fragments, nominal size 12 lines, similarity 75%</p>
+<table cellpadding=4 border=2>
+<tr>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2536')" href="javascript:;">
+celery-5.2.3/celery/app/annotations.py: 34-49
+</a>
+<div class="mid" id="frag2536" style="display:none"><pre>
+def prepare(annotations):
+    """Expand the :setting:`task_annotations` setting."""
+    def expand_annotation(annotation):
+        if isinstance(annotation, dict):
+            return MapAnnotation(annotation)
+        elif isinstance(annotation, str):
+            return mlazy(instantiate, annotation)
+        return annotation
+
+    if annotations is None:
+        return ()
+    elif not isinstance(annotations, (list, tuple)):
+        annotations = (annotations,)
+    return [expand_annotation(anno) for anno in annotations]
+
+
+</pre></div>
+</td>
+<td width="auto">
+<a onclick="javascript:ShowHide('frag2565')" href="javascript:;">
+celery-5.2.3/celery/app/routes.py: 122-136
+</a>
+<div class="mid" id="frag2565" style="display:none"><pre>
+def prepare(routes):
+    """Expand the :setting:`task_routes` setting."""
+
+    def expand_route(route):
+        if isinstance(route, (Mapping, list, tuple)):
+            return MapRoute(route)
+        if isinstance(route, str):
+            return mlazy(expand_router_string, route)
+        return route
+
+    if routes is None:
+        return ()
+    if not isinstance(routes, (list, tuple)):
+        routes = (routes,)
+    return [expand_route(route) for route in routes]
+</pre></div>
+</td>
+</tr><tr>
+</tr>
+</table>
+</td></tr>
+</table>
+<script language="JavaScript">
+function ShowHide(divId) { 
+    if(document.getElementById(divId).style.display == 'none') {
+        document.getElementById(divId).style.display='block';
+    } else { 
+        document.getElementById(divId).style.display = 'none';
+    } 
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,2306 @@
+<clonepair1>
+<source file="systems/MONAI-0.8.1/monai/apps/deepgrow/dataset.py" startline="135" endline="210" pcid="1424"></source>
+def _save_data_2d(vol_idx, vol_image, vol_label, dataset_dir, relative_path):
+    data_list = []
+
+    if len(vol_image.shape) == 4:
+        logging.info(
+            "4D-Image, pick only first series; Image: {}; Label: {}".format(
+                vol_image.shape, vol_label.shape if vol_label is not None else None
+            )
+        )
+        vol_image = vol_image[0]
+        vol_image = np.moveaxis(vol_image, -1, 0)
+
+    image_count = 0
+    label_count = 0
+    unique_labels_count = 0
+    for sid in range(vol_image.shape[0]):
+        image = vol_image[sid, ...]
+        label = vol_label[sid, ...] if vol_label is not None else None
+
+        if vol_label is not None and np.sum(label) == 0:
+            continue
+
+        image_file_prefix = f"vol_idx_{vol_idx:0>4d}_slice_{sid:0>3d}"
+        image_file = os.path.join(dataset_dir, "images", image_file_prefix)
+        image_file += ".npy"
+
+        os.makedirs(os.path.join(dataset_dir, "images"), exist_ok=True)
+        np.save(image_file, image)
+        image_count += 1
+
+        # Test Data
+        if vol_label is None:
+            data_list.append(
+                {"image": image_file.replace(dataset_dir + os.pathsep, "") if relative_path else image_file}
+            )
+            continue
+
+        # For all Labels
+        unique_labels = np.unique(label.flatten())
+        unique_labels = unique_labels[unique_labels != 0]
+        unique_labels_count = max(unique_labels_count, len(unique_labels))
+
+        for idx in unique_labels:
+            label_file_prefix = f"{image_file_prefix}_region_{int(idx):0>2d}"
+            label_file = os.path.join(dataset_dir, "labels", label_file_prefix)
+            label_file += ".npy"
+
+            os.makedirs(os.path.join(dataset_dir, "labels"), exist_ok=True)
+            curr_label = (label == idx).astype(np.float32)
+            np.save(label_file, curr_label)
+
+            label_count += 1
+            data_list.append(
+                {
+                    "image": image_file.replace(dataset_dir + os.pathsep, "") if relative_path else image_file,
+                    "label": label_file.replace(dataset_dir + os.pathsep, "") if relative_path else label_file,
+                    "region": int(idx),
+                }
+            )
+
+    if unique_labels_count >= 20:
+        logging.warning(f"Unique labels {unique_labels_count} exceeds 20. Please check if this is correct.")
+
+    logging.info(
+        "{} => Image Shape: {} => {}; Label Shape: {} => {}; Unique Labels: {}".format(
+            vol_idx,
+            vol_image.shape,
+            image_count,
+            vol_label.shape if vol_label is not None else None,
+            label_count,
+            unique_labels_count,
+        )
+    )
+    return data_list
+
+
+</clonepair1>
+
+<clonepair1>
+<source file="systems/MONAI-0.8.1/monai/apps/deepgrow/dataset.py" startline="211" endline="275" pcid="1425"></source>
+def _save_data_3d(vol_idx, vol_image, vol_label, dataset_dir, relative_path):
+    data_list = []
+
+    if len(vol_image.shape) == 4:
+        logging.info(
+            "4D-Image, pick only first series; Image: {}; Label: {}".format(
+                vol_image.shape, vol_label.shape if vol_label is not None else None
+            )
+        )
+        vol_image = vol_image[0]
+        vol_image = np.moveaxis(vol_image, -1, 0)
+
+    image_count = 0
+    label_count = 0
+    unique_labels_count = 0
+
+    image_file_prefix = f"vol_idx_{vol_idx:0>4d}"
+    image_file = os.path.join(dataset_dir, "images", image_file_prefix)
+    image_file += ".npy"
+
+    os.makedirs(os.path.join(dataset_dir, "images"), exist_ok=True)
+    np.save(image_file, vol_image)
+    image_count += 1
+
+    # Test Data
+    if vol_label is None:
+        data_list.append({"image": image_file.replace(dataset_dir + os.pathsep, "") if relative_path else image_file})
+    else:
+        # For all Labels
+        unique_labels = np.unique(vol_label.flatten())
+        unique_labels = unique_labels[unique_labels != 0]
+        unique_labels_count = max(unique_labels_count, len(unique_labels))
+
+        for idx in unique_labels:
+            label_file_prefix = f"{image_file_prefix}_region_{int(idx):0>2d}"
+            label_file = os.path.join(dataset_dir, "labels", label_file_prefix)
+            label_file += ".npy"
+
+            curr_label = (vol_label == idx).astype(np.float32)
+            os.makedirs(os.path.join(dataset_dir, "labels"), exist_ok=True)
+            np.save(label_file, curr_label)
+
+            label_count += 1
+            data_list.append(
+                {
+                    "image": image_file.replace(dataset_dir + os.pathsep, "") if relative_path else image_file,
+                    "label": label_file.replace(dataset_dir + os.pathsep, "") if relative_path else label_file,
+                    "region": int(idx),
+                }
+            )
+
+    if unique_labels_count >= 20:
+        logging.warning(f"Unique labels {unique_labels_count} exceeds 20. Please check if this is correct.")
+
+    logging.info(
+        "{} => Image Shape: {} => {}; Label Shape: {} => {}; Unique Labels: {}".format(
+            vol_idx,
+            vol_image.shape,
+            image_count,
+            vol_label.shape if vol_label is not None else None,
+            label_count,
+            unique_labels_count,
+        )
+    )
+    return data_list
+</clonepair1>
+<clonepair2>
+<source file="systems/MONAI-0.8.1/monai/networks/blocks/dynunet_block.py" startline="168" endline="204" pcid="1714"></source>
+    def __init__(
+        self,
+        spatial_dims: int,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: Union[Sequence[int], int],
+        stride: Union[Sequence[int], int],
+        upsample_kernel_size: Union[Sequence[int], int],
+        norm_name: Union[Tuple, str],
+        act_name: Union[Tuple, str] = ("leakyrelu", {"inplace": True, "negative_slope": 0.01}),
+        dropout: Optional[Union[Tuple, str, float]] = None,
+        trans_bias: bool = False,
+    ):
+        super().__init__()
+        upsample_stride = upsample_kernel_size
+        self.transp_conv = get_conv_layer(
+            spatial_dims,
+            in_channels,
+            out_channels,
+            kernel_size=upsample_kernel_size,
+            stride=upsample_stride,
+            dropout=dropout,
+            bias=trans_bias,
+            conv_only=True,
+            is_transposed=True,
+        )
+        self.conv_block = UnetBasicBlock(
+            spatial_dims,
+            out_channels + out_channels,
+            out_channels,
+            kernel_size=kernel_size,
+            stride=1,
+            dropout=dropout,
+            norm_name=norm_name,
+            act_name=act_name,
+        )
+
+</clonepair2>
+
+<clonepair2>
+<source file="systems/MONAI-0.8.1/monai/networks/blocks/unetr_block.py" startline="27" endline="79" pcid="1748"></source>
+    def __init__(
+        self,
+        spatial_dims: int,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: Union[Sequence[int], int],
+        upsample_kernel_size: Union[Sequence[int], int],
+        norm_name: Union[Tuple, str],
+        res_block: bool = False,
+    ) -> None:
+        """
+        Args:
+            spatial_dims: number of spatial dimensions.
+            in_channels: number of input channels.
+            out_channels: number of output channels.
+            kernel_size: convolution kernel size.
+            upsample_kernel_size: convolution kernel size for transposed convolution layers.
+            norm_name: feature normalization type and arguments.
+            res_block: bool argument to determine if residual block is used.
+
+        """
+
+        super().__init__()
+        upsample_stride = upsample_kernel_size
+        self.transp_conv = get_conv_layer(
+            spatial_dims,
+            in_channels,
+            out_channels,
+            kernel_size=upsample_kernel_size,
+            stride=upsample_stride,
+            conv_only=True,
+            is_transposed=True,
+        )
+
+        if res_block:
+            self.conv_block = UnetResBlock(
+                spatial_dims,
+                out_channels + out_channels,
+                out_channels,
+                kernel_size=kernel_size,
+                stride=1,
+                norm_name=norm_name,
+            )
+        else:
+            self.conv_block = UnetBasicBlock(  # type: ignore
+                spatial_dims,
+                out_channels + out_channels,
+                out_channels,
+                kernel_size=kernel_size,
+                stride=1,
+                norm_name=norm_name,
+            )
+
+</clonepair2>
+<clonepair3>
+<source file="systems/MONAI-0.8.1/tests/test_handler_stats.py" startline="26" endline="63" pcid="1383"></source>
+    def test_metrics_print(self):
+        log_stream = StringIO()
+        log_handler = logging.StreamHandler(log_stream)
+        log_handler.setLevel(logging.INFO)
+        key_to_handler = "test_logging"
+        key_to_print = "testing_metric"
+
+        # set up engine
+        def _train_func(engine, batch):
+            return [torch.tensor(0.0)]
+
+        engine = Engine(_train_func)
+
+        # set up dummy metric
+        @engine.on(Events.EPOCH_COMPLETED)
+        def _update_metric(engine):
+            current_metric = engine.state.metrics.get(key_to_print, 0.1)
+            engine.state.metrics[key_to_print] = current_metric + 0.1
+
+        # set up testing handler
+        logger = logging.getLogger(key_to_handler)
+        logger.setLevel(logging.INFO)
+        logger.addHandler(log_handler)
+        stats_handler = StatsHandler(name=key_to_handler)
+        stats_handler.attach(engine)
+
+        engine.run(range(3), max_epochs=2)
+
+        # check logging output
+        output_str = log_stream.getvalue()
+        log_handler.close()
+        has_key_word = re.compile(f".*{key_to_print}.*")
+        content_count = 0
+        for line in output_str.split("\n"):
+            if has_key_word.match(line):
+                content_count += 1
+        self.assertTrue(content_count > 0)
+
+</clonepair3>
+
+<clonepair3>
+<source file="systems/MONAI-0.8.1/tests/test_handler_stats.py" startline="64" endline="95" pcid="1386"></source>
+    def test_loss_print(self):
+        log_stream = StringIO()
+        log_handler = logging.StreamHandler(log_stream)
+        log_handler.setLevel(logging.INFO)
+        key_to_handler = "test_logging"
+        key_to_print = "myLoss"
+
+        # set up engine
+        def _train_func(engine, batch):
+            return [torch.tensor(0.0)]
+
+        engine = Engine(_train_func)
+
+        # set up testing handler
+        logger = logging.getLogger(key_to_handler)
+        logger.setLevel(logging.INFO)
+        logger.addHandler(log_handler)
+        stats_handler = StatsHandler(name=key_to_handler, tag_name=key_to_print)
+        stats_handler.attach(engine)
+
+        engine.run(range(3), max_epochs=2)
+
+        # check logging output
+        output_str = log_stream.getvalue()
+        log_handler.close()
+        has_key_word = re.compile(f".*{key_to_print}.*")
+        content_count = 0
+        for line in output_str.split("\n"):
+            if has_key_word.match(line):
+                content_count += 1
+        self.assertTrue(content_count > 0)
+
+</clonepair3>
+<clonepair4>
+<source file="systems/MONAI-0.8.1/tests/test_handler_stats.py" startline="26" endline="63" pcid="1383"></source>
+    def test_metrics_print(self):
+        log_stream = StringIO()
+        log_handler = logging.StreamHandler(log_stream)
+        log_handler.setLevel(logging.INFO)
+        key_to_handler = "test_logging"
+        key_to_print = "testing_metric"
+
+        # set up engine
+        def _train_func(engine, batch):
+            return [torch.tensor(0.0)]
+
+        engine = Engine(_train_func)
+
+        # set up dummy metric
+        @engine.on(Events.EPOCH_COMPLETED)
+        def _update_metric(engine):
+            current_metric = engine.state.metrics.get(key_to_print, 0.1)
+            engine.state.metrics[key_to_print] = current_metric + 0.1
+
+        # set up testing handler
+        logger = logging.getLogger(key_to_handler)
+        logger.setLevel(logging.INFO)
+        logger.addHandler(log_handler)
+        stats_handler = StatsHandler(name=key_to_handler)
+        stats_handler.attach(engine)
+
+        engine.run(range(3), max_epochs=2)
+
+        # check logging output
+        output_str = log_stream.getvalue()
+        log_handler.close()
+        has_key_word = re.compile(f".*{key_to_print}.*")
+        content_count = 0
+        for line in output_str.split("\n"):
+            if has_key_word.match(line):
+                content_count += 1
+        self.assertTrue(content_count > 0)
+
+</clonepair4>
+
+<clonepair4>
+<source file="systems/MONAI-0.8.1/tests/test_handler_stats.py" startline="96" endline="127" pcid="1388"></source>
+    def test_loss_dict(self):
+        log_stream = StringIO()
+        log_handler = logging.StreamHandler(log_stream)
+        log_handler.setLevel(logging.INFO)
+        key_to_handler = "test_logging"
+        key_to_print = "myLoss1"
+
+        # set up engine
+        def _train_func(engine, batch):
+            return [torch.tensor(0.0)]
+
+        engine = Engine(_train_func)
+
+        # set up testing handler
+        logger = logging.getLogger(key_to_handler)
+        logger.setLevel(logging.INFO)
+        logger.addHandler(log_handler)
+        stats_handler = StatsHandler(name=key_to_handler, output_transform=lambda x: {key_to_print: x[0]})
+        stats_handler.attach(engine)
+
+        engine.run(range(3), max_epochs=2)
+
+        # check logging output
+        output_str = log_stream.getvalue()
+        log_handler.close()
+        has_key_word = re.compile(f".*{key_to_print}.*")
+        content_count = 0
+        for line in output_str.split("\n"):
+            if has_key_word.match(line):
+                content_count += 1
+        self.assertTrue(content_count > 0)
+
+</clonepair4>
+<clonepair5>
+<source file="systems/MONAI-0.8.1/tests/test_data_statsd.py" startline="167" endline="195" pcid="551"></source>
+    def test_file(self, input_data, expected_print):
+        with tempfile.TemporaryDirectory() as tempdir:
+            filename = os.path.join(tempdir, "test_stats.log")
+            handler = logging.FileHandler(filename, mode="w")
+            handler.setLevel(logging.INFO)
+            name = "DataStats"
+            logger = logging.getLogger(name)
+            logger.addHandler(handler)
+            input_param = {
+                "keys": "img",
+                "prefix": "test data",
+                "data_shape": True,
+                "value_range": True,
+                "data_value": True,
+                "additional_info": np.mean,
+                "name": name,
+            }
+            transform = DataStatsd(**input_param)
+            _ = transform(input_data)
+            for h in logger.handlers[:]:
+                h.close()
+                logger.removeHandler(h)
+            del handler
+            with open(filename) as f:
+                content = f.read()
+            if sys.platform != "win32":
+                self.assertEqual(content, expected_print)
+
+
+</clonepair5>
+
+<clonepair5>
+<source file="systems/MONAI-0.8.1/tests/test_data_stats.py" startline="143" endline="170" pcid="99"></source>
+    def test_file(self, input_data, expected_print):
+        with tempfile.TemporaryDirectory() as tempdir:
+            filename = os.path.join(tempdir, "test_data_stats.log")
+            handler = logging.FileHandler(filename, mode="w")
+            handler.setLevel(logging.INFO)
+            name = "DataStats"
+            logger = logging.getLogger(name)
+            logger.addHandler(handler)
+            input_param = {
+                "prefix": "test data",
+                "data_type": True,
+                "data_shape": True,
+                "value_range": True,
+                "data_value": True,
+                "additional_info": np.mean,
+                "name": name,
+            }
+            transform = DataStats(**input_param)
+            _ = transform(input_data)
+            for h in logger.handlers[:]:
+                h.close()
+                logger.removeHandler(h)
+            with open(filename) as f:
+                content = f.read()
+            if sys.platform != "win32":
+                self.assertEqual(content, expected_print)
+
+
+</clonepair5>
+<clonepair6>
+<source file="systems/MONAI-0.8.1/tests/test_handler_stats.py" startline="64" endline="95" pcid="1386"></source>
+    def test_loss_print(self):
+        log_stream = StringIO()
+        log_handler = logging.StreamHandler(log_stream)
+        log_handler.setLevel(logging.INFO)
+        key_to_handler = "test_logging"
+        key_to_print = "myLoss"
+
+        # set up engine
+        def _train_func(engine, batch):
+            return [torch.tensor(0.0)]
+
+        engine = Engine(_train_func)
+
+        # set up testing handler
+        logger = logging.getLogger(key_to_handler)
+        logger.setLevel(logging.INFO)
+        logger.addHandler(log_handler)
+        stats_handler = StatsHandler(name=key_to_handler, tag_name=key_to_print)
+        stats_handler.attach(engine)
+
+        engine.run(range(3), max_epochs=2)
+
+        # check logging output
+        output_str = log_stream.getvalue()
+        log_handler.close()
+        has_key_word = re.compile(f".*{key_to_print}.*")
+        content_count = 0
+        for line in output_str.split("\n"):
+            if has_key_word.match(line):
+                content_count += 1
+        self.assertTrue(content_count > 0)
+
+</clonepair6>
+
+<clonepair6>
+<source file="systems/MONAI-0.8.1/tests/test_handler_stats.py" startline="96" endline="127" pcid="1388"></source>
+    def test_loss_dict(self):
+        log_stream = StringIO()
+        log_handler = logging.StreamHandler(log_stream)
+        log_handler.setLevel(logging.INFO)
+        key_to_handler = "test_logging"
+        key_to_print = "myLoss1"
+
+        # set up engine
+        def _train_func(engine, batch):
+            return [torch.tensor(0.0)]
+
+        engine = Engine(_train_func)
+
+        # set up testing handler
+        logger = logging.getLogger(key_to_handler)
+        logger.setLevel(logging.INFO)
+        logger.addHandler(log_handler)
+        stats_handler = StatsHandler(name=key_to_handler, output_transform=lambda x: {key_to_print: x[0]})
+        stats_handler.attach(engine)
+
+        engine.run(range(3), max_epochs=2)
+
+        # check logging output
+        output_str = log_stream.getvalue()
+        log_handler.close()
+        has_key_word = re.compile(f".*{key_to_print}.*")
+        content_count = 0
+        for line in output_str.split("\n"):
+            if has_key_word.match(line):
+                content_count += 1
+        self.assertTrue(content_count > 0)
+
+</clonepair6>
+<clonepair7>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="57" endline="77" pcid="604"></source>
+    def test_two_save_one_load(self):
+        net1 = torch.nn.PReLU()
+        optimizer = optim.SGD(net1.parameters(), lr=0.02)
+        data1 = net1.state_dict()
+        data1["weight"] = torch.tensor([0.1])
+        net1.load_state_dict(data1)
+        net2 = torch.nn.PReLU()
+        data2 = net2.state_dict()
+        data2["weight"] = torch.tensor([0.2])
+        net2.load_state_dict(data2)
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            save_dict = {"net": net1, "opt": optimizer}
+            CheckpointSaver(save_dir=tempdir, save_dict=save_dict, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/checkpoint_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=True).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["weight"], torch.tensor([0.1]))
+
+</clonepair7>
+
+<clonepair7>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="98" endline="119" pcid="606"></source>
+    def test_partial_under_load(self):
+        net1 = torch.nn.Sequential(*[torch.nn.PReLU(), torch.nn.PReLU()])
+        data1 = net1.state_dict()
+        data1["0.weight"] = torch.tensor([0.1])
+        data1["1.weight"] = torch.tensor([0.2])
+        net1.load_state_dict(data1)
+
+        net2 = torch.nn.Sequential(*[torch.nn.PReLU()])
+        data2 = net2.state_dict()
+        data2["0.weight"] = torch.tensor([0.3])
+        net2.load_state_dict(data2)
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            CheckpointSaver(save_dir=tempdir, save_dict={"net": net1}, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/net_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=False).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["0.weight"].cpu(), torch.tensor([0.1]))
+
+</clonepair7>
+<clonepair8>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="57" endline="77" pcid="604"></source>
+    def test_two_save_one_load(self):
+        net1 = torch.nn.PReLU()
+        optimizer = optim.SGD(net1.parameters(), lr=0.02)
+        data1 = net1.state_dict()
+        data1["weight"] = torch.tensor([0.1])
+        net1.load_state_dict(data1)
+        net2 = torch.nn.PReLU()
+        data2 = net2.state_dict()
+        data2["weight"] = torch.tensor([0.2])
+        net2.load_state_dict(data2)
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            save_dict = {"net": net1, "opt": optimizer}
+            CheckpointSaver(save_dir=tempdir, save_dict=save_dict, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/checkpoint_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=True).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["weight"], torch.tensor([0.1]))
+
+</clonepair8>
+
+<clonepair8>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="120" endline="141" pcid="607"></source>
+    def test_partial_over_load(self):
+        net1 = torch.nn.Sequential(*[torch.nn.PReLU()])
+        data1 = net1.state_dict()
+        data1["0.weight"] = torch.tensor([0.1])
+        net1.load_state_dict(data1)
+
+        net2 = torch.nn.Sequential(*[torch.nn.PReLU(), torch.nn.PReLU()])
+        data2 = net2.state_dict()
+        data2["0.weight"] = torch.tensor([0.2])
+        data2["1.weight"] = torch.tensor([0.3])
+        net2.load_state_dict(data2)
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            CheckpointSaver(save_dir=tempdir, save_dict={"net": net1}, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/net_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=False).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["0.weight"].cpu(), torch.tensor([0.1]))
+
+</clonepair8>
+<clonepair9>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="57" endline="77" pcid="604"></source>
+    def test_two_save_one_load(self):
+        net1 = torch.nn.PReLU()
+        optimizer = optim.SGD(net1.parameters(), lr=0.02)
+        data1 = net1.state_dict()
+        data1["weight"] = torch.tensor([0.1])
+        net1.load_state_dict(data1)
+        net2 = torch.nn.PReLU()
+        data2 = net2.state_dict()
+        data2["weight"] = torch.tensor([0.2])
+        net2.load_state_dict(data2)
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            save_dict = {"net": net1, "opt": optimizer}
+            CheckpointSaver(save_dir=tempdir, save_dict=save_dict, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/checkpoint_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=True).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["weight"], torch.tensor([0.1]))
+
+</clonepair9>
+
+<clonepair9>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="78" endline="97" pcid="605"></source>
+    def test_save_single_device_load_multi_devices(self):
+        net1 = torch.nn.PReLU()
+        data1 = net1.state_dict()
+        data1["weight"] = torch.tensor([0.1])
+        net1.load_state_dict(data1)
+        net2 = torch.nn.PReLU()
+        data2 = net2.state_dict()
+        data2["weight"] = torch.tensor([0.2])
+        net2.load_state_dict(data2)
+        net2 = torch.nn.DataParallel(net2)
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            CheckpointSaver(save_dir=tempdir, save_dict={"net": net1}, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/net_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=True).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["module.weight"].cpu(), torch.tensor([0.1]))
+
+</clonepair9>
+<clonepair10>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="98" endline="119" pcid="606"></source>
+    def test_partial_under_load(self):
+        net1 = torch.nn.Sequential(*[torch.nn.PReLU(), torch.nn.PReLU()])
+        data1 = net1.state_dict()
+        data1["0.weight"] = torch.tensor([0.1])
+        data1["1.weight"] = torch.tensor([0.2])
+        net1.load_state_dict(data1)
+
+        net2 = torch.nn.Sequential(*[torch.nn.PReLU()])
+        data2 = net2.state_dict()
+        data2["0.weight"] = torch.tensor([0.3])
+        net2.load_state_dict(data2)
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            CheckpointSaver(save_dir=tempdir, save_dict={"net": net1}, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/net_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=False).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["0.weight"].cpu(), torch.tensor([0.1]))
+
+</clonepair10>
+
+<clonepair10>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="120" endline="141" pcid="607"></source>
+    def test_partial_over_load(self):
+        net1 = torch.nn.Sequential(*[torch.nn.PReLU()])
+        data1 = net1.state_dict()
+        data1["0.weight"] = torch.tensor([0.1])
+        net1.load_state_dict(data1)
+
+        net2 = torch.nn.Sequential(*[torch.nn.PReLU(), torch.nn.PReLU()])
+        data2 = net2.state_dict()
+        data2["0.weight"] = torch.tensor([0.2])
+        data2["1.weight"] = torch.tensor([0.3])
+        net2.load_state_dict(data2)
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            CheckpointSaver(save_dir=tempdir, save_dict={"net": net1}, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/net_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=False).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["0.weight"].cpu(), torch.tensor([0.1]))
+
+</clonepair10>
+<clonepair11>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="78" endline="97" pcid="605"></source>
+    def test_save_single_device_load_multi_devices(self):
+        net1 = torch.nn.PReLU()
+        data1 = net1.state_dict()
+        data1["weight"] = torch.tensor([0.1])
+        net1.load_state_dict(data1)
+        net2 = torch.nn.PReLU()
+        data2 = net2.state_dict()
+        data2["weight"] = torch.tensor([0.2])
+        net2.load_state_dict(data2)
+        net2 = torch.nn.DataParallel(net2)
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            CheckpointSaver(save_dir=tempdir, save_dict={"net": net1}, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/net_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=True).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["module.weight"].cpu(), torch.tensor([0.1]))
+
+</clonepair11>
+
+<clonepair11>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="98" endline="119" pcid="606"></source>
+    def test_partial_under_load(self):
+        net1 = torch.nn.Sequential(*[torch.nn.PReLU(), torch.nn.PReLU()])
+        data1 = net1.state_dict()
+        data1["0.weight"] = torch.tensor([0.1])
+        data1["1.weight"] = torch.tensor([0.2])
+        net1.load_state_dict(data1)
+
+        net2 = torch.nn.Sequential(*[torch.nn.PReLU()])
+        data2 = net2.state_dict()
+        data2["0.weight"] = torch.tensor([0.3])
+        net2.load_state_dict(data2)
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            CheckpointSaver(save_dir=tempdir, save_dict={"net": net1}, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/net_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=False).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["0.weight"].cpu(), torch.tensor([0.1]))
+
+</clonepair11>
+<clonepair12>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="78" endline="97" pcid="605"></source>
+    def test_save_single_device_load_multi_devices(self):
+        net1 = torch.nn.PReLU()
+        data1 = net1.state_dict()
+        data1["weight"] = torch.tensor([0.1])
+        net1.load_state_dict(data1)
+        net2 = torch.nn.PReLU()
+        data2 = net2.state_dict()
+        data2["weight"] = torch.tensor([0.2])
+        net2.load_state_dict(data2)
+        net2 = torch.nn.DataParallel(net2)
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            CheckpointSaver(save_dir=tempdir, save_dict={"net": net1}, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/net_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=True).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["module.weight"].cpu(), torch.tensor([0.1]))
+
+</clonepair12>
+
+<clonepair12>
+<source file="systems/MONAI-0.8.1/tests/test_handler_checkpoint_loader.py" startline="120" endline="141" pcid="607"></source>
+    def test_partial_over_load(self):
+        net1 = torch.nn.Sequential(*[torch.nn.PReLU()])
+        data1 = net1.state_dict()
+        data1["0.weight"] = torch.tensor([0.1])
+        net1.load_state_dict(data1)
+
+        net2 = torch.nn.Sequential(*[torch.nn.PReLU(), torch.nn.PReLU()])
+        data2 = net2.state_dict()
+        data2["0.weight"] = torch.tensor([0.2])
+        data2["1.weight"] = torch.tensor([0.3])
+        net2.load_state_dict(data2)
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            engine = Engine(lambda e, b: None)
+            CheckpointSaver(save_dir=tempdir, save_dict={"net": net1}, save_final=True).attach(engine)
+            engine.run([0] * 8, max_epochs=5)
+            path = tempdir + "/net_final_iteration=40.pt"
+            engine = Engine(lambda e, b: None)
+            CheckpointLoader(load_path=path, load_dict={"net": net2}, strict=False).attach(engine)
+            engine.run([0] * 8, max_epochs=1)
+            torch.testing.assert_allclose(net2.state_dict()["0.weight"].cpu(), torch.tensor([0.1]))
+
+</clonepair12>
+<clonepair13>
+<source file="systems/MONAI-0.8.1/monai/networks/nets/basic_unet.py" startline="28" endline="63" pcid="1675"></source>
+    def __init__(
+        self,
+        spatial_dims: int,
+        in_chns: int,
+        out_chns: int,
+        act: Union[str, tuple],
+        norm: Union[str, tuple],
+        bias: bool,
+        dropout: Union[float, tuple] = 0.0,
+        dim: Optional[int] = None,
+    ):
+        """
+        Args:
+            spatial_dims: number of spatial dimensions.
+            in_chns: number of input channels.
+            out_chns: number of output channels.
+            act: activation type and arguments.
+            norm: feature normalization type and arguments.
+            bias: whether to have a bias term in convolution blocks.
+            dropout: dropout ratio. Defaults to no dropout.
+
+        .. deprecated:: 0.6.0
+            ``dim`` is deprecated, use ``spatial_dims`` instead.
+        """
+        super().__init__()
+
+        if dim is not None:
+            spatial_dims = dim
+        conv_0 = Convolution(spatial_dims, in_chns, out_chns, act=act, norm=norm, dropout=dropout, bias=bias, padding=1)
+        conv_1 = Convolution(
+            spatial_dims, out_chns, out_chns, act=act, norm=norm, dropout=dropout, bias=bias, padding=1
+        )
+        self.add_module("conv_0", conv_0)
+        self.add_module("conv_1", conv_1)
+
+
+</clonepair13>
+
+<clonepair13>
+<source file="systems/MONAI-0.8.1/monai/networks/nets/basic_unet.py" startline="68" endline="100" pcid="1676"></source>
+    def __init__(
+        self,
+        spatial_dims: int,
+        in_chns: int,
+        out_chns: int,
+        act: Union[str, tuple],
+        norm: Union[str, tuple],
+        bias: bool,
+        dropout: Union[float, tuple] = 0.0,
+        dim: Optional[int] = None,
+    ):
+        """
+        Args:
+            spatial_dims: number of spatial dimensions.
+            in_chns: number of input channels.
+            out_chns: number of output channels.
+            act: activation type and arguments.
+            norm: feature normalization type and arguments.
+            bias: whether to have a bias term in convolution blocks.
+            dropout: dropout ratio. Defaults to no dropout.
+
+        .. deprecated:: 0.6.0
+            ``dim`` is deprecated, use ``spatial_dims`` instead.
+        """
+        super().__init__()
+        if dim is not None:
+            spatial_dims = dim
+        max_pooling = Pool["MAX", spatial_dims](kernel_size=2)
+        convs = TwoConv(spatial_dims, in_chns, out_chns, act, norm, bias, dropout)
+        self.add_module("max_pooling", max_pooling)
+        self.add_module("convs", convs)
+
+
+</clonepair13>
+<clonepair14>
+<source file="systems/MONAI-0.8.1/monai/handlers/confusion_matrix.py" startline="24" endline="69" pcid="1553"></source>
+    def __init__(
+        self,
+        include_background: bool = True,
+        metric_name: str = "hit_rate",
+        compute_sample: bool = False,
+        reduction: Union[MetricReduction, str] = MetricReduction.MEAN,
+        output_transform: Callable = lambda x: x,
+        save_details: bool = True,
+    ) -> None:
+        """
+
+        Args:
+            include_background: whether to skip metric computation on the first channel of
+                the predicted output. Defaults to True.
+            metric_name: [``"sensitivity"``, ``"specificity"``, ``"precision"``, ``"negative predictive value"``,
+                ``"miss rate"``, ``"fall out"``, ``"false discovery rate"``, ``"false omission rate"``,
+                ``"prevalence threshold"``, ``"threat score"``, ``"accuracy"``, ``"balanced accuracy"``,
+                ``"f1 score"``, ``"matthews correlation coefficient"``, ``"fowlkes mallows index"``,
+                ``"informedness"``, ``"markedness"``]
+                Some of the metrics have multiple aliases (as shown in the wikipedia page aforementioned),
+                and you can also input those names instead.
+            compute_sample: when reducing, if ``True``, each sample's metric will be computed based on each confusion matrix first.
+                if ``False``, compute reduction on the confusion matrices first, defaults to ``False``.
+            reduction: define the mode to reduce metrics, will only execute reduction on `not-nan` values,
+                available reduction modes: {``"none"``, ``"mean"``, ``"sum"``, ``"mean_batch"``, ``"sum_batch"``,
+                ``"mean_channel"``, ``"sum_channel"``}, default to ``"mean"``. if "none", will not do reduction.
+            output_transform: callable to extract `y_pred` and `y` from `ignite.engine.state.output` then
+                construct `(y_pred, y)` pair, where `y_pred` and `y` can be `batch-first` Tensors or
+                lists of `channel-first` Tensors. the form of `(y_pred, y)` is required by the `update()`.
+                `engine.state` and `output_transform` inherit from the ignite concept:
+                https://pytorch.org/ignite/concepts.html#state, explanation and usage example are in the tutorial:
+                https://github.com/Project-MONAI/tutorials/blob/master/modules/batch_output_transform.ipynb.
+            save_details: whether to save metric computation details per image, for example: TP/TN/FP/FN of every image.
+                default to True, will save to `engine.state.metric_details` dict with the metric name as key.
+
+        See also:
+            :py:meth:`monai.metrics.confusion_matrix`
+        """
+        metric_fn = ConfusionMatrixMetric(
+            include_background=include_background,
+            metric_name=metric_name,
+            compute_sample=compute_sample,
+            reduction=reduction,
+        )
+        self.metric_name = metric_name
+        super().__init__(metric_fn=metric_fn, output_transform=output_transform, save_details=save_details)
+</clonepair14>
+
+<clonepair14>
+<source file="systems/MONAI-0.8.1/monai/handlers/hausdorff_distance.py" startline="24" endline="65" pcid="1502"></source>
+    def __init__(
+        self,
+        include_background: bool = False,
+        distance_metric: str = "euclidean",
+        percentile: Optional[float] = None,
+        directed: bool = False,
+        reduction: Union[MetricReduction, str] = MetricReduction.MEAN,
+        output_transform: Callable = lambda x: x,
+        save_details: bool = True,
+    ) -> None:
+        """
+
+        Args:
+            include_background: whether to include distance computation on the first channel of the predicted output.
+                Defaults to ``False``.
+            distance_metric: : [``"euclidean"``, ``"chessboard"``, ``"taxicab"``]
+                the metric used to compute surface distance. Defaults to ``"euclidean"``.
+            percentile: an optional float number between 0 and 100. If specified, the corresponding
+                percentile of the Hausdorff Distance rather than the maximum result will be achieved.
+                Defaults to ``None``.
+            directed: whether to calculate directed Hausdorff distance. Defaults to ``False``.
+            reduction: define the mode to reduce metrics, will only execute reduction on `not-nan` values,
+                available reduction modes: {``"none"``, ``"mean"``, ``"sum"``, ``"mean_batch"``, ``"sum_batch"``,
+                ``"mean_channel"``, ``"sum_channel"``}, default to ``"mean"``. if "none", will not do reduction.
+            output_transform: callable to extract `y_pred` and `y` from `ignite.engine.state.output` then
+                construct `(y_pred, y)` pair, where `y_pred` and `y` can be `batch-first` Tensors or
+                lists of `channel-first` Tensors. the form of `(y_pred, y)` is required by the `update()`.
+                `engine.state` and `output_transform` inherit from the ignite concept:
+                https://pytorch.org/ignite/concepts.html#state, explanation and usage example are in the tutorial:
+                https://github.com/Project-MONAI/tutorials/blob/master/modules/batch_output_transform.ipynb.
+            save_details: whether to save metric computation details per image, for example: hausdorff distance
+                of every image. default to True, will save to `engine.state.metric_details` dict with the metric name as key.
+
+        """
+        metric_fn = HausdorffDistanceMetric(
+            include_background=include_background,
+            distance_metric=distance_metric,
+            percentile=percentile,
+            directed=directed,
+            reduction=reduction,
+        )
+        super().__init__(metric_fn=metric_fn, output_transform=output_transform, save_details=save_details)
+</clonepair14>
+<clonepair15>
+<source file="systems/MONAI-0.8.1/monai/handlers/hausdorff_distance.py" startline="24" endline="65" pcid="1502"></source>
+    def __init__(
+        self,
+        include_background: bool = False,
+        distance_metric: str = "euclidean",
+        percentile: Optional[float] = None,
+        directed: bool = False,
+        reduction: Union[MetricReduction, str] = MetricReduction.MEAN,
+        output_transform: Callable = lambda x: x,
+        save_details: bool = True,
+    ) -> None:
+        """
+
+        Args:
+            include_background: whether to include distance computation on the first channel of the predicted output.
+                Defaults to ``False``.
+            distance_metric: : [``"euclidean"``, ``"chessboard"``, ``"taxicab"``]
+                the metric used to compute surface distance. Defaults to ``"euclidean"``.
+            percentile: an optional float number between 0 and 100. If specified, the corresponding
+                percentile of the Hausdorff Distance rather than the maximum result will be achieved.
+                Defaults to ``None``.
+            directed: whether to calculate directed Hausdorff distance. Defaults to ``False``.
+            reduction: define the mode to reduce metrics, will only execute reduction on `not-nan` values,
+                available reduction modes: {``"none"``, ``"mean"``, ``"sum"``, ``"mean_batch"``, ``"sum_batch"``,
+                ``"mean_channel"``, ``"sum_channel"``}, default to ``"mean"``. if "none", will not do reduction.
+            output_transform: callable to extract `y_pred` and `y` from `ignite.engine.state.output` then
+                construct `(y_pred, y)` pair, where `y_pred` and `y` can be `batch-first` Tensors or
+                lists of `channel-first` Tensors. the form of `(y_pred, y)` is required by the `update()`.
+                `engine.state` and `output_transform` inherit from the ignite concept:
+                https://pytorch.org/ignite/concepts.html#state, explanation and usage example are in the tutorial:
+                https://github.com/Project-MONAI/tutorials/blob/master/modules/batch_output_transform.ipynb.
+            save_details: whether to save metric computation details per image, for example: hausdorff distance
+                of every image. default to True, will save to `engine.state.metric_details` dict with the metric name as key.
+
+        """
+        metric_fn = HausdorffDistanceMetric(
+            include_background=include_background,
+            distance_metric=distance_metric,
+            percentile=percentile,
+            directed=directed,
+            reduction=reduction,
+        )
+        super().__init__(metric_fn=metric_fn, output_transform=output_transform, save_details=save_details)
+</clonepair15>
+
+<clonepair15>
+<source file="systems/MONAI-0.8.1/monai/handlers/surface_distance.py" startline="24" endline="61" pcid="1540"></source>
+    def __init__(
+        self,
+        include_background: bool = False,
+        symmetric: bool = False,
+        distance_metric: str = "euclidean",
+        reduction: Union[MetricReduction, str] = MetricReduction.MEAN,
+        output_transform: Callable = lambda x: x,
+        save_details: bool = True,
+    ) -> None:
+        """
+
+        Args:
+            include_background: whether to include distance computation on the first channel of the predicted output.
+                Defaults to ``False``.
+            symmetric: whether to calculate the symmetric average surface distance between
+                `seg_pred` and `seg_gt`. Defaults to ``False``.
+            distance_metric: : [``"euclidean"``, ``"chessboard"``, ``"taxicab"``]
+                the metric used to compute surface distance. Defaults to ``"euclidean"``.
+            reduction: define the mode to reduce metrics, will only execute reduction on `not-nan` values,
+                available reduction modes: {``"none"``, ``"mean"``, ``"sum"``, ``"mean_batch"``, ``"sum_batch"``,
+                ``"mean_channel"``, ``"sum_channel"``}, default to ``"mean"``. if "none", will not do reduction.
+            output_transform: callable to extract `y_pred` and `y` from `ignite.engine.state.output` then
+                construct `(y_pred, y)` pair, where `y_pred` and `y` can be `batch-first` Tensors or
+                lists of `channel-first` Tensors. the form of `(y_pred, y)` is required by the `update()`.
+                `engine.state` and `output_transform` inherit from the ignite concept:
+                https://pytorch.org/ignite/concepts.html#state, explanation and usage example are in the tutorial:
+                https://github.com/Project-MONAI/tutorials/blob/master/modules/batch_output_transform.ipynb.
+            save_details: whether to save metric computation details per image, for example: surface dice
+                of every image. default to True, will save to `engine.state.metric_details` dict with the metric name as key.
+
+        """
+        metric_fn = SurfaceDistanceMetric(
+            include_background=include_background,
+            symmetric=symmetric,
+            distance_metric=distance_metric,
+            reduction=reduction,
+        )
+        super().__init__(metric_fn=metric_fn, output_transform=output_transform, save_details=save_details)
+</clonepair15>
+<clonepair16>
+<source file="systems/MONAI-0.8.1/monai/metrics/surface_distance.py" startline="63" endline="93" pcid="1652"></source>
+    def _compute_tensor(self, y_pred: torch.Tensor, y: torch.Tensor):  # type: ignore
+        """
+        Args:
+            y_pred: input data to compute, typical segmentation model output.
+                It must be one-hot format and first dim is batch, example shape: [16, 3, 32, 32]. The values
+                should be binarized.
+            y: ground truth to compute the distance. It must be one-hot format and first dim is batch.
+                The values should be binarized.
+
+        Raises:
+            ValueError: when `y` is not a binarized tensor.
+            ValueError: when `y_pred` has less than three dimensions.
+        """
+        if not isinstance(y_pred, torch.Tensor) or not isinstance(y, torch.Tensor):
+            raise ValueError("y_pred and y must be PyTorch Tensor.")
+        if not torch.all(y_pred.byte() == y_pred):
+            warnings.warn("y_pred should be a binarized tensor.")
+        if not torch.all(y.byte() == y):
+            warnings.warn("y should be a binarized tensor.")
+        dims = y_pred.ndimension()
+        if dims < 3:
+            raise ValueError("y_pred should have at least three dimensions.")
+        # compute (BxC) for each channel for each batch
+        return compute_average_surface_distance(
+            y_pred=y_pred,
+            y=y,
+            include_background=self.include_background,
+            symmetric=self.symmetric,
+            distance_metric=self.distance_metric,
+        )
+
+</clonepair16>
+
+<clonepair16>
+<source file="systems/MONAI-0.8.1/monai/metrics/hausdorff_distance.py" startline="70" endline="101" pcid="1636"></source>
+    def _compute_tensor(self, y_pred: torch.Tensor, y: torch.Tensor):  # type: ignore
+        """
+        Args:
+            y_pred: input data to compute, typical segmentation model output.
+                It must be one-hot format and first dim is batch, example shape: [16, 3, 32, 32]. The values
+                should be binarized.
+            y: ground truth to compute the distance. It must be one-hot format and first dim is batch.
+                The values should be binarized.
+
+        Raises:
+            ValueError: when `y` is not a binarized tensor.
+            ValueError: when `y_pred` has less than three dimensions.
+        """
+        if not isinstance(y_pred, torch.Tensor) or not isinstance(y, torch.Tensor):
+            raise ValueError("y_pred and y must be PyTorch Tensor.")
+        if not torch.all(y_pred.byte() == y_pred):
+            warnings.warn("y_pred should be a binarized tensor.")
+        if not torch.all(y.byte() == y):
+            warnings.warn("y should be a binarized tensor.")
+        dims = y_pred.ndimension()
+        if dims < 3:
+            raise ValueError("y_pred should have at least three dimensions.")
+        # compute (BxC) for each channel for each batch
+        return compute_hausdorff_distance(
+            y_pred=y_pred,
+            y=y,
+            include_background=self.include_background,
+            distance_metric=self.distance_metric,
+            percentile=self.percentile,
+            directed=self.directed,
+        )
+
+</clonepair16>
+<clonepair17>
+<source file="systems/MONAI-0.8.1/tests/test_rand_weighted_cropd.py" startline="39" endline="57" pcid="311"></source>
+    def test_rand_weighted_crop_default_roi(self):
+        for p in TEST_NDARRAYS:
+            for q in TEST_NDARRAYS:
+                img = self.imt[0]
+                n_samples = 3
+                crop = RandWeightedCropd("im", "weight", (10, -1), n_samples, "coords")
+                weight = np.zeros_like(img)
+                weight[0, 30, 17] = 1.1
+                weight[0, 40, 31] = 1
+                weight[0, 80, 21] = 1
+                crop.set_random_state(10)
+                data = {"im": p(img), "weight": q(weight), "others": np.nan}
+                result = crop(data)
+                self.assertTrue(len(result) == n_samples)
+                np.testing.assert_allclose(result[0]["im"].shape, (1, 10, 64))
+                for c, e in zip(crop.centers, [[14, 32], [105, 32], [20, 32]]):
+                    assert_allclose(c, e, type_test=False)
+                assert_allclose(result[1]["coords"], [105, 32], type_test=False)
+
+</clonepair17>
+
+<clonepair17>
+<source file="systems/MONAI-0.8.1/tests/test_rand_weighted_cropd.py" startline="58" endline="76" pcid="312"></source>
+    def test_rand_weighted_crop_large_roi(self):
+        for p in TEST_NDARRAYS:
+            for q in TEST_NDARRAYS:
+                img = self.segn[0]
+                n_samples = 3
+                crop = RandWeightedCropd(("img", "seg"), "weight", (10000, 400), n_samples, "location")
+                weight = np.zeros_like(img)
+                weight[0, 30, 17] = 1.1
+                weight[0, 10, 1] = 1
+                crop.set_random_state(10)
+                data = {"img": p(img), "seg": p(self.imt[0]), "weight": q(weight)}
+                result = crop(data)
+                self.assertTrue(len(result) == n_samples)
+                np.testing.assert_allclose(result[0]["img"].shape, (1, 128, 64))
+                np.testing.assert_allclose(result[0]["seg"].shape, (1, 128, 64))
+                for c, e in zip(crop.centers, [[64, 32], [64, 32], [64, 32]]):
+                    assert_allclose(c, e, type_test=False)
+                assert_allclose(result[1]["location"], [64, 32], type_test=False)
+
+</clonepair17>
+<clonepair18>
+<source file="systems/MONAI-0.8.1/tests/test_rand_weighted_cropd.py" startline="21" endline="38" pcid="310"></source>
+    def test_rand_weighted_crop_small_roi(self):
+        for p in TEST_NDARRAYS:
+            for q in TEST_NDARRAYS:
+                img = self.seg1[0]
+                n_samples = 3
+                crop = RandWeightedCropd("img", "w", (10, 12), n_samples)
+                weight = np.zeros_like(img)
+                weight[0, 30, 17] = 1.1
+                weight[0, 40, 31] = 1
+                weight[0, 80, 21] = 1
+                crop.set_random_state(10)
+                d = {"img": p(img), "w": q(weight)}
+                result = crop(d)
+                self.assertTrue(len(result) == n_samples)
+                np.testing.assert_allclose(result[0]["img"].shape, (1, 10, 12))
+                for c, e in zip(crop.centers, [[80, 21], [30, 17], [40, 31]]):
+                    assert_allclose(c, e, type_test=False)
+
+</clonepair18>
+
+<clonepair18>
+<source file="systems/MONAI-0.8.1/tests/test_rand_weighted_cropd.py" startline="39" endline="57" pcid="311"></source>
+    def test_rand_weighted_crop_default_roi(self):
+        for p in TEST_NDARRAYS:
+            for q in TEST_NDARRAYS:
+                img = self.imt[0]
+                n_samples = 3
+                crop = RandWeightedCropd("im", "weight", (10, -1), n_samples, "coords")
+                weight = np.zeros_like(img)
+                weight[0, 30, 17] = 1.1
+                weight[0, 40, 31] = 1
+                weight[0, 80, 21] = 1
+                crop.set_random_state(10)
+                data = {"im": p(img), "weight": q(weight), "others": np.nan}
+                result = crop(data)
+                self.assertTrue(len(result) == n_samples)
+                np.testing.assert_allclose(result[0]["im"].shape, (1, 10, 64))
+                for c, e in zip(crop.centers, [[14, 32], [105, 32], [20, 32]]):
+                    assert_allclose(c, e, type_test=False)
+                assert_allclose(result[1]["coords"], [105, 32], type_test=False)
+
+</clonepair18>
+<clonepair19>
+<source file="systems/MONAI-0.8.1/tests/test_rand_weighted_cropd.py" startline="21" endline="38" pcid="310"></source>
+    def test_rand_weighted_crop_small_roi(self):
+        for p in TEST_NDARRAYS:
+            for q in TEST_NDARRAYS:
+                img = self.seg1[0]
+                n_samples = 3
+                crop = RandWeightedCropd("img", "w", (10, 12), n_samples)
+                weight = np.zeros_like(img)
+                weight[0, 30, 17] = 1.1
+                weight[0, 40, 31] = 1
+                weight[0, 80, 21] = 1
+                crop.set_random_state(10)
+                d = {"img": p(img), "w": q(weight)}
+                result = crop(d)
+                self.assertTrue(len(result) == n_samples)
+                np.testing.assert_allclose(result[0]["img"].shape, (1, 10, 12))
+                for c, e in zip(crop.centers, [[80, 21], [30, 17], [40, 31]]):
+                    assert_allclose(c, e, type_test=False)
+
+</clonepair19>
+
+<clonepair19>
+<source file="systems/MONAI-0.8.1/tests/test_rand_weighted_cropd.py" startline="58" endline="76" pcid="312"></source>
+    def test_rand_weighted_crop_large_roi(self):
+        for p in TEST_NDARRAYS:
+            for q in TEST_NDARRAYS:
+                img = self.segn[0]
+                n_samples = 3
+                crop = RandWeightedCropd(("img", "seg"), "weight", (10000, 400), n_samples, "location")
+                weight = np.zeros_like(img)
+                weight[0, 30, 17] = 1.1
+                weight[0, 10, 1] = 1
+                crop.set_random_state(10)
+                data = {"img": p(img), "seg": p(self.imt[0]), "weight": q(weight)}
+                result = crop(data)
+                self.assertTrue(len(result) == n_samples)
+                np.testing.assert_allclose(result[0]["img"].shape, (1, 128, 64))
+                np.testing.assert_allclose(result[0]["seg"].shape, (1, 128, 64))
+                for c, e in zip(crop.centers, [[64, 32], [64, 32], [64, 32]]):
+                    assert_allclose(c, e, type_test=False)
+                assert_allclose(result[1]["location"], [64, 32], type_test=False)
+
+</clonepair19>
+<clonepair20>
+<source file="systems/MONAI-0.8.1/monai/handlers/confusion_matrix.py" startline="24" endline="69" pcid="1553"></source>
+    def __init__(
+        self,
+        include_background: bool = True,
+        metric_name: str = "hit_rate",
+        compute_sample: bool = False,
+        reduction: Union[MetricReduction, str] = MetricReduction.MEAN,
+        output_transform: Callable = lambda x: x,
+        save_details: bool = True,
+    ) -> None:
+        """
+
+        Args:
+            include_background: whether to skip metric computation on the first channel of
+                the predicted output. Defaults to True.
+            metric_name: [``"sensitivity"``, ``"specificity"``, ``"precision"``, ``"negative predictive value"``,
+                ``"miss rate"``, ``"fall out"``, ``"false discovery rate"``, ``"false omission rate"``,
+                ``"prevalence threshold"``, ``"threat score"``, ``"accuracy"``, ``"balanced accuracy"``,
+                ``"f1 score"``, ``"matthews correlation coefficient"``, ``"fowlkes mallows index"``,
+                ``"informedness"``, ``"markedness"``]
+                Some of the metrics have multiple aliases (as shown in the wikipedia page aforementioned),
+                and you can also input those names instead.
+            compute_sample: when reducing, if ``True``, each sample's metric will be computed based on each confusion matrix first.
+                if ``False``, compute reduction on the confusion matrices first, defaults to ``False``.
+            reduction: define the mode to reduce metrics, will only execute reduction on `not-nan` values,
+                available reduction modes: {``"none"``, ``"mean"``, ``"sum"``, ``"mean_batch"``, ``"sum_batch"``,
+                ``"mean_channel"``, ``"sum_channel"``}, default to ``"mean"``. if "none", will not do reduction.
+            output_transform: callable to extract `y_pred` and `y` from `ignite.engine.state.output` then
+                construct `(y_pred, y)` pair, where `y_pred` and `y` can be `batch-first` Tensors or
+                lists of `channel-first` Tensors. the form of `(y_pred, y)` is required by the `update()`.
+                `engine.state` and `output_transform` inherit from the ignite concept:
+                https://pytorch.org/ignite/concepts.html#state, explanation and usage example are in the tutorial:
+                https://github.com/Project-MONAI/tutorials/blob/master/modules/batch_output_transform.ipynb.
+            save_details: whether to save metric computation details per image, for example: TP/TN/FP/FN of every image.
+                default to True, will save to `engine.state.metric_details` dict with the metric name as key.
+
+        See also:
+            :py:meth:`monai.metrics.confusion_matrix`
+        """
+        metric_fn = ConfusionMatrixMetric(
+            include_background=include_background,
+            metric_name=metric_name,
+            compute_sample=compute_sample,
+            reduction=reduction,
+        )
+        self.metric_name = metric_name
+        super().__init__(metric_fn=metric_fn, output_transform=output_transform, save_details=save_details)
+</clonepair20>
+
+<clonepair20>
+<source file="systems/MONAI-0.8.1/monai/handlers/surface_distance.py" startline="24" endline="61" pcid="1540"></source>
+    def __init__(
+        self,
+        include_background: bool = False,
+        symmetric: bool = False,
+        distance_metric: str = "euclidean",
+        reduction: Union[MetricReduction, str] = MetricReduction.MEAN,
+        output_transform: Callable = lambda x: x,
+        save_details: bool = True,
+    ) -> None:
+        """
+
+        Args:
+            include_background: whether to include distance computation on the first channel of the predicted output.
+                Defaults to ``False``.
+            symmetric: whether to calculate the symmetric average surface distance between
+                `seg_pred` and `seg_gt`. Defaults to ``False``.
+            distance_metric: : [``"euclidean"``, ``"chessboard"``, ``"taxicab"``]
+                the metric used to compute surface distance. Defaults to ``"euclidean"``.
+            reduction: define the mode to reduce metrics, will only execute reduction on `not-nan` values,
+                available reduction modes: {``"none"``, ``"mean"``, ``"sum"``, ``"mean_batch"``, ``"sum_batch"``,
+                ``"mean_channel"``, ``"sum_channel"``}, default to ``"mean"``. if "none", will not do reduction.
+            output_transform: callable to extract `y_pred` and `y` from `ignite.engine.state.output` then
+                construct `(y_pred, y)` pair, where `y_pred` and `y` can be `batch-first` Tensors or
+                lists of `channel-first` Tensors. the form of `(y_pred, y)` is required by the `update()`.
+                `engine.state` and `output_transform` inherit from the ignite concept:
+                https://pytorch.org/ignite/concepts.html#state, explanation and usage example are in the tutorial:
+                https://github.com/Project-MONAI/tutorials/blob/master/modules/batch_output_transform.ipynb.
+            save_details: whether to save metric computation details per image, for example: surface dice
+                of every image. default to True, will save to `engine.state.metric_details` dict with the metric name as key.
+
+        """
+        metric_fn = SurfaceDistanceMetric(
+            include_background=include_background,
+            symmetric=symmetric,
+            distance_metric=distance_metric,
+            reduction=reduction,
+        )
+        super().__init__(metric_fn=metric_fn, output_transform=output_transform, save_details=save_details)
+</clonepair20>
+<clonepair21>
+<source file="systems/MONAI-0.8.1/tests/test_rand_weighted_cropd.py" startline="77" endline="95" pcid="313"></source>
+    def test_rand_weighted_crop_bad_w(self):
+        for p in TEST_NDARRAYS:
+            for q in TEST_NDARRAYS:
+                img = self.imt[0]
+                n_samples = 3
+                crop = RandWeightedCropd(("img", "seg"), "w", (20, 40), n_samples)
+                weight = np.zeros_like(img)
+                weight[0, 30, 17] = np.inf
+                weight[0, 10, 1] = -np.inf
+                weight[0, 10, 20] = -np.nan
+                crop.set_random_state(10)
+                result = crop({"img": p(img), "seg": p(self.segn[0]), "w": q(weight)})
+                self.assertTrue(len(result) == n_samples)
+                np.testing.assert_allclose(result[0]["img"].shape, (1, 20, 40))
+                np.testing.assert_allclose(result[0]["seg"].shape, (1, 20, 40))
+                for c, e in zip(crop.centers, [[63, 37], [31, 43], [66, 20]]):
+                    assert_allclose(c, e, type_test=False)
+
+
+</clonepair21>
+
+<clonepair21>
+<source file="systems/MONAI-0.8.1/tests/test_rand_weighted_cropd.py" startline="148" endline="165" pcid="317"></source>
+    def test_rand_weighted_crop_bad_w(self):
+        for p in TEST_NDARRAYS:
+            for q in TEST_NDARRAYS:
+                img = self.imt[0]
+                n_samples = 3
+                crop = RandWeightedCropd(("img", "seg"), "w", (48, 64, 80), n_samples)
+                weight = np.zeros_like(img)
+                weight[0, 30, 17] = np.inf
+                weight[0, 10, 1] = -np.inf
+                weight[0, 10, 20] = -np.nan
+                crop.set_random_state(10)
+                result = crop({"img": p(img), "seg": p(self.segn[0]), "w": q(weight)})
+                self.assertTrue(len(result) == n_samples)
+                np.testing.assert_allclose(result[0]["img"].shape, (1, 48, 64, 80))
+                np.testing.assert_allclose(result[0]["seg"].shape, (1, 48, 64, 80))
+                for c, e in zip(crop.centers, [[24, 32, 40], [24, 32, 40], [24, 32, 40]]):
+                    assert_allclose(c, e, type_test=False)
+
+</clonepair21>
+<clonepair22>
+<source file="systems/MONAI-0.8.1/tests/test_rand_weighted_cropd.py" startline="114" endline="131" pcid="315"></source>
+    def test_rand_weighted_crop_default_roi(self):
+        for p in TEST_NDARRAYS:
+            for q in TEST_NDARRAYS:
+                img = self.imt[0]
+                n_samples = 3
+                crop = RandWeightedCropd(("img", "seg"), "w", (10, -1, -1), n_samples)
+                weight = np.zeros_like(img)
+                weight[0, 7, 17] = 1.1
+                weight[0, 13, 31] = 1.1
+                weight[0, 24, 21] = 1
+                crop.set_random_state(10)
+                result = crop({"img": p(img), "seg": p(self.segn[0]), "w": q(weight)})
+                self.assertTrue(len(result) == n_samples)
+                np.testing.assert_allclose(result[0]["img"].shape, (1, 10, 64, 80))
+                np.testing.assert_allclose(result[0]["seg"].shape, (1, 10, 64, 80))
+                for c, e in zip(crop.centers, [[14, 32, 40], [41, 32, 40], [20, 32, 40]]):
+                    assert_allclose(c, e, type_test=False)
+
+</clonepair22>
+
+<clonepair22>
+<source file="systems/MONAI-0.8.1/tests/test_rand_weighted_cropd.py" startline="148" endline="165" pcid="317"></source>
+    def test_rand_weighted_crop_bad_w(self):
+        for p in TEST_NDARRAYS:
+            for q in TEST_NDARRAYS:
+                img = self.imt[0]
+                n_samples = 3
+                crop = RandWeightedCropd(("img", "seg"), "w", (48, 64, 80), n_samples)
+                weight = np.zeros_like(img)
+                weight[0, 30, 17] = np.inf
+                weight[0, 10, 1] = -np.inf
+                weight[0, 10, 20] = -np.nan
+                crop.set_random_state(10)
+                result = crop({"img": p(img), "seg": p(self.segn[0]), "w": q(weight)})
+                self.assertTrue(len(result) == n_samples)
+                np.testing.assert_allclose(result[0]["img"].shape, (1, 48, 64, 80))
+                np.testing.assert_allclose(result[0]["seg"].shape, (1, 48, 64, 80))
+                for c, e in zip(crop.centers, [[24, 32, 40], [24, 32, 40], [24, 32, 40]]):
+                    assert_allclose(c, e, type_test=False)
+
+</clonepair22>
+<clonepair23>
+<source file="systems/MONAI-0.8.1/tests/test_rand_weighted_cropd.py" startline="97" endline="113" pcid="314"></source>
+    def test_rand_weighted_crop_small_roi(self):
+        for p in TEST_NDARRAYS:
+            for q in TEST_NDARRAYS:
+                img = self.seg1[0]
+                n_samples = 3
+                crop = RandWeightedCropd("img", "w", (8, 10, 12), n_samples)
+                weight = np.zeros_like(img)
+                weight[0, 5, 30, 17] = 1.1
+                weight[0, 8, 40, 31] = 1
+                weight[0, 11, 23, 21] = 1
+                crop.set_random_state(10)
+                result = crop({"img": p(img), "w": q(weight)})
+                self.assertTrue(len(result) == n_samples)
+                np.testing.assert_allclose(result[0]["img"].shape, (1, 8, 10, 12))
+                for c, e in zip(crop.centers, [[11, 23, 21], [5, 30, 17], [8, 40, 31]]):
+                    assert_allclose(c, e, type_test=False)
+
+</clonepair23>
+
+<clonepair23>
+<source file="systems/MONAI-0.8.1/tests/test_rand_weighted_cropd.py" startline="132" endline="147" pcid="316"></source>
+    def test_rand_weighted_crop_large_roi(self):
+        for p in TEST_NDARRAYS:
+            for q in TEST_NDARRAYS:
+                img = self.segn[0]
+                n_samples = 3
+                crop = RandWeightedCropd("img", "w", (10000, 400, 80), n_samples)
+                weight = np.zeros_like(img)
+                weight[0, 30, 17, 20] = 1.1
+                weight[0, 10, 1, 17] = 1
+                crop.set_random_state(10)
+                result = crop({"img": p(img), "w": q(weight)})
+                self.assertTrue(len(result) == n_samples)
+                np.testing.assert_allclose(result[0]["img"].shape, (1, 48, 64, 80))
+                for c, e in zip(crop.centers, [[24, 32, 40], [24, 32, 40], [24, 32, 40]]):
+                    assert_allclose(c, e, type_test=False)
+
+</clonepair23>
+<clonepair24>
+<source file="systems/MONAI-0.8.1/tests/test_dice_focal_loss.py" startline="22" endline="38" pcid="1007"></source>
+    def test_result_onehot_target_include_bg(self):
+        size = [3, 3, 5, 5]
+        label = torch.randint(low=0, high=2, size=size)
+        pred = torch.randn(size)
+        for reduction in ["sum", "mean", "none"]:
+            common_params = {"include_background": True, "to_onehot_y": False, "reduction": reduction}
+            for focal_weight in [None, torch.tensor([1.0, 1.0, 2.0]), (3, 2.0, 1)]:
+                for lambda_focal in [0.5, 1.0, 1.5]:
+                    dice_focal = DiceFocalLoss(
+                        focal_weight=focal_weight, gamma=1.0, lambda_focal=lambda_focal, **common_params
+                    )
+                    dice = DiceLoss(**common_params)
+                    focal = FocalLoss(weight=focal_weight, gamma=1.0, **common_params)
+                    result = dice_focal(pred, label)
+                    expected_val = dice(pred, label) + lambda_focal * focal(pred, label)
+                    np.testing.assert_allclose(result, expected_val)
+
+</clonepair24>
+
+<clonepair24>
+<source file="systems/MONAI-0.8.1/tests/test_dice_focal_loss.py" startline="39" endline="54" pcid="1008"></source>
+    def test_result_no_onehot_no_bg(self):
+        size = [3, 3, 5, 5]
+        label = torch.randint(low=0, high=2, size=size)
+        label = torch.argmax(label, dim=1, keepdim=True)
+        pred = torch.randn(size)
+        for reduction in ["sum", "mean", "none"]:
+            common_params = {"include_background": False, "to_onehot_y": True, "reduction": reduction}
+            for focal_weight in [2.0, torch.tensor([1.0, 2.0]), (2.0, 1)]:
+                for lambda_focal in [0.5, 1.0, 1.5]:
+                    dice_focal = DiceFocalLoss(focal_weight=focal_weight, lambda_focal=lambda_focal, **common_params)
+                    dice = DiceLoss(**common_params)
+                    focal = FocalLoss(weight=focal_weight, **common_params)
+                    result = dice_focal(pred, label)
+                    expected_val = dice(pred, label) + lambda_focal * focal(pred, label)
+                    np.testing.assert_allclose(result, expected_val)
+
+</clonepair24>
+<clonepair25>
+<source file="systems/MONAI-0.8.1/tests/test_resize.py" startline="41" endline="59" pcid="1089"></source>
+    def test_correct_results(self, spatial_size, mode):
+        resize = Resize(spatial_size, mode=mode)
+        _order = 0
+        if mode.endswith("linear"):
+            _order = 1
+        if spatial_size == (32, -1):
+            spatial_size = (32, 64)
+        expected = [
+            skimage.transform.resize(
+                channel, spatial_size, order=_order, clip=False, preserve_range=False, anti_aliasing=False
+            )
+            for channel in self.imt[0]
+        ]
+
+        expected = np.stack(expected).astype(np.float32)
+        for p in TEST_NDARRAYS:
+            out = resize(p(self.imt[0]))
+            assert_allclose(out, expected, type_test=False, atol=0.9)
+
+</clonepair25>
+
+<clonepair25>
+<source file="systems/MONAI-0.8.1/tests/test_resized.py" startline="44" endline="62" pcid="164"></source>
+    def test_correct_results(self, spatial_size, mode):
+        resize = Resized("img", spatial_size, mode=mode)
+        _order = 0
+        if mode.endswith("linear"):
+            _order = 1
+        if spatial_size == (32, -1):
+            spatial_size = (32, 64)
+        expected = [
+            skimage.transform.resize(
+                channel, spatial_size, order=_order, clip=False, preserve_range=False, anti_aliasing=False
+            )
+            for channel in self.imt[0]
+        ]
+
+        expected = np.stack(expected).astype(np.float32)
+        for p in TEST_NDARRAYS:
+            out = resize({"img": p(self.imt[0])})["img"]
+            assert_allclose(out, expected, type_test=False, atol=0.9)
+
+</clonepair25>
+<clonepair26>
+<source file="systems/MONAI-0.8.1/monai/networks/nets/classifier.py" startline="84" endline="99" pcid="1682"></source>
+    def __init__(
+        self,
+        in_shape: Sequence[int],
+        channels: Sequence[int],
+        strides: Sequence[int],
+        kernel_size: Union[Sequence[int], int] = 3,
+        num_res_units: int = 2,
+        act=Act.PRELU,
+        norm=Norm.INSTANCE,
+        dropout: Optional[float] = 0.25,
+        bias: bool = True,
+        last_act=Act.SIGMOID,
+    ) -> None:
+        super().__init__(in_shape, 1, channels, strides, kernel_size, num_res_units, act, norm, dropout, bias, last_act)
+
+
+</clonepair26>
+
+<clonepair26>
+<source file="systems/MONAI-0.8.1/monai/networks/nets/classifier.py" startline="118" endline="131" pcid="1683"></source>
+    def __init__(
+        self,
+        in_shape: Sequence[int],
+        channels: Sequence[int],
+        strides: Sequence[int],
+        kernel_size: Union[Sequence[int], int] = 3,
+        num_res_units: int = 2,
+        act=Act.PRELU,
+        norm=Norm.INSTANCE,
+        dropout: Optional[float] = 0.25,
+        bias: bool = True,
+    ) -> None:
+        super().__init__(in_shape, 1, channels, strides, kernel_size, num_res_units, act, norm, dropout, bias, None)
+
+</clonepair26>
+<clonepair27>
+<source file="systems/MONAI-0.8.1/tests/test_ensure_channel_first.py" startline="47" endline="61" pcid="463"></source>
+    def test_load_nifti(self, input_param, filenames, original_channel_dim):
+        if original_channel_dim is None:
+            test_image = np.random.rand(128, 128, 128)
+        elif original_channel_dim == -1:
+            test_image = np.random.rand(128, 128, 128, 1)
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            for i, name in enumerate(filenames):
+                filenames[i] = os.path.join(tempdir, name)
+                nib.save(nib.Nifti1Image(test_image, np.eye(4)), filenames[i])
+            for p in TEST_NDARRAYS:
+                result, header = LoadImage(**input_param)(filenames)
+                result = EnsureChannelFirst()(p(result), header)
+                self.assertEqual(result.shape[0], len(filenames))
+
+</clonepair27>
+
+<clonepair27>
+<source file="systems/MONAI-0.8.1/tests/test_ensure_channel_firstd.py" startline="33" endline="48" pcid="1163"></source>
+    def test_load_nifti(self, input_param, filenames, original_channel_dim):
+        if original_channel_dim is None:
+            test_image = np.random.rand(128, 128, 128)
+        elif original_channel_dim == -1:
+            test_image = np.random.rand(128, 128, 128, 1)
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            for i, name in enumerate(filenames):
+                filenames[i] = os.path.join(tempdir, name)
+                nib.save(nib.Nifti1Image(test_image, np.eye(4)), filenames[i])
+            for p in TEST_NDARRAYS:
+                result = LoadImaged(**input_param)({"img": filenames})
+                result["img"] = p(result["img"])
+                result = EnsureChannelFirstd(**input_param)(result)
+                self.assertEqual(result["img"].shape[0], len(filenames))
+
+</clonepair27>
+<clonepair28>
+<source file="systems/MONAI-0.8.1/tests/test_ensure_typed.py" startline="37" endline="50" pcid="1223"></source>
+    def test_single_input(self):
+        test_datas = [5, 5.0, False, np.asarray(5), torch.tensor(5)]
+        if torch.cuda.is_available():
+            test_datas.append(test_datas[-1].cuda())
+        for test_data in test_datas:
+            for dtype in ("tensor", "numpy"):
+                result = EnsureTyped(keys="data", data_type=dtype)({"data": test_data})["data"]
+                self.assertTrue(isinstance(result, torch.Tensor if dtype == "tensor" else np.ndarray))
+                if isinstance(test_data, bool):
+                    self.assertFalse(result)
+                else:
+                    assert_allclose(result, test_data, type_test=False)
+                self.assertEqual(result.ndim, 0)
+
+</clonepair28>
+
+<clonepair28>
+<source file="systems/MONAI-0.8.1/tests/test_ensure_type.py" startline="35" endline="48" pcid="587"></source>
+    def test_single_input(self):
+        test_datas = [5, 5.0, False, np.asarray(5), torch.tensor(5)]
+        if torch.cuda.is_available():
+            test_datas.append(test_datas[-1].cuda())
+        for test_data in test_datas:
+            for dtype in ("tensor", "numpy"):
+                result = EnsureType(data_type=dtype, device="cpu")(test_data)
+                self.assertTrue(isinstance(result, torch.Tensor if dtype == "tensor" else np.ndarray))
+                if isinstance(test_data, bool):
+                    self.assertFalse(result)
+                else:
+                    assert_allclose(result, test_data, type_test=False)
+                self.assertEqual(result.ndim, 0)
+
+</clonepair28>
+<clonepair29>
+<source file="systems/MONAI-0.8.1/tests/test_adjust_contrast.py" startline="29" endline="42" pcid="508"></source>
+    def test_correct_results(self, gamma):
+        adjuster = AdjustContrast(gamma=gamma)
+        for p in TEST_NDARRAYS:
+            result = adjuster(p(self.imt))
+            if gamma == 1.0:
+                expected = self.imt
+            else:
+                epsilon = 1e-7
+                img_min = self.imt.min()
+                img_range = self.imt.max() - img_min
+                expected = np.power(((self.imt - img_min) / float(img_range + epsilon)), gamma) * img_range + img_min
+            assert_allclose(expected, result, rtol=1e-05, type_test=False)
+
+
+</clonepair29>
+
+<clonepair29>
+<source file="systems/MONAI-0.8.1/tests/test_adjust_contrastd.py" startline="29" endline="42" pcid="569"></source>
+    def test_correct_results(self, gamma):
+        adjuster = AdjustContrastd("img", gamma=gamma)
+        for p in TEST_NDARRAYS:
+            result = adjuster({"img": p(self.imt)})
+            if gamma == 1.0:
+                expected = self.imt
+            else:
+                epsilon = 1e-7
+                img_min = self.imt.min()
+                img_range = self.imt.max() - img_min
+                expected = np.power(((self.imt - img_min) / float(img_range + epsilon)), gamma) * img_range + img_min
+            assert_allclose(expected, result["img"], rtol=1e-05, type_test=False)
+
+
+</clonepair29>
+<clonepair30>
+<source file="systems/MONAI-0.8.1/tests/test_nifti_saver.py" startline="36" endline="50" pcid="890"></source>
+    def test_saved_resize_content(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+
+            saver = NiftiSaver(output_dir=tempdir, output_postfix="seg", output_ext=".nii.gz", dtype=np.float32)
+
+            meta_data = {
+                "filename_or_obj": ["testfile" + str(i) + ".nii" for i in range(8)],
+                "affine": [np.diag(np.ones(4)) * 5] * 8,
+                "original_affine": [np.diag(np.ones(4)) * 1.0] * 8,
+            }
+            saver.save_batch(torch.randint(0, 255, (8, 8, 2, 2)), meta_data)
+            for i in range(8):
+                filepath = os.path.join("testfile" + str(i), "testfile" + str(i) + "_seg.nii.gz")
+                self.assertTrue(os.path.exists(os.path.join(tempdir, filepath)))
+
+</clonepair30>
+
+<clonepair30>
+<source file="systems/MONAI-0.8.1/tests/test_nifti_saver.py" startline="51" endline="66" pcid="891"></source>
+    def test_saved_3d_resize_content(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+
+            saver = NiftiSaver(output_dir=tempdir, output_postfix="seg", output_ext=".nii.gz", dtype=np.float32)
+
+            meta_data = {
+                "filename_or_obj": ["testfile" + str(i) + ".nii.gz" for i in range(8)],
+                "spatial_shape": [(10, 10, 2)] * 8,
+                "affine": [np.diag(np.ones(4)) * 5] * 8,
+                "original_affine": [np.diag(np.ones(4)) * 1.0] * 8,
+            }
+            saver.save_batch(torch.randint(0, 255, (8, 8, 1, 2, 2)), meta_data)
+            for i in range(8):
+                filepath = os.path.join("testfile" + str(i), "testfile" + str(i) + "_seg.nii.gz")
+                self.assertTrue(os.path.exists(os.path.join(tempdir, filepath)))
+
+</clonepair30>
+<clonepair31>
+<source file="systems/MONAI-0.8.1/tests/test_numpy_reader.py" startline="49" endline="61" pcid="436"></source>
+    def test_npz2(self):
+        test_data1 = np.random.randint(0, 256, size=[3, 4, 4])
+        test_data2 = np.random.randint(0, 256, size=[3, 4, 4])
+        with tempfile.TemporaryDirectory() as tempdir:
+            filepath = os.path.join(tempdir, "test_data.npz")
+            np.savez(filepath, test_data1, test_data2)
+
+            reader = NumpyReader()
+            result = reader.get_data(reader.read(filepath))
+        np.testing.assert_allclose(result[1]["spatial_shape"], test_data1.shape)
+        np.testing.assert_allclose(result[0].shape, (2, 3, 4, 4))
+        np.testing.assert_allclose(result[0], np.stack([test_data1, test_data2]))
+
+</clonepair31>
+
+<clonepair31>
+<source file="systems/MONAI-0.8.1/tests/test_numpy_reader.py" startline="62" endline="74" pcid="437"></source>
+    def test_npz3(self):
+        test_data1 = np.random.randint(0, 256, size=[3, 4, 4])
+        test_data2 = np.random.randint(0, 256, size=[3, 4, 4])
+        with tempfile.TemporaryDirectory() as tempdir:
+            filepath = os.path.join(tempdir, "test_data.npz")
+            np.savez(filepath, test1=test_data1, test2=test_data2)
+
+            reader = NumpyReader(npz_keys=["test1", "test2"])
+            result = reader.get_data(reader.read(filepath))
+        np.testing.assert_allclose(result[1]["spatial_shape"], test_data1.shape)
+        np.testing.assert_allclose(result[0].shape, (2, 3, 4, 4))
+        np.testing.assert_allclose(result[0], np.stack([test_data1, test_data2]))
+
+</clonepair31>
+<clonepair32>
+<source file="systems/MONAI-0.8.1/tests/test_handler_classification_saver.py" startline="45" endline="56" pcid="807"></source>
+            def _test_file(filename):
+                filepath = os.path.join(tempdir, filename)
+                self.assertTrue(os.path.exists(filepath))
+                with open(filepath) as f:
+                    reader = csv.reader(f, delimiter="\t")
+                    i = 0
+                    for row in reader:
+                        self.assertEqual(row[0], "testfile" + str(i))
+                        self.assertEqual(np.array(row[1:]).astype(np.float32), 0.0)
+                        i += 1
+                    self.assertEqual(i, 8)
+
+</clonepair32>
+
+<clonepair32>
+<source file="systems/MONAI-0.8.1/tests/test_save_classificationd.py" startline="88" endline="99" pcid="842"></source>
+            def _test_file(filename, count):
+                filepath = os.path.join(tempdir, filename)
+                self.assertTrue(os.path.exists(filepath))
+                with open(filepath) as f:
+                    reader = csv.reader(f, delimiter="\t")
+                    i = 0
+                    for row in reader:
+                        self.assertEqual(row[0], "testfile" + str(i))
+                        self.assertEqual(np.array(row[1:]).astype(np.float32), 0.0)
+                        i += 1
+                    self.assertEqual(i, count)
+
+</clonepair32>
+<clonepair33>
+<source file="systems/MONAI-0.8.1/monai/networks/blocks/dynunet_block.py" startline="260" endline="273" pcid="1719"></source>
+def get_padding(
+    kernel_size: Union[Sequence[int], int], stride: Union[Sequence[int], int]
+) -> Union[Tuple[int, ...], int]:
+
+    kernel_size_np = np.atleast_1d(kernel_size)
+    stride_np = np.atleast_1d(stride)
+    padding_np = (kernel_size_np - stride_np + 1) / 2
+    if np.min(padding_np) < 0:
+        raise AssertionError("padding value should not be negative, please change the kernel size and/or stride.")
+    padding = tuple(int(p) for p in padding_np)
+
+    return padding if len(padding) > 1 else padding[0]
+
+
+</clonepair33>
+
+<clonepair33>
+<source file="systems/MONAI-0.8.1/monai/networks/blocks/dynunet_block.py" startline="274" endline="286" pcid="1720"></source>
+def get_output_padding(
+    kernel_size: Union[Sequence[int], int], stride: Union[Sequence[int], int], padding: Union[Sequence[int], int]
+) -> Union[Tuple[int, ...], int]:
+    kernel_size_np = np.atleast_1d(kernel_size)
+    stride_np = np.atleast_1d(stride)
+    padding_np = np.atleast_1d(padding)
+
+    out_padding_np = 2 * padding_np + stride_np - kernel_size_np
+    if np.min(out_padding_np) < 0:
+        raise AssertionError("out_padding value should not be negative, please change the kernel size and/or stride.")
+    out_padding = tuple(int(p) for p in out_padding_np)
+
+    return out_padding if len(out_padding) > 1 else out_padding[0]
+</clonepair33>
+<clonepair34>
+<source file="systems/MONAI-0.8.1/tests/test_ensure_typed.py" startline="62" endline="75" pcid="1225"></source>
+    def test_list_tuple(self):
+        for dtype in ("tensor", "numpy"):
+            result = EnsureTyped(keys="data", data_type=dtype, wrap_sequence=False)({"data": [[1, 2], [3, 4]]})["data"]
+            self.assertTrue(isinstance(result, list))
+            self.assertTrue(isinstance(result[0][1], torch.Tensor if dtype == "tensor" else np.ndarray))
+            torch.testing.assert_allclose(result[1][0], torch.as_tensor(3))
+            # tuple of numpy arrays
+            result = EnsureTyped(keys="data", data_type=dtype, wrap_sequence=False)(
+                {"data": (np.array([1, 2]), np.array([3, 4]))}
+            )["data"]
+            self.assertTrue(isinstance(result, tuple))
+            self.assertTrue(isinstance(result[0], torch.Tensor if dtype == "tensor" else np.ndarray))
+            torch.testing.assert_allclose(result[1], torch.as_tensor([3, 4]))
+
+</clonepair34>
+
+<clonepair34>
+<source file="systems/MONAI-0.8.1/tests/test_ensure_type.py" startline="60" endline="71" pcid="589"></source>
+    def test_list_tuple(self):
+        for dtype in ("tensor", "numpy"):
+            result = EnsureType(data_type=dtype, wrap_sequence=False)([[1, 2], [3, 4]])
+            self.assertTrue(isinstance(result, list))
+            self.assertTrue(isinstance(result[0][1], torch.Tensor if dtype == "tensor" else np.ndarray))
+            torch.testing.assert_allclose(result[1][0], torch.as_tensor(3))
+            # tuple of numpy arrays
+            result = EnsureType(data_type=dtype, wrap_sequence=False)((np.array([1, 2]), np.array([3, 4])))
+            self.assertTrue(isinstance(result, tuple))
+            self.assertTrue(isinstance(result[0], torch.Tensor if dtype == "tensor" else np.ndarray))
+            torch.testing.assert_allclose(result[1], torch.as_tensor([3, 4]))
+
+</clonepair34>
+<clonepair35>
+<source file="systems/MONAI-0.8.1/tests/test_numpy_reader.py" startline="25" endline="36" pcid="434"></source>
+    def test_npy(self):
+        test_data = np.random.randint(0, 256, size=[3, 4, 4])
+        with tempfile.TemporaryDirectory() as tempdir:
+            filepath = os.path.join(tempdir, "test_data.npy")
+            np.save(filepath, test_data)
+
+            reader = NumpyReader()
+            result = reader.get_data(reader.read(filepath))
+        np.testing.assert_allclose(result[1]["spatial_shape"], test_data.shape)
+        np.testing.assert_allclose(result[0].shape, test_data.shape)
+        np.testing.assert_allclose(result[0], test_data)
+
+</clonepair35>
+
+<clonepair35>
+<source file="systems/MONAI-0.8.1/tests/test_numpy_reader.py" startline="37" endline="48" pcid="435"></source>
+    def test_npz1(self):
+        test_data1 = np.random.randint(0, 256, size=[3, 4, 4])
+        with tempfile.TemporaryDirectory() as tempdir:
+            filepath = os.path.join(tempdir, "test_data.npy")
+            np.save(filepath, test_data1)
+
+            reader = NumpyReader()
+            result = reader.get_data(reader.read(filepath))
+        np.testing.assert_allclose(result[1]["spatial_shape"], test_data1.shape)
+        np.testing.assert_allclose(result[0].shape, test_data1.shape)
+        np.testing.assert_allclose(result[0], test_data1)
+
+</clonepair35>
+<clonepair36>
+<source file="systems/MONAI-0.8.1/tests/test_hausdorff_distance.py" startline="22" endline="48" pcid="1215"></source>
+def create_spherical_seg_3d(
+    radius: float = 20.0, centre: Tuple[int, int, int] = (49, 49, 49), im_shape: Tuple[int, int, int] = (99, 99, 99)
+) -> np.ndarray:
+    """
+    Return a 3D image with a sphere inside. Voxel values will be
+    1 inside the sphere, and 0 elsewhere.
+
+    Args:
+        radius: radius of sphere (in terms of number of voxels, can be partial)
+        centre: location of sphere centre.
+        im_shape: shape of image to create
+
+    See also:
+        :py:meth:`~create_test_image_3d`
+    """
+    # Create image
+    image = np.zeros(im_shape, dtype=np.int32)
+    spy, spx, spz = np.ogrid[
+        -centre[0] : im_shape[0] - centre[0], -centre[1] : im_shape[1] - centre[1], -centre[2] : im_shape[2] - centre[2]
+    ]
+    circle = (spx * spx + spy * spy + spz * spz) <= radius * radius
+
+    image[circle] = 1
+    image[~circle] = 0
+    return image
+
+
+</clonepair36>
+
+<clonepair36>
+<source file="systems/MONAI-0.8.1/tests/test_handler_surface_distance.py" startline="22" endline="48" pcid="1376"></source>
+def create_spherical_seg_3d(
+    radius: float = 20.0, centre: Tuple[int, int, int] = (49, 49, 49), im_shape: Tuple[int, int, int] = (99, 99, 99)
+) -> np.ndarray:
+    """
+    Return a 3D image with a sphere inside. Voxel values will be
+    1 inside the sphere, and 0 elsewhere.
+
+    Args:
+        radius: radius of sphere (in terms of number of voxels, can be partial)
+        centre: location of sphere centre.
+        im_shape: shape of image to create
+
+    See also:
+        :py:meth:`~create_test_image_3d`
+    """
+    # Create image
+    image = np.zeros(im_shape, dtype=np.int32)
+    spy, spx, spz = np.ogrid[
+        -centre[0] : im_shape[0] - centre[0], -centre[1] : im_shape[1] - centre[1], -centre[2] : im_shape[2] - centre[2]
+    ]
+    circle = (spx * spx + spy * spy + spz * spz) <= radius * radius
+
+    image[circle] = 1
+    image[~circle] = 0
+    return image
+
+
+</clonepair36>
+<clonepair37>
+<source file="systems/MONAI-0.8.1/tests/test_handler_surface_distance.py" startline="22" endline="48" pcid="1376"></source>
+def create_spherical_seg_3d(
+    radius: float = 20.0, centre: Tuple[int, int, int] = (49, 49, 49), im_shape: Tuple[int, int, int] = (99, 99, 99)
+) -> np.ndarray:
+    """
+    Return a 3D image with a sphere inside. Voxel values will be
+    1 inside the sphere, and 0 elsewhere.
+
+    Args:
+        radius: radius of sphere (in terms of number of voxels, can be partial)
+        centre: location of sphere centre.
+        im_shape: shape of image to create
+
+    See also:
+        :py:meth:`~create_test_image_3d`
+    """
+    # Create image
+    image = np.zeros(im_shape, dtype=np.int32)
+    spy, spx, spz = np.ogrid[
+        -centre[0] : im_shape[0] - centre[0], -centre[1] : im_shape[1] - centre[1], -centre[2] : im_shape[2] - centre[2]
+    ]
+    circle = (spx * spx + spy * spy + spz * spz) <= radius * radius
+
+    image[circle] = 1
+    image[~circle] = 0
+    return image
+
+
+</clonepair37>
+
+<clonepair37>
+<source file="systems/MONAI-0.8.1/tests/test_handler_hausdorff_distance.py" startline="22" endline="48" pcid="257"></source>
+def create_spherical_seg_3d(
+    radius: float = 20.0, centre: Tuple[int, int, int] = (49, 49, 49), im_shape: Tuple[int, int, int] = (99, 99, 99)
+) -> np.ndarray:
+    """
+    Return a 3D image with a sphere inside. Voxel values will be
+    1 inside the sphere, and 0 elsewhere.
+
+    Args:
+        radius: radius of sphere (in terms of number of voxels, can be partial)
+        centre: location of sphere centre.
+        im_shape: shape of image to create
+
+    See also:
+        :py:meth:`~create_test_image_3d`
+    """
+    # Create image
+    image = np.zeros(im_shape, dtype=np.int32)
+    spy, spx, spz = np.ogrid[
+        -centre[0] : im_shape[0] - centre[0], -centre[1] : im_shape[1] - centre[1], -centre[2] : im_shape[2] - centre[2]
+    ]
+    circle = (spx * spx + spy * spy + spz * spz) <= radius * radius
+
+    image[circle] = 1
+    image[~circle] = 0
+    return image
+
+
+</clonepair37>
+<clonepair38>
+<source file="systems/MONAI-0.8.1/tests/test_handler_surface_distance.py" startline="22" endline="48" pcid="1376"></source>
+def create_spherical_seg_3d(
+    radius: float = 20.0, centre: Tuple[int, int, int] = (49, 49, 49), im_shape: Tuple[int, int, int] = (99, 99, 99)
+) -> np.ndarray:
+    """
+    Return a 3D image with a sphere inside. Voxel values will be
+    1 inside the sphere, and 0 elsewhere.
+
+    Args:
+        radius: radius of sphere (in terms of number of voxels, can be partial)
+        centre: location of sphere centre.
+        im_shape: shape of image to create
+
+    See also:
+        :py:meth:`~create_test_image_3d`
+    """
+    # Create image
+    image = np.zeros(im_shape, dtype=np.int32)
+    spy, spx, spz = np.ogrid[
+        -centre[0] : im_shape[0] - centre[0], -centre[1] : im_shape[1] - centre[1], -centre[2] : im_shape[2] - centre[2]
+    ]
+    circle = (spx * spx + spy * spy + spz * spz) <= radius * radius
+
+    image[circle] = 1
+    image[~circle] = 0
+    return image
+
+
+</clonepair38>
+
+<clonepair38>
+<source file="systems/MONAI-0.8.1/tests/test_surface_distance.py" startline="22" endline="48" pcid="263"></source>
+def create_spherical_seg_3d(
+    radius: float = 20.0, centre: Tuple[int, int, int] = (49, 49, 49), im_shape: Tuple[int, int, int] = (99, 99, 99)
+) -> np.ndarray:
+    """
+    Return a 3D image with a sphere inside. Voxel values will be
+    1 inside the sphere, and 0 elsewhere.
+
+    Args:
+        radius: radius of sphere (in terms of number of voxels, can be partial)
+        centre: location of sphere centre.
+        im_shape: shape of image to create
+
+    See also:
+        :py:meth:`~create_test_image_3d`
+    """
+    # Create image
+    image = np.zeros(im_shape, dtype=np.int32)
+    spy, spx, spz = np.ogrid[
+        -centre[0] : im_shape[0] - centre[0], -centre[1] : im_shape[1] - centre[1], -centre[2] : im_shape[2] - centre[2]
+    ]
+    circle = (spx * spx + spy * spy + spz * spz) <= radius * radius
+
+    image[circle] = 1
+    image[~circle] = 0
+    return image
+
+
+</clonepair38>
+<clonepair39>
+<source file="systems/MONAI-0.8.1/tests/test_hausdorff_distance.py" startline="22" endline="48" pcid="1215"></source>
+def create_spherical_seg_3d(
+    radius: float = 20.0, centre: Tuple[int, int, int] = (49, 49, 49), im_shape: Tuple[int, int, int] = (99, 99, 99)
+) -> np.ndarray:
+    """
+    Return a 3D image with a sphere inside. Voxel values will be
+    1 inside the sphere, and 0 elsewhere.
+
+    Args:
+        radius: radius of sphere (in terms of number of voxels, can be partial)
+        centre: location of sphere centre.
+        im_shape: shape of image to create
+
+    See also:
+        :py:meth:`~create_test_image_3d`
+    """
+    # Create image
+    image = np.zeros(im_shape, dtype=np.int32)
+    spy, spx, spz = np.ogrid[
+        -centre[0] : im_shape[0] - centre[0], -centre[1] : im_shape[1] - centre[1], -centre[2] : im_shape[2] - centre[2]
+    ]
+    circle = (spx * spx + spy * spy + spz * spz) <= radius * radius
+
+    image[circle] = 1
+    image[~circle] = 0
+    return image
+
+
+</clonepair39>
+
+<clonepair39>
+<source file="systems/MONAI-0.8.1/tests/test_handler_hausdorff_distance.py" startline="22" endline="48" pcid="257"></source>
+def create_spherical_seg_3d(
+    radius: float = 20.0, centre: Tuple[int, int, int] = (49, 49, 49), im_shape: Tuple[int, int, int] = (99, 99, 99)
+) -> np.ndarray:
+    """
+    Return a 3D image with a sphere inside. Voxel values will be
+    1 inside the sphere, and 0 elsewhere.
+
+    Args:
+        radius: radius of sphere (in terms of number of voxels, can be partial)
+        centre: location of sphere centre.
+        im_shape: shape of image to create
+
+    See also:
+        :py:meth:`~create_test_image_3d`
+    """
+    # Create image
+    image = np.zeros(im_shape, dtype=np.int32)
+    spy, spx, spz = np.ogrid[
+        -centre[0] : im_shape[0] - centre[0], -centre[1] : im_shape[1] - centre[1], -centre[2] : im_shape[2] - centre[2]
+    ]
+    circle = (spx * spx + spy * spy + spz * spz) <= radius * radius
+
+    image[circle] = 1
+    image[~circle] = 0
+    return image
+
+
+</clonepair39>
+<clonepair40>
+<source file="systems/MONAI-0.8.1/tests/test_hausdorff_distance.py" startline="22" endline="48" pcid="1215"></source>
+def create_spherical_seg_3d(
+    radius: float = 20.0, centre: Tuple[int, int, int] = (49, 49, 49), im_shape: Tuple[int, int, int] = (99, 99, 99)
+) -> np.ndarray:
+    """
+    Return a 3D image with a sphere inside. Voxel values will be
+    1 inside the sphere, and 0 elsewhere.
+
+    Args:
+        radius: radius of sphere (in terms of number of voxels, can be partial)
+        centre: location of sphere centre.
+        im_shape: shape of image to create
+
+    See also:
+        :py:meth:`~create_test_image_3d`
+    """
+    # Create image
+    image = np.zeros(im_shape, dtype=np.int32)
+    spy, spx, spz = np.ogrid[
+        -centre[0] : im_shape[0] - centre[0], -centre[1] : im_shape[1] - centre[1], -centre[2] : im_shape[2] - centre[2]
+    ]
+    circle = (spx * spx + spy * spy + spz * spz) <= radius * radius
+
+    image[circle] = 1
+    image[~circle] = 0
+    return image
+
+
+</clonepair40>
+
+<clonepair40>
+<source file="systems/MONAI-0.8.1/tests/test_surface_distance.py" startline="22" endline="48" pcid="263"></source>
+def create_spherical_seg_3d(
+    radius: float = 20.0, centre: Tuple[int, int, int] = (49, 49, 49), im_shape: Tuple[int, int, int] = (99, 99, 99)
+) -> np.ndarray:
+    """
+    Return a 3D image with a sphere inside. Voxel values will be
+    1 inside the sphere, and 0 elsewhere.
+
+    Args:
+        radius: radius of sphere (in terms of number of voxels, can be partial)
+        centre: location of sphere centre.
+        im_shape: shape of image to create
+
+    See also:
+        :py:meth:`~create_test_image_3d`
+    """
+    # Create image
+    image = np.zeros(im_shape, dtype=np.int32)
+    spy, spx, spz = np.ogrid[
+        -centre[0] : im_shape[0] - centre[0], -centre[1] : im_shape[1] - centre[1], -centre[2] : im_shape[2] - centre[2]
+    ]
+    circle = (spx * spx + spy * spy + spz * spz) <= radius * radius
+
+    image[circle] = 1
+    image[~circle] = 0
+    return image
+
+
+</clonepair40>
+<clonepair41>
+<source file="systems/MONAI-0.8.1/tests/test_handler_hausdorff_distance.py" startline="22" endline="48" pcid="257"></source>
+def create_spherical_seg_3d(
+    radius: float = 20.0, centre: Tuple[int, int, int] = (49, 49, 49), im_shape: Tuple[int, int, int] = (99, 99, 99)
+) -> np.ndarray:
+    """
+    Return a 3D image with a sphere inside. Voxel values will be
+    1 inside the sphere, and 0 elsewhere.
+
+    Args:
+        radius: radius of sphere (in terms of number of voxels, can be partial)
+        centre: location of sphere centre.
+        im_shape: shape of image to create
+
+    See also:
+        :py:meth:`~create_test_image_3d`
+    """
+    # Create image
+    image = np.zeros(im_shape, dtype=np.int32)
+    spy, spx, spz = np.ogrid[
+        -centre[0] : im_shape[0] - centre[0], -centre[1] : im_shape[1] - centre[1], -centre[2] : im_shape[2] - centre[2]
+    ]
+    circle = (spx * spx + spy * spy + spz * spz) <= radius * radius
+
+    image[circle] = 1
+    image[~circle] = 0
+    return image
+
+
+</clonepair41>
+
+<clonepair41>
+<source file="systems/MONAI-0.8.1/tests/test_surface_distance.py" startline="22" endline="48" pcid="263"></source>
+def create_spherical_seg_3d(
+    radius: float = 20.0, centre: Tuple[int, int, int] = (49, 49, 49), im_shape: Tuple[int, int, int] = (99, 99, 99)
+) -> np.ndarray:
+    """
+    Return a 3D image with a sphere inside. Voxel values will be
+    1 inside the sphere, and 0 elsewhere.
+
+    Args:
+        radius: radius of sphere (in terms of number of voxels, can be partial)
+        centre: location of sphere centre.
+        im_shape: shape of image to create
+
+    See also:
+        :py:meth:`~create_test_image_3d`
+    """
+    # Create image
+    image = np.zeros(im_shape, dtype=np.int32)
+    spy, spx, spz = np.ogrid[
+        -centre[0] : im_shape[0] - centre[0], -centre[1] : im_shape[1] - centre[1], -centre[2] : im_shape[2] - centre[2]
+    ]
+    circle = (spx * spx + spy * spy + spz * spz) <= radius * radius
+
+    image[circle] = 1
+    image[~circle] = 0
+    return image
+
+
+</clonepair41>

@@ -1,0 +1,4025 @@
+<clones>
+<systeminfo processor="nicad6" system="DIG-0.1.1" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="576" npairs="73"/>
+<runinfo ncompares="13170" cputime="48332"/>
+<classinfo nclasses="47"/>
+
+<class classid="1" nclones="2" nlines="19" similarity="84">
+<source file="systems/DIG-0.1.1/dig/sslgraph/dataset/feat_expansion.py" startline="76" endline="100" pcid="12">
+    def norm(edge_index, num_nodes, edge_weight, diag_val=1e-8, dtype=None):
+        if edge_weight is None:
+            edge_weight = torch.ones((edge_index.size(1), ),
+                                     dtype=dtype,
+                                     device=edge_index.device)
+        edge_weight = edge_weight.view(-1)
+        assert edge_weight.size(0) == edge_index.size(1)
+
+        edge_index, edge_weight = remove_self_loops(edge_index, edge_weight)
+        edge_index = add_self_loops(edge_index, num_nodes=num_nodes)
+        # Add edge_weight for loop edges.
+        loop_weight = torch.full((num_nodes, ),
+                                 diag_val,
+                                 dtype=edge_weight.dtype,
+                                 device=edge_weight.device)
+        edge_weight = torch.cat([edge_weight, loop_weight], dim=0)
+
+        row, col = edge_index
+        deg = scatter_add(edge_weight, row, dim=0, dim_size=num_nodes)
+        deg_inv_sqrt = deg.pow(-0.5)
+        deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
+
+        return edge_index, deg_inv_sqrt[row] * edge_weight * deg_inv_sqrt[col]
+
+
+</source>
+<source file="systems/DIG-0.1.1/dig/sslgraph/utils/encoders.py" startline="231" endline="254" pcid="42">
+    def norm(edge_index, num_nodes, edge_weight, improved=False, dtype=None):
+        if edge_weight is None:
+            edge_weight = torch.ones((edge_index.size(1), ),
+                                     dtype=dtype,
+                                     device=edge_index.device)
+        edge_weight = edge_weight.view(-1)
+        assert edge_weight.size(0) == edge_index.size(1)
+
+        edge_index, edge_weight = remove_self_loops(edge_index, edge_weight)
+        edge_index, _ = add_self_loops(edge_index, num_nodes=num_nodes)
+        # Add edge_weight for loop edges.
+        loop_weight = torch.full((num_nodes, ),
+                                 1 if not improved else 2,
+                                 dtype=edge_weight.dtype,
+                                 device=edge_weight.device)
+        edge_weight = torch.cat([edge_weight, loop_weight], dim=0)
+        row, col = edge_index
+        
+        deg = scatter_add(edge_weight, row, dim=0, dim_size=num_nodes)
+        deg_inv_sqrt = deg.pow(-0.5)
+        deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
+
+        return edge_index, deg_inv_sqrt[row] * edge_weight * deg_inv_sqrt[col]
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="17" similarity="72">
+<source file="systems/DIG-0.1.1/dig/sslgraph/evaluation/eval_node.py" startline="65" endline="86" pcid="52">
+    def __init__(self, full_dataset, train_mask=None, val_mask=None, test_mask=None, 
+                 classifier='LogReg', metric='acc', device=None, log_interval=1, **kwargs):
+
+        self.full_dataset = full_dataset
+        self.train_mask = full_dataset[0].train_mask if train_mask is None else train_mask
+        self.val_mask = full_dataset[0].val_mask if val_mask is None else val_mask
+        self.test_mask = full_dataset[0].test_mask if test_mask is None else test_mask
+        self.metric = metric
+        self.device = device
+        self.classifier = classifier
+        self.log_interval = log_interval
+        self.num_classes = full_dataset.num_classes
+        if device is None:
+            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        elif isinstance(device, int):
+            self.device = torch.device('cuda:%d'%device)
+        else:
+            self.device = device
+
+        # Use default config if not further specified
+        self.setup_train_config(**kwargs)
+
+</source>
+<source file="systems/DIG-0.1.1/dig/sslgraph/evaluation/eval_graph.py" startline="59" endline="78" pcid="65">
+    def __init__(self, dataset, classifier='SVC', log_interval=1, epoch_select='test_max', 
+                 metric='acc', n_folds=10, device=None, **kwargs):
+        
+        self.dataset = dataset
+        self.epoch_select = epoch_select
+        self.metric = metric
+        self.classifier = classifier
+        self.log_interval = log_interval
+        self.n_folds = n_folds
+        self.out_dim = dataset.num_classes
+        if device is None:
+            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        elif isinstance(device, int):
+            self.device = torch.device('cuda:%d'%device)
+        else:
+            self.device = device
+
+        # Use default config if not further specified
+        self.setup_train_config(**kwargs)
+
+</source>
+</class>
+
+<class classid="3" nclones="3" nlines="31" similarity="75">
+<source file="systems/DIG-0.1.1/dig/sslgraph/evaluation/eval_node.py" startline="98" endline="144" pcid="54">
+    def evaluate(self, learning_model, encoder):
+        r"""Run evaluation with given learning model and encoder(s).
+        
+        Args:
+            learning_model: An object of a contrastive model (sslgraph.method.Contrastive)
+                or a predictive model.
+            encoder (torch.nn.Module): Trainable pytorch model or list of models.
+
+        :rtype: (float, float)
+        """
+        
+        full_loader = DataLoader(self.full_dataset, 1)
+        if isinstance(encoder, list):
+            params = [{'params': enc.parameters()} for enc in encoder]
+        else:
+            params = encoder.parameters()
+        
+        p_optimizer = self.get_optim(self.p_optim)(params, lr=self.p_lr, 
+                                                   weight_decay=self.p_weight_decay)
+
+        test_scores_m, test_scores_sd = [], []
+        per_epoch_out = (self.log_interval<self.p_epoch)
+        for i, enc in enumerate(learning_model.train(encoder, full_loader, 
+                                                     p_optimizer, self.p_epoch, per_epoch_out)):
+            if not per_epoch_out or (i+1)%self.log_interval==0:
+                embed, lbls = self.get_embed(enc.to(self.device), full_loader)
+                lbs = np.array(preprocessing.LabelEncoder().fit_transform(lbls))
+                
+                test_scores = []
+                for _ in range(10):
+                    test_score = self.get_clf()(embed[self.train_mask], lbls[self.train_mask],
+                                                embed[self.test_mask], lbls[self.test_mask])
+                    test_scores.append(test_score)
+                
+                test_scores = torch.tensor(test_scores)
+                test_score_mean = test_scores.mean().item()
+                test_score_std = test_scores.std().item() 
+                test_scores_m.append(test_score_mean)
+                test_scores_sd.append(test_score_std)
+                
+        idx = np.argmax(test_scores_m)
+        acc = test_scores_m[idx]
+        std = test_scores_sd[idx]
+        print('Best epoch %d: acc %.4f (+/- %.4f).'%((idx+1)*self.log_interval, acc, std))
+        return acc
+    
+    
+</source>
+<source file="systems/DIG-0.1.1/dig/sslgraph/evaluation/eval_node.py" startline="145" endline="198" pcid="55">
+    def evaluate_multisplits(self, learning_model, encoder, split_masks):
+        r"""Run evaluation with given learning model and encoder(s), return averaged scores 
+        on multiple different splits.
+        
+        Args:
+            learning_model: An object of a contrastive model (sslgraph.method.Contrastive)
+                or a predictive model.
+            encoder (torch.nn.Module): Trainable pytorch model or list of models.
+            split_masks (list, or generator): A list of generator that contains or yields masks for
+                train, val and test splits.
+
+        :rtype: float
+
+        Example
+        -------
+        >>> split_masks = [(train1, val1, test1), (train2, val2, test2), ..., (train20, val20, test20)]
+        """
+        
+        full_loader = DataLoader(self.full_dataset, 1)
+        if isinstance(encoder, list):
+            params = [{'params': enc.parameters()} for enc in encoder]
+        else:
+            params = encoder.parameters()
+        
+        p_optimizer = self.get_optim(self.p_optim)(params, lr=self.p_lr, 
+                                                   weight_decay=self.p_weight_decay)
+
+        test_scores_m, test_scores_sd = [], []
+        per_epoch_out = (self.log_interval<self.p_epoch)
+        for i, enc in enumerate(learning_model.train(encoder, full_loader, 
+                                                     p_optimizer, self.p_epoch, per_epoch_out)):
+            if not per_epoch_out or (i+1)%self.log_interval==0:
+                embed, lbls = self.get_embed(enc.to(self.device), full_loader)
+                lbs = np.array(preprocessing.LabelEncoder().fit_transform(lbls))
+                
+                test_scores = []
+                for train_mask, val_mask, test_mask in split_masks:
+                    test_score = self.get_clf()(embed[train_mask], lbls[train_mask],
+                                                embed[test_mask], lbls[test_mask])
+                    test_scores.append(test_score)
+                
+                test_scores = torch.tensor(test_scores)
+                test_score_mean = test_scores.mean().item()
+                test_score_std = test_scores.std().item() 
+                test_scores_m.append(test_score_mean)
+                test_scores_sd.append(test_score_std)
+                
+        idx = np.argmax(test_scores_m)
+        acc = test_scores_m[idx]
+        std = test_scores_sd[idx]
+        print('Best epoch %d: acc %.4f (+/- %.4f).'%((idx+1)*self.log_interval, acc, std))
+        return acc
+
+
+</source>
+<source file="systems/DIG-0.1.1/dig/sslgraph/evaluation/eval_graph.py" startline="105" endline="153" pcid="67">
+    def evaluate(self, learning_model, encoder, fold_seed=None):
+        r"""Run evaluation with given learning model and encoder(s).
+        
+        Args:
+            learning_model: An object of a contrastive model (sslgraph.method.Contrastive) 
+                or a predictive model.
+            encoder (torch.nn.Module): Trainable pytorch model or list of models.
+            fold_seed (int, optional): Seed for fold split. (default: :obj:`None`)
+
+        :rtype: (float, float)
+        """
+        
+        pretrain_loader = DataLoader(self.dataset, self.batch_size, shuffle=True)
+        if isinstance(encoder, list):
+            params = [{'params': enc.parameters()} for enc in encoder]
+        else:
+            params = encoder.parameters()
+        
+        p_optimizer = self.get_optim(self.p_optim)(params, lr=self.p_lr, 
+                                                   weight_decay=self.p_weight_decay)
+        
+        test_scores_m, test_scores_sd = [], []
+        for i, enc in enumerate(learning_model.train(encoder, pretrain_loader, 
+                                                     p_optimizer, self.p_epoch, True)):
+            if (i+1)%self.log_interval==0:
+                test_scores = []
+                loader = DataLoader(self.dataset, self.batch_size, shuffle=False)
+                embed, lbls = self.get_embed(enc.to(self.device), loader)
+                lbs = np.array(preprocessing.LabelEncoder().fit_transform(lbls))
+
+                kf = StratifiedKFold(n_splits=self.n_folds, shuffle=True, random_state=fold_seed)
+                for fold, (train_index, test_index) in enumerate(kf.split(embed, lbls)):
+                    test_score = self.get_clf()(embed[train_index], lbls[train_index],
+                                                embed[test_index], lbls[test_index])
+                    test_scores.append(test_score)
+
+                kfold_scores = torch.tensor(test_scores)
+                test_score_mean = kfold_scores.mean().item()
+                test_score_std = kfold_scores.std().item() 
+                test_scores_m.append(test_score_mean)
+                test_scores_sd.append(test_score_std)
+        
+        idx = np.argmax(test_scores_m)
+        acc = test_scores_m[idx]
+        sd = test_scores_sd[idx]
+        print('Best epoch %d: acc %.4f +/-(%.4f)'%((idx+1)*self.log_interval, acc, sd))
+        return acc, sd 
+
+
+</source>
+</class>
+
+<class classid="4" nclones="3" nlines="18" similarity="73">
+<source file="systems/DIG-0.1.1/dig/sslgraph/evaluation/eval_node.py" startline="199" endline="231" pcid="56">
+    def grid_search(self, learning_model, encoder, p_lr_lst=[0.1,0.01,0.001], 
+                    p_epoch_lst=[2000]):
+        r"""Perform grid search on learning rate and epochs in pretraining.
+        
+        Args:
+            learning_model: An object of a contrastive model (sslgraph.method.Contrastive) 
+                or a predictive model.
+            encoder (torch.nn.Module): Trainable pytorch model or list of models.
+            p_lr_lst (list, optional): List of learning rate candidates.
+            p_epoch_lst (list, optional): List of epochs number candidates.
+
+        :rtype: (float, float, (float, int))
+        """
+        
+        acc_m_lst = []
+        acc_sd_lst = []
+        paras = []
+        for p_lr in p_lr_lst:
+            for p_epoch in p_epoch_lst:
+                self.setup_train_config(p_lr=p_lr, p_epoch=p_epoch)
+                model = copy.deepcopy(learning_model)
+                enc = copy.deepcopy(encoder)
+                acc_m, acc_sd = self.evaluate(model, enc)
+                acc_m_lst.append(acc_m)
+                acc_sd_lst.append(acc_sd)
+                paras.append((p_lr, p_epoch))
+        idx = np.argmax(acc_m_lst)
+        print('Best paras: %d epoch, lr=%f, acc=%.4f' %(
+            paras[idx][1], paras[idx][0], acc_m_lst[idx]))
+        
+        return acc_m_lst[idx], acc_sd_lst[idx], paras[idx]
+
+    
+</source>
+<source file="systems/DIG-0.1.1/dig/sslgraph/evaluation/eval_graph.py" startline="154" endline="186" pcid="68">
+    def grid_search(self, learning_model, encoder, fold_seed=12345,
+                    p_lr_lst=[0.1,0.01,0.001], p_epoch_lst=[20,40,60]):
+        r"""Perform grid search on learning rate and epochs in pretraining.
+        
+        Args:
+            learning_model: An object of a contrastive model (sslgraph.method.Contrastive) 
+                or a predictive model.
+            encoder (torch.nn.Module): Trainable pytorch model or list of models.
+            p_lr_lst (list, optional): List of learning rate candidates.
+            p_epoch_lst (list, optional): List of epochs number candidates.
+
+        :rtype: (float, float, (float, int))
+        """
+        
+        acc_m_lst = []
+        acc_sd_lst = []
+        paras = []
+        for p_lr in p_lr_lst:
+            for p_epoch in p_epoch_lst:
+                self.setup_train_config(p_lr=p_lr, p_epoch=p_epoch)
+                model = copy.deepcopy(learning_model)
+                enc = copy.deepcopy(encoder)
+                acc_m, acc_sd = self.evaluate(model, enc, fold_seed)
+                acc_m_lst.append(acc_m)
+                acc_sd_lst.append(acc_sd)
+                paras.append((p_lr, p_epoch))
+        idx = np.argmax(acc_m_lst)
+        print('Best paras: %d epoch, lr=%f, acc=%.4f' %(
+            paras[idx][1], paras[idx][0], acc_m_lst[idx]))
+        
+        return acc_m_lst[idx], acc_sd_lst[idx], paras[idx]
+
+    
+</source>
+<source file="systems/DIG-0.1.1/dig/sslgraph/evaluation/eval_graph.py" startline="441" endline="474" pcid="79">
+    def grid_search(self, learning_model, encoder, pred_head=None, fold_seed=12345,
+                    p_lr_lst=[0.1,0.01,0.001,0.0001], p_epoch_lst=[20,40,60,80,100]):
+        
+        r"""Perform grid search on learning rate and epochs in pretraining.
+        
+        Args:
+            learning_model: An object of a contrastive model (sslgraph.method.Contrastive) 
+                or a predictive model.
+            encoder (torch.nn.Module): Trainable pytorch model or list of models.
+            pred_head (torch.nn.Module, optional): Prediction head. If None, will use linear 
+                projection. (default: :obj:`None`)
+            p_lr_lst (list, optional): List of learning rate candidates.
+            p_epoch_lst (list, optional): List of epochs number candidates.
+
+        :rtype: (float, float, (float, int))
+        """
+        
+        acc_m_lst = []
+        acc_sd_lst = []
+        paras = []
+        for p_lr in p_lr_lst:
+            for p_epoch in p_epoch_lst:
+                self.setup_train_config(p_lr=p_lr, p_epoch=p_epoch)
+                acc_m, acc_sd = self.evaluate(learning_model, encoder, pred_head, fold_seed)
+                acc_m_lst.append(acc_m)
+                acc_sd_lst.append(acc_sd)
+                paras.append((p_lr, p_epoch))
+        idx = np.argmax(acc_m_lst)
+        print('Best paras: %d epoch, lr=%f, acc=%.4f' %(
+            paras[idx][1], paras[idx][0], acc_m_lst[idx]))
+        
+        return acc_m_lst[idx], acc_sd_lst[idx], paras[idx]
+
+    
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="23" similarity="79">
+<source file="systems/DIG-0.1.1/dig/sslgraph/evaluation/eval_node.py" startline="246" endline="278" pcid="58">
+    def log_reg(self, train_embs, train_lbls, test_embs, test_lbls):
+        
+        hid_units = train_embs.shape[1]
+        train_embs = torch.from_numpy(train_embs).to(self.device)
+        train_lbls = torch.from_numpy(train_lbls).to(self.device)
+        test_embs = torch.from_numpy(test_embs).to(self.device)
+        test_lbls = torch.from_numpy(test_lbls).to(self.device)
+
+        xent = nn.CrossEntropyLoss()
+        log = LogReg(hid_units, self.num_classes)
+        log.to(self.device)
+        opt = torch.optim.Adam(log.parameters(), lr=0.01, 
+                               weight_decay=self.logreg_wd)
+
+        best_val = 0
+        test_acc = None
+        for it in range(300):
+            log.train()
+            opt.zero_grad()
+
+            logits = log(train_embs)
+            loss = xent(logits, train_lbls)
+
+            loss.backward()
+            opt.step()
+
+        logits = log(test_embs)
+        preds = torch.argmax(logits, dim=1)
+        acc = torch.sum(preds == test_lbls).float() / test_lbls.shape[0]
+        
+        return acc.item()
+    
+    
+</source>
+<source file="systems/DIG-0.1.1/dig/sslgraph/evaluation/eval_graph.py" startline="201" endline="231" pcid="70">
+    def log_reg(self, train_embs, train_lbls, test_embs, test_lbls):
+        
+        train_embs = torch.from_numpy(train_embs).to(self.device)
+        train_lbls = torch.from_numpy(train_lbls).to(self.device)
+        test_embs = torch.from_numpy(test_embs).to(self.device)
+        test_lbls = torch.from_numpy(test_lbls).to(self.device)
+
+        xent = nn.CrossEntropyLoss()
+        log = LogReg(hid_units, nb_classes)
+        log.to(self.device)
+        opt = torch.optim.Adam(log.parameters(), lr=0.01, weight_decay=0.0)
+
+        best_val = 0
+        test_acc = None
+        for it in range(100):
+            log.train()
+            opt.zero_grad()
+
+            logits = log(train_embs)
+            loss = xent(logits, train_lbls)
+
+            loss.backward()
+            opt.step()
+
+        logits = log(test_embs)
+        preds = torch.argmax(logits, dim=1)
+        acc = torch.sum(preds == test_lbls).float() / test_lbls.shape[0]
+        
+        return acc
+    
+    
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="13" similarity="85">
+<source file="systems/DIG-0.1.1/dig/sslgraph/evaluation/eval_node.py" startline="279" endline="296" pcid="59">
+    def get_embed(self, model, loader):
+    
+        model.eval()
+        model.to(self.comp_embed_on)
+        ret, y = [], []
+        with torch.no_grad():
+            for data in loader:
+                y.append(data.y.numpy())
+                data.to(self.comp_embed_on)
+                embed = model(data)
+                ret.append(embed.cpu().numpy())
+                
+        model.to(self.device)
+        ret = np.concatenate(ret, 0)
+        y = np.concatenate(y, 0)
+        return ret, y
+        
+        
+</source>
+<source file="systems/DIG-0.1.1/dig/sslgraph/evaluation/eval_graph.py" startline="232" endline="247" pcid="71">
+    def get_embed(self, model, loader):
+    
+        model.eval()
+        ret, y = [], []
+        with torch.no_grad():
+            for data in loader:
+                y.append(data.y.numpy())
+                data.to(self.device)
+                embed = model(data)
+                ret.append(embed.cpu().numpy())
+
+        ret = np.concatenate(ret, 0)
+        y = np.concatenate(y, 0)
+        return ret, y
+        
+        
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="10" similarity="80">
+<source file="systems/DIG-0.1.1/dig/sslgraph/evaluation/eval_graph.py" startline="487" endline="501" pcid="81">
+    def eval_loss(self, model, loader, eval_mode=True):
+        
+        if eval_mode:
+            model.eval()
+
+        loss = 0
+        for data in loader:
+            data = data.to(self.device)
+            with torch.no_grad():
+                pred = model(data)
+            loss += self.loss(pred, data.y.view(-1), reduction='sum').item()
+            
+        return loss / len(loader.dataset)
+    
+    
+</source>
+<source file="systems/DIG-0.1.1/dig/sslgraph/evaluation/eval_graph.py" startline="502" endline="516" pcid="82">
+    def eval_acc(self, model, loader, eval_mode=True):
+        
+        if eval_mode:
+            model.eval()
+
+        correct = 0
+        for data in loader:
+            data = data.to(self.device)
+            with torch.no_grad():
+                pred = model(data).max(1)[1]
+            correct += pred.eq(data.y.view(-1)).sum().item()
+            
+        return correct / len(loader.dataset)
+    
+        
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="16" similarity="81">
+<source file="systems/DIG-0.1.1/dig/sslgraph/method/contrastive/objectives/jse.py" startline="95" endline="120" pcid="92">
+def JSE_local_global(z_g, z_n, batch):
+    '''
+    Args:
+        z_g: Tensor of shape [n_graphs, z_dim].
+        z_n: Tensor of shape [n_nodes, z_dim].
+        batch: Tensor of shape [n_graphs].
+    '''
+    device = z_g.device
+    num_graphs = z_g.shape[0]
+    num_nodes = z_n.shape[0]
+
+    pos_mask = torch.zeros((num_nodes, num_graphs)).to(device)
+    neg_mask = torch.ones((num_nodes, num_graphs)).to(device)
+    for nodeidx, graphidx in enumerate(batch):
+        pos_mask[nodeidx][graphidx] = 1.
+        neg_mask[nodeidx][graphidx] = 0.
+
+    d_prime = torch.matmul(z_n, z_g.t())
+
+    E_pos = get_expectation(d_prime * pos_mask, positive=True).sum()
+    E_pos = E_pos / num_nodes
+    E_neg = get_expectation(d_prime * neg_mask, positive=False).sum()
+    E_neg = E_neg / (num_nodes * (num_graphs - 1))
+    return E_neg - E_pos
+
+
+</source>
+<source file="systems/DIG-0.1.1/dig/sslgraph/method/contrastive/objectives/jse.py" startline="121" endline="143" pcid="93">
+def JSE_global_global(z1, z2):
+    '''
+    Args:
+        z1, z2: Tensor of shape [batch_size, z_dim].
+    '''
+    device = z1.device
+    num_graphs = z1.shape[0]
+
+    pos_mask = torch.zeros((num_graphs, num_graphs)).to(device)
+    neg_mask = torch.ones((num_graphs, num_graphs)).to(device)
+    for graphidx in range(num_graphs):
+        pos_mask[graphidx][graphidx] = 1.
+        neg_mask[graphidx][graphidx] = 0.
+
+    d_prime = torch.matmul(z1, z2.t())
+
+    E_pos = get_expectation(d_prime * pos_mask, positive=True).sum()
+    E_pos = E_pos / num_graphs
+    E_neg = get_expectation(d_prime * neg_mask, positive=False).sum()
+    E_neg = E_neg / (num_graphs * (num_graphs - 1))
+    return E_neg - E_pos
+
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="10" similarity="90">
+<source file="systems/DIG-0.1.1/dig/sslgraph/method/contrastive/model/infograph.py" startline="6" endline="17" pcid="97">
+    def __init__(self, input_dim, out_dim):
+        super().__init__()
+        self.block = nn.Sequential(
+            nn.Linear(input_dim, out_dim),
+            nn.ReLU(),
+            nn.Linear(out_dim, out_dim),
+            nn.ReLU(),
+            nn.Linear(out_dim, out_dim),
+            nn.ReLU()
+        )
+        self.linear_shortcut = nn.Linear(input_dim, out_dim)
+
+</source>
+<source file="systems/DIG-0.1.1/dig/sslgraph/method/contrastive/model/mvgrl.py" startline="47" endline="58" pcid="107">
+    def __init__(self, in_ft, out_ft):
+        super(ProjHead, self).__init__()
+        self.ffn = nn.Sequential(
+            nn.Linear(in_ft, out_ft),
+            nn.PReLU(),
+            nn.Linear(out_ft, out_ft),
+            nn.PReLU(),
+            nn.Linear(out_ft, out_ft),
+            nn.PReLU()
+        )
+        self.linear_shortcut = nn.Linear(in_ft, out_ft)
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="37" similarity="82">
+<source file="systems/DIG-0.1.1/dig/xgraph/method/shapley.py" startline="158" endline="199" pcid="203">
+
+def mc_l_shapley(coalition: list, data: Data, local_radius: int,
+                 value_func: Callable, subgraph_building_method='zero_filling',
+                 sample_num=1000) -> float:
+    """ monte carlo sampling approximation of the l_shapley value """
+    graph = to_networkx(data)
+    num_nodes = graph.number_of_nodes()
+    subgraph_build_func = get_graph_build_func(subgraph_building_method)
+
+    local_region = copy.copy(coalition)
+    for k in range(local_radius - 1):
+        k_neiborhoood = []
+        for node in local_region:
+            k_neiborhoood += list(graph.neighbors(node))
+        local_region += k_neiborhoood
+        local_region = list(set(local_region))
+
+    coalition_placeholder = num_nodes
+    set_exclude_masks = []
+    set_include_masks = []
+    for example_idx in range(sample_num):
+        subset_nodes_from = [node for node in local_region if node not in coalition]
+        random_nodes_permutation = np.array(subset_nodes_from + [coalition_placeholder])
+        random_nodes_permutation = np.random.permutation(random_nodes_permutation)
+        split_idx = np.where(random_nodes_permutation == coalition_placeholder)[0][0]
+        selected_nodes = random_nodes_permutation[:split_idx]
+        set_exclude_mask = np.ones(num_nodes)
+        set_exclude_mask[local_region] = 0.0
+        set_exclude_mask[selected_nodes] = 1.0
+        set_include_mask = set_exclude_mask.copy()
+        set_include_mask[coalition] = 1.0
+
+        set_exclude_masks.append(set_exclude_mask)
+        set_include_masks.append(set_include_mask)
+
+    exclude_mask = np.stack(set_exclude_masks, axis=0)
+    include_mask = np.stack(set_include_masks, axis=0)
+    marginal_contributions = \
+        marginal_contribution(data, exclude_mask, include_mask, value_func, subgraph_build_func)
+
+    mc_l_shapley_value = (marginal_contributions).mean().item()
+    return mc_l_shapley_value
+</source>
+<source file="systems/DIG-0.1.1/dig/xgraph/method/shapley.py" startline="215" endline="260" pcid="205">
+
+
+def NC_mc_l_shapley(coalition: list,
+                    data: Data,
+                    local_radius: int,
+                    value_func: Callable, node_idx: int = -1,
+                    subgraph_building_method='zero_filling',
+                    sample_num=1000) -> float:
+    """ monte carlo approximation of l_shapley where the target node is kept in both subgraph """
+    graph = to_networkx(data)
+    num_nodes = graph.number_of_nodes()
+    subgraph_build_func = get_graph_build_func(subgraph_building_method)
+
+    local_region = copy.copy(coalition)
+    for k in range(local_radius - 1):
+        k_neiborhoood = []
+        for node in local_region:
+            k_neiborhoood += list(graph.neighbors(node))
+        local_region += k_neiborhoood
+        local_region = list(set(local_region))
+
+    coalition_placeholder = num_nodes
+    set_exclude_masks = []
+    set_include_masks = []
+    for example_idx in range(sample_num):
+        subset_nodes_from = [node for node in local_region if node not in coalition]
+        random_nodes_permutation = np.array(subset_nodes_from + [coalition_placeholder])
+        random_nodes_permutation = np.random.permutation(random_nodes_permutation)
+        split_idx = np.where(random_nodes_permutation == coalition_placeholder)[0][0]
+        selected_nodes = random_nodes_permutation[:split_idx]
+        set_exclude_mask = np.ones(num_nodes)
+        set_exclude_mask[local_region] = 0.0
+        set_exclude_mask[selected_nodes] = 1.0
+        if node_idx != -1:
+            set_exclude_mask[node_idx] = 1.0
+        set_include_mask = set_exclude_mask.copy()
+        set_include_mask[coalition] = 1.0  # include the node_idx
+
+        set_exclude_masks.append(set_exclude_mask)
+        set_include_masks.append(set_include_mask)
+
+    exclude_mask = np.stack(set_exclude_masks, axis=0)
+    include_mask = np.stack(set_include_masks, axis=0)
+    marginal_contributions = \
+        marginal_contribution(data, exclude_mask, include_mask, value_func, subgraph_build_func)
+
+</source>
+</class>
+
+<class classid="11" nclones="2" nlines="44" similarity="80">
+<source file="systems/DIG-0.1.1/dig/ggraph/dataset/PygDataset.py" startline="207" endline="257" pcid="215">
+    def pre_process(self):
+        input_path = self.raw_paths[0]
+        input_df = pd.read_csv(input_path, sep=',', dtype='str')
+        smile_list = list(input_df[self.smile_col])
+        if self.available_prop:
+                prop_list = list(input_df[self.prop_name])
+        
+        self.all_smiles = smile_list
+        data_list = []
+        
+        for i in range(len(smile_list)):
+            smile = smile_list[i]
+            mol = Chem.MolFromSmiles(smile)
+            Chem.Kekulize(mol)
+            num_atom = mol.GetNumAtoms()
+            if num_atom > self.num_max_node:
+                continue
+            else:
+                # atoms
+                atom_array = np.zeros((self.num_max_node, len(self.atom_list)), dtype=np.float32)
+
+                atom_idx = 0
+                for atom in mol.GetAtoms():
+                    atom_feature = atom.GetAtomicNum()
+                    atom_array[atom_idx, self.atom_list.index(atom_feature)] = 1
+                    atom_idx += 1
+                    
+                x = torch.tensor(atom_array)
+
+                # bonds
+                adj_array = np.zeros([4, self.num_max_node, self.num_max_node], dtype=np.float32)
+                for bond in mol.GetBonds():
+                    bond_type = bond.GetBondType()
+                    ch = bond_type_to_int[bond_type]
+                    i = bond.GetBeginAtomIdx()
+                    j = bond.GetEndAtomIdx()
+                    adj_array[ch, i, j] = 1.0
+                    adj_array[ch, j, i] = 1.0
+                adj_array[-1, :, :] = 1 - np.sum(adj_array, axis=0)
+                adj_array += np.eye(self.num_max_node)
+
+                data = Data(x=x)
+                data.adj = torch.tensor(adj_array)
+                data.num_atom = num_atom
+                if self.available_prop:
+                    data.y = torch.tensor([float(prop_list[i])])
+                data_list.append(data)
+
+        data, slices = self.collate(data_list)
+        return data, slices
+    
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/dataset/PygDataset.py" startline="258" endline="316" pcid="216">
+    def one_shot_process(self):
+        input_path = self.raw_paths[0]
+        input_df = pd.read_csv(input_path, sep=',', dtype='str')
+        smile_list = list(input_df[self.smile_col])
+        if self.available_prop:
+                prop_list = list(input_df[self.prop_name])
+                
+        self.all_smiles = smile_list
+        data_list = []
+                
+        for i in range(len(smile_list)):
+            smile = smile_list[i]
+            mol = Chem.MolFromSmiles(smile)
+            Chem.Kekulize(mol)
+            num_atom = mol.GetNumAtoms()
+            if num_atom > self.num_max_node:
+                continue
+            else:
+                # atoms
+                atom_array = np.zeros((len(self.atom_list), self.num_max_node), dtype=np.int32)
+                if self.one_shot:
+                    virtual_node = np.ones((1, self.num_max_node), dtype=np.int32)
+
+                atom_idx = 0
+                for atom in mol.GetAtoms():
+                    atom_feature = atom.GetAtomicNum()
+#                     print('self.atom_list','atom_feature', 'index')
+#                     print(self.atom_list, atom_feature, self.atom_list.index(atom_feature))
+                    atom_array[self.atom_list.index(atom_feature), atom_idx] = 1
+                    if self.one_shot:
+                        virtual_node[0, atom_idx] = 0
+                    atom_idx += 1
+                    
+                if self.one_shot:
+                    x = torch.tensor(np.concatenate((atom_array, virtual_node), axis=0))
+                else:
+                    x = torch.tensor(atom_array)
+
+                # bonds
+                adj_array = np.zeros([4, self.num_max_node, self.num_max_node], dtype=np.float32)
+                for bond in mol.GetBonds():
+                    bond_type = bond.GetBondType()
+                    ch = bond_type_to_int[bond_type]
+                    i = bond.GetBeginAtomIdx()
+                    j = bond.GetEndAtomIdx()
+                    adj_array[ch, i, j] = 1.0
+                    adj_array[ch, j, i] = 1.0
+                adj_array[-1, :, :] = 1 - np.sum(adj_array, axis=0)
+                                
+                data = Data(x=x)
+                data.adj = torch.tensor(adj_array)
+                data.num_atom = num_atom
+                if self.available_prop:
+                    data.y = torch.tensor([float(prop_list[i])])
+                data_list.append(data)
+
+        data, slices = self.collate(data_list)
+        return data, slices
+    
+</source>
+</class>
+
+<class classid="12" nclones="3" nlines="15" similarity="80">
+<source file="systems/DIG-0.1.1/dig/ggraph/dataset/ggraph_dataset.py" startline="22" endline="38" pcid="219">
+    def __init__(self,
+                 root='./',
+                 prop_name='penalized_logp',
+                 conf_dict=None,
+                 transform=None,
+                 pre_transform=None,
+                 pre_filter=None,
+                 processed_filename='data.pt',
+                 use_aug=False,
+                 one_shot=False
+                 ):
+        name='qm9_property'
+        super(QM9, self).__init__(root, name, prop_name, conf_dict, 
+                                  transform, pre_transform, pre_filter, 
+                                  processed_filename, use_aug, one_shot)
+        
+        
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/dataset/ggraph_dataset.py" startline="87" endline="103" pcid="220">
+    def __init__(self,
+                 root='./',
+                 prop_name='penalized_logp',
+                 conf_dict=None,
+                 transform=None,
+                 pre_transform=None,
+                 pre_filter=None,
+                 processed_filename='data.pt',
+                 use_aug=False,
+                 one_shot=False
+                 ):
+        name='zinc250k_property'
+        super(ZINC250k, self).__init__(root, name, prop_name, conf_dict, 
+                                  transform, pre_transform, pre_filter, 
+                                  processed_filename, use_aug, one_shot)
+        
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/dataset/ggraph_dataset.py" startline="157" endline="186" pcid="222">
+    def __init__(self,
+                 root='./',
+                 prop_name=None,
+                 conf_dict=None,
+                 transform=None,
+                 pre_transform=None,
+                 pre_filter=None,
+                 processed_filename='data.pt',
+                 use_aug=False,
+                 one_shot=False
+                 ):
+        
+        name='moses'
+        super(MOSES, self).__init__(root, name, prop_name, conf_dict,transform, pre_transform, pre_filter, 
+                                  processed_filename, use_aug, one_shot)
+                        
+# if __name__ == '__main__':
+#     test = QM9()
+#     print(test[0])
+#     import pdb; pdb.set_trace()
+    
+#     test = ZINC250k()
+#     print(test[0])
+    
+#     test = ZINC800(method='jt')
+#     print(test[0])
+    
+#     test = MOSES()
+#     print(test[0])
+    
+</source>
+</class>
+
+<class classid="13" nclones="2" nlines="12" similarity="83">
+<source file="systems/DIG-0.1.1/dig/ggraph/utils/sascorer.py" startline="31" endline="44" pcid="236">
+def readFragmentScores(name='fpscores'):
+  import gzip
+  global _fscores
+  # generate the full path filename:
+  if name == "fpscores":
+    name = op.join(op.dirname(__file__), name)
+  _fscores = cPickle.load(gzip.open('%s.pkl.gz' % name))
+  outDict = {}
+  for i in _fscores:
+    for j in range(1, len(i)):
+      outDict[i[j]] = float(i[0])
+  _fscores = outDict
+
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/JTVAE/fast_jtnn/sascorer.py" startline="33" endline="48" pcid="421">
+def readFragmentScores(name='fpscores'):
+    import gzip
+    global _fscores
+    # generate the full path filename:
+    if name == "fpscores":
+        name = op.join(op.dirname(__file__), name)
+        with open('saved/s.pkl', 'rb') as pickle_file:
+            _fscores = cPickle.load(pickle_file)
+
+    outDict = {}
+    for i in _fscores:
+        for j in range(1, len(i)):
+            outDict[i[j]] = float(i[0])
+    _fscores = outDict
+
+
+</source>
+</class>
+
+<class classid="14" nclones="2" nlines="42" similarity="100">
+<source file="systems/DIG-0.1.1/dig/ggraph/utils/sascorer.py" startline="51" endline="170" pcid="238">
+def calculateScore(m):
+  if _fscores is None:
+    readFragmentScores()
+
+  # fragment score
+  fp = rdMolDescriptors.GetMorganFingerprint(m, 2)  #<- 2 is the *radius* of the circular fingerprint
+  fps = fp.GetNonzeroElements()
+  score1 = 0.
+  nf = 0
+  for bitId, v in iteritems(fps):
+    nf += v
+    sfp = bitId
+    score1 += _fscores.get(sfp, -4) * v
+  score1 /= nf
+
+  # features score
+  nAtoms = m.GetNumAtoms()
+  nChiralCenters = len(Chem.FindMolChiralCenters(m, includeUnassigned=True))
+  ri = m.GetRingInfo()
+  nBridgeheads, nSpiro = numBridgeheadsAndSpiro(m, ri)
+  nMacrocycles = 0
+  for x in ri.AtomRings():
+    if len(x) > 8:
+      nMacrocycles += 1
+
+  sizePenalty = nAtoms**1.005 - nAtoms
+  stereoPenalty = math.log10(nChiralCenters + 1)
+  spiroPenalty = math.log10(nSpiro + 1)
+  bridgePenalty = math.log10(nBridgeheads + 1)
+  macrocyclePenalty = 0.
+  # ---------------------------------------
+  # This differs from the paper, which defines:
+  #  macrocyclePenalty = math.log10(nMacrocycles+1)
+  # This form generates better results when 2 or more macrocycles are present
+  if nMacrocycles > 0:
+    macrocyclePenalty = math.log10(2)
+
+  score2 = 0. - sizePenalty - stereoPenalty - spiroPenalty - bridgePenalty - macrocyclePenalty
+
+  # correction for the fingerprint density
+  # not in the original publication, added in version 1.1
+  # to make highly symmetrical molecules easier to synthetise
+  score3 = 0.
+  if nAtoms > len(fps):
+    score3 = math.log(float(nAtoms) / len(fps)) * .5
+
+  sascore = score1 + score2 + score3
+
+  # need to transform "raw" value into scale between 1 and 10
+  min_score = -4.0
+  max_score = 2.5
+  sascore = 11. - (sascore - min_score + 1) / (max_score - min_score) * 9.
+  # smooth the 10-end
+  if sascore > 8.:
+    sascore = 8. + math.log(sascore + 1. - 9.)
+  if sascore > 10.:
+    sascore = 10.0
+  elif sascore < 1.:
+    sascore = 1.0
+
+  return sascore
+
+
+# def processMols(mols):
+#   print('smiles\tName\tsa_score')
+#   for m in mols:
+#     if m is None:
+#       continue
+
+#     s = calculateScore(m)
+
+#     smiles = Chem.MolToSmiles(m)
+#     print(smiles + "\t" + m.GetProp('_Name') + "\t%3f" % s)
+
+
+# if __name__ == '__main__':
+#   import sys, time
+
+#   t1 = time.time()
+#   readFragmentScores("fpscores")
+#   t2 = time.time()
+
+#   suppl = Chem.SmilesMolSupplier(sys.argv[1])
+#   t3 = time.time()
+#   processMols(suppl)
+#   t4 = time.time()
+
+#   print('Reading took %.2f seconds. Calculating took %.2f seconds' % ((t2 - t1), (t4 - t3)),
+#         file=sys.stderr)
+
+#
+#  Copyright (c) 2013, Novartis Institutes for BioMedical Research Inc.
+#  All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are
+# met:
+#
+#     * Redistributions of source code must retain the above copyright
+#       notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above
+#       copyright notice, this list of conditions and the following
+#       disclaimer in the documentation and/or other materials provided
+#       with the distribution.
+#     * Neither the name of Novartis Institutes for BioMedical Research Inc.
+#       nor the names of its contributors may be used to endorse or promote
+#       products derived from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/JTVAE/fast_jtnn/sascorer.py" startline="55" endline="118" pcid="423">
+def calculateScore(m):
+    if _fscores is None:
+        readFragmentScores()
+
+    # fragment score
+    # <- 2 is the *radius* of the circular fingerprint
+    fp = rdMolDescriptors.GetMorganFingerprint(m, 2)
+    fps = fp.GetNonzeroElements()
+    score1 = 0.
+    nf = 0
+    for bitId, v in iteritems(fps):
+        nf += v
+        sfp = bitId
+        score1 += _fscores.get(sfp, -4)*v
+    score1 /= nf
+
+    # features score
+    nAtoms = m.GetNumAtoms()
+    nChiralCenters = len(Chem.FindMolChiralCenters(m, includeUnassigned=True))
+    ri = m.GetRingInfo()
+    nBridgeheads, nSpiro = numBridgeheadsAndSpiro(m, ri)
+    nMacrocycles = 0
+    for x in ri.AtomRings():
+        if len(x) > 8:
+            nMacrocycles += 1
+
+    sizePenalty = nAtoms**1.005 - nAtoms
+    stereoPenalty = math.log10(nChiralCenters+1)
+    spiroPenalty = math.log10(nSpiro+1)
+    bridgePenalty = math.log10(nBridgeheads+1)
+    macrocyclePenalty = 0.
+    # ---------------------------------------
+    # This differs from the paper, which defines:
+    #  macrocyclePenalty = math.log10(nMacrocycles+1)
+    # This form generates better results when 2 or more macrocycles are present
+    if nMacrocycles > 0:
+        macrocyclePenalty = math.log10(2)
+
+    score2 = 0. - sizePenalty - stereoPenalty - \
+        spiroPenalty - bridgePenalty - macrocyclePenalty
+
+    # correction for the fingerprint density
+    # not in the original publication, added in version 1.1
+    # to make highly symmetrical molecules easier to synthetise
+    score3 = 0.
+    if nAtoms > len(fps):
+        score3 = math.log(float(nAtoms) / len(fps)) * .5
+
+    sascore = score1 + score2 + score3
+
+    # need to transform "raw" value into scale between 1 and 10
+    min = -4.0
+    max = 2.5
+    sascore = 11. - (sascore - min + 1) / (max - min) * 9.
+    # smooth the 10-end
+    if sascore > 8.:
+        sascore = 8. + math.log(sascore+1.-9.)
+    if sascore > 10.:
+        sascore = 10.0
+    elif sascore < 1.:
+        sascore = 1.0
+
+    return sascore
+
+</source>
+</class>
+
+<class classid="15" nclones="2" nlines="13" similarity="100">
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphDF/graphdf.py" startline="21" endline="35" pcid="250">
+    def get_model(self, task, model_conf_dict, checkpoint_path=None):
+        if model_conf_dict['use_gpu'] and not torch.cuda.is_available():
+            model_conf_dict['use_gpu'] = False
+        if task == 'rand_gen':
+            self.model = GraphFlowModel(model_conf_dict)
+        elif task == 'prop_opt':
+            self.model = GraphFlowModel_rl(model_conf_dict)
+        elif task == 'const_prop_opt':
+            self.model = GraphFlowModel_con_rl(model_conf_dict)
+        else:
+            raise ValueError('Task {} is not supported in GraphDF!'.format(task))
+        if checkpoint_path is not None:
+            self.model.load_state_dict(torch.load(checkpoint_path))
+    
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphAF/graphaf.py" startline="20" endline="34" pcid="307">
+    def get_model(self, task, model_conf_dict, checkpoint_path=None):
+        if model_conf_dict['use_gpu'] and not torch.cuda.is_available():
+            model_conf_dict['use_gpu'] = False
+        if task == 'rand_gen':
+            self.model = GraphFlowModel(model_conf_dict)
+        elif task == 'prop_opt':
+            self.model = GraphFlowModel_rl(model_conf_dict)
+        elif task == 'const_opt':
+            self.model = GraphFlowModel_con_rl(model_conf_dict)
+        else:
+            raise ValueError('Task {} is not supported in GraphDF!'.format(task))
+        if checkpoint_path is not None:
+            self.model.load_state_dict(torch.load(checkpoint_path))
+    
+
+</source>
+</class>
+
+<class classid="16" nclones="2" nlines="26" similarity="92">
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphDF/graphdf.py" startline="43" endline="89" pcid="252">
+    def train_rand_gen(self, loader, lr, wd, max_epochs, model_conf_dict, save_interval, save_dir):
+        r"""
+            Running training for random generation task.
+
+            Args:
+                loader: The data loader for loading training samples. It is supposed to use dig.ggraph.dataset.QM9/ZINC250k/MOSES
+                    as the dataset class, and apply torch_geometric.data.DenseDataLoader to it to form the data loader.
+                lr (float): The learning rate for training.
+                wd (float): The weight decay factor for training.
+                max_epochs (int): The maximum number of training epochs.
+                model_conf_dict (dict): The python dict for configuring the model hyperparameters.
+                save_interval (int): Indicate the frequency to save the model parameters to .pth files,
+                    *e.g.*, if save_interval=2, the model parameters will be saved for every 2 training epochs.
+                save_dir (str): The directory to save the model parameters.
+        """
+
+        self.get_model('rand_gen', model_conf_dict)
+        self.model.train()
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr=lr, weight_decay=wd)
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+
+        for epoch in range(1, max_epochs+1):
+            total_loss = 0
+            for batch, data_batch in enumerate(loader):
+                optimizer.zero_grad()
+                inp_node_features = data_batch.x #(B, N, node_dim)
+                inp_adj_features = data_batch.adj #(B, 4, N, N)
+                if model_conf_dict['use_gpu']:
+                    inp_node_features = inp_node_features.cuda()
+                    inp_adj_features = inp_adj_features.cuda()
+                
+                out_z = self.model(inp_node_features, inp_adj_features)
+                loss = self.model.dis_log_prob(out_z)
+                loss.backward()
+                optimizer.step()
+
+                total_loss += loss.to('cpu').item()
+                print('Training iteration {} | loss {}'.format(batch, loss.to('cpu').item()))
+
+            avg_loss = total_loss / (batch + 1)
+            print("Training | Average loss {}".format(avg_loss))
+            
+            if epoch % save_interval == 0:
+                torch.save(self.model.state_dict(), os.path.join(save_dir, 'rand_gen_ckpt_{}.pth'.format(epoch)))
+
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphAF/graphaf.py" startline="42" endline="88" pcid="309">
+    def train_rand_gen(self, loader, lr, wd, max_epochs, model_conf_dict, save_interval, save_dir):
+        r"""
+            Running training for random generation task.
+            
+            Args:
+                loader: The data loader for loading training samples. It is supposed to use dig.ggraph.dataset.QM9/ZINC250k
+                    as the dataset class, and apply torch_geometric.data.DenseDataLoader to it to form the data loader.
+                lr (float): The learning rate for training.
+                wd (float): The weight decay factor for training.
+                max_epochs (int): The maximum number of training epochs.
+                model_conf_dict (dict): The python dict for configuring the model hyperparameters.
+                save_interval (int): Indicate the frequency to save the model parameters to .pth files,
+                    *e.g.*, if save_interval=2, the model parameters will be saved for every 2 training epochs.
+                save_dir (str): The directory to save the model parameters.
+        """
+
+        self.get_model('rand_gen', model_conf_dict)
+        self.model.train()
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr=lr, weight_decay=wd)
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+
+        for epoch in range(1, max_epochs+1):
+            total_loss = 0
+            for batch, data_batch in enumerate(loader):
+                optimizer.zero_grad()
+                inp_node_features = data_batch.x #(B, N, node_dim)
+                inp_adj_features = data_batch.adj #(B, 4, N, N)
+                if model_conf_dict['use_gpu']:
+                    inp_node_features = inp_node_features.cuda()
+                    inp_adj_features = inp_adj_features.cuda()
+                
+                out_z, out_logdet = self.model(inp_node_features, inp_adj_features)
+                loss = self.model.log_prob(out_z, out_logdet)
+                loss.backward()
+                optimizer.step()
+
+                total_loss += loss.to('cpu').item()
+                print('Training iteration {} | loss {}'.format(batch, loss.to('cpu').item()))
+
+            avg_loss = total_loss / (batch + 1)
+            print("Training | Average loss {}".format(avg_loss))
+            
+            if epoch % save_interval == 0:
+                torch.save(self.model.state_dict(), os.path.join(save_dir, 'rand_gen_ckpt_{}.pth'.format(epoch)))
+
+
+</source>
+</class>
+
+<class classid="17" nclones="2" nlines="16" similarity="93">
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphDF/graphdf.py" startline="90" endline="126" pcid="253">
+    def run_rand_gen(self, model_conf_dict, checkpoint_path, n_mols=100, num_min_node=7, num_max_node=25, temperature=[0.3, 0.3], atomic_num_list=[6, 7, 8, 9]):
+        r"""
+            Running graph generation for random generation task.
+
+            Args:
+                model_conf_dict (dict): The python dict for configuring the model hyperparameters.
+                checkpoint_path (str): The path to the saved model checkpoint file.
+                n_mols (int, optional): The number of molecules to generate. (default: :obj:`100`)
+                num_min_node (int, optional): The minimum number of nodes in the generated molecular graphs. (default: :obj:`7`)
+                num_max_node (int, optional): the maximum number of nodes in the generated molecular graphs. (default: :obj:`25`)
+                temperature (list, optional): a list of two float numbers, the temperature parameter of prior distribution. (default: :obj:`[0.3, 0.3]`)
+                atomic_num_list (list, optional): a list of integers, the list of atomic numbers indicating the node types in the generated molecular graphs. (default: :obj:`[6, 7, 8, 9]`)
+            
+            :rtype:
+                (all_mols, pure_valids),
+                all_mols is a list of generated molecules represented by rdkit Chem.Mol objects;
+                pure_valids is a list of integers, all are 0 or 1, indicating whether bond resampling happens.
+        """
+
+        self.get_model('rand_gen', model_conf_dict, checkpoint_path)
+        self.model.eval()
+        all_mols, pure_valids = [], []
+        cnt_mol = 0
+
+        while cnt_mol < n_mols:
+            mol, no_resample, num_atoms = self.model.generate(atom_list=atomic_num_list, min_atoms=num_min_node, max_atoms=num_max_node, temperature=temperature)
+            if (num_atoms >= num_min_node):
+                cnt_mol += 1
+                all_mols.append(mol)
+                pure_valids.append(no_resample)
+                if cnt_mol % 10 == 0:
+                    print('Generated {} molecules'.format(cnt_mol))
+        
+        assert cnt_mol == n_mols, 'number of generated molecules does not equal num'        
+        return all_mols, pure_valids
+
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphAF/graphaf.py" startline="89" endline="125" pcid="310">
+    def run_rand_gen(self, model_conf_dict, checkpoint_path, n_mols=100, num_min_node=7, num_max_node=25, temperature=0.75, atomic_num_list=[6, 7, 8, 9]):
+        r"""
+            Running graph generation for random generation task.
+            
+            Args:
+                model_conf_dict (dict): The python dict for configuring the model hyperparameters.
+                checkpoint_path (str): The path to the saved model checkpoint file.
+                n_mols (int, optional): The number of molecules to generate. (default: :obj:`100`)
+                num_min_node (int, optional): The minimum number of nodes in the generated molecular graphs. (default: :obj:`7`)
+                num_max_node (int, optional): The maximum number of nodes in the generated molecular graphs. (default: :obj:`25`)
+                temperature (float, optional): A float numbers, the temperature parameter of prior distribution. (default: :obj:`0.75`)
+                atomic_num_list (list, optional): A list of integers, the list of atomic numbers indicating the node types in the generated molecular graphs. (default: :obj:`[6, 7, 8, 9]`)
+            
+            :rtype:
+                (all_mols, pure_valids),
+                all_mols is a list of generated molecules represented by rdkit Chem.Mol objects;
+                pure_valids is a list of integers, all are 0 or 1, indicating whether bond resampling happens.
+        """
+        
+        self.get_model('rand_gen', model_conf_dict, checkpoint_path)
+        self.model.eval()
+        all_mols, pure_valids = [], []
+        cnt_mol = 0
+
+        while cnt_mol < n_mols:
+            mol, no_resample, num_atoms = self.model.generate(atom_list=atomic_num_list, min_atoms=num_min_node, max_atoms=num_max_node, temperature=temperature)
+            if (num_atoms >= num_min_node):
+                cnt_mol += 1
+                all_mols.append(mol)
+                pure_valids.append(no_resample)
+                if cnt_mol % 10 == 0:
+                    print('Generated {} molecules'.format(cnt_mol))
+        
+        assert cnt_mol == n_mols, 'number of generated molecules does not equal num'        
+        return all_mols, pure_valids
+
+
+</source>
+</class>
+
+<class classid="18" nclones="2" nlines="24" similarity="100">
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphDF/graphdf.py" startline="127" endline="171" pcid="254">
+    def train_prop_opt(self, lr, wd, max_iters, warm_up, model_conf_dict, pretrain_path, save_interval, save_dir):
+        r"""
+            Running fine-tuning for property optimization task.
+
+            Args:
+                lr (float): The learning rate for fine-tuning.
+                wd (float): The weight decay factor for training.
+                max_iters (int): The maximum number of training iters.
+                warm_up (int): The number of linear warm-up iters.
+                model_conf_dict (dict): The python dict for configuring the model hyperparameters.
+                pretrain_path (str): The path to the saved pretrained model file.
+                save_interval (int): Indicate the frequency to save the model parameters to .pth files,
+                    *e.g.*, if save_interval=20, the model parameters will be saved for every 20 training iters.
+                save_dir (str): The directory to save the model parameters.
+        """
+
+        self.get_model('prop_opt', model_conf_dict)
+        self.load_pretrain_model(pretrain_path)
+        self.model.train()
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr=lr, weight_decay=wd)
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+
+        print('start finetuning model(reinforce)')
+        moving_baseline = None
+        for cur_iter in range(max_iters):
+            optimizer.zero_grad()    
+            loss, per_mol_reward, per_mol_property_score, moving_baseline = self.model.reinforce_forward_optim(in_baseline=moving_baseline, cur_iter=cur_iter)
+
+            num_mol = len(per_mol_reward)
+            avg_reward = sum(per_mol_reward) / num_mol
+            avg_score = sum(per_mol_property_score) / num_mol     
+            loss.backward()
+            nn.utils.clip_grad_norm_(filter(lambda p: p.requires_grad, self.model.flow_core.parameters()), 1.0)
+            adjust_learning_rate(optimizer, cur_iter, lr, warm_up)
+            optimizer.step()
+
+            print('Iter {} | reward {}, score {}, loss {}'.format(cur_iter, avg_reward, avg_score, loss.item()))
+
+            if cur_iter % save_interval == save_interval - 1:
+                torch.save(self.model.state_dict(), os.path.join(save_dir, 'prop_opt_net_{}.pth'.format(cur_iter)))
+
+        print("Finetuning (Reinforce) Finished!")
+    
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphAF/graphaf.py" startline="126" endline="171" pcid="311">
+    def train_prop_optim(self, lr, wd, max_iters, warm_up, model_conf_dict, pretrain_path, save_interval, save_dir):
+        r"""
+            Running fine-tuning for property optimization task.
+            
+            Args:
+                lr (float): The learning rate for fine-tuning.
+                wd (float): The weight decay factor for training.
+                max_iters (int): The maximum number of training iters.
+                warm_up (int): The number of linear warm-up iters.
+                model_conf_dict (dict): The python dict for configuring the model hyperparameters.
+                pretrain_path (str): The path to the saved pretrained model file.
+                save_interval (int): Indicate the frequency to save the model parameters to .pth files,
+                    *e.g.*, if save_interval=20, the model parameters will be saved for every 20 training iters.
+                save_dir (str): The directory to save the model parameters.
+        """
+        
+        
+        self.get_model('prop_opt', model_conf_dict)
+        self.load_pretrain_model(pretrain_path)
+        self.model.train()
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr=lr, weight_decay=wd)
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+
+        print('start finetuning model(reinforce)')
+        moving_baseline = None
+        for cur_iter in range(max_iters):
+            optimizer.zero_grad()    
+            loss, per_mol_reward, per_mol_property_score, moving_baseline = self.model.reinforce_forward_optim(in_baseline=moving_baseline, cur_iter=cur_iter)
+
+            num_mol = len(per_mol_reward)
+            avg_reward = sum(per_mol_reward) / num_mol
+            avg_score = sum(per_mol_property_score) / num_mol     
+            loss.backward()
+            nn.utils.clip_grad_norm_(filter(lambda p: p.requires_grad, self.model.flow_core.parameters()), 1.0)
+            adjust_learning_rate(optimizer, cur_iter, lr, warm_up)
+            optimizer.step()
+
+            print('Iter {} | reward {}, score {}, loss {}'.format(cur_iter, avg_reward, avg_score, loss.item()))
+
+            if cur_iter % save_interval == save_interval - 1:
+                torch.save(self.model.state_dict(), os.path.join(save_dir, 'prop_opt_net_{}.pth'.format(cur_iter)))
+
+        print("Finetuning (Reinforce) Finished!")
+    
+
+</source>
+</class>
+
+<class classid="19" nclones="2" nlines="17" similarity="94">
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphDF/graphdf.py" startline="172" endline="207" pcid="255">
+    def run_prop_opt(self, model_conf_dict, checkpoint_path, n_mols=100, num_min_node=7, num_max_node=25, temperature=[0.3, 0.3], atomic_num_list=[6, 7, 8, 9]):
+        r"""
+            Running graph generation for property optimization task.
+
+            Args:
+                model_conf_dict (dict): The python dict for configuring the model hyperparameters.
+                checkpoint_path (str): The path to the saved model checkpoint file.
+                n_mols (int, optional): The number of molecules to generate. (default: :obj:`100`)
+                num_min_node (int, optional): The minimum number of nodes in the generated molecular graphs. (default: :obj:`7`)
+                num_max_node (int, optional): The maximum number of nodes in the generated molecular graphs. (default: :obj:`25`)
+                temperature (list, optional): A list of two float numbers, the temperature parameter of prior distribution. (default: :obj:`[0.3, 0.3]`)
+                atomic_num_list (list, optional): A list of integers, the list of atomic numbers indicating the node types in the generated molecular graphs. (default: :obj:`[6, 7, 8, 9]`)
+            
+            :rtype:
+                all_mols, a list of generated molecules represented by rdkit Chem.Mol objects.
+        """
+
+        self.get_model('prop_opt', model_conf_dict, checkpoint_path)
+        self.model.eval()
+        all_mols, all_smiles = [], []
+        cnt_mol = 0
+
+        while cnt_mol < n_mols:
+            mol, num_atoms = self.model.reinforce_optim_one_mol(atom_list=atomic_num_list, max_size_rl=num_max_node, temperature=temperature)
+            if mol is not None:
+                smile = Chem.MolToSmiles(mol)
+                if num_atoms >= num_min_node and not smile in all_smiles:
+                    all_mols.append(mol)
+                    all_smiles.append(smile)
+                    cnt_mol += 1
+                    if cnt_mol % 10 == 0:
+                        print('Generated {} molecules'.format(cnt_mol))
+        
+        return all_mols
+
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphAF/graphaf.py" startline="172" endline="207" pcid="312">
+    def run_prop_optim(self, model_conf_dict, checkpoint_path, n_mols=100, num_min_node=7, num_max_node=25, temperature=0.75, atomic_num_list=[6, 7, 8, 9]):
+        r"""
+            Running graph generation for property optimization task.
+            
+            Args:
+                model_conf_dict (dict): The python dict for configuring the model hyperparameters.
+                checkpoint_path (str): The path to the saved model checkpoint file.
+                n_mols (int, optional): The number of molecules to generate. (default: :obj:`100`)
+                num_min_node (int, optional): The minimum number of nodes in the generated molecular graphs. (default: :obj:`7`)
+                num_max_node (int, optional): The maximum number of nodes in the generated molecular graphs. (default: :obj:`25`)
+                temperature (float, optional): A float numbers, the temperature parameter of prior distribution. (default: :obj:`0.75`)
+                atomic_num_list (list, optional): A list of integers, the list of atomic numbers indicating the node types in the generated molecular graphs. (default: :obj:`[6, 7, 8, 9]`)
+            
+            :rtype:
+                all_mols, a list of generated molecules represented by rdkit Chem.Mol objects.
+        """
+        
+        self.get_model('prop_opt', model_conf_dict, checkpoint_path)
+        self.model.eval()
+        all_mols, all_smiles = [], []
+        cnt_mol = 0
+
+        while cnt_mol < n_mols:
+            mol, num_atoms = self.model.reinforce_optim_one_mol(atom_list=atomic_num_list, max_size_rl=num_max_node, temperature=temperature)
+            if mol is not None:
+                smile = Chem.MolToSmiles(mol)
+                if num_atoms >= num_min_node and not smile in all_smiles:
+                    all_mols.append(mol)
+                    all_smiles.append(smile)
+                    cnt_mol += 1
+                    if cnt_mol % 10 == 0:
+                        print('Generated {} molecules'.format(cnt_mol))
+        
+        return all_mols
+
+
+</source>
+</class>
+
+<class classid="20" nclones="2" nlines="33" similarity="100">
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphDF/graphdf.py" startline="208" endline="264" pcid="256">
+    def train_const_prop_opt(self, loader, lr, wd, max_iters, warm_up, model_conf_dict, pretrain_path, save_interval, save_dir):
+        r"""
+            Running fine-tuning for constrained optimization task.
+
+            Args:
+                loader: The data loader for loading training samples. It is supposed to use dig.ggraph.dataset.ZINC800
+                    as the dataset class, and apply torch_geometric.data.DenseDataLoader to it to form the data loader.
+                lr (float): The learning rate for training.
+                wd (float): The weight decay factor for training.
+                max_iters (int): The maximum number of training iters.
+                warm_up (int): The number of linear warm-up iters.
+                model_conf_dict (dict): The python dict for configuring the model hyperparameters.
+                pretrain_path (str): The path to the saved pretrained model parameters file.
+                save_interval (int): Indicate the frequency to save the model parameters to .pth files,
+                    *e.g.*, if save_interval=20, the model parameters will be saved for every 20 training iters.
+                save_dir (str): The directory to save the model parameters.
+        """
+
+        self.get_model('const_prop_opt', model_conf_dict)
+        self.load_pretrain_model(pretrain_path)
+        self.model.train()
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr=lr, weight_decay=wd)
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+        loader = DataIterator(loader)
+
+        print('start finetuning model(reinforce)')
+        moving_baseline = None
+        for cur_iter in range(max_iters):
+            optimizer.zero_grad()
+            batch_data = next(loader)
+            mol_xs = batch_data.x
+            mol_adjs = batch_data.adj
+            mol_sizes = batch_data.num_atom
+            bfs_perm_origin = batch_data.bfs_perm_origin
+            raw_smiles = batch_data.smile
+        
+            loss, per_mol_reward, per_mol_property_score, moving_baseline = self.model.reinforce_forward_constrained_optim(
+                                                    mol_xs=mol_xs, mol_adjs=mol_adjs, mol_sizes=mol_sizes, raw_smiles=raw_smiles, 
+                                                    bfs_perm_origin=bfs_perm_origin, in_baseline=moving_baseline, cur_iter=cur_iter)
+
+            num_mol = len(per_mol_reward)
+            avg_reward = sum(per_mol_reward) / num_mol
+            avg_score = sum(per_mol_property_score) / num_mol
+            loss.backward()
+            nn.utils.clip_grad_norm_(filter(lambda p: p.requires_grad, self.model.flow_core.parameters()), 1.0)
+            adjust_learning_rate(optimizer, cur_iter, lr, warm_up)
+            optimizer.step()
+
+            print('Iter {} | reward {}, score {}, loss {}'.format(cur_iter, avg_reward, avg_score, loss.item()))
+
+            if cur_iter % save_interval == save_interval - 1:
+                torch.save(self.model.state_dict(), os.path.join(save_dir, 'const_prop_opt_net_{}.pth'.format(cur_iter)))
+
+        print("Finetuning (Reinforce) Finished!")
+    
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphAF/graphaf.py" startline="208" endline="264" pcid="313">
+    def train_cons_optim(self, loader, lr, wd, max_iters, warm_up, model_conf_dict, pretrain_path, save_interval, save_dir):
+        r"""
+            Running fine-tuning for constrained optimization task.
+            
+            Args:
+                loader: The data loader for loading training samples. It is supposed to use dig.ggraph.dataset.ZINC800
+                    as the dataset class, and apply torch_geometric.data.DenseDataLoader to it to form the data loader.
+                lr (float): The learning rate for training.
+                wd (float): The weight decay factor for training.
+                max_iters (int): The maximum number of training iters.
+                warm_up (int): The number of linear warm-up iters.
+                model_conf_dict (dict): The python dict for configuring the model hyperparameters.
+                pretrain_path (str): The path to the saved pretrained model parameters file.
+                save_interval (int): Indicate the frequency to save the model parameters to .pth files,
+                    *e.g.*, if save_interval=20, the model parameters will be saved for every 20 training iters.
+                save_dir (str): The directory to save the model parameters.
+        """
+        
+        self.get_model('const_prop_opt', model_conf_dict)
+        self.load_pretrain_model(pretrain_path)
+        self.model.train()
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr=lr, weight_decay=wd)
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+        loader = DataIterator(loader)
+
+        print('start finetuning model(reinforce)')
+        moving_baseline = None
+        for cur_iter in range(max_iters):
+            optimizer.zero_grad()
+            batch_data = next(loader)
+            mol_xs = batch_data.x
+            mol_adjs = batch_data.adj
+            mol_sizes = batch_data.num_atom
+            bfs_perm_origin = batch_data.bfs_perm_origin
+            raw_smiles = batch_data.smile
+        
+            loss, per_mol_reward, per_mol_property_score, moving_baseline = self.model.reinforce_forward_constrained_optim(
+                                                    mol_xs=mol_xs, mol_adjs=mol_adjs, mol_sizes=mol_sizes, raw_smiles=raw_smiles, 
+                                                    bfs_perm_origin=bfs_perm_origin, in_baseline=moving_baseline, cur_iter=cur_iter)
+
+            num_mol = len(per_mol_reward)
+            avg_reward = sum(per_mol_reward) / num_mol
+            avg_score = sum(per_mol_property_score) / num_mol
+            loss.backward()
+            nn.utils.clip_grad_norm_(filter(lambda p: p.requires_grad, self.model.flow_core.parameters()), 1.0)
+            adjust_learning_rate(optimizer, cur_iter, lr, warm_up)
+            optimizer.step()
+
+            print('Iter {} | reward {}, score {}, loss {}'.format(cur_iter, avg_reward, avg_score, loss.item()))
+
+            if cur_iter % save_interval == save_interval - 1:
+                torch.save(self.model.state_dict(), os.path.join(save_dir, 'const_prop_opt_net_{}.pth'.format(cur_iter)))
+
+        print("Finetuning (Reinforce) Finished!")
+    
+
+</source>
+</class>
+
+<class classid="21" nclones="2" nlines="45" similarity="97">
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphDF/graphdf.py" startline="265" endline="314" pcid="257">
+    def run_const_prop_opt_one_mol(self, adj, x, org_smile, mol_size, bfs_perm_origin, max_size_rl=38, temperature=[0.3,0.3], atom_list=[6, 7, 8, 9]):
+        best_mol0 = None
+        best_mol2 = None
+        best_mol4 = None
+        best_mol6 = None
+        best_imp0 = -100.
+        best_imp2 = -100.
+        best_imp4 = -100.
+        best_imp6 = -100.
+        final_sim0 = -1.
+        final_sim2 = -1.
+        final_sim4 = -1.
+        final_sim6 = -1.
+
+        mol_org = Chem.MolFromSmiles(org_smile)
+        mol_org_size = mol_org.GetNumAtoms()
+        assert mol_org_size == mol_size
+
+        cur_mols, cur_mol_imps, cur_mol_sims = self.model.reinforce_constrained_optim_one_mol(x, adj, mol_size, org_smile, bfs_perm_origin,
+                                                                        atom_list=atom_list, temperature=temperature, max_size_rl=max_size_rl)
+        num_success = len(cur_mol_imps)
+        for i in range(num_success):
+            cur_mol = cur_mols[i]
+            cur_imp = cur_mol_imps[i]
+            cur_sim = cur_mol_sims[i]
+            assert cur_imp > 0
+            if cur_sim > 0:
+                if cur_imp > best_imp0:
+                    best_mol0 = cur_mol
+                    best_imp0 = cur_imp
+                    final_sim0 = cur_sim
+            if cur_sim > 0.2:
+                if cur_imp > best_imp2:
+                    best_mol2 = cur_mol
+                    best_imp2 = cur_imp
+                    final_sim2 = cur_sim
+            if cur_sim > 0.4:
+                if cur_imp > best_imp4:
+                    best_mol4 = cur_mol
+                    best_imp4 = cur_imp
+                    final_sim4 = cur_sim
+            if cur_sim > 0.6:
+                if cur_imp > best_imp6:
+                    best_mol6 = cur_mol
+                    best_imp6 = cur_imp
+                    final_sim6 = cur_sim                    
+
+        return [best_mol0, best_mol2, best_mol4, best_mol6], [best_imp0, best_imp2, best_imp4, best_imp6], [final_sim0, final_sim2, final_sim4, final_sim6]
+
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphAF/graphaf.py" startline="265" endline="315" pcid="314">
+    def run_cons_optim_one_mol(self, adj, x, org_smile, mol_size, bfs_perm_origin, max_size_rl=38, temperature=0.70, atom_list=[6, 7, 8, 9]):
+        
+        best_mol0 = None
+        best_mol2 = None
+        best_mol4 = None
+        best_mol6 = None
+        best_imp0 = -100.
+        best_imp2 = -100.
+        best_imp4 = -100.
+        best_imp6 = -100.
+        final_sim0 = -1.
+        final_sim2 = -1.
+        final_sim4 = -1.
+        final_sim6 = -1.
+
+        mol_org = Chem.MolFromSmiles(org_smile)
+        mol_org_size = mol_org.GetNumAtoms()
+        assert mol_org_size == mol_size
+
+        cur_mols, cur_mol_imps, cur_mol_sims = self.model.reinforce_constrained_optim_one_mol(x, adj, mol_size, org_smile, bfs_perm_origin,
+                                                                        atom_list=atom_list, temperature=temperature, max_size_rl=max_size_rl)
+        num_success = len(cur_mol_imps)
+        for i in range(num_success):
+            cur_mol = cur_mols[i]
+            cur_imp = cur_mol_imps[i]
+            cur_sim = cur_mol_sims[i]
+            assert cur_imp > 0
+            if cur_sim > 0:
+                if cur_imp > best_imp0:
+                    best_mol0 = cur_mol
+                    best_imp0 = cur_imp
+                    final_sim0 = cur_sim
+            if cur_sim > 0.2:
+                if cur_imp > best_imp2:
+                    best_mol2 = cur_mol
+                    best_imp2 = cur_imp
+                    final_sim2 = cur_sim
+            if cur_sim > 0.4:
+                if cur_imp > best_imp4:
+                    best_mol4 = cur_mol
+                    best_imp4 = cur_imp
+                    final_sim4 = cur_sim
+            if cur_sim > 0.6:
+                if cur_imp > best_imp6:
+                    best_mol6 = cur_mol
+                    best_imp6 = cur_imp
+                    final_sim6 = cur_sim                    
+
+        return [best_mol0, best_mol2, best_mol4, best_mol6], [best_imp0, best_imp2, best_imp4, best_imp6], [final_sim0, final_sim2, final_sim4, final_sim6]
+
+
+</source>
+</class>
+
+<class classid="22" nclones="2" nlines="50" similarity="98">
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphDF/graphdf.py" startline="315" endline="393" pcid="258">
+    def run_const_prop_opt(self, dataset, model_conf_dict, checkpoint_path, repeat_time=200, min_optim_time=50, num_max_node=25, temperature=[0.3, 0.3], atomic_num_list=[6, 7, 8, 9]):
+        r"""
+            Running molecule optimization for constrained optimization task.
+
+            Args:
+                dataset: The dataset class for loading molecules to be optimized. It is supposed to use dig.ggraph.dataset.ZINC800 as the dataset class.
+                model_conf_dict (dict): The python dict for configuring the model hyperparameters. 
+                checkpoint_path (str): The path to the saved model checkpoint file.
+                repeat_time (int, optional): The maximum number of optimization times for each molecule before successfully optimizing it under the threshold 0.6. (default: :obj:`200`)
+                min_optim_time (int, optional): The minimum number of optimization times for each molecule. (default: :obj:`50`)
+                num_max_node (int, optional): The maximum number of nodes in the optimized molecular graphs. (default: :obj:`25`)
+                temperature (list, optional): A list of two float numbers, the temperature parameter of prior distribution. (default: :obj:`[0.3, 0.3]`)
+                atomic_num_list (list, optional): A list of integers, the list of atomic numbers indicating the node types in the optimized molecular graphs. (default: :obj:`[6, 7, 8, 9]`)
+            
+            :rtype:
+                (mols_0, mols_2, mols_4, mols_6), they are lists of optimized molecules (represented by rdkit Chem.Mol objects) under the threshold 0.0, 0.2, 0.4, 0.6, respectively.
+        """
+
+        self.get_model('const_prop_opt', model_conf_dict, checkpoint_path)
+        self.model.eval()
+
+        data_len = len(dataset)
+        optim_success_dict = {}
+        mols_0, mols_2, mols_4, mols_6 = [], [], [], []
+        for batch_cnt in range(data_len):
+            best_mol = [None, None, None, None]
+            best_score = [-100., -100., -100., -100.]
+            final_sim = [-1., -1., -1., -1.]
+
+            batch_data = dataset[batch_cnt] # dataloader is dataset object
+
+            inp_node_features = batch_data.x.unsqueeze(0) #(1, N, node_dim)              
+            inp_adj_features = batch_data.adj.unsqueeze(0) #(1, 4, N, N)              
+
+            raw_smile = batch_data.smile  #(1)
+            mol_size = batch_data.num_atom
+            bfs_perm_origin = batch_data.bfs_perm_origin
+
+            for _ in range(repeat_time):
+                if raw_smile not in optim_success_dict:
+                    optim_success_dict[raw_smile] = [0, -1] #(try_time, imp)
+                if optim_success_dict[raw_smile][0] > min_optim_time and optim_success_dict[raw_smile][1] > 0: # reach min time and imp is positive
+                    continue # not optimize this one
+
+                best_mol0246, best_score0246, final_sim0246 = self.run_const_prop_opt_one_mol(inp_adj_features, 
+                                                                    inp_node_features, raw_smile, mol_size, bfs_perm_origin, num_max_node, temperature, atomic_num_list)
+                if best_score0246[0] > best_score[0]:
+                    best_score[0] = best_score0246[0]
+                    best_mol[0] = best_mol0246[0]
+                    final_sim[0] = final_sim0246[0]
+
+                if best_score0246[1] > best_score[1]:
+                    best_score[1] = best_score0246[1]
+                    best_mol[1] = best_mol0246[1]
+                    final_sim[1] = final_sim0246[1] 
+
+                if best_score0246[2] > best_score[2]:
+                    best_score[2] = best_score0246[2]
+                    best_mol[2] = best_mol0246[2]
+                    final_sim[2] = final_sim0246[2]
+                    
+                if best_score0246[3] > best_score[3]:
+                    best_score[3] = best_score0246[3]
+                    best_mol[3] = best_mol0246[3]
+                    final_sim[3] = final_sim0246[3]
+
+                if best_score[3] > 0: #imp > 0
+                    optim_success_dict[raw_smile][1] = best_score[3]
+                optim_success_dict[raw_smile][0] += 1 # try time + 1
+
+            mols_0.append(best_mol[0])
+            mols_2.append(best_mol[1])
+            mols_4.append(best_mol[2])
+            mols_6.append(best_mol[3])
+
+            if batch_cnt % 1 == 0:
+                print('Optimized {} molecules'.format(batch_cnt+1))
+
+        return mols_0, mols_2, mols_4, mols_6
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphAF/graphaf.py" startline="316" endline="395" pcid="315">
+    def run_cons_optim(self, dataset, model_conf_dict, checkpoint_path, repeat_time=200, min_optim_time=50, num_max_node=25, temperature=0.7, atomic_num_list=[6, 7, 8, 9]):
+        r"""
+            Running molecule optimization for constrained optimization task.
+            
+            Args:
+                dataset: The dataset class for loading molecules to be optimized. It is supposed to use dig.ggraph.dataset.ZINC800 as the dataset class.
+                model_conf_dict (dict): The python dict for configuring the model hyperparameters.
+                checkpoint_path (str): The path to the saved model checkpoint file.
+                repeat_time (int, optional): The maximum number of optimization times for each molecule before successfully optimizing it under the threshold 0.6.  (default: :obj:`200`)
+                min_optim_time (int, optional): The minimum number of optimization times for each molecule. (default: :obj:`50`)
+                num_max_node (int, optional): The maximum number of nodes in the optimized molecular graphs. (default: :obj:`25`)
+                temperature (float, optional): A float numbers, the temperature parameter of prior distribution. (default: :obj:`0.75`)
+                atomic_num_list (list, optional): A list of integers, the list of atomic numbers indicating the node types in the optimized molecular graphs. (default: :obj:`[6, 7, 8, 9]`)
+            
+            :rtype:
+                (mols_0, mols_2, mols_4, mols_6), they are lists of optimized molecules (represented by rdkit Chem.Mol objects) under the threshold 0.0, 0.2, 0.4, 0.6, respectively.
+        """
+        
+        
+        self.get_model('const_prop_opt', model_conf_dict, checkpoint_path)
+        self.model.eval()
+
+        data_len = len(dataset)
+        optim_success_dict = {}
+        mols_0, mols_2, mols_4, mols_6 = [], [], [], []
+        for batch_cnt in range(data_len):
+            best_mol = [None, None, None, None]
+            best_score = [-100., -100., -100., -100.]
+            final_sim = [-1., -1., -1., -1.]
+
+            batch_data = dataset[batch_cnt] # dataloader is dataset object
+
+            inp_node_features = batch_data.x.unsqueeze(0) #(1, N, node_dim)              
+            inp_adj_features = batch_data.adj.unsqueeze(0) #(1, 4, N, N)              
+
+            raw_smile = batch_data.smile  #(1)
+            mol_size = batch_data.num_atom
+            bfs_perm_origin = batch_data.bfs_perm_origin
+
+            for cur_iter in range(repeat_time):
+                if raw_smile not in optim_success_dict:
+                    optim_success_dict[raw_smile] = [0, -1] #(try_time, imp)
+                if optim_success_dict[raw_smile][0] > min_optim_time and optim_success_dict[raw_smile][1] > 0: # reach min time and imp is positive
+                    continue # not optimize this one
+
+                best_mol0246, best_score0246, final_sim0246 = self.run_cons_optim_one_mol(inp_adj_features, 
+                                                                    inp_node_features, raw_smile, mol_size, bfs_perm_origin, num_max_node, temperature, atomic_num_list)
+                if best_score0246[0] > best_score[0]:
+                    best_score[0] = best_score0246[0]
+                    best_mol[0] = best_mol0246[0]
+                    final_sim[0] = final_sim0246[0]
+
+                if best_score0246[1] > best_score[1]:
+                    best_score[1] = best_score0246[1]
+                    best_mol[1] = best_mol0246[1]
+                    final_sim[1] = final_sim0246[1] 
+
+                if best_score0246[2] > best_score[2]:
+                    best_score[2] = best_score0246[2]
+                    best_mol[2] = best_mol0246[2]
+                    final_sim[2] = final_sim0246[2]
+                    
+                if best_score0246[3] > best_score[3]:
+                    best_score[3] = best_score0246[3]
+                    best_mol[3] = best_mol0246[3]
+                    final_sim[3] = final_sim0246[3]
+
+                if best_score[3] > 0: #imp > 0
+                    optim_success_dict[raw_smile][1] = best_score[3]
+                optim_success_dict[raw_smile][0] += 1 # try time + 1
+
+            mols_0.append(best_mol[0])
+            mols_2.append(best_mol[1])
+            mols_4.append(best_mol[2])
+            mols_6.append(best_mol[3])
+
+            if batch_cnt % 1 == 0:
+                print('Optimized {} molecules'.format(batch_cnt+1))
+
+        return mols_0, mols_2, mols_4, mols_6
+</source>
+</class>
+
+<class classid="23" nclones="2" nlines="20" similarity="100">
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphDF/model/rgcn.py" startline="11" endline="35" pcid="259">
+    def __init__(self, in_features, out_features, edge_dim=3, aggregate='sum', dropout=0., use_relu=True, bias=False):
+        '''
+        :param in/out_features: scalar of channels for node embedding
+        :param edge_dim: dim of edge type, virtual type not included
+        '''
+        super(RelationGraphConvolution, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.edge_dim = edge_dim
+        self.dropout = dropout
+        self.aggregate = aggregate
+        if use_relu:
+            self.act = nn.ReLU()
+        else:
+            self.act = None
+
+        self.weight = nn.Parameter(torch.FloatTensor(
+            self.edge_dim, self.in_features, self.out_features))
+        if bias:
+            self.bias = nn.Parameter(torch.FloatTensor(
+                self.edge_dim, 1, self.out_features))
+        else:
+            self.register_parameter('bias', None)
+        self.reset_parameters()
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphAF/model/rgcn.py" startline="12" endline="36" pcid="320">
+    def __init__(self, in_features, out_features, edge_dim=3, aggregate='sum', dropout=0., use_relu=True, bias=False):
+        '''
+        :param in/out_features: scalar of channels for node embedding
+        :param edge_dim: dim of edge type, virtual type not included
+        '''
+        super(RelationGraphConvolution, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.edge_dim = edge_dim
+        self.dropout = dropout
+        self.aggregate = aggregate
+        if use_relu:
+            self.act = nn.ReLU()
+        else:
+            self.act = None
+
+        self.weight = nn.Parameter(torch.FloatTensor(
+            self.edge_dim, self.in_features, self.out_features))
+        if bias:
+            self.bias = nn.Parameter(torch.FloatTensor(
+                self.edge_dim, 1, self.out_features))
+        else:
+            self.register_parameter('bias', None)
+        self.reset_parameters()
+
+</source>
+</class>
+
+<class classid="24" nclones="2" nlines="27" similarity="100">
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphDF/model/rgcn.py" startline="41" endline="83" pcid="261">
+    def forward(self, x, adj):
+        '''
+        :param x: (batch, N, d)
+        :param adj: (batch, E, N, N)
+        typically d=9 e=3
+        :return:
+        updated x with shape (batch, N, d)
+        '''
+        x = F.dropout(x, p=self.dropout, training=self.training)  # (b, N, d)
+
+        batch_size = x.size(0)
+
+        # transform
+        support = torch.einsum('bid, edh-> beih', x, self.weight)
+        output = torch.einsum('beij, bejh-> beih', adj,
+                              support)  # (batch, e, N, d)
+
+        if self.bias is not None:
+            output += self.bias
+        if self.act is not None:
+            output = self.act(output)  # (b, E, N, d)
+        output = output.view(batch_size, self.edge_dim, x.size(
+            1), self.out_features)  # (b, E, N, d)
+
+        if self.aggregate == 'sum':
+            # sum pooling #(b, N, d)
+            node_embedding = torch.sum(output, dim=1, keepdim=False)
+        elif self.aggregate == 'max':
+            # max pooling  #(b, N, d)
+            node_embedding = torch.max(output, dim=1, keepdim=False)
+        elif self.aggregate == 'mean':
+            # mean pooling #(b, N, d)
+            node_embedding = torch.mean(output, dim=1, keepdim=False)
+        elif self.aggregate == 'concat':
+            #! implementation wrong
+            node_embedding = torch.cat(torch.split(
+                output, dim=1, split_size_or_sections=1), dim=3)  # (b, 1, n, d*e)
+            node_embedding = torch.squeeze(
+                node_embedding, dim=1)  # (b, n, d*e)
+        else:
+            print('GCN aggregate error!')
+        return node_embedding
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphAF/model/rgcn.py" startline="42" endline="84" pcid="322">
+    def forward(self, x, adj):
+        '''
+        :param x: (batch, N, d)
+        :param adj: (batch, E, N, N)
+        typically d=9 e=3
+        :return:
+        updated x with shape (batch, N, d)
+        '''
+        x = F.dropout(x, p=self.dropout, training=self.training)  # (b, N, d)
+
+        batch_size = x.size(0)
+
+        # transform
+        support = torch.einsum('bid, edh-> beih', x, self.weight)
+        output = torch.einsum('beij, bejh-> beih', adj,
+                              support)  # (batch, e, N, d)
+
+        if self.bias is not None:
+            output += self.bias
+        if self.act is not None:
+            output = self.act(output)  # (b, E, N, d)
+        output = output.view(batch_size, self.edge_dim, x.size(
+            1), self.out_features)  # (b, E, N, d)
+
+        if self.aggregate == 'sum':
+            # sum pooling #(b, N, d)
+            node_embedding = torch.sum(output, dim=1, keepdim=False)
+        elif self.aggregate == 'max':
+            # max pooling  #(b, N, d)
+            node_embedding = torch.max(output, dim=1, keepdim=False)
+        elif self.aggregate == 'mean':
+            # mean pooling #(b, N, d)
+            node_embedding = torch.mean(output, dim=1, keepdim=False)
+        elif self.aggregate == 'concat':
+            #! implementation wrong
+            node_embedding = torch.cat(torch.split(
+                output, dim=1, split_size_or_sections=1), dim=3)  # (b, 1, n, d*e)
+            node_embedding = torch.squeeze(
+                node_embedding, dim=1)  # (b, n, d*e)
+        else:
+            print('GCN aggregate error!')
+        return node_embedding
+
+</source>
+</class>
+
+<class classid="25" nclones="2" nlines="17" similarity="100">
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphDF/model/rgcn.py" startline="90" endline="116" pcid="263">
+    def __init__(self, nfeat, nhid=128, nout=128, edge_dim=3, num_layers=3, dropout=0., normalization=False):
+        '''
+        :num_layars: the number of layers in each R-GCN
+        '''
+        super(RGCN, self).__init__()
+
+        self.nfeat = nfeat
+        self.nhid = nhid
+        self.nout = nout
+        self.edge_dim = edge_dim
+        self.num_layers = num_layers
+
+        self.dropout = dropout
+        self.normalization = normalization
+
+        self.emb = nn.Linear(nfeat, nfeat, bias=False) 
+
+        self.gc1 = RelationGraphConvolution(
+            nfeat, nhid, edge_dim=self.edge_dim, aggregate='sum', use_relu=True, dropout=self.dropout, bias=False)
+
+        self.gc2 = nn.ModuleList([RelationGraphConvolution(nhid, nhid, edge_dim=self.edge_dim, aggregate='sum',
+                                                           use_relu=True, dropout=self.dropout, bias=False)
+                                  for i in range(self.num_layers-2)])
+
+        self.gc3 = RelationGraphConvolution(
+            nhid, nout, edge_dim=self.edge_dim, aggregate='sum', use_relu=False, dropout=self.dropout, bias=False)
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphAF/model/rgcn.py" startline="91" endline="117" pcid="324">
+    def __init__(self, nfeat, nhid=128, nout=128, edge_dim=3, num_layers=3, dropout=0., normalization=False):
+        '''
+        :num_layars: the number of layers in each R-GCN
+        '''
+        super(RGCN, self).__init__()
+
+        self.nfeat = nfeat
+        self.nhid = nhid
+        self.nout = nout
+        self.edge_dim = edge_dim
+        self.num_layers = num_layers
+
+        self.dropout = dropout
+        self.normalization = normalization
+
+        self.emb = nn.Linear(nfeat, nfeat, bias=False) 
+
+        self.gc1 = RelationGraphConvolution(
+            nfeat, nhid, edge_dim=self.edge_dim, aggregate='sum', use_relu=True, dropout=self.dropout, bias=False)
+
+        self.gc2 = nn.ModuleList([RelationGraphConvolution(nhid, nhid, edge_dim=self.edge_dim, aggregate='sum',
+                                                           use_relu=True, dropout=self.dropout, bias=False)
+                                  for i in range(self.num_layers-2)])
+
+        self.gc3 = RelationGraphConvolution(
+            nhid, nout, edge_dim=self.edge_dim, aggregate='sum', use_relu=False, dropout=self.dropout, bias=False)
+
+</source>
+</class>
+
+<class classid="26" nclones="2" nlines="21" similarity="78">
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphDF/model/disgraphaf.py" startline="8" endline="36" pcid="265">
+    def __init__(self, mask_node, mask_edge, index_select_edge, num_flow_layer=12, graph_size=38,
+                 num_node_type=9, num_edge_type=4, use_bn=True, num_rgcn_layer=3, nhid=128, nout=128):
+        '''
+        :param index_nod_edg:
+        :param num_edge_type, virtual type included
+        '''
+        super(DisGraphAF, self).__init__()
+        self.repeat_num = mask_node.size(0)
+        self.graph_size = graph_size
+        self.num_node_type = num_node_type
+        self.num_edge_type = num_edge_type
+
+        self.mask_node = nn.Parameter(mask_node.view(1, self.repeat_num, graph_size, 1), requires_grad=False)  # (1, repeat_num, n, 1)
+        self.mask_edge = nn.Parameter(mask_edge.view(1, self.repeat_num, 1, graph_size, graph_size), requires_grad=False)  # (1, repeat_num, 1, n, n)
+        self.index_select_edge = nn.Parameter(index_select_edge, requires_grad=False)  # (edge_step_length, 2)
+
+        self.emb_size = nout
+        self.num_flow_layer = num_flow_layer
+
+        self.rgcn = RGCN(num_node_type, nhid=nhid, nout=nout, edge_dim=self.num_edge_type-1,
+                         num_layers=num_rgcn_layer, dropout=0., normalization=False)
+
+        if use_bn:
+            self.batchNorm = nn.BatchNorm1d(nout)
+
+        self.node_st_net = nn.ModuleList([ST_Dis(nout, self.num_node_type, hid_dim=nhid, bias=True) for _ in range(num_flow_layer)])
+        self.edge_st_net = nn.ModuleList([ST_Dis(nout*3, self.num_edge_type, hid_dim=nhid, bias=True) for _ in range(num_flow_layer)])
+        
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphAF/model/graphaf.py" startline="10" endline="42" pcid="326">
+    def __init__(self, mask_node, mask_edge, index_select_edge, st_type='sigmoid', num_flow_layer=12, graph_size=38,
+                 num_node_type=9, num_edge_type=4, use_bn=True, num_rgcn_layer=3, nhid=128, nout=128):
+        '''
+        :param index_nod_edg:
+        :param num_edge_type, virtual type included
+        '''
+        super(MaskedGraphAF, self).__init__()
+        self.repeat_num = mask_node.size(0)
+        self.graph_size = graph_size
+        self.num_node_type = num_node_type
+        self.num_edge_type = num_edge_type
+
+        self.mask_node = nn.Parameter(mask_node.view(1, self.repeat_num, graph_size, 1), requires_grad=False)  # (1, repeat_num, n, 1)
+        self.mask_edge = nn.Parameter(mask_edge.view(1, self.repeat_num, 1, graph_size, graph_size), requires_grad=False)  # (1, repeat_num, 1, n, n)
+        self.index_select_edge = nn.Parameter(index_select_edge, requires_grad=False)  # (edge_step_length, 2)
+
+        self.emb_size = nout
+        self.num_flow_layer = num_flow_layer
+
+        self.rgcn = RGCN(num_node_type, nhid=nhid, nout=nout, edge_dim=self.num_edge_type-1,
+                         num_layers=num_rgcn_layer, dropout=0., normalization=False)
+
+        if use_bn:
+            self.batchNorm = nn.BatchNorm1d(nout)
+
+        self.st_type = st_type
+        self.st_net_fn_dict = {'sigmoid': ST_Net_Sigmoid, 'exp': ST_Net_Exp, 'softplus': ST_Net_Softplus}
+        assert st_type in ['sigmoid', 'exp', 'softplus'], 'unsupported st_type, choices are [sigmoid, exp, softplus, ]'
+        st_net_fn = self.st_net_fn_dict[st_type]
+        self.node_st_net = nn.ModuleList([st_net_fn(nout, self.num_node_type, hid_dim=nhid, bias=True) for _ in range(num_flow_layer)])
+        self.edge_st_net = nn.ModuleList([st_net_fn(nout*3, self.num_edge_type, hid_dim=nhid, bias=True) for _ in range(num_flow_layer)])
+
+
+</source>
+</class>
+
+<class classid="27" nclones="2" nlines="13" similarity="100">
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphDF/model/disgraphaf.py" startline="149" endline="176" pcid="271">
+    def _get_embs_edge(self, x, adj, index):
+        """
+        Args:
+            x: current node feature matrix with shape (batch, N, 9)
+            adj: current adjacency feature matrix with shape (batch, 4, N, N)
+            index: link prediction index with shape (batch, 2)
+        Returns:
+            Embedding(concatenate graph embedding, edge start node embedding and edge end node embedding) 
+                for updating edge features with shape (batch, 3d)
+        """
+        batch_size = x.size(0)
+        assert batch_size == index.size(0)
+
+        adj = adj[:, :3] # (batch, 3, N, N)
+
+        node_emb = self.rgcn(x, adj) # (batch, N, d)
+        if hasattr(self, 'batchNorm'):
+            node_emb = self.batchNorm(node_emb.transpose(1, 2)).transpose(1, 2) # (batch, N, d)
+
+        graph_emb = torch.sum(node_emb, dim = 1, keepdim=False).contiguous().view(batch_size, 1, -1) # (batch, 1, d)
+
+        index = index.view(batch_size, -1, 1).repeat(1, 1, self.emb_size) # (batch, 2, d)
+        graph_node_emb = torch.cat((torch.gather(node_emb, dim=1, index=index), 
+                                        graph_emb),dim=1)  # (batch_size, 3, d)
+        graph_node_emb = graph_node_emb.view(batch_size, -1) # (batch_size, 3d)
+        return graph_node_emb
+
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphAF/model/graphaf.py" startline="244" endline="271" pcid="332">
+    def _get_embs_edge(self, x, adj, index):
+        """
+        Args:
+            x: current node feature matrix with shape (batch, N, 9)
+            adj: current adjacency feature matrix with shape (batch, 4, N, N)
+            index: link prediction index with shape (batch, 2)
+        Returns:
+            Embedding(concatenate graph embedding, edge start node embedding and edge end node embedding) 
+                for updating edge features with shape (batch, 3d)
+        """
+        batch_size = x.size(0)
+        assert batch_size == index.size(0)
+
+        adj = adj[:, :3] # (batch, 3, N, N)
+
+        node_emb = self.rgcn(x, adj) # (batch, N, d)
+        if hasattr(self, 'batchNorm'):
+            node_emb = self.batchNorm(node_emb.transpose(1, 2)).transpose(1, 2) # (batch, N, d)
+
+        graph_emb = torch.sum(node_emb, dim = 1, keepdim=False).contiguous().view(batch_size, 1, -1) # (batch, 1, d)
+
+        index = index.view(batch_size, -1, 1).repeat(1, 1, self.emb_size) # (batch, 2, d)
+        graph_node_emb = torch.cat((torch.gather(node_emb, dim=1, index=index), 
+                                        graph_emb),dim=1)  # (batch_size, 3, d)
+        graph_node_emb = graph_node_emb.view(batch_size, -1) # (batch_size, 3d)
+        return graph_node_emb
+
+
+</source>
+</class>
+
+<class classid="28" nclones="2" nlines="25" similarity="92">
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphDF/model/disgraphaf.py" startline="177" endline="224" pcid="272">
+    def _get_embs(self, x, adj):
+        '''
+        :param x of shape (batch, N, 9)
+        :param adj of shape (batch, 4, N, N)
+        :return: inputs for st_net_node and st_net_edge
+        graph_emb_node of shape (batch, N, d)
+        graph_emb_edge of shape (batch, repeat-N, 3d)
+
+        '''
+        # inputs for RelGCNs
+        batch_size = x.size(0)
+        adj = adj[:, :3] # (batch, 3, N, N) TODO: check whether we have to use the 4-th slices(virtual bond) or not
+        x = torch.where(self.mask_node, x.unsqueeze(1).repeat(1, self.repeat_num, 1, 1), torch.zeros([1], device=x.device)).view(
+            -1, self.graph_size, self.num_node_type)  # (batch*repeat_num, N, 9)
+
+        adj = torch.where(self.mask_edge, adj.unsqueeze(1).repeat(1, self.repeat_num, 1, 1, 1), torch.zeros([1], device=x.device)).view(
+            -1, self.num_edge_type - 1, self.graph_size, self.graph_size)  # (batch*repeat_num, 3, N, N)
+        node_emb = self.rgcn(x, adj)  # (batch*repeat_num, N, d)
+
+        if hasattr(self, 'batchNorm'):
+            node_emb = self.batchNorm(node_emb.transpose(1, 2)).transpose(1, 2)  # (batch*repeat_num, N, d)
+
+        node_emb = node_emb.view(batch_size, self.repeat_num, self.graph_size, -1) # (batch, repeat_num, N, d)
+
+
+        graph_emb = torch.sum(node_emb, dim=2, keepdim=False) # (batch, repeat_num, d)
+
+        #  input for st_net_node
+        graph_emb_node = graph_emb[:, :self.graph_size].contiguous() # (batch, N, d)
+        # graph_emb_node = graph_emb_node.view(batch_size * self.graph_size, -1)  # (batch*N, d)
+
+        # input for st_net_edge
+        graph_emb_edge = graph_emb[:, self.graph_size:].contiguous() # (batch, repeat_num-N, d)
+        graph_emb_edge = graph_emb_edge.unsqueeze(2)  # (batch, repeat_num-N, 1, d)
+
+        all_node_emb_edge = node_emb[:, self.graph_size:] # (batch, repeat_num-N, N, d)
+
+        index = self.index_select_edge.view(1, -1, 2, 1).repeat(batch_size, 1, 1,
+                                        self.emb_size)  # (batch_size, repeat_num-N, 2, d)
+
+
+        graph_node_emb_edge = torch.cat((torch.gather(all_node_emb_edge, dim=2, index=index), 
+                                        graph_emb_edge),dim=2)  # (batch_size, repeat_num-N, 3, d)
+
+        graph_node_emb_edge = graph_node_emb_edge.view(batch_size, self.repeat_num - self.graph_size,
+                                        -1)  # (batch_size, (repeat_num-N), 3*d)
+
+        return graph_emb_node, graph_node_emb_edge
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphAF/model/graphaf.py" startline="272" endline="319" pcid="333">
+    def _get_embs(self, x, adj):
+        '''
+        :param x of shape (batch, N, 9)
+        :param adj of shape (batch, 4, N, N)
+        :return: inputs for st_net_node and st_net_edge
+        graph_emb_node of shape (batch*N, d)
+        graph_emb_edge of shape (batch*(repeat-N), 3d)
+
+        '''
+        # inputs for RelGCNs
+        batch_size = x.size(0)
+        adj = adj[:, :3] # (batch, 3, N, N) TODO: check whether we have to use the 4-th slices(virtual bond) or not
+        x = torch.where(self.mask_node, x.unsqueeze(1).repeat(1, self.repeat_num, 1, 1), torch.zeros([1], device=x.device)).view(
+            -1, self.graph_size, self.num_node_type)  # (batch*repeat_num, N, 9)
+
+        adj = torch.where(self.mask_edge, adj.unsqueeze(1).repeat(1, self.repeat_num, 1, 1, 1), torch.zeros([1], device=x.device)).view(
+            -1, self.num_edge_type - 1, self.graph_size, self.graph_size)  # (batch*repeat_num, 3, N, N)
+        node_emb = self.rgcn(x, adj)  # (batch*repeat_num, N, d)
+
+        if hasattr(self, 'batchNorm'):
+            node_emb = self.batchNorm(node_emb.transpose(1, 2)).transpose(1, 2)  # (batch*repeat_num, N, d)
+
+        node_emb = node_emb.view(batch_size, self.repeat_num, self.graph_size, -1) # (batch, repeat_num, N, d)
+
+
+        graph_emb = torch.sum(node_emb, dim=2, keepdim=False) # (batch, repeat_num, d)
+
+        #  input for st_net_node
+        graph_emb_node = graph_emb[:, :self.graph_size].contiguous() # (batch, N, d)
+        graph_emb_node = graph_emb_node.view(batch_size * self.graph_size, -1)  # (batch*N, d)
+
+        # input for st_net_edge
+        graph_emb_edge = graph_emb[:, self.graph_size:].contiguous() # (batch, repeat_num-N, d)
+        graph_emb_edge = graph_emb_edge.unsqueeze(2)  # (batch, repeat_num-N, 1, d)
+
+        all_node_emb_edge = node_emb[:, self.graph_size:] # (batch, repeat_num-N, N, d)
+
+        index = self.index_select_edge.view(1, -1, 2, 1).repeat(batch_size, 1, 1,
+                                        self.emb_size)  # (batch_size, repeat_num-N, 2, d)
+
+
+        graph_node_emb_edge = torch.cat((torch.gather(all_node_emb_edge, dim=2, index=index), 
+                                        graph_emb_edge),dim=2)  # (batch_size, repeat_num-N, 3, d)
+
+        graph_node_emb_edge = graph_node_emb_edge.view(batch_size * (self.repeat_num - self.graph_size),
+                                        -1)  # (batch_size * (repeat_num-N), 3*d)
+
+        return graph_emb_node, graph_node_emb_edge
+</source>
+</class>
+
+<class classid="29" nclones="6" nlines="22" similarity="82">
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphDF/model/st_net.py" startline="7" endline="34" pcid="280">
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Sigmoid, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale())
+            self.rescale2 = nn.utils.weight_norm(Rescale())
+
+        else:
+            self.rescale1 = Rescale()
+            self.rescale2 = Rescale()
+
+        self.tanh = nn.Tanh()
+        self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphDF/model/st_net.py" startline="60" endline="87" pcid="283">
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Exp, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale())
+            #self.rescale2 = nn.utils.weight_norm(Rescale())
+
+        else:
+            self.rescale1 = Rescale()
+            #self.rescale2 = Rescale()
+
+        self.tanh = nn.Tanh()
+        #self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphAF/model/st_net.py" startline="59" endline="86" pcid="346">
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Exp, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale())
+            #self.rescale2 = nn.utils.weight_norm(Rescale())
+
+        else:
+            self.rescale1 = Rescale()
+            #self.rescale2 = Rescale()
+
+        self.tanh = nn.Tanh()
+        #self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphAF/model/st_net.py" startline="113" endline="140" pcid="349">
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Softplus, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, hid_dim, bias=bias)
+        self.linear3 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale_channel(self.output_dim))
+
+        else:
+            self.rescale1 = Rescale_channel(self.output_dim)
+
+        self.tanh = nn.Tanh()
+        self.softplus = nn.Softplus()
+        #self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphAF/model/st_net.py" startline="6" endline="33" pcid="343">
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Sigmoid, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale())
+            self.rescale2 = nn.utils.weight_norm(Rescale())
+
+        else:
+            self.rescale1 = Rescale()
+            self.rescale2 = Rescale()
+
+        self.tanh = nn.Tanh()
+        self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphDF/model/st_net.py" startline="114" endline="141" pcid="286">
+    def __init__(self, input_dim, output_dim, hid_dim=64, num_layers=2, bias=True, scale_weight_norm=False, sigmoid_shift=2., apply_batch_norm=False):
+        super(ST_Net_Softplus, self).__init__()
+        self.num_layers = num_layers  # unused
+        self.input_dim = input_dim
+        self.hid_dim = hid_dim
+        self.output_dim = output_dim
+        self.bias = bias
+        self.apply_batch_norm = apply_batch_norm
+        self.scale_weight_norm = scale_weight_norm
+        self.sigmoid_shift = sigmoid_shift
+
+        self.linear1 = nn.Linear(input_dim, hid_dim, bias=bias)
+        self.linear2 = nn.Linear(hid_dim, hid_dim, bias=bias)
+        self.linear3 = nn.Linear(hid_dim, output_dim*2, bias=bias)
+
+        if self.apply_batch_norm:
+            self.bn_before = nn.BatchNorm1d(input_dim)
+        if self.scale_weight_norm:
+            self.rescale1 = nn.utils.weight_norm(Rescale_channel(self.output_dim))
+
+        else:
+            self.rescale1 = Rescale_channel(self.output_dim)
+
+        self.tanh = nn.Tanh()
+        self.softplus = nn.Softplus()
+        #self.sigmoid = nn.Sigmoid()
+        self.reset_parameters()
+
+</source>
+</class>
+
+<class classid="30" nclones="4" nlines="11" similarity="81">
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphDF/model/st_net.py" startline="42" endline="58" pcid="282">
+    def forward(self, x):
+        '''
+        :param x: (batch * repeat_num for node/edge, emb)
+        :return: w and b for affine operation
+        '''
+        if self.apply_batch_norm:
+            x = self.bn_before(x)
+
+        x = self.linear2(self.tanh(self.linear1(x)))
+        x = self.rescale1(x)
+        s = x[:, :self.output_dim]
+        t = x[:, self.output_dim:]
+        s = self.sigmoid(s + self.sigmoid_shift)
+        s = self.rescale2(s) # linear scale seems important, similar to learnable prior..
+        return s, t
+
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphAF/model/st_net.py" startline="150" endline="167" pcid="351">
+    def forward(self, x):
+        '''
+        :param x: (batch * repeat_num for node/edge, emb)
+        :return: w and b for affine operation
+        '''
+        if self.apply_batch_norm:
+            x = self.bn_before(x)
+
+        x = F.tanh(self.linear2(F.relu(self.linear1(x))))
+        x = self.linear3(x)
+        #x = self.rescale1(x)
+        s = x[:, :self.output_dim]
+        t = x[:, self.output_dim:]
+        s = self.softplus(s)
+        s = self.rescale1(s) # linear scale seems important, similar to learnable prior..
+        return s, t
+
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphDF/model/st_net.py" startline="151" endline="168" pcid="288">
+    def forward(self, x):
+        '''
+        :param x: (batch * repeat_num for node/edge, emb)
+        :return: w and b for affine operation
+        '''
+        if self.apply_batch_norm:
+            x = self.bn_before(x)
+
+        x = F.tanh(self.linear2(F.relu(self.linear1(x))))
+        x = self.linear3(x)
+        #x = self.rescale1(x)
+        s = x[:, :self.output_dim]
+        t = x[:, self.output_dim:]
+        s = self.softplus(s)
+        s = self.rescale1(s) # linear scale seems important, similar to learnable prior..
+        return s, t
+
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphAF/model/st_net.py" startline="41" endline="57" pcid="345">
+    def forward(self, x):
+        '''
+        :param x: (batch * repeat_num for node/edge, emb)
+        :return: w and b for affine operation
+        '''
+        if self.apply_batch_norm:
+            x = self.bn_before(x)
+
+        x = self.linear2(self.tanh(self.linear1(x)))
+        x = self.rescale1(x)
+        s = x[:, :self.output_dim]
+        t = x[:, self.output_dim:]
+        s = self.sigmoid(s + self.sigmoid_shift)
+        s = self.rescale2(s) # linear scale seems important, similar to learnable prior..
+        return s, t
+
+
+</source>
+</class>
+
+<class classid="31" nclones="2" nlines="68" similarity="97">
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphEBM/graphebm.py" startline="44" endline="160" pcid="297">
+    def train_rand_gen(self, loader, lr, wd, max_epochs, c, ld_step, ld_noise, ld_step_size, clamp, alpha, save_interval, save_dir):
+        r"""
+            Running training for random generation task.
+
+            Args:
+                loader: The data loader for loading training samples. It is supposed to use dig.ggraph.dataset.QM9/ZINC250k
+                    as the dataset class, and apply torch_geometric.data.DenseDataLoader to it to form the data loader.
+                lr (float): The learning rate for training.
+                wd (float): The weight decay factor for training.
+                max_epochs (int): The maximum number of training epochs.
+                c (float): The scaling hyperparameter for dequantization.
+                ld_step (int): The number of iteration steps of Langevin dynamics.
+                ld_noise (float): The standard deviation of the added noise in Langevin dynamics.
+                ld_step_size (int): The step size of Langevin dynamics.
+                clamp (bool): Whether to use gradient clamp in Langevin dynamics.
+                alpha (float): The weight coefficient for loss function.
+                save_interval (int): The frequency to save the model parameters to .pt files,
+                    *e.g.*, if save_interval=2, the model parameters will be saved for every 2 training epochs.
+                save_dir (str): the directory to save the model parameters.
+        """
+        parameters = self.energy_function.parameters()
+        optimizer = Adam(parameters, lr=lr, betas=(0.0, 0.999), weight_decay=wd)
+        
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        
+        for epoch in range(max_epochs):
+            t_start = time.time()
+            losses_reg = []
+            losses_en = []
+            losses = []
+            for _, batch in enumerate(tqdm(loader)):
+                ### Dequantization
+                pos_x = batch.x.to(self.device).to(dtype=torch.float32)
+                pos_x += c * torch.rand_like(pos_x, device=self.device)  
+                pos_adj = batch.adj.to(self.device).to(dtype=torch.float32)
+                pos_adj += c * torch.rand_like(pos_adj, device=self.device)  
+
+
+                ### Langevin dynamics
+                neg_x = torch.rand_like(pos_x, device=self.device) * (1 + c) 
+                neg_adj = torch.rand_like(pos_adj, device=self.device) 
+
+                pos_adj = rescale_adj(pos_adj)
+                neg_x.requires_grad = True
+                neg_adj.requires_grad = True
+
+
+
+                requires_grad(parameters, False)
+                self.energy_function.eval()
+
+
+
+                noise_x = torch.randn_like(neg_x, device=self.device)
+                noise_adj = torch.randn_like(neg_adj, device=self.device)
+                for _ in range(ld_step):
+
+                    noise_x.normal_(0, ld_noise)
+                    noise_adj.normal_(0, ld_noise)
+                    neg_x.data.add_(noise_x.data)
+                    neg_adj.data.add_(noise_adj.data)
+
+                    neg_out = self.energy_function(neg_adj, neg_x)
+                    neg_out.sum().backward()
+                    if clamp:
+                        neg_x.grad.data.clamp_(-0.01, 0.01)
+                        neg_adj.grad.data.clamp_(-0.01, 0.01)
+
+
+                    neg_x.data.add_(neg_x.grad.data, alpha=ld_step_size)
+                    neg_adj.data.add_(neg_adj.grad.data, alpha=ld_step_size)
+
+                    neg_x.grad.detach_()
+                    neg_x.grad.zero_()
+                    neg_adj.grad.detach_()
+                    neg_adj.grad.zero_()
+
+                    neg_x.data.clamp_(0, 1 + c)
+                    neg_adj.data.clamp_(0, 1)
+
+                ### Training by backprop
+                neg_x = neg_x.detach()
+                neg_adj = neg_adj.detach()
+                requires_grad(parameters, True)
+                self.energy_function.train()
+
+                self.energy_function.zero_grad()
+
+                pos_out = self.energy_function(pos_adj, pos_x)
+                neg_out = self.energy_function(neg_adj, neg_x)
+
+                loss_reg = (pos_out ** 2 + neg_out ** 2)  # energy magnitudes regularizer
+                loss_en = pos_out - neg_out  # loss for shaping energy function
+                loss = loss_en + alpha * loss_reg
+                loss = loss.mean()
+                loss.backward()
+                clip_grad(optimizer)
+                optimizer.step()
+
+
+                losses_reg.append(loss_reg.mean())
+                losses_en.append(loss_en.mean())
+                losses.append(loss)
+            
+            
+            t_end = time.time()
+
+            ### Save checkpoints
+            if (epoch+1) % save_interval == 0:
+                torch.save(self.energy_function.state_dict(), os.path.join(save_dir, 'epoch_{}.pt'.format(epoch + 1)))
+                print('Saving checkpoint at epoch ', epoch+1)
+                print('==========================================')
+            print('Epoch: {:03d}, Loss: {:.6f}, Energy Loss: {:.6f}, Regularizer Loss: {:.6f}, Sec/Epoch: {:.2f}'.format(epoch+1, (sum(losses)/len(losses)).item(), (sum(losses_en)/len(losses_en)).item(), (sum(losses_reg)/len(losses_reg)).item(), t_end-t_start))
+            print('==========================================')
+    
+    
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphEBM/graphebm.py" startline="232" endline="350" pcid="299">
+    def train_goal_directed(self, loader, lr, wd, max_epochs, c, ld_step, ld_noise, ld_step_size, clamp, alpha, save_interval, save_dir):
+        r"""
+            Running training for goal-directed generation task.
+
+            Args:
+                loader: The data loader for loading training samples. It is supposed to use dig.ggraph.dataset.QM9/ZINC250k
+                    as the dataset class, and apply torch_geometric.data.DenseDataLoader to it to form the data loader.
+                lr (float): The learning rate for training.
+                wd (float): The weight decay factor for training.
+                max_epochs (int): The maximum number of training epochs.
+                c (float): The scaling hyperparameter for dequantization.
+                ld_step (int): The number of iteration steps of Langevin dynamics.
+                ld_noise (float): The standard deviation of the added noise in Langevin dynamics.
+                ld_step_size (int): The step size of Langevin dynamics.
+                clamp (bool): Whether to use gradient clamp in Langevin dynamics.
+                alpha (float): The weight coefficient for loss function.
+                save_interval (int): The frequency to save the model parameters to .pt files,
+                    *e.g.*, if save_interval=2, the model parameters will be saved for every 2 training epochs.
+                save_dir (str): the directory to save the model parameters.
+        """
+        parameters = self.energy_function.parameters()
+        optimizer = Adam(parameters, lr=lr, betas=(0.0, 0.999), weight_decay=wd)
+        
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        
+        for epoch in range(max_epochs):
+            t_start = time.time()
+            losses_reg = []
+            losses_en = []
+            losses = []
+            for _, batch in enumerate(tqdm(loader)):
+                ### Dequantization
+                pos_x = batch.x.to(self.device).to(dtype=torch.float32)
+                pos_x += c * torch.rand_like(pos_x, device=self.device)  
+                pos_adj = batch.adj.to(self.device).to(dtype=torch.float32)
+                pos_adj += c * torch.rand_like(pos_adj, device=self.device) 
+                
+                pos_y = batch.y.to(self.device)
+
+
+                ### Langevin dynamics
+                neg_x = torch.rand_like(pos_x, device=self.device) * (1 + c) 
+                neg_adj = torch.rand_like(pos_adj, device=self.device) 
+
+                pos_adj = rescale_adj(pos_adj)
+                neg_x.requires_grad = True
+                neg_adj.requires_grad = True
+
+
+
+                requires_grad(parameters, False)
+                self.energy_function.eval()
+
+
+
+                noise_x = torch.randn_like(neg_x, device=self.device)
+                noise_adj = torch.randn_like(neg_adj, device=self.device)
+                for _ in range(ld_step):
+
+                    noise_x.normal_(0, ld_noise)
+                    noise_adj.normal_(0, ld_noise)
+                    neg_x.data.add_(noise_x.data)
+                    neg_adj.data.add_(noise_adj.data)
+
+                    neg_out = self.energy_function(neg_adj, neg_x)
+                    neg_out.sum().backward()
+                    if clamp:
+                        neg_x.grad.data.clamp_(-0.01, 0.01)
+                        neg_adj.grad.data.clamp_(-0.01, 0.01)
+
+
+                    neg_x.data.add_(neg_x.grad.data, alpha=ld_step_size)
+                    neg_adj.data.add_(neg_adj.grad.data, alpha=ld_step_size)
+
+                    neg_x.grad.detach_()
+                    neg_x.grad.zero_()
+                    neg_adj.grad.detach_()
+                    neg_adj.grad.zero_()
+
+                    neg_x.data.clamp_(0, 1 + c)
+                    neg_adj.data.clamp_(0, 1)
+
+                ### Training by backprop
+                neg_x = neg_x.detach()
+                neg_adj = neg_adj.detach()
+                requires_grad(parameters, True)
+                self.energy_function.train()
+
+                self.energy_function.zero_grad()
+
+                pos_out = self.energy_function(pos_adj, pos_x)
+                neg_out = self.energy_function(neg_adj, neg_x)
+
+                loss_reg = (pos_out ** 2 + neg_out ** 2)  # energy magnitudes regularizer
+                loss_en = (1 + torch.exp(pos_y)) * pos_out - neg_out  # loss for shaping energy function
+                loss = loss_en + alpha * loss_reg
+                loss = loss.mean()
+                loss.backward()
+                clip_grad(optimizer)
+                optimizer.step()
+
+
+                losses_reg.append(loss_reg.mean())
+                losses_en.append(loss_en.mean())
+                losses.append(loss)
+            
+            
+            t_end = time.time()
+
+            ### Save checkpoints
+            if (epoch+1) % save_interval == 0:
+                torch.save(self.energy_function.state_dict(), os.path.join(save_dir, 'epoch_{}.pt'.format(epoch + 1)))
+                print('Saving checkpoint at epoch ', epoch+1)
+                print('==========================================')
+            print('Epoch: {:03d}, Loss: {:.6f}, Energy Loss: {:.6f}, Regularizer Loss: {:.6f}, Sec/Epoch: {:.2f}'.format(epoch+1, (sum(losses)/len(losses)).item(), (sum(losses_en)/len(losses_en)).item(), (sum(losses_reg)/len(losses_reg)).item(), t_end-t_start))
+            print('==========================================')
+    
+
+</source>
+</class>
+
+<class classid="32" nclones="2" nlines="43" similarity="70">
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphEBM/graphebm.py" startline="161" endline="231" pcid="298">
+    def run_rand_gen(self, checkpoint_path, n_samples, c, ld_step, ld_noise, ld_step_size, clamp, atomic_num_list):
+        r"""
+            Running graph generation for random generation task.
+
+            Args:
+                checkpoint_path (str): The path of the trained model, *i.e.*, the .pt file.
+                n_samples (int): the number of molecules to generate.
+                c (float): The scaling hyperparameter for dequantization.
+                ld_step (int): The number of iteration steps of Langevin dynamics.
+                ld_noise (float): The standard deviation of the added noise in Langevin dynamics.
+                ld_step_size (int): The step size of Langevin dynamics.
+                clamp (bool): Whether to use gradient clamp in Langevin dynamics.
+                atomic_num_list (list): The list used to indicate atom types. 
+            
+            :rtype:
+                gen_mols (list): A list of generated molecules represented by rdkit Chem.Mol objects;
+                
+        """
+        print("Loading paramaters from {}".format(checkpoint_path))
+        self.energy_function.load_state_dict(torch.load(checkpoint_path))
+        parameters =  self.energy_function.parameters()
+        
+        ### Initialization
+        print("Initializing samples...")
+        gen_x = torch.rand(n_samples, self.n_atom_type, self.n_atom, device=self.device) * (1 + c)
+        gen_adj = torch.rand(n_samples, self.n_edge_type, self.n_atom, self.n_atom, device=self.device)
+        
+        gen_x.requires_grad = True
+        gen_adj.requires_grad = True
+        requires_grad(parameters, False)
+        self.energy_function.eval()
+        
+        noise_x = torch.randn_like(gen_x, device=self.device)
+        noise_adj = torch.randn_like(gen_adj, device=self.device)
+        
+        ### Langevin dynamics
+        print("Generating samples...")
+        for _ in range(ld_step):
+            noise_x.normal_(0, ld_noise)
+            noise_adj.normal_(0, ld_noise)
+            gen_x.data.add_(noise_x.data)
+            gen_adj.data.add_(noise_adj.data)
+
+
+            gen_out = self.energy_function(gen_adj, gen_x)
+            gen_out.sum().backward()
+            if clamp:
+                gen_x.grad.data.clamp_(-0.01, 0.01)
+                gen_adj.grad.data.clamp_(-0.01, 0.01)
+
+
+            gen_x.data.add_(gen_x.grad.data, alpha=-ld_step_size)
+            gen_adj.data.add_(gen_adj.grad.data, alpha=-ld_step_size)
+
+            gen_x.grad.detach_()
+            gen_x.grad.zero_()
+            gen_adj.grad.detach_()
+            gen_adj.grad.zero_()
+
+            gen_x.data.clamp_(0, 1 + c)
+            gen_adj.data.clamp_(0, 1)
+            
+        gen_x = gen_x.detach()
+        gen_adj = gen_adj.detach()
+        gen_adj = (gen_adj + gen_adj.permute(0, 1, 3, 2)) / 2
+        
+        gen_mols = gen_mol_from_one_shot_tensor(gen_adj, gen_x, atomic_num_list, correct_validity=True)
+        
+        return gen_mols
+
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphEBM/graphebm.py" startline="538" endline="615" pcid="302">
+    def run_comp_gen(self, checkpoint_path_qed, checkpoint_path_plogp, n_samples, c, ld_step, ld_noise, ld_step_size, clamp, atomic_num_list):
+        r"""
+            Running graph generation for compositional generation task.
+
+            Args:
+                checkpoint_path_qed (str): The path of the model trained on QED property, *i.e.*, the .pt file.
+                checkpoint_path_plogp (str): The path of the model trained on plogp property, *i.e.*, the .pt file.
+                n_samples (int): the number of molecules to generate.
+                c (float): The scaling hyperparameter for dequantization.
+                ld_step (int): The number of iteration steps of Langevin dynamics.
+                ld_noise (float): The standard deviation of the added noise in Langevin dynamics.
+                ld_step_size (int): The step size of Langevin dynamics.
+                clamp (bool): Whether to use gradient clamp in Langevin dynamics.
+                atomic_num_list (list): The list used to indicate atom types.
+            
+            :rtype:
+                gen_mols (list): A list of generated molecules represented by rdkit Chem.Mol objects;
+        """
+        model_qed = self.energy_function
+        model_plogp = copy.deepcopy(self.energy_function)
+        print("Loading paramaters from {}".format(checkpoint_path_qed))
+        model_qed.load_state_dict(torch.load(checkpoint_path_qed))
+        parameters_qed =  model_qed.parameters()
+        print("Loading paramaters from {}".format(checkpoint_path_plogp))
+        model_plogp.load_state_dict(torch.load(checkpoint_path_plogp))
+        parameters_plogp =  model_plogp.parameters()
+        
+        ### Initialization
+        print("Initializing samples...")
+        gen_x = torch.rand(n_samples, self.n_atom_type, self.n_atom, device=self.device) * (1 + c)
+        gen_adj = torch.rand(n_samples, self.n_edge_type, self.n_atom, self.n_atom, device=self.device)
+        
+        gen_x.requires_grad = True
+        gen_adj.requires_grad = True
+        requires_grad(parameters_qed, False)
+        requires_grad(parameters_plogp, False)
+        model_qed.eval()
+        model_plogp.eval()
+        
+        noise_x = torch.randn_like(gen_x, device=self.device)
+        noise_adj = torch.randn_like(gen_adj, device=self.device)
+        
+        ### Langevin dynamics
+        print("Generating samples...")
+        for _ in range(ld_step):
+            noise_x.normal_(0, ld_noise)
+            noise_adj.normal_(0, ld_noise)
+            gen_x.data.add_(noise_x.data)
+            gen_adj.data.add_(noise_adj.data)
+
+
+            gen_out_qed = model_qed(gen_adj, gen_x)
+            gen_out_plogp = model_plogp(gen_adj, gen_x)
+            gen_out = 0.5 * gen_out_qed + 0.5 * gen_out_plogp
+            gen_out.sum().backward()
+            if clamp:
+                gen_x.grad.data.clamp_(-0.01, 0.01)
+                gen_adj.grad.data.clamp_(-0.01, 0.01)
+
+
+            gen_x.data.add_(gen_x.grad.data, alpha=-ld_step_size)
+            gen_adj.data.add_(gen_adj.grad.data, alpha=-ld_step_size)
+
+            gen_x.grad.detach_()
+            gen_x.grad.zero_()
+            gen_adj.grad.detach_()
+            gen_adj.grad.zero_()
+
+            gen_x.data.clamp_(0, 1 + c)
+            gen_adj.data.clamp_(0, 1)
+            
+        gen_x = gen_x.detach()
+        gen_adj = gen_adj.detach()
+        gen_adj = (gen_adj + gen_adj.permute(0, 1, 3, 2)) / 2
+        
+        gen_mols = gen_mol_from_one_shot_tensor(gen_adj, gen_x, atomic_num_list, correct_validity=True)
+        
+        return gen_mols
+</source>
+</class>
+
+<class classid="33" nclones="2" nlines="22" similarity="90">
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphAF/model/graphaf.py" startline="107" endline="144" pcid="328">
+    def forward_rl_node(self, x, adj, x_cont):
+        """
+        Args:
+            x: shape (batch, N, 9)
+            adj: shape (batch, 4, N, N)
+            x_cont: shape (batch, 9)
+        Returns:
+            x_cont: shape (batch, 9)
+            x_log_jacob: shape (batch, )
+        """
+        embs = self._get_embs_node(x, adj) # (batch, d)
+        for i in range(self.num_flow_layer):
+            node_s, node_t = self.node_st_net[i](embs)
+
+            if self.st_type == 'sigmoid':
+                x_cont = x_cont * node_s + node_t
+            elif self.st_type == 'exp':
+                node_s = node_s.exp()
+                x_cont = (x_cont + node_t) * node_s
+            elif self.st_type == 'softplus':
+                x_cont = (x_cont + node_t) * node_s
+            else:
+                raise ValueError('unsupported st type: (%s)' % self.args.st_type)
+
+            if torch.isnan(x_cont).any():
+                raise RuntimeError(
+                    'x_cont has NaN entries after transformation at layer %d' % i)
+
+            if i == 0:
+                x_log_jacob = (torch.abs(node_s) + 1e-20).log()
+            else:
+                x_log_jacob += (torch.abs(node_s) + 1e-20).log()            
+
+        x_log_jacob = x_log_jacob.sum(-1)  # (batch)
+
+        return x_cont, x_log_jacob
+
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/GraphAF/model/graphaf.py" startline="145" endline="184" pcid="329">
+    def forward_rl_edge(self, x, adj, x_cont, index):
+        """
+        Args:
+            x: shape (batch, N, 9)
+            adj: shape (batch, 4, N, N)
+            x_cont: shape (batch, 4)
+            index: shape (batch, 2)
+        Returns:
+            x_cont: shape (batch, 4)
+            x_log_jacob: shape (batch, )            
+        """
+        embs = self._get_embs_edge(x, adj, index) # (batch, 3d)
+
+        for i in range(self.num_flow_layer):
+            edge_s, edge_t = self.edge_st_net[i](embs)
+
+            if self.st_type == 'sigmoid':
+                x_cont = x_cont * edge_s + edge_t
+            elif self.st_type == 'exp':
+                edge_s = edge_s.exp()
+                x_cont = (x_cont + edge_t) * edge_s
+            elif self.st_type == 'softplus':
+                x_cont = (x_cont + edge_t) * edge_s
+            else:
+                raise ValueError('unsupported st type: (%s)' % self.args.st_type)
+
+            if torch.isnan(x_cont).any():
+                raise RuntimeError(
+                    'x_cont has NaN entries after transformation at layer %d' % i)
+
+            if i == 0:
+                x_log_jacob = (torch.abs(edge_s) + 1e-20).log()
+            else:
+                x_log_jacob += (torch.abs(edge_s) + 1e-20).log()            
+
+        x_log_jacob = x_log_jacob.sum(-1)  # (batch)
+        
+        return x_cont, x_log_jacob        
+
+
+</source>
+</class>
+
+<class classid="34" nclones="2" nlines="41" similarity="97">
+<source file="systems/DIG-0.1.1/dig/ggraph/method/JTVAE/fast_jtnn/mpn.py" startline="41" endline="93" pcid="408">
+def mol2graph(mol_batch):
+    padding = torch.zeros(ATOM_FDIM + BOND_FDIM)
+    fatoms, fbonds = [], [padding]  # Ensure bond is 1-indexed
+    in_bonds, all_bonds = [], [(-1, -1)]  # Ensure bond is 1-indexed
+    scope = []
+    total_atoms = 0
+
+    for smiles in mol_batch:
+        mol = get_mol(smiles)
+        #mol = Chem.MolFromSmiles(smiles)
+        n_atoms = mol.GetNumAtoms()
+        for atom in mol.GetAtoms():
+            fatoms.append(atom_features(atom))
+            in_bonds.append([])
+
+        for bond in mol.GetBonds():
+            a1 = bond.GetBeginAtom()
+            a2 = bond.GetEndAtom()
+            x = a1.GetIdx() + total_atoms
+            y = a2.GetIdx() + total_atoms
+
+            b = len(all_bonds)
+            all_bonds.append((x, y))
+            fbonds.append(torch.cat([fatoms[x], bond_features(bond)], 0))
+            in_bonds[y].append(b)
+
+            b = len(all_bonds)
+            all_bonds.append((y, x))
+            fbonds.append(torch.cat([fatoms[y], bond_features(bond)], 0))
+            in_bonds[x].append(b)
+
+        scope.append((total_atoms, n_atoms))
+        total_atoms += n_atoms
+
+    total_bonds = len(all_bonds)
+    fatoms = torch.stack(fatoms, 0)
+    fbonds = torch.stack(fbonds, 0)
+    agraph = torch.zeros(total_atoms, MAX_NB).long()
+    bgraph = torch.zeros(total_bonds, MAX_NB).long()
+
+    for a in range(total_atoms):
+        for i, b in enumerate(in_bonds[a]):
+            agraph[a, i] = b
+
+    for b1 in range(1, total_bonds):
+        x, y = all_bonds[b1]
+        for i, b2 in enumerate(in_bonds[x]):
+            if all_bonds[b2][0] != y:
+                bgraph[b1, i] = b2
+
+    return fatoms, fbonds, agraph, bgraph, scope
+
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/JTVAE/fast_jtnn/mpn.py" startline="135" endline="185" pcid="411">
+    def tensorize(mol_batch):
+        padding = torch.zeros(ATOM_FDIM + BOND_FDIM)
+        fatoms, fbonds = [], [padding]  # Ensure bond is 1-indexed
+        in_bonds, all_bonds = [], [(-1, -1)]  # Ensure bond is 1-indexed
+        scope = []
+        total_atoms = 0
+
+        for smiles in mol_batch:
+            mol = get_mol(smiles)
+            #mol = Chem.MolFromSmiles(smiles)
+            n_atoms = mol.GetNumAtoms()
+            for atom in mol.GetAtoms():
+                fatoms.append(atom_features(atom))
+                in_bonds.append([])
+
+            for bond in mol.GetBonds():
+                a1 = bond.GetBeginAtom()
+                a2 = bond.GetEndAtom()
+                x = a1.GetIdx() + total_atoms
+                y = a2.GetIdx() + total_atoms
+
+                b = len(all_bonds)
+                all_bonds.append((x, y))
+                fbonds.append(torch.cat([fatoms[x], bond_features(bond)], 0))
+                in_bonds[y].append(b)
+
+                b = len(all_bonds)
+                all_bonds.append((y, x))
+                fbonds.append(torch.cat([fatoms[y], bond_features(bond)], 0))
+                in_bonds[x].append(b)
+
+            scope.append((total_atoms, n_atoms))
+            total_atoms += n_atoms
+
+        total_bonds = len(all_bonds)
+        fatoms = torch.stack(fatoms, 0)
+        fbonds = torch.stack(fbonds, 0)
+        agraph = torch.zeros(total_atoms, MAX_NB).long()
+        bgraph = torch.zeros(total_bonds, MAX_NB).long()
+
+        for a in range(total_atoms):
+            for i, b in enumerate(in_bonds[a]):
+                agraph[a, i] = b
+
+        for b_1 in range(1, total_bonds):
+            x, y = all_bonds[b_1]
+            for i, b_2 in enumerate(in_bonds[x]):
+                if all_bonds[b_2][0] != y:
+                    bgraph[b_1, i] = b_2
+
+        return (fatoms, fbonds, agraph, bgraph, scope)
+</source>
+</class>
+
+<class classid="35" nclones="2" nlines="24" similarity="83">
+<source file="systems/DIG-0.1.1/dig/ggraph/method/JTVAE/fast_jtnn/mpn.py" startline="105" endline="133" pcid="410">
+    def forward(self, fatoms, fbonds, agraph, bgraph, scope):
+        fatoms = create_var(fatoms)
+        fbonds = create_var(fbonds)
+        agraph = create_var(agraph)
+        bgraph = create_var(bgraph)
+
+        binput = self.W_i(fbonds)
+        message = F.relu(binput)
+
+        for i in range(self.depth - 1):
+            nei_message = index_select_ND(message, 0, bgraph)
+            nei_message = nei_message.sum(dim=1)
+            nei_message = self.W_h(nei_message)
+            message = F.relu(binput + nei_message)
+
+        nei_message = index_select_ND(message, 0, agraph)
+        nei_message = nei_message.sum(dim=1)
+        ainput = torch.cat([fatoms, nei_message], dim=1)
+        atom_hiddens = F.relu(self.W_o(ainput))
+
+        max_len = max([x for _, x in scope])
+        batch_vecs = []
+        for st, le in scope:
+            cur_vecs = atom_hiddens[st: st + le].mean(dim=0)
+            batch_vecs.append(cur_vecs)
+
+        mol_vecs = torch.stack(batch_vecs, dim=0)
+        return mol_vecs
+
+</source>
+<source file="systems/DIG-0.1.1/dig/ggraph/method/JTVAE/fast_jtnn/jtmpn.py" startline="48" endline="78" pcid="429">
+    def forward(self, fatoms, fbonds, agraph, bgraph, scope, tree_message):
+        fatoms = create_var(fatoms)
+        fbonds = create_var(fbonds)
+        agraph = create_var(agraph)
+        bgraph = create_var(bgraph)
+
+        binput = self.W_i(fbonds)
+        graph_message = F.relu(binput)
+
+        for i in range(self.depth - 1):
+            message = torch.cat([tree_message, graph_message], dim=0)
+            nei_message = index_select_ND(message, 0, bgraph)
+            # assuming tree_message[0] == vec(0)
+            nei_message = nei_message.sum(dim=1)
+            nei_message = self.W_h(nei_message)
+            graph_message = F.relu(binput + nei_message)
+
+        message = torch.cat([tree_message, graph_message], dim=0)
+        nei_message = index_select_ND(message, 0, agraph)
+        nei_message = nei_message.sum(dim=1)
+        ainput = torch.cat([fatoms, nei_message], dim=1)
+        atom_hiddens = F.relu(self.W_o(ainput))
+
+        mol_vecs = []
+        for st, le in scope:
+            mol_vec = atom_hiddens.narrow(0, st, le).sum(dim=0) / le
+            mol_vecs.append(mol_vec)
+
+        mol_vecs = torch.stack(mol_vecs, dim=0)
+        return mol_vecs
+
+</source>
+</class>
+
+<class classid="36" nclones="2" nlines="12" similarity="100">
+<source file="systems/DIG-0.1.1/dig/threedgraph/method/spherenet/features.py" startline="21" endline="35" pcid="476">
+def Jn_zeros(n, k):
+    zerosj = np.zeros((n, k), dtype='float32')
+    zerosj[0] = np.arange(1, k + 1) * np.pi
+    points = np.arange(1, k + n) * np.pi
+    racines = np.zeros(k + n - 1, dtype='float32')
+    for i in range(1, n):
+        for j in range(k + n - 1 - i):
+            foo = brentq(Jn, points[j], points[j + 1], (i, ))
+            racines[j] = foo
+        points = racines
+        zerosj[i][:k] = racines[:k]
+
+    return zerosj
+
+
+</source>
+<source file="systems/DIG-0.1.1/dig/threedgraph/method/dimenetpp/features.py" startline="20" endline="34" pcid="532">
+def Jn_zeros(n, k):
+    zerosj = np.zeros((n, k), dtype='float32')
+    zerosj[0] = np.arange(1, k + 1) * np.pi
+    points = np.arange(1, k + n) * np.pi
+    racines = np.zeros(k + n - 1, dtype='float32')
+    for i in range(1, n):
+        for j in range(k + n - 1 - i):
+            foo = brentq(Jn, points[j], points[j + 1], (i, ))
+            racines[j] = foo
+        points = racines
+        zerosj[i][:k] = racines[:k]
+
+    return zerosj
+
+
+</source>
+</class>
+
+<class classid="37" nclones="2" nlines="20" similarity="100">
+<source file="systems/DIG-0.1.1/dig/threedgraph/method/spherenet/features.py" startline="48" endline="71" pcid="478">
+def bessel_basis(n, k):
+    zeros = Jn_zeros(n, k)
+    normalizer = []
+    for order in range(n):
+        normalizer_tmp = []
+        for i in range(k):
+            normalizer_tmp += [0.5 * Jn(zeros[order, i], order + 1)**2]
+        normalizer_tmp = 1 / np.array(normalizer_tmp)**0.5
+        normalizer += [normalizer_tmp]
+
+    f = spherical_bessel_formulas(n)
+    x = sym.symbols('x')
+    bess_basis = []
+    for order in range(n):
+        bess_basis_tmp = []
+        for i in range(k):
+            bess_basis_tmp += [
+                sym.simplify(normalizer[order][i] *
+                             f[order].subs(x, zeros[order, i] * x))
+            ]
+        bess_basis += [bess_basis_tmp]
+    return bess_basis
+
+
+</source>
+<source file="systems/DIG-0.1.1/dig/threedgraph/method/dimenetpp/features.py" startline="47" endline="70" pcid="534">
+def bessel_basis(n, k):
+    zeros = Jn_zeros(n, k)
+    normalizer = []
+    for order in range(n):
+        normalizer_tmp = []
+        for i in range(k):
+            normalizer_tmp += [0.5 * Jn(zeros[order, i], order + 1)**2]
+        normalizer_tmp = 1 / np.array(normalizer_tmp)**0.5
+        normalizer += [normalizer_tmp]
+
+    f = spherical_bessel_formulas(n)
+    x = sym.symbols('x')
+    bess_basis = []
+    for order in range(n):
+        bess_basis_tmp = []
+        for i in range(k):
+            bess_basis_tmp += [
+                sym.simplify(normalizer[order][i] *
+                             f[order].subs(x, zeros[order, i] * x))
+            ]
+        bess_basis += [bess_basis_tmp]
+    return bess_basis
+
+
+</source>
+</class>
+
+<class classid="38" nclones="2" nlines="20" similarity="100">
+<source file="systems/DIG-0.1.1/dig/threedgraph/method/spherenet/features.py" startline="77" endline="101" pcid="480">
+def associated_legendre_polynomials(k, zero_m_only=True):
+    z = sym.symbols('z')
+    P_l_m = [[0] * (j + 1) for j in range(k)]
+
+    P_l_m[0][0] = 1
+    if k > 0:
+        P_l_m[1][0] = z
+
+        for j in range(2, k):
+            P_l_m[j][0] = sym.simplify(((2 * j - 1) * z * P_l_m[j - 1][0] -
+                                        (j - 1) * P_l_m[j - 2][0]) / j)
+        if not zero_m_only:
+            for i in range(1, k):
+                P_l_m[i][i] = sym.simplify((1 - 2 * i) * P_l_m[i - 1][i - 1])
+                if i + 1 < k:
+                    P_l_m[i + 1][i] = sym.simplify(
+                        (2 * i + 1) * z * P_l_m[i][i])
+                for j in range(i + 2, k):
+                    P_l_m[j][i] = sym.simplify(
+                        ((2 * j - 1) * z * P_l_m[j - 1][i] -
+                         (i + j - 1) * P_l_m[j - 2][i]) / (j - i))
+
+    return P_l_m
+
+
+</source>
+<source file="systems/DIG-0.1.1/dig/threedgraph/method/dimenetpp/features.py" startline="76" endline="100" pcid="536">
+def associated_legendre_polynomials(k, zero_m_only=True):
+    z = sym.symbols('z')
+    P_l_m = [[0] * (j + 1) for j in range(k)]
+
+    P_l_m[0][0] = 1
+    if k > 0:
+        P_l_m[1][0] = z
+
+        for j in range(2, k):
+            P_l_m[j][0] = sym.simplify(((2 * j - 1) * z * P_l_m[j - 1][0] -
+                                        (j - 1) * P_l_m[j - 2][0]) / j)
+        if not zero_m_only:
+            for i in range(1, k):
+                P_l_m[i][i] = sym.simplify((1 - 2 * i) * P_l_m[i - 1][i - 1])
+                if i + 1 < k:
+                    P_l_m[i + 1][i] = sym.simplify(
+                        (2 * i + 1) * z * P_l_m[i][i])
+                for j in range(i + 2, k):
+                    P_l_m[j][i] = sym.simplify(
+                        ((2 * j - 1) * z * P_l_m[j - 1][i] -
+                         (i + j - 1) * P_l_m[j - 2][i]) / (j - i))
+
+    return P_l_m
+
+
+</source>
+</class>
+
+<class classid="39" nclones="2" nlines="41" similarity="76">
+<source file="systems/DIG-0.1.1/dig/threedgraph/method/spherenet/features.py" startline="102" endline="153" pcid="481">
+def real_sph_harm(l, zero_m_only=False, spherical_coordinates=True):
+    """
+    Computes formula strings of the the real part of the spherical harmonics up to order l (excluded).
+    Variables are either cartesian coordinates x,y,z on the unit sphere or spherical coordinates phi and theta.
+    """
+    if not zero_m_only:
+        x = sym.symbols('x')
+        y = sym.symbols('y')
+        S_m = [x*0]
+        C_m = [1+0*x]
+        # S_m = [0]
+        # C_m = [1]
+        for i in range(1, l):
+            x = sym.symbols('x')
+            y = sym.symbols('y')
+            S_m += [x*S_m[i-1] + y*C_m[i-1]]
+            C_m += [x*C_m[i-1] - y*S_m[i-1]]
+
+    P_l_m = associated_legendre_polynomials(l, zero_m_only)
+    if spherical_coordinates:
+        theta = sym.symbols('theta')
+        z = sym.symbols('z')
+        for i in range(len(P_l_m)):
+            for j in range(len(P_l_m[i])):
+                if type(P_l_m[i][j]) != int:
+                    P_l_m[i][j] = P_l_m[i][j].subs(z, sym.cos(theta))
+        if not zero_m_only:
+            phi = sym.symbols('phi')
+            for i in range(len(S_m)):
+                S_m[i] = S_m[i].subs(x, sym.sin(
+                    theta)*sym.cos(phi)).subs(y, sym.sin(theta)*sym.sin(phi))
+            for i in range(len(C_m)):
+                C_m[i] = C_m[i].subs(x, sym.sin(
+                    theta)*sym.cos(phi)).subs(y, sym.sin(theta)*sym.sin(phi))
+
+    Y_func_l_m = [['0']*(2*j + 1) for j in range(l)]
+    for i in range(l):
+        Y_func_l_m[i][0] = sym.simplify(sph_harm_prefactor(i, 0) * P_l_m[i][0])
+
+    if not zero_m_only:
+        for i in range(1, l):
+            for j in range(1, i + 1):
+                Y_func_l_m[i][j] = sym.simplify(
+                    2**0.5 * sph_harm_prefactor(i, j) * C_m[j] * P_l_m[i][j])
+        for i in range(1, l):
+            for j in range(1, i + 1):
+                Y_func_l_m[i][-j] = sym.simplify(
+                    2**0.5 * sph_harm_prefactor(i, -j) * S_m[j] * P_l_m[i][j])
+
+    return Y_func_l_m
+
+
+</source>
+<source file="systems/DIG-0.1.1/dig/threedgraph/method/dimenetpp/features.py" startline="101" endline="148" pcid="537">
+def real_sph_harm(k, zero_m_only=True, spherical_coordinates=True):
+    if not zero_m_only:
+        S_m = [0]
+        C_m = [1]
+        for i in range(1, k):
+            x = sym.symbols('x')
+            y = sym.symbols('y')
+            S_m += [x * S_m[i - 1] + y * C_m[i - 1]]
+            C_m += [x * C_m[i - 1] - y * S_m[i - 1]]
+
+    P_l_m = associated_legendre_polynomials(k, zero_m_only)
+    if spherical_coordinates:
+        theta = sym.symbols('theta')
+        z = sym.symbols('z')
+        for i in range(len(P_l_m)):
+            for j in range(len(P_l_m[i])):
+                if type(P_l_m[i][j]) != int:
+                    P_l_m[i][j] = P_l_m[i][j].subs(z, sym.cos(theta))
+        if not zero_m_only:
+            phi = sym.symbols('phi')
+            for i in range(len(S_m)):
+                S_m[i] = S_m[i].subs(x,
+                                     sym.sin(theta) * sym.cos(phi)).subs(
+                                         y,
+                                         sym.sin(theta) * sym.sin(phi))
+            for i in range(len(C_m)):
+                C_m[i] = C_m[i].subs(x,
+                                     sym.sin(theta) * sym.cos(phi)).subs(
+                                         y,
+                                         sym.sin(theta) * sym.sin(phi))
+
+    Y_func_l_m = [['0'] * (2 * j + 1) for j in range(k)]
+    for i in range(k):
+        Y_func_l_m[i][0] = sym.simplify(sph_harm_prefactor(i, 0) * P_l_m[i][0])
+
+    if not zero_m_only:
+        for i in range(1, k):
+            for j in range(1, i + 1):
+                Y_func_l_m[i][j] = sym.simplify(
+                    2**0.5 * sph_harm_prefactor(i, j) * C_m[j] * P_l_m[i][j])
+        for i in range(1, k):
+            for j in range(1, i + 1):
+                Y_func_l_m[i][-j] = sym.simplify(
+                    2**0.5 * sph_harm_prefactor(i, -j) * S_m[j] * P_l_m[i][j])
+
+    return Y_func_l_m
+
+
+</source>
+</class>
+
+<class classid="40" nclones="2" nlines="24" similarity="95">
+<source file="systems/DIG-0.1.1/dig/threedgraph/method/spherenet/features.py" startline="189" endline="215" pcid="487">
+    def __init__(self, num_spherical, num_radial, cutoff=5.0,
+                 envelope_exponent=5):
+        super(angle_emb, self).__init__()
+        assert num_radial <= 64
+        self.num_spherical = num_spherical
+        self.num_radial = num_radial
+        self.cutoff = cutoff
+        # self.envelope = Envelope(envelope_exponent)
+
+        bessel_forms = bessel_basis(num_spherical, num_radial)
+        sph_harm_forms = real_sph_harm(num_spherical)
+        self.sph_funcs = []
+        self.bessel_funcs = []
+
+        x, theta = sym.symbols('x theta')
+        modules = {'sin': torch.sin, 'cos': torch.cos}
+        for i in range(num_spherical):
+            if i == 0:
+                sph1 = sym.lambdify([theta], sph_harm_forms[i][0], modules)(0)
+                self.sph_funcs.append(lambda x: torch.zeros_like(x) + sph1)
+            else:
+                sph = sym.lambdify([theta], sph_harm_forms[i][0], modules)
+                self.sph_funcs.append(sph)
+            for j in range(num_radial):
+                bessel = sym.lambdify([x], bessel_forms[i][j], modules)
+                self.bessel_funcs.append(bessel)
+
+</source>
+<source file="systems/DIG-0.1.1/dig/threedgraph/method/dimenetpp/features.py" startline="184" endline="210" pcid="543">
+    def __init__(self, num_spherical, num_radial, cutoff=5.0,
+                 envelope_exponent=5):
+        super(angle_emb, self).__init__()
+        assert num_radial <= 64
+        self.num_spherical = num_spherical
+        self.num_radial = num_radial
+        self.cutoff = cutoff
+        self.envelope = Envelope(envelope_exponent)
+
+        bessel_forms = bessel_basis(num_spherical, num_radial)
+        sph_harm_forms = real_sph_harm(num_spherical)
+        self.sph_funcs = []
+        self.bessel_funcs = []
+
+        x, theta = sym.symbols('x theta')
+        modules = {'sin': torch.sin, 'cos': torch.cos}
+        for i in range(num_spherical):
+            if i == 0:
+                sph1 = sym.lambdify([theta], sph_harm_forms[i][0], modules)(0)
+                self.sph_funcs.append(lambda x: torch.zeros_like(x) + sph1)
+            else:
+                sph = sym.lambdify([theta], sph_harm_forms[i][0], modules)
+                self.sph_funcs.append(sph)
+            for j in range(num_radial):
+                bessel = sym.lambdify([x], bessel_forms[i][j], modules)
+                self.bessel_funcs.append(bessel)
+
+</source>
+</class>
+
+<class classid="41" nclones="2" nlines="22" similarity="86">
+<source file="systems/DIG-0.1.1/dig/threedgraph/method/spherenet/spherenet.py" startline="92" endline="121" pcid="500">
+    def __init__(self, hidden_channels, int_emb_size, basis_emb_size_dist, basis_emb_size_angle, basis_emb_size_torsion, num_spherical, num_radial,
+        num_before_skip, num_after_skip, act=swish):
+        super(update_e, self).__init__()
+        self.act = act
+        self.lin_rbf1 = nn.Linear(num_radial, basis_emb_size_dist, bias=False)
+        self.lin_rbf2 = nn.Linear(basis_emb_size_dist, hidden_channels, bias=False)
+        self.lin_sbf1 = nn.Linear(num_spherical * num_radial, basis_emb_size_angle, bias=False)
+        self.lin_sbf2 = nn.Linear(basis_emb_size_angle, int_emb_size, bias=False)
+        self.lin_t1 = nn.Linear(num_spherical * num_spherical * num_radial, basis_emb_size_torsion, bias=False)
+        self.lin_t2 = nn.Linear(basis_emb_size_torsion, int_emb_size, bias=False)
+        self.lin_rbf = nn.Linear(num_radial, hidden_channels, bias=False)
+
+        self.lin_kj = nn.Linear(hidden_channels, hidden_channels)
+        self.lin_ji = nn.Linear(hidden_channels, hidden_channels)
+
+        self.lin_down = nn.Linear(hidden_channels, int_emb_size, bias=False)
+        self.lin_up = nn.Linear(int_emb_size, hidden_channels, bias=False)
+
+        self.layers_before_skip = torch.nn.ModuleList([
+            ResidualLayer(hidden_channels, act)
+            for _ in range(num_before_skip)
+        ])
+        self.lin = nn.Linear(hidden_channels, hidden_channels)
+        self.layers_after_skip = torch.nn.ModuleList([
+            ResidualLayer(hidden_channels, act)
+            for _ in range(num_after_skip)
+        ])
+
+        self.reset_parameters()
+
+</source>
+<source file="systems/DIG-0.1.1/dig/threedgraph/method/dimenetpp/dimenetpp.py" startline="80" endline="107" pcid="520">
+    def __init__(self, hidden_channels, int_emb_size, basis_emb_size, num_spherical, num_radial, 
+        num_before_skip, num_after_skip, act=swish):
+        super(update_e, self).__init__()
+        self.act = act
+        self.lin_rbf1 = nn.Linear(num_radial, basis_emb_size, bias=False)
+        self.lin_rbf2 = nn.Linear(basis_emb_size, hidden_channels, bias=False)
+        self.lin_sbf1 = nn.Linear(num_spherical * num_radial, basis_emb_size, bias=False)
+        self.lin_sbf2 = nn.Linear(basis_emb_size, int_emb_size, bias=False)
+        self.lin_rbf = nn.Linear(num_radial, hidden_channels, bias=False)
+
+        self.lin_kj = nn.Linear(hidden_channels, hidden_channels)
+        self.lin_ji = nn.Linear(hidden_channels, hidden_channels)
+
+        self.lin_down = nn.Linear(hidden_channels, int_emb_size, bias=False)
+        self.lin_up = nn.Linear(int_emb_size, hidden_channels, bias=False)
+
+        self.layers_before_skip = torch.nn.ModuleList([
+            ResidualLayer(hidden_channels, act)
+            for _ in range(num_before_skip)
+        ])
+        self.lin = nn.Linear(hidden_channels, hidden_channels)
+        self.layers_after_skip = torch.nn.ModuleList([
+            ResidualLayer(hidden_channels, act)
+            for _ in range(num_after_skip)
+        ])
+
+        self.reset_parameters()
+
+</source>
+</class>
+
+<class classid="42" nclones="2" nlines="19" similarity="90">
+<source file="systems/DIG-0.1.1/dig/threedgraph/method/spherenet/spherenet.py" startline="122" endline="146" pcid="501">
+    def reset_parameters(self):
+        glorot_orthogonal(self.lin_rbf1.weight, scale=2.0)
+        glorot_orthogonal(self.lin_rbf2.weight, scale=2.0)
+        glorot_orthogonal(self.lin_sbf1.weight, scale=2.0)
+        glorot_orthogonal(self.lin_sbf2.weight, scale=2.0)
+        glorot_orthogonal(self.lin_t1.weight, scale=2.0)
+        glorot_orthogonal(self.lin_t2.weight, scale=2.0)
+
+        glorot_orthogonal(self.lin_kj.weight, scale=2.0)
+        self.lin_kj.bias.data.fill_(0)
+        glorot_orthogonal(self.lin_ji.weight, scale=2.0)
+        self.lin_ji.bias.data.fill_(0)
+
+        glorot_orthogonal(self.lin_down.weight, scale=2.0)
+        glorot_orthogonal(self.lin_up.weight, scale=2.0)
+
+        for res_layer in self.layers_before_skip:
+            res_layer.reset_parameters()
+        glorot_orthogonal(self.lin.weight, scale=2.0)
+        self.lin.bias.data.fill_(0)
+        for res_layer in self.layers_after_skip:
+            res_layer.reset_parameters()
+
+        glorot_orthogonal(self.lin_rbf.weight, scale=2.0)
+
+</source>
+<source file="systems/DIG-0.1.1/dig/threedgraph/method/dimenetpp/dimenetpp.py" startline="108" endline="130" pcid="521">
+    def reset_parameters(self):
+        glorot_orthogonal(self.lin_rbf1.weight, scale=2.0)
+        glorot_orthogonal(self.lin_rbf2.weight, scale=2.0)
+        glorot_orthogonal(self.lin_sbf1.weight, scale=2.0)
+        glorot_orthogonal(self.lin_sbf2.weight, scale=2.0)
+
+        glorot_orthogonal(self.lin_kj.weight, scale=2.0)
+        self.lin_kj.bias.data.fill_(0)
+        glorot_orthogonal(self.lin_ji.weight, scale=2.0)
+        self.lin_ji.bias.data.fill_(0)
+
+        glorot_orthogonal(self.lin_down.weight, scale=2.0)
+        glorot_orthogonal(self.lin_up.weight, scale=2.0)
+
+        for res_layer in self.layers_before_skip:
+            res_layer.reset_parameters()
+        glorot_orthogonal(self.lin.weight, scale=2.0)
+        self.lin.bias.data.fill_(0)
+        for res_layer in self.layers_after_skip:
+            res_layer.reset_parameters()
+
+        glorot_orthogonal(self.lin_rbf.weight, scale=2.0)
+
+</source>
+</class>
+
+<class classid="43" nclones="2" nlines="24" similarity="84">
+<source file="systems/DIG-0.1.1/dig/threedgraph/method/spherenet/spherenet.py" startline="147" endline="181" pcid="502">
+    def forward(self, x, emb, idx_kj, idx_ji):
+        rbf0, sbf, t = emb
+        x1,_ = x
+
+        x_ji = self.act(self.lin_ji(x1))
+        x_kj = self.act(self.lin_kj(x1))
+
+        rbf = self.lin_rbf1(rbf0)
+        rbf = self.lin_rbf2(rbf)
+        x_kj = x_kj * rbf
+
+        x_kj = self.act(self.lin_down(x_kj))
+
+        sbf = self.lin_sbf1(sbf)
+        sbf = self.lin_sbf2(sbf)
+        x_kj = x_kj[idx_kj] * sbf
+
+        t = self.lin_t1(t)
+        t = self.lin_t2(t)
+        x_kj = x_kj * t
+
+        x_kj = scatter(x_kj, idx_ji, dim=0, dim_size=x1.size(0))
+        x_kj = self.act(self.lin_up(x_kj))
+
+        e1 = x_ji + x_kj
+        for layer in self.layers_before_skip:
+            e1 = layer(e1)
+        e1 = self.act(self.lin(e1)) + x1
+        for layer in self.layers_after_skip:
+            e1 = layer(e1)
+        e2 = self.lin_rbf(rbf0) * e1
+
+        return e1, e2
+
+
+</source>
+<source file="systems/DIG-0.1.1/dig/threedgraph/method/dimenetpp/dimenetpp.py" startline="131" endline="161" pcid="522">
+    def forward(self, x, emb, idx_kj, idx_ji):
+        rbf0, sbf = emb
+        x1,_ = x
+
+        x_ji = self.act(self.lin_ji(x1))
+        x_kj = self.act(self.lin_kj(x1))
+
+        rbf = self.lin_rbf1(rbf0)
+        rbf = self.lin_rbf2(rbf)
+        x_kj = x_kj * rbf
+
+        x_kj = self.act(self.lin_down(x_kj))
+
+        sbf = self.lin_sbf1(sbf)
+        sbf = self.lin_sbf2(sbf)
+        x_kj = x_kj[idx_kj] * sbf
+
+        x_kj = scatter(x_kj, idx_ji, dim=0, dim_size=x1.size(0))
+        x_kj = self.act(self.lin_up(x_kj))
+
+        e1 = x_ji + x_kj
+        for layer in self.layers_before_skip:
+            e1 = layer(e1)
+        e1 = self.act(self.lin(e1)) + x1
+        for layer in self.layers_after_skip:
+            e1 = layer(e1)
+        e2 = self.lin_rbf(rbf0) * e1
+
+        return e1, e2 
+
+
+</source>
+</class>
+
+<class classid="44" nclones="2" nlines="10" similarity="100">
+<source file="systems/DIG-0.1.1/dig/threedgraph/method/spherenet/spherenet.py" startline="183" endline="195" pcid="503">
+    def __init__(self, hidden_channels, out_emb_channels, out_channels, num_output_layers, act, output_init):
+        super(update_v, self).__init__()
+        self.act = act
+        self.output_init = output_init
+
+        self.lin_up = nn.Linear(hidden_channels, out_emb_channels, bias=True)
+        self.lins = torch.nn.ModuleList()
+        for _ in range(num_output_layers):
+            self.lins.append(nn.Linear(out_emb_channels, out_emb_channels))
+        self.lin = nn.Linear(out_emb_channels, out_channels, bias=False)
+
+        self.reset_parameters()
+
+</source>
+<source file="systems/DIG-0.1.1/dig/threedgraph/method/dimenetpp/dimenetpp.py" startline="163" endline="175" pcid="523">
+    def __init__(self, hidden_channels, out_emb_channels, out_channels, num_output_layers, act, output_init):
+        super(update_v, self).__init__()
+        self.act = act
+        self.output_init = output_init
+
+        self.lin_up = nn.Linear(hidden_channels, out_emb_channels, bias=True)
+        self.lins = torch.nn.ModuleList()
+        for _ in range(num_output_layers):
+            self.lins.append(nn.Linear(out_emb_channels, out_emb_channels))
+        self.lin = nn.Linear(out_emb_channels, out_channels, bias=False)
+
+        self.reset_parameters()
+
+</source>
+</class>
+
+<class classid="45" nclones="2" nlines="16" similarity="87">
+<source file="systems/DIG-0.1.1/dig/threedgraph/method/spherenet/spherenet.py" startline="287" endline="307" pcid="510">
+    def forward(self, batch_data):
+        z, pos, batch = batch_data.z, batch_data.pos, batch_data.batch
+        if self.energy_and_force:
+            pos.requires_grad_()
+        edge_index = radius_graph(pos, r=self.cutoff, batch=batch)
+        num_nodes=z.size(0)
+        dist, angle, torsion, i, j, idx_kj, idx_ji = xyz_to_dat(pos, edge_index, num_nodes, use_torsion=True)
+
+        emb = self.emb(dist, angle, torsion, idx_kj)
+
+        #Initialize edge, node, graph features
+        e = self.init_e(z, emb, i, j)
+        v = self.init_v(e, i)
+        u = self.init_u(torch.zeros_like(scatter(v, batch, dim=0)), v, batch) #scatter(v, batch, dim=0)
+
+        for update_e, update_v, update_u in zip(self.update_es, self.update_vs, self.update_us):
+            e = update_e(e, emb, idx_kj, idx_ji)
+            v = update_v(e, i)
+            u = update_u(u, v, batch) #u += scatter(v, batch, dim=0)
+
+        return u
+</source>
+<source file="systems/DIG-0.1.1/dig/threedgraph/method/dimenetpp/dimenetpp.py" startline="271" endline="291" pcid="530">
+    def forward(self, batch_data):
+        z, pos, batch = batch_data.z, batch_data.pos, batch_data.batch
+        if self.energy_and_force:
+            pos.requires_grad_()
+        edge_index = radius_graph(pos, r=self.cutoff, batch=batch)
+        num_nodes=z.size(0)
+        dist, angle, i, j, idx_kj, idx_ji = xyz_to_dat(pos, edge_index, num_nodes, use_torsion=False)
+
+        emb = self.emb(dist, angle, idx_kj)
+
+        #Initialize edge, node, graph features
+        e = self.init_e(z, emb, i, j)
+        v = self.init_v(e, i)
+        u = self.init_u(torch.zeros_like(scatter(v, batch, dim=0)), v, batch) #scatter(v, batch, dim=0)
+
+        for update_e, update_v, update_u in zip(self.update_es, self.update_vs, self.update_us):
+            e = update_e(e, emb, idx_kj, idx_ji)
+            v = update_v(e, i)
+            u = update_u(u, v, batch) #u += scatter(v, batch, dim=0)
+
+        return u
+</source>
+</class>
+
+<class classid="46" nclones="2" nlines="13" similarity="71">
+<source file="systems/DIG-0.1.1/test/sslgraph/evaluation/test_GraphSemisupervised.py" startline="11" endline="25" pcid="553">
+    def __init__(self, z_dim, mask_ratio, **kwargs):
+
+        objective = "JSE"
+        proj="MLP"
+        mask_i = NodeAttrMask(mask_ratio=mask_ratio)
+        mask_j = NodeAttrMask(mask_ratio=mask_ratio)
+        views_fn = [mask_i, mask_j]
+
+        super(SSLModel, self).__init__(objective=objective,
+                                    views_fn=views_fn,
+                                    z_dim=z_dim,
+                                    proj=proj,
+                                    node_level=False,
+                                    **kwargs)
+
+</source>
+<source file="systems/DIG-0.1.1/test/sslgraph/evaluation/test_GraphSemisupervised.py" startline="32" endline="48" pcid="555">
+    def __init__(self, z_dim, mask_ratio, **kwargs):
+
+        objective = "JSE"
+        proj="MLP"
+        mask_i = NodeAttrMask(mode='partial', mask_ratio=mask_ratio)
+        mask_j = NodeAttrMask(mode='onehot', mask_ratio=mask_ratio)
+        views_fn = [mask_i, mask_j]
+
+        super(SSLModel_2, self).__init__(objective=objective,
+                                    views_fn=views_fn,
+                                    z_dim=z_dim,
+                                    proj=proj,
+                                    neg_by_crpt=True,
+                                    choice_model='best',
+                                    node_level=False,
+                                    **kwargs)
+
+</source>
+</class>
+
+<class classid="47" nclones="3" nlines="23" similarity="82">
+<source file="systems/DIG-0.1.1/test/ggraph/dataset/test_QM9.py" startline="4" endline="34" pcid="566">
+def test_qm9():
+    root = './dataset/QM9'
+
+    dataset = QM9(root, prop_name='penalized_logp')
+
+    assert len(dataset) == 133885
+    assert dataset.num_features == 4
+    assert dataset.__repr__() == 'qm9_property(133885)'
+    assert len(dataset.get_split_idx()) == 2
+
+    assert len(dataset[0]) == 6
+    assert dataset[0].x.size() == (9, 4)
+    assert dataset[0].y.size() == (1,)
+    assert dataset[0].adj.size() == (4, 9, 9)
+    assert dataset[0].bfs_perm_origin.size() == (9,)
+    assert dataset[0].num_atom.size() == (1,)
+
+    dataset = QM9(root, one_shot=True, prop_name='penalized_logp')
+    
+    assert len(dataset) == 133885
+    assert dataset.__repr__() == 'qm9_property(133885)'
+    assert len(dataset.get_split_idx()) == 2
+
+    assert len(dataset[0]) == 5
+    assert dataset[0].x.size() == (5, 9)
+    assert dataset[0].y.size() == (1,)
+    assert dataset[0].adj.size() == (4, 9, 9)
+    assert dataset[0].num_atom.size() == (1,)
+
+    shutil.rmtree(root)
+
+</source>
+<source file="systems/DIG-0.1.1/test/ggraph/dataset/test_ZINC250k.py" startline="4" endline="34" pcid="568">
+def test_zinc250k():
+    root = './dataset/ZINC250k'
+
+    dataset = ZINC250k(root, prop_name='penalized_logp')
+    
+    assert len(dataset) == 249455
+    assert dataset.num_features == 9
+    assert dataset.__repr__() == 'zinc250k_property(249455)'
+    assert len(dataset.get_split_idx()) == 2
+
+    assert len(dataset[0]) == 6
+    assert dataset[0].x.size() == (38, 9)
+    assert dataset[0].y.size() == (1,)
+    assert dataset[0].adj.size() == (4, 38, 38)
+    assert dataset[0].bfs_perm_origin.size() == (38,)
+    assert dataset[0].num_atom.size() == (1,)
+
+    dataset = ZINC250k(root, one_shot=True, prop_name='penalized_logp')
+    
+    assert len(dataset) == 249455
+    assert dataset.__repr__() == 'zinc250k_property(249455)'
+    assert len(dataset.get_split_idx()) == 2
+
+    assert len(dataset[0]) == 5
+    assert dataset[0].x.size() == (10, 38)
+    assert dataset[0].y.size() == (1,)
+    assert dataset[0].adj.size() == (4, 38, 38)
+    assert dataset[0].num_atom.size() == (1,)
+
+    shutil.rmtree(root)
+
+</source>
+<source file="systems/DIG-0.1.1/test/ggraph/dataset/test_ZINC800.py" startline="4" endline="34" pcid="567">
+def test_zinc800():
+    root = './dataset/ZINC800'
+
+    dataset = ZINC800(root)
+
+    assert len(dataset) == 800
+    assert dataset.num_features == 9
+    assert dataset.__repr__() == 'zinc_800_jt(800)'
+    assert dataset.get_split_idx() is None
+    
+    assert len(dataset[0]) == 6
+    assert dataset[0].x.size() == (38, 9)
+    assert dataset[0].y.size() == (1,)
+    assert dataset[0].adj.size() == (4, 38, 38)
+    assert dataset[0].bfs_perm_origin.size() == (38,)
+    assert dataset[0].num_atom.size() == (1,)
+
+    dataset = ZINC800(root, one_shot=True)
+
+    assert len(dataset) == 800
+    assert dataset.__repr__() == 'zinc_800_jt(800)'
+    assert dataset.get_split_idx() is None
+    
+    assert len(dataset[0]) == 5
+    assert dataset[0].x.size() == (10, 38)
+    assert dataset[0].y.size() == (1,)
+    assert dataset[0].adj.size() == (4, 38, 38)
+    assert dataset[0].num_atom.size() == (1,)
+
+    shutil.rmtree(root)
+
+</source>
+</class>
+
+</clones>

@@ -1,0 +1,1494 @@
+<clones>
+<systeminfo processor="nicad6" system="zulip-5.0-rc1" granularity="functions-blind" threshold="0%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="2151" npairs="133"/>
+<runinfo ncompares="12084" cputime="51774"/>
+<classinfo nclasses="25"/>
+
+<class classid="1" nclones="2" nlines="12" similarity="100">
+<source file="systems/zulip-5.0-rc1/tools/droplets/create.py" startline="44" endline="57" pcid="33">
+def assert_github_user_exists(github_username: str) -> bool:
+    print(f"Checking to see if GitHub user {github_username} exists...")
+    user_api_url = f"https://api.github.com/users/{github_username}"
+    try:
+        response = urllib.request.urlopen(user_api_url)
+        json.load(response)
+        print("...user exists!")
+        return True
+    except urllib.error.HTTPError as err:
+        print(err)
+        print(f"Does the GitHub user {github_username} exist?")
+        sys.exit(1)
+
+
+</source>
+<source file="systems/zulip-5.0-rc1/tools/droplets/create.py" startline="77" endline="90" pcid="35">
+def assert_user_forked_zulip_server_repo(username: str) -> bool:
+    print("Checking to see GitHub user has forked zulip/zulip...")
+    apiurl_fork = f"https://api.github.com/repos/{username}/zulip"
+    try:
+        response = urllib.request.urlopen(apiurl_fork)
+        json.load(response)
+        print("...fork found!")
+        return True
+    except urllib.error.HTTPError as err:
+        print(err)
+        print(f"Has user {username} forked zulip/zulip?")
+        sys.exit(1)
+
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="10" similarity="100">
+<source file="systems/zulip-5.0-rc1/zerver/migrations/0352_migrate_twenty_four_hour_time_to_realmuserdefault.py" startline="9" endline="21" pcid="182">
+def migrate_twenty_four_hour_time_to_realmuserdefault(
+    apps: StateApps, schema_editor: DatabaseSchemaEditor
+) -> None:
+    RealmUserDefault = apps.get_model("zerver", "RealmUserDefault")
+    realm_user_default_objects = RealmUserDefault.objects.exclude(
+        twenty_four_hour_time=F("realm__default_twenty_four_hour_time")
+    )
+    for realm_user_default in realm_user_default_objects:
+        realm = realm_user_default.realm
+        realm_user_default.twenty_four_hour_time = realm.default_twenty_four_hour_time
+        realm_user_default.save(update_fields=["twenty_four_hour_time"])
+
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/migrations/0352_migrate_twenty_four_hour_time_to_realmuserdefault.py" startline="22" endline="34" pcid="183">
+def reverse_migrate_twenty_four_hour_time_to_realmuserdefault(
+    apps: StateApps, schema_editor: DatabaseSchemaEditor
+) -> None:
+    RealmUserDefault = apps.get_model("zerver", "RealmUserDefault")
+    realm_user_default_objects = RealmUserDefault.objects.exclude(
+        realm__default_twenty_four_hour_time=F("twenty_four_hour_time")
+    )
+    for realm_user_default in realm_user_default_objects:
+        realm = realm_user_default.realm
+        realm.default_twenty_four_hour_time = realm_user_default.twenty_four_hour_time
+        realm.save(update_fields=["default_twenty_four_hour_time"])
+
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="11" similarity="100">
+<source file="systems/zulip-5.0-rc1/zerver/migrations/0244_message_copy_pub_date_to_date_sent.py" startline="13" endline="30" pcid="199">
+def sql_copy_pub_date_to_date_sent(id_range_lower_bound: int, id_range_upper_bound: int) -> None:
+    query = SQL(
+        """
+            UPDATE zerver_message
+            SET date_sent = pub_date
+            WHERE id BETWEEN %(lower_bound)s AND %(upper_bound)s
+    """
+    )
+    with connection.cursor() as cursor:
+        cursor.execute(
+            query,
+            {
+                "lower_bound": id_range_lower_bound,
+                "upper_bound": id_range_upper_bound,
+            },
+        )
+
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/migrations/0239_usermessage_copy_id_to_bigint_id.py" startline="14" endline="31" pcid="248">
+def sql_copy_id_to_bigint_id(id_range_lower_bound: int, id_range_upper_bound: int) -> None:
+    query = SQL(
+        """
+            UPDATE zerver_usermessage
+            SET bigint_id = id
+            WHERE id BETWEEN %(lower_bound)s AND %(upper_bound)s
+    """
+    )
+    with connection.cursor() as cursor:
+        cursor.execute(
+            query,
+            {
+                "lower_bound": id_range_lower_bound,
+                "upper_bound": id_range_upper_bound,
+            },
+        )
+
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="16" similarity="100">
+<source file="systems/zulip-5.0-rc1/zerver/migrations/0244_message_copy_pub_date_to_date_sent.py" startline="31" endline="57" pcid="200">
+def copy_pub_date_to_date_sent(apps: StateApps, schema_editor: DatabaseSchemaEditor) -> None:
+    Message = apps.get_model("zerver", "Message")
+    if not Message.objects.exists():
+        # Nothing to do
+        return
+
+    first_uncopied_id = Message.objects.filter(date_sent__isnull=True).aggregate(Min("id"))[
+        "id__min"
+    ]
+    # Note: the below id can fall in a segment
+    # where date_sent = pub_date already, but it's not a big problem
+    # this will just do some redundant UPDATEs.
+    last_id = Message.objects.latest("id").id
+
+    id_range_lower_bound = first_uncopied_id
+    id_range_upper_bound = first_uncopied_id + BATCH_SIZE
+    while id_range_upper_bound <= last_id:
+        sql_copy_pub_date_to_date_sent(id_range_lower_bound, id_range_upper_bound)
+        id_range_lower_bound = id_range_upper_bound + 1
+        id_range_upper_bound = id_range_lower_bound + BATCH_SIZE
+        time.sleep(0.1)
+
+    if last_id > id_range_lower_bound:
+        # Copy for the last batch.
+        sql_copy_pub_date_to_date_sent(id_range_lower_bound, last_id)
+
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/migrations/0239_usermessage_copy_id_to_bigint_id.py" startline="32" endline="59" pcid="249">
+def copy_id_to_bigid(apps: StateApps, schema_editor: DatabaseSchemaEditor) -> None:
+    UserMessage = apps.get_model("zerver", "UserMessage")
+    if not UserMessage.objects.exists():
+        # Nothing to do
+        return
+
+    #  TODO: is  the below lookup fast enough, considering there's no index on bigint_id?
+    first_uncopied_id = UserMessage.objects.filter(bigint_id__isnull=True).aggregate(Min("id"))[
+        "id__min"
+    ]
+    # Note: the below id can fall in a segment
+    # where bigint_id = id already, but it's not a big problem
+    # this will just do some redundant UPDATEs.
+    last_id = UserMessage.objects.latest("id").id
+
+    id_range_lower_bound = first_uncopied_id
+    id_range_upper_bound = first_uncopied_id + BATCH_SIZE
+    while id_range_upper_bound <= last_id:
+        sql_copy_id_to_bigint_id(id_range_lower_bound, id_range_upper_bound)
+        id_range_lower_bound = id_range_upper_bound + 1
+        id_range_upper_bound = id_range_lower_bound + BATCH_SIZE
+        time.sleep(0.1)
+
+    if last_id > id_range_lower_bound:
+        # Copy for the last batch.
+        sql_copy_id_to_bigint_id(id_range_lower_bound, last_id)
+
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="10" similarity="100">
+<source file="systems/zulip-5.0-rc1/zerver/migrations/0328_migrate_to_edit_topic_policy.py" startline="20" endline="33" pcid="211">
+def reverse_migrate_to_edit_topic_policy(
+    apps: StateApps, schema_editor: DatabaseSchemaEditor
+) -> None:
+    Realm = apps.get_model("zerver", "Realm")
+    Realm.POLICY_EVERYONE = 5
+    Realm.POLICY_ADMINS_ONLY = 2
+    Realm.objects.filter(edit_topic_policy=Realm.POLICY_ADMINS_ONLY).update(
+        allow_community_topic_editing=False
+    )
+    Realm.objects.filter(edit_topic_policy=Realm.POLICY_EVERYONE).update(
+        allow_community_topic_editing=True
+    )
+
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/migrations/0338_migrate_to_add_custom_emoji_policy.py" startline="22" endline="35" pcid="245">
+def reverse_migrate_to_add_custom_emoji_policy(
+    apps: StateApps, schema_editor: DatabaseSchemaEditor
+) -> None:
+    Realm = apps.get_model("zerver", "Realm")
+    Realm.ADD_CUSTOM_EMOJI_MEMBERS_ONLY = 1
+    Realm.ADD_CUSTOM_EMOJI_ADMINS_ONLY = 2
+    Realm.objects.filter(add_custom_emoji_policy=Realm.ADD_CUSTOM_EMOJI_MEMBERS_ONLY).update(
+        add_emoji_by_admins_only=False
+    )
+    Realm.objects.filter(add_custom_emoji_policy=Realm.ADD_CUSTOM_EMOJI_ADMINS_ONLY).update(
+        add_emoji_by_admins_only=True
+    )
+
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="10" similarity="100">
+<source file="systems/zulip-5.0-rc1/zerver/migrations/0356_migrate_to_delete_own_message_policy.py" startline="8" endline="21" pcid="240">
+def migrate_to_delete_own_message_policy(
+    apps: StateApps, schema_editor: DatabaseSchemaEditor
+) -> None:
+    Realm = apps.get_model("zerver", "Realm")
+    Realm.POLICY_EVERYONE = 5
+    Realm.POLICY_ADMINS_ONLY = 2
+    Realm.objects.filter(allow_message_deleting=False).update(
+        delete_own_message_policy=Realm.POLICY_ADMINS_ONLY
+    )
+    Realm.objects.filter(allow_message_deleting=True).update(
+        delete_own_message_policy=Realm.POLICY_EVERYONE
+    )
+
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/migrations/0338_migrate_to_add_custom_emoji_policy.py" startline="8" endline="21" pcid="244">
+def migrate_to_add_custom_emoji_policy(
+    apps: StateApps, schema_editor: DatabaseSchemaEditor
+) -> None:
+    Realm = apps.get_model("zerver", "Realm")
+    Realm.ADD_CUSTOM_EMOJI_MEMBERS_ONLY = 1
+    Realm.ADD_CUSTOM_EMOJI_ADMINS_ONLY = 2
+    Realm.objects.filter(add_emoji_by_admins_only=False).update(
+        add_custom_emoji_policy=Realm.ADD_CUSTOM_EMOJI_MEMBERS_ONLY
+    )
+    Realm.objects.filter(add_emoji_by_admins_only=True).update(
+        add_custom_emoji_policy=Realm.ADD_CUSTOM_EMOJI_ADMINS_ONLY
+    )
+
+
+</source>
+</class>
+
+<class classid="7" nclones="3" nlines="11" similarity="100">
+<source file="systems/zulip-5.0-rc1/zerver/lib/transfer.py" startline="35" endline="47" pcid="417">
+def transfer_avatars_to_s3(processes: int) -> None:
+    users = list(UserProfile.objects.all())
+    if processes == 1:
+        for user in users:
+            _transfer_avatar_to_s3(user)
+    else:  # nocoverage
+        connection.close()
+        cache._cache.disconnect_all()
+        with multiprocessing.Pool(processes) as p:
+            for out in p.imap_unordered(_transfer_avatar_to_s3, users):
+                pass
+
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/lib/transfer.py" startline="94" endline="104" pcid="421">
+def transfer_emoji_to_s3(processes: int) -> None:
+    realm_emojis = list(RealmEmoji.objects.filter())
+    if processes == 1:
+        for realm_emoji in realm_emojis:
+            _transfer_emoji_to_s3(realm_emoji)
+    else:  # nocoverage
+        connection.close()
+        cache._cache.disconnect_all()
+        with multiprocessing.Pool(processes) as p:
+            for out in p.imap_unordered(_transfer_emoji_to_s3, realm_emojis):
+                pass
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/lib/transfer.py" startline="65" endline="77" pcid="419">
+def transfer_message_files_to_s3(processes: int) -> None:
+    attachments = list(Attachment.objects.all())
+    if processes == 1:
+        for attachment in attachments:
+            _transfer_message_files_to_s3(attachment)
+    else:  # nocoverage
+        connection.close()
+        cache._cache.disconnect_all()
+        with multiprocessing.Pool(processes) as p:
+            for out in p.imap_unordered(_transfer_message_files_to_s3, attachments):
+                pass
+
+
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="21" similarity="100">
+<source file="systems/zulip-5.0-rc1/zerver/tests/test_email_mirror.py" startline="435" endline="463" pcid="601">
+    def test_receive_stream_email_include_footer_success(self) -> None:
+        user_profile = self.example_user("hamlet")
+        self.login_user(user_profile)
+        self.subscribe(user_profile, "Denmark")
+        stream = get_stream("Denmark", user_profile.realm)
+
+        stream_to_address = encode_email_address(stream)
+        parts = stream_to_address.split("@")
+        parts[0] += "+include-footer"
+        stream_to_address = "@".join(parts)
+
+        text = """Test message
+        --
+        Footer"""
+
+        incoming_valid_message = EmailMessage()
+        incoming_valid_message.set_content(text)
+        incoming_valid_message["Subject"] = "TestStreamEmailMessages subject"
+        incoming_valid_message["From"] = self.example_email("hamlet")
+        incoming_valid_message["To"] = stream_to_address
+        incoming_valid_message["Reply-to"] = self.example_email("othello")
+
+        process_message(incoming_valid_message)
+        message = most_recent_message(user_profile)
+
+        self.assertEqual(message.content, text)
+        self.assertEqual(get_display_recipient(message.recipient), stream.name)
+        self.assertEqual(message.topic_name(), incoming_valid_message["Subject"])
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/tests/test_email_mirror.py" startline="464" endline="495" pcid="602">
+    def test_receive_stream_email_include_quotes_success(self) -> None:
+        user_profile = self.example_user("hamlet")
+        self.login_user(user_profile)
+        self.subscribe(user_profile, "Denmark")
+        stream = get_stream("Denmark", user_profile.realm)
+
+        stream_to_address = encode_email_address(stream)
+        parts = stream_to_address.split("@")
+        parts[0] += "+include-quotes"
+        stream_to_address = "@".join(parts)
+
+        text = """Reply
+
+        -----Original Message-----
+
+        Quote"""
+
+        incoming_valid_message = EmailMessage()
+        incoming_valid_message.set_content(text)
+        incoming_valid_message["Subject"] = "TestStreamEmailMessages subject"
+        incoming_valid_message["From"] = self.example_email("hamlet")
+        incoming_valid_message["To"] = stream_to_address
+        incoming_valid_message["Reply-to"] = self.example_email("othello")
+
+        process_message(incoming_valid_message)
+        message = most_recent_message(user_profile)
+
+        self.assertEqual(message.content, text)
+        self.assertEqual(get_display_recipient(message.recipient), stream.name)
+        self.assertEqual(message.topic_name(), incoming_valid_message["Subject"])
+
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="12" similarity="100">
+<source file="systems/zulip-5.0-rc1/zerver/tests/test_zcommand.py" startline="24" endline="38" pcid="689">
+    def test_night_zcommand(self) -> None:
+        self.login("hamlet")
+        user = self.example_user("hamlet")
+        user.color_scheme = UserProfile.COLOR_SCHEME_LIGHT
+        user.save()
+
+        payload = dict(command="/night")
+        result = self.client_post("/json/zcommand", payload)
+        self.assert_json_success(result)
+        self.assertIn("Changed to dark theme", result.json()["msg"])
+
+        result = self.client_post("/json/zcommand", payload)
+        self.assert_json_success(result)
+        self.assertIn("still in dark theme", result.json()["msg"])
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/tests/test_zcommand.py" startline="39" endline="53" pcid="690">
+    def test_day_zcommand(self) -> None:
+        self.login("hamlet")
+        user = self.example_user("hamlet")
+        user.color_scheme = UserProfile.COLOR_SCHEME_NIGHT
+        user.save()
+
+        payload = dict(command="/day")
+        result = self.client_post("/json/zcommand", payload)
+        self.assert_json_success(result)
+        self.assertIn("Changed to light theme", result.json()["msg"])
+
+        result = self.client_post("/json/zcommand", payload)
+        self.assert_json_success(result)
+        self.assertIn("still in light theme", result.json()["msg"])
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="12" similarity="100">
+<source file="systems/zulip-5.0-rc1/zerver/tests/test_zcommand.py" startline="54" endline="68" pcid="691">
+    def test_fluid_zcommand(self) -> None:
+        self.login("hamlet")
+        user = self.example_user("hamlet")
+        user.fluid_layout_width = False
+        user.save()
+
+        payload = dict(command="/fluid-width")
+        result = self.client_post("/json/zcommand", payload)
+        self.assert_json_success(result)
+        self.assert_in_response("Changed to fluid-width mode!", result)
+
+        result = self.client_post("/json/zcommand", payload)
+        self.assert_json_success(result)
+        self.assert_in_response("You are still in fluid width mode", result)
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/tests/test_zcommand.py" startline="69" endline="82" pcid="692">
+    def test_fixed_zcommand(self) -> None:
+        self.login("hamlet")
+        user = self.example_user("hamlet")
+        user.fluid_layout_width = True
+        user.save()
+
+        payload = dict(command="/fixed-width")
+        result = self.client_post("/json/zcommand", payload)
+        self.assert_json_success(result)
+        self.assert_in_response("Changed to fixed-width mode!", result)
+
+        result = self.client_post("/json/zcommand", payload)
+        self.assert_json_success(result)
+        self.assert_in_response("You are still in fixed width mode", result)
+</source>
+</class>
+
+<class classid="11" nclones="5" nlines="10" similarity="100">
+<source file="systems/zulip-5.0-rc1/zerver/tests/test_tutorial.py" startline="35" endline="47" pcid="695">
+    def test_response_to_pm_for_app(self) -> None:
+        user = self.example_user("hamlet")
+        bot = get_system_bot(settings.WELCOME_BOT, user.realm_id)
+        messages = ["app", "Apps"]
+        self.login_user(user)
+        for content in messages:
+            self.send_personal_message(user, bot, content)
+            expected_response = (
+                "You can [download](/apps) the [mobile and desktop apps](/apps). "
+                "Zulip also works great in a browser."
+            )
+            self.assertEqual(most_recent_message(user).content, expected_response)
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/tests/test_tutorial.py" startline="62" endline="76" pcid="697">
+    def test_response_to_pm_for_theme(self) -> None:
+        user = self.example_user("hamlet")
+        bot = get_system_bot(settings.WELCOME_BOT, user.realm_id)
+        messages = ["theme", "Theme"]
+        self.login_user(user)
+        for content in messages:
+            self.send_personal_message(user, bot, content)
+            expected_response = (
+                "Go to [Display settings](#settings/display-settings) "
+                "to [switch between the light and dark themes](/help/dark-theme), "
+                "[pick your favorite emoji theme](/help/emoji-and-emoticons#change-your-emoji-set), "
+                "[change your language](/help/change-your-language), and make other tweaks to your Zulip experience."
+            )
+            self.assertEqual(most_recent_message(user).content, expected_response)
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/tests/test_tutorial.py" startline="120" endline="135" pcid="701">
+    def test_response_to_pm_for_formatting(self) -> None:
+        user = self.example_user("hamlet")
+        bot = get_system_bot(settings.WELCOME_BOT, user.realm_id)
+        messages = ["message formatting", "Formatting"]
+        self.login_user(user)
+        for content in messages:
+            self.send_personal_message(user, bot, content)
+            expected_response = (
+                "Zulip uses [Markdown](/help/format-your-message-using-markdown), "
+                "an intuitive format for **bold**, *italics*, bulleted lists, and more. "
+                "Click [here](#message-formatting) for a cheat sheet.\n\n"
+                "Check out our [messaging tips](/help/messaging-tips) to learn about emoji reactions, "
+                "code blocks and much more!"
+            )
+            self.assertEqual(most_recent_message(user).content, expected_response)
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/tests/test_tutorial.py" startline="91" endline="105" pcid="699">
+    def test_response_to_pm_for_topic(self) -> None:
+        user = self.example_user("hamlet")
+        bot = get_system_bot(settings.WELCOME_BOT, user.realm_id)
+        messages = ["Topics", "topics"]
+        self.login_user(user)
+        for content in messages:
+            self.send_personal_message(user, bot, content)
+            expected_response = (
+                "In Zulip, topics [tell you what a message is about](/help/streams-and-topics). "
+                "They are light-weight subjects, very similar to the subject line of an email.\n\n"
+                "Check out [Recent topics](#recent_topics) to see what's happening! "
+                'You can return to this conversation by clicking "Private messages" in the upper left.'
+            )
+            self.assertEqual(most_recent_message(user).content, expected_response)
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/tests/test_tutorial.py" startline="48" endline="61" pcid="696">
+    def test_response_to_pm_for_edit(self) -> None:
+        user = self.example_user("hamlet")
+        bot = get_system_bot(settings.WELCOME_BOT, user.realm_id)
+        messages = ["profile", "Profile"]
+        self.login_user(user)
+        for content in messages:
+            self.send_personal_message(user, bot, content)
+            expected_response = (
+                "Go to [Profile settings](#settings/profile) "
+                "to add a [profile picture](/help/change-your-profile-picture) "
+                "and edit your [profile information](/help/edit-your-profile)."
+            )
+            self.assertEqual(most_recent_message(user).content, expected_response)
+
+</source>
+</class>
+
+<class classid="12" nclones="3" nlines="10" similarity="100">
+<source file="systems/zulip-5.0-rc1/zerver/tests/test_tutorial.py" startline="77" endline="90" pcid="698">
+    def test_response_to_pm_for_stream(self) -> None:
+        user = self.example_user("hamlet")
+        bot = get_system_bot(settings.WELCOME_BOT, user.realm_id)
+        messages = ["Streams", "streams", "channels"]
+        self.login_user(user)
+        for content in messages:
+            self.send_personal_message(user, bot, content)
+            expected_response = (
+                "In Zulip, streams [determine who gets a message](/help/streams-and-topics). "
+                "They are similar to channels in other chat apps.\n\n"
+                "[Browse and subscribe to streams](#streams/all)."
+            )
+            self.assertEqual(most_recent_message(user).content, expected_response)
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/tests/test_tutorial.py" startline="106" endline="119" pcid="700">
+    def test_response_to_pm_for_shortcuts(self) -> None:
+        user = self.example_user("hamlet")
+        bot = get_system_bot(settings.WELCOME_BOT, user.realm_id)
+        messages = ["Keyboard shortcuts", "shortcuts", "Shortcuts"]
+        self.login_user(user)
+        for content in messages:
+            self.send_personal_message(user, bot, content)
+            expected_response = (
+                "Zulip's [keyboard shortcuts](#keyboard-shortcuts) "
+                "let you navigate the app quickly and efficiently.\n\n"
+                "Press `?` any time to see a [cheat sheet](#keyboard-shortcuts)."
+            )
+            self.assertEqual(most_recent_message(user).content, expected_response)
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/tests/test_tutorial.py" startline="136" endline="151" pcid="702">
+    def test_response_to_pm_for_help(self) -> None:
+        user = self.example_user("hamlet")
+        bot = get_system_bot(settings.WELCOME_BOT, user.realm_id)
+        messages = ["help", "Help", "?"]
+        self.login_user(user)
+        for content in messages:
+            self.send_personal_message(user, bot, content)
+            expected_response = (
+                "Here are a few messages I understand: "
+                "`apps`, `profile`, `theme`, "
+                "`streams`, `topics`, `message formatting`, `keyboard shortcuts`.\n\n"
+                "Check out our [Getting started guide](/help/getting-started-with-zulip), "
+                "or browse the [Help center](/help/) to learn more!"
+            )
+            self.assertEqual(most_recent_message(user).content, expected_response)
+
+</source>
+</class>
+
+<class classid="13" nclones="2" nlines="10" similarity="100">
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/librato/tests.py" startline="29" endline="39" pcid="860">
+    def test_alert_message_with_custom_topic(self) -> None:
+        custom_topic = "custom_name"
+        self.url = self.build_webhook_url(topic=custom_topic)
+        expected_message = "Alert [alert_name](https://metrics.librato.com/alerts#/6294535) has triggered! [Reaction steps](http://www.google.pl):\n * Metric `librato.cpu.percent.idle`, sum was below 44 by 300s, recorded at 2016-03-31 09:11:42 UTC.\n * Metric `librato.swap.swap.cached`, average was absent  by 300s, recorded at 2016-03-31 09:11:42 UTC.\n * Metric `librato.swap.swap.cached`, derivative was above 9 by 300s, recorded at 2016-03-31 09:11:42 UTC."
+        self.check_webhook(
+            "alert",
+            custom_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/helloworld/tests.py" startline="64" endline="75" pcid="1678">
+    def test_custom_topic(self) -> None:
+        # Note that this is really just a test for check_send_webhook_message
+        expected_topic = "Custom Topic"
+        self.url = self.build_webhook_url(topic=expected_topic)
+        expected_message = "Hello! I am happy to be here! :smile:\nThe Wikipedia featured article for today is **[Goodbye](https://en.wikipedia.org/wiki/Goodbye)**"
+
+        self.check_webhook(
+            "goodbye",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+</source>
+</class>
+
+<class classid="14" nclones="3" nlines="12" similarity="100">
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/freshstatus/tests.py" startline="192" endline="208" pcid="1102">
+    def test_freshstatus_invalid_payload_with_missing_data(self) -> None:
+        """
+        Tests if invalid Freshstatus payloads are handled correctly
+        """
+        self.url = self.build_webhook_url()
+        payload = self.get_body("freshstatus_invalid_payload_with_missing_data")
+        result = self.client_post(self.url, payload, content_type="application/json")
+        self.assert_json_error(result, "Invalid payload")
+
+        expected_message = MISCONFIGURED_PAYLOAD_ERROR_MESSAGE.format(
+            bot_name=self.test_user.full_name,
+            support_email=FromAddress.SUPPORT,
+        ).strip()
+
+        msg = self.get_last_message()
+        self.assertEqual(msg.content, expected_message)
+        self.assertEqual(msg.recipient.type, Recipient.PERSONAL)
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/uptimerobot/tests.py" startline="31" endline="47" pcid="1301">
+    def test_uptimerobot_invalid_payload_with_missing_data(self) -> None:
+        """
+        Tests if invalid UptimeRobot payloads are handled correctly
+        """
+        self.url = self.build_webhook_url()
+        payload = self.get_body("uptimerobot_invalid_payload_with_missing_data")
+        result = self.client_post(self.url, payload, content_type="application/json")
+        self.assert_json_error(result, "Invalid payload")
+
+        expected_message = MISCONFIGURED_PAYLOAD_ERROR_MESSAGE.format(
+            bot_name=self.test_user.full_name,
+            support_email=FromAddress.SUPPORT,
+        ).strip()
+
+        msg = self.get_last_message()
+        self.assertEqual(msg.content, expected_message)
+        self.assertEqual(msg.recipient.type, Recipient.PERSONAL)
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/zabbix/tests.py" startline="20" endline="36" pcid="1980">
+    def test_zabbix_invalid_payload_with_missing_data(self) -> None:
+        """
+        Tests if invalid Zabbix payloads are handled correctly
+        """
+        self.url = self.build_webhook_url()
+        payload = self.get_body("zabbix_invalid_payload_with_missing_data")
+        result = self.client_post(self.url, payload, content_type="application/json")
+        self.assert_json_error(result, "Invalid payload")
+
+        expected_message = MISCONFIGURED_PAYLOAD_ERROR_MESSAGE.format(
+            bot_name=self.test_user.full_name,
+            support_email=FromAddress.SUPPORT,
+        ).strip()
+
+        msg = self.get_last_message()
+        self.assertEqual(msg.content, expected_message)
+        self.assertEqual(msg.recipient.type, Recipient.PERSONAL)
+</source>
+</class>
+
+<class classid="15" nclones="6" nlines="10" similarity="100">
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/splunk/tests.py" startline="10" endline="30" pcid="1112">
+    def test_splunk_search_one_result(self) -> None:
+        self.url = self.build_webhook_url(topic="New Search Alert")
+
+        # define the expected message contents
+        expected_topic = "New Search Alert"
+        expected_message = """
+Splunk alert from saved search:
+* **Search**: [sudo](http://example.com:8000/app/search/search?q=%7Cloadjob%20rt_scheduler__admin__search__sudo_at_1483557185_2.2%20%7C%20head%201%20%7C%20tail%201&earliest=0&latest=now)
+* **Host**: myserver
+* **Source**: `/var/log/auth.log`
+* **Raw**: `Jan  4 11:14:32 myserver sudo: pam_unix(sudo:session): session closed for user root`
+""".strip()
+
+        # using fixture named splunk_search_one_result, execute this test
+        self.check_webhook(
+            "search_one_result",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/splunk/tests.py" startline="89" endline="108" pcid="1116">
+    def test_splunk_missing_search_name(self) -> None:
+
+        self.url = self.build_webhook_url(topic="New Search Alert")
+
+        expected_topic = "New Search Alert"
+        expected_message = """
+Splunk alert from saved search:
+* **Search**: [Missing search_name](http://example.com:8000/app/search/search?q=%7Cloadjob%20rt_scheduler__admin__search__sudo_at_1483557185_2.2%20%7C%20head%201%20%7C%20tail%201&earliest=0&latest=now)
+* **Host**: myserver
+* **Source**: `/var/log/auth.log`
+* **Raw**: `Jan  4 11:14:32 myserver sudo: pam_unix(sudo:session): session closed for user root`
+""".strip()
+
+        self.check_webhook(
+            "missing_search_name",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/splunk/tests.py" startline="69" endline="88" pcid="1115">
+    def test_splunk_missing_results_link(self) -> None:
+
+        self.url = self.build_webhook_url(topic="New Search Alert")
+
+        expected_topic = "New Search Alert"
+        expected_message = """
+Splunk alert from saved search:
+* **Search**: [sudo](Missing results_link)
+* **Host**: myserver
+* **Source**: `/var/log/auth.log`
+* **Raw**: `Jan  4 11:14:32 myserver sudo: pam_unix(sudo:session): session closed for user root`
+""".strip()
+
+        self.check_webhook(
+            "missing_results_link",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/splunk/tests.py" startline="129" endline="148" pcid="1118">
+    def test_splunk_missing_source(self) -> None:
+
+        self.url = self.build_webhook_url(topic="New Search Alert")
+
+        expected_topic = "New Search Alert"
+        expected_message = """
+Splunk alert from saved search:
+* **Search**: [sudo](http://example.com:8000/app/search/search?q=%7Cloadjob%20rt_scheduler__admin__search__sudo_at_1483557185_2.2%20%7C%20head%201%20%7C%20tail%201&earliest=0&latest=now)
+* **Host**: myserver
+* **Source**: `Missing source`
+* **Raw**: `Jan  4 11:14:32 myserver sudo: pam_unix(sudo:session): session closed for user root`
+""".strip()
+
+        self.check_webhook(
+            "missing_source",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/splunk/tests.py" startline="109" endline="128" pcid="1117">
+    def test_splunk_missing_host(self) -> None:
+
+        self.url = self.build_webhook_url(topic="New Search Alert")
+
+        expected_topic = "New Search Alert"
+        expected_message = """
+Splunk alert from saved search:
+* **Search**: [sudo](http://example.com:8000/app/search/search?q=%7Cloadjob%20rt_scheduler__admin__search__sudo_at_1483557185_2.2%20%7C%20head%201%20%7C%20tail%201&earliest=0&latest=now)
+* **Host**: Missing host
+* **Source**: `/var/log/auth.log`
+* **Raw**: `Jan  4 11:14:32 myserver sudo: pam_unix(sudo:session): session closed for user root`
+""".strip()
+
+        self.check_webhook(
+            "missing_host",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/splunk/tests.py" startline="149" endline="167" pcid="1119">
+    def test_splunk_missing_raw(self) -> None:
+
+        self.url = self.build_webhook_url(topic="New Search Alert")
+
+        expected_topic = "New Search Alert"
+        expected_message = """
+Splunk alert from saved search:
+* **Search**: [sudo](http://example.com:8000/app/search/search?q=%7Cloadjob%20rt_scheduler__admin__search__sudo_at_1483557185_2.2%20%7C%20head%201%20%7C%20tail%201&earliest=0&latest=now)
+* **Host**: myserver
+* **Source**: `/var/log/auth.log`
+* **Raw**: `Missing _raw`
+""".strip()
+
+        self.check_webhook(
+            "missing_raw",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+</source>
+</class>
+
+<class classid="16" nclones="4" nlines="10" similarity="100">
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/bitbucket2/tests.py" startline="136" endline="146" pcid="1171">
+    def test_bitbucket2_on_pull_request_created_with_custom_topic_in_url(self) -> None:
+        self.url = self.build_webhook_url(topic="notifications")
+        expected_topic = "notifications"
+        expected_message = "Tomasz created [PR #1 new commit](https://bitbucket.org/kolaszek/repository-name/pull-requests/1) (assigned to Tomasz Kolek) from `new-branch` to `master`:\n\n~~~ quote\ndescription\n~~~"
+        self.check_webhook(
+            "pull_request_created_or_updated",
+            expected_topic,
+            expected_message,
+            HTTP_X_EVENT_KEY="pullrequest:created",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/bitbucket2/tests.py" startline="214" endline="224" pcid="1179">
+    def test_bitbucket2_on_pull_request_comment_created_with_custom_topic_in_url(self) -> None:
+        self.url = self.build_webhook_url(topic="notifications")
+        expected_topic = "notifications"
+        expected_message = "Tomasz [commented](https://bitbucket.org/kolaszek/repository-name/pull-requests/3/_/diff#comment-20576503) on [PR #1 new commit](https://bitbucket.org/kolaszek/repository-name/pull-requests/3):\n\n~~~ quote\nComment1\n~~~"
+        self.check_webhook(
+            "pull_request_comment_action",
+            expected_topic,
+            expected_message,
+            HTTP_X_EVENT_KEY="pullrequest:comment_created",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/bitbucket2/tests.py" startline="165" endline="175" pcid="1174">
+    def test_bitbucket2_on_pull_request_approved_with_custom_topic_in_url(self) -> None:
+        self.url = self.build_webhook_url(topic="notifications")
+        expected_topic = "notifications"
+        expected_message = "Tomasz approved [PR #1 new commit](https://bitbucket.org/kolaszek/repository-name/pull-requests/1)."
+        self.check_webhook(
+            "pull_request_approved_or_unapproved",
+            expected_topic,
+            expected_message,
+            HTTP_X_EVENT_KEY="pullrequest:approved",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/bitbucket2/tests.py" startline="234" endline="244" pcid="1181">
+    def test_bitbucket2_on_pull_request_comment_updated_with_custom_topic_in_url(self) -> None:
+        self.url = self.build_webhook_url(topic="notifications")
+        expected_topic = "notifications"
+        expected_message = "Tomasz updated a [comment](https://bitbucket.org/kolaszek/repository-name/pull-requests/3/_/diff#comment-20576503) on [PR #1 new commit](https://bitbucket.org/kolaszek/repository-name/pull-requests/3):\n\n~~~ quote\nComment1\n~~~"
+        self.check_webhook(
+            "pull_request_comment_action",
+            expected_topic,
+            expected_message,
+            HTTP_X_EVENT_KEY="pullrequest:comment_updated",
+        )
+
+</source>
+</class>
+
+<class classid="17" nclones="2" nlines="29" similarity="100">
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/clubhouse/tests.py" startline="217" endline="248" pcid="1278">
+    def test_story_update_add_github_multiple_pull_requests(
+        self, check_send_webhook_message_mock: MagicMock
+    ) -> None:
+        payload = self.get_body("story_update_add_github_multiple_pull_requests")
+        self.client_post(self.url, payload, content_type="application/json")
+        expected_message = "New GitHub PR [#2](https://github.com/PIG208/test-clubhouse/pull/2) opened for story [{name}]({url}) (Unscheduled -> In Development)."
+        request, user_profile = (
+            check_send_webhook_message_mock.call_args_list[0][0][0],
+            check_send_webhook_message_mock.call_args_list[0][0][1],
+        )
+        expected_list = [
+            call(
+                request,
+                user_profile,
+                "Story1",
+                expected_message.format(
+                    name="Story1", url="https://app.clubhouse.io/pig208/story/17"
+                ),
+                "pull-request_create",
+            ),
+            call(
+                request,
+                user_profile,
+                "Story2",
+                expected_message.format(
+                    name="Story2", url="https://app.clubhouse.io/pig208/story/18"
+                ),
+                "pull-request_create",
+            ),
+        ]
+        self.assertEqual(check_send_webhook_message_mock.call_args_list, expected_list)
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/clubhouse/tests.py" startline="258" endline="289" pcid="1280">
+    def test_story_update_add_github_multiple_pull_requests_with_comment(
+        self, check_send_webhook_message_mock: MagicMock
+    ) -> None:
+        payload = self.get_body("story_update_add_github_multiple_pull_requests_with_comment")
+        self.client_post(self.url, payload, content_type="application/json")
+        expected_message = "Existing GitHub PR [#1](https://github.com/PIG208/test-clubhouse/pull/1) associated with story [{name}]({url}) (Unscheduled -> In Development)."
+        request, user_profile = (
+            check_send_webhook_message_mock.call_args_list[0][0][0],
+            check_send_webhook_message_mock.call_args_list[0][0][1],
+        )
+        expected_list = [
+            call(
+                request,
+                user_profile,
+                "new1",
+                expected_message.format(
+                    name="new1", url="https://app.clubhouse.io/pig208/story/26"
+                ),
+                "pull-request_comment",
+            ),
+            call(
+                request,
+                user_profile,
+                "new2",
+                expected_message.format(
+                    name="new2", url="https://app.clubhouse.io/pig208/story/27"
+                ),
+                "pull-request_comment",
+            ),
+        ]
+        self.assertEqual(check_send_webhook_message_mock.call_args_list, expected_list)
+
+</source>
+</class>
+
+<class classid="18" nclones="12" nlines="10" similarity="100">
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/front/tests.py" startline="25" endline="40" pcid="1369">
+    def test_outbound_message(self) -> None:
+        expected_topic = "cnv_keo696"
+        expected_message = (
+            "[Outbound message](https://app.frontapp.com/open/msg_1176ie2) "
+            "from **support@planet-express.com** "
+            "to **calculon@momsbot.com**:\n"
+            "```quote\n*Subject*: Your next delivery is on Epsilon 96Z\n```"
+        )
+
+        self.check_webhook(
+            "outbound_message",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/stripe/tests.py" startline="88" endline="99" pcid="2030">
+    def test_customer_deleted(self) -> None:
+        expected_topic = "cus_00000000000000"
+        expected_message = (
+            "[Customer](https://dashboard.stripe.com/customers/cus_00000000000000) deleted"
+        )
+        self.check_webhook(
+            "customer_deleted",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/front/tests.py" startline="151" endline="165" pcid="1379">
+    def test_outbound_reply(self) -> None:
+        expected_topic = "cnv_keocka"
+        expected_message = (
+            "[Outbound reply](https://app.frontapp.com/open/msg_1176ryy) "
+            "from **support@planet-express.com** "
+            "to **calculon@momsbot.com**."
+        )
+
+        self.check_webhook(
+            "outbound_reply",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/wordpress/tests.py" startline="58" endline="71" pcid="1734">
+    def test_user_register(self) -> None:
+
+        expected_topic = "New Blog Users"
+        expected_message = (
+            "New blog user registered:\n* **Name**: test_user\n* **Email**: test_user@example.com"
+        )
+
+        self.check_webhook(
+            "user_register",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/stripe/tests.py" startline="180" endline="191" pcid="2037">
+    def test_invoice_payment_failed(self) -> None:
+        expected_topic = "cus_00000000000000"
+        expected_message = (
+            "[Invoice](https://dashboard.stripe.com/invoices/in_00000000000000) payment failed"
+        )
+        self.check_webhook(
+            "invoice_payment_failed",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/front/tests.py" startline="112" endline="127" pcid="1376">
+    def test_inbound_message(self) -> None:
+        expected_topic = "cnv_keocka"
+        expected_message = (
+            "[Inbound message](https://app.frontapp.com/open/msg_1176r8y) "
+            "from **calculon@momsbot.com** "
+            "to **support@planet-express.com**:\n"
+            "```quote\n*Subject*: Being a robot is great, but...\n```"
+        )
+
+        self.check_webhook(
+            "inbound_message",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/gosquared/tests.py" startline="11" endline="23" pcid="1487">
+    def test_traffic_message(self) -> None:
+        expected_topic = "GoSquared - requestb.in"
+        expected_message = (
+            "[requestb.in](https://www.gosquared.com/now/GSN-595854-T) has 33 visitors online."
+        )
+
+        self.check_webhook(
+            "traffic_spike",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/stripe/tests.py" startline="66" endline="77" pcid="2028">
+    def test_customer_created(self) -> None:
+        expected_topic = "cus_00000000000000"
+        expected_message = (
+            "[Customer](https://dashboard.stripe.com/customers/cus_00000000000000) created"
+        )
+        self.check_webhook(
+            "customer_created",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/stripe/tests.py" startline="114" endline="125" pcid="2032">
+    def test_customer_subscription_deleted(self) -> None:
+        expected_topic = "cus_00000000000000"
+        expected_message = (
+            "[Subscription](https://dashboard.stripe.com/subscriptions/sub_00000000000000) deleted"
+        )
+        self.check_webhook(
+            "customer_subscription_deleted",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/front/tests.py" startline="96" endline="111" pcid="1375">
+    def test_mention_all(self) -> None:
+        expected_topic = "cnv_keo696"
+        expected_message = (
+            "**Leela Turanga** left a comment:\n"
+            "```quote\n@all Could someone else take this?\n```"
+        )
+
+        self.check_webhook(
+            "mention_all",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+    # Scenario 2: Conversation starts from an inbound message.
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/front/tests.py" startline="177" endline="190" pcid="1381">
+    def test_mention(self) -> None:
+        expected_topic = "cnv_keocka"
+        expected_message = (
+            "**Leela Turanga** left a comment:\n"
+            "```quote\n@bender Could you take it from here?\n```"
+        )
+
+        self.check_webhook(
+            "mention",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/stripe/tests.py" startline="32" endline="44" pcid="2025">
+    def test_charge_failed(self) -> None:
+        expected_topic = "charges"
+        expected_message = (
+            "[Charge](https://dashboard.stripe.com/charges/ch_00000000000000) for 1.00 AUD failed"
+        )
+        self.check_webhook(
+            "charge_failed",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+    # Credit card charge
+</source>
+</class>
+
+<class classid="19" nclones="2" nlines="12" similarity="100">
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/newrelic/tests.py" startline="51" endline="63" pcid="1723">
+    def test_not_recognized(self) -> None:
+        with self.assertRaises(AssertionError) as e:
+            self.check_webhook(
+                "incident_state_not_recognized",
+                "",
+                "",
+                content_type="application/json",
+            )
+        self.assertIn(
+            "The newrelic webhook requires current_state be in [open|acknowledged|closed]",
+            e.exception.args[0],
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/newrelic/tests.py" startline="80" endline="92" pcid="1725">
+    def test_missing_current_state(self) -> None:
+        with self.assertRaises(AssertionError) as e:
+            self.check_webhook(
+                "incident_missing_current_state",
+                "",
+                "",
+                content_type="application/json",
+            )
+        self.assertIn(
+            "The newrelic webhook requires current_state be in [open|acknowledged|closed]",
+            e.exception.args[0],
+        )
+
+</source>
+</class>
+
+<class classid="20" nclones="3" nlines="11" similarity="100">
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/deskdotcom/tests.py" startline="32" endline="47" pcid="1741">
+    def test_case_updated_message(self) -> None:
+        expected_topic = "case updated notification"
+        expected_message = (
+            "Case 2 updated. "
+            "Link: <a href='https://deskdotcomtest.desk.com/web/agent/case/2'>"
+            "I have a question</a>"
+        )
+
+        self.api_stream_message(
+            self.test_user,
+            "case_updated",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/deskdotcom/tests.py" startline="48" endline="64" pcid="1742">
+    def test_unicode_text_italian(self) -> None:
+
+        expected_topic = "case updated notification"
+        expected_message = (
+            "Case 2 updated. "
+            "Link: <a href='https://deskdotcomtest.desk.com/web/agent/case/2'>"
+            "Il mio hovercraft è pieno di anguille.</a>"
+        )
+
+        self.api_stream_message(
+            self.test_user,
+            "unicode_text_italian",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/deskdotcom/tests.py" startline="65" endline="81" pcid="1743">
+    def test_unicode_text_japanese(self) -> None:
+
+        expected_topic = "case updated notification"
+        expected_message = (
+            "Case 2 updated. "
+            "Link: <a href='https://deskdotcomtest.desk.com/web/agent/case/2'>"
+            "私のホバークラフトは鰻でいっぱいです</a>"
+        )
+
+        self.api_stream_message(
+            self.test_user,
+            "unicode_text_japanese",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+</source>
+</class>
+
+<class classid="21" nclones="3" nlines="10" similarity="100">
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/thinkst/tests.py" startline="154" endline="176" pcid="1801">
+    def test_canary_with_specific_topic(self) -> None:
+        self.url = self.build_webhook_url(topic="foo")
+        expected_message = (
+            "**:alert: Canary *0000000testnode* has been triggered!**\n\n"
+            "This is a dummy incident.\n\n"
+            "**Incident ID:** `aa875f255f94e3ffe40dc85cf1a8b1e0`\n"
+            "**Kind:** Dummy Incident\n"
+            "**Timestamp:** 2020-06-09 13:59:38 (UTC)\n"
+            "**Canary IP:** `1.1.1.1`\n"
+            "**Source IP:** `2.2.2.2`\n"
+            "**Reverse DNS:** `attacker-ip.local`\n"
+            "**Field1:** VALUE1\n"
+            "**Field2:** VALUE2\n"
+            "**Field3:** VALUE3"
+        )
+
+        self.check_webhook(
+            "canary_dummy",
+            "foo",
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/canarytoken/tests.py" startline="39" endline="54" pcid="1813">
+    def test_canarytoken_with_specific_topic(self) -> None:
+        self.url = self.build_webhook_url(topic="foo")
+        expected_message = (
+            "**:alert: Canarytoken has been triggered on 2020-06-09 14:04:47 "
+            "(UTC)!**\n\n"
+            "Canarytoken example \n\n"
+            "[Manage this canarytoken]"
+            "(https://canarytokens.org/manage?token=foo&auth=bar)"
+        )
+
+        self.check_webhook(
+            "canarytoken_real",
+            "foo",
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/thinkst/tests.py" startline="234" endline="260" pcid="1804">
+    def test_canarytoken_with_specific_topic(self) -> None:
+        self.url = self.build_webhook_url(topic="foo")
+        expected_message = (
+            "**:alert: Canarytoken *test document* has been triggered!**\n\n"
+            "A MS Word .docx Document Canarytoken has been triggered over doc-msword "
+            "by the source IP 1.1.1.1.\n\n"
+            "**Incident ID:** `db6f9b5528c6c6c385cb3bb63f5949c8`\n"
+            "**Token:** `dbwx4d68flwh2u5zku56nogu6`\n"
+            "**Kind:** MS Word .docx Document\n"
+            "**Timestamp:** 2020-07-20 14:40:15 (UTC)\n"
+            "**Triggered:** 5 times\n"
+            "**Accept:** `*/*`\n"
+            "**Accept-Encoding:** gzip, deflate\n"
+            "**Accept-Language:** en-gb\n"
+            "**Background Context:** You have had 21 incidents from 1.1.1.1 "
+            "previously.\n"
+            "**Connection:** keep-alive\n"
+            "**Dst Port:** 80\n"
+            "**User-Agent:** Mozilla/4.0 (compatible; ms-office; MSOffice 16)"
+        )
+
+        self.check_webhook(
+            "canarytoken_msword",
+            "foo",
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+</source>
+</class>
+
+<class classid="22" nclones="2" nlines="16" similarity="100">
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/gitlab/view.py" startline="218" endline="236" pcid="1928">
+def get_commented_issue_event_body(payload: Dict[str, Any], include_title: bool = False) -> str:
+    comment = payload["object_attributes"]
+    action = "[commented]({}) on".format(comment["url"])
+    url = "{}/issues/{}".format(
+        payload["project"].get("web_url"),
+        payload["issue"].get("iid"),
+    )
+
+    return get_pull_request_event_message(
+        get_issue_user_name(payload),
+        action,
+        url,
+        payload["issue"].get("iid"),
+        message=comment["note"],
+        type="issue",
+        title=payload["issue"].get("title") if include_title else None,
+    )
+
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/gitlab/view.py" startline="237" endline="255" pcid="1929">
+def get_commented_snippet_event_body(payload: Dict[str, Any], include_title: bool = False) -> str:
+    comment = payload["object_attributes"]
+    action = "[commented]({}) on".format(comment["url"])
+    url = "{}/snippets/{}".format(
+        payload["project"].get("web_url"),
+        payload["snippet"].get("id"),
+    )
+
+    return get_pull_request_event_message(
+        get_issue_user_name(payload),
+        action,
+        url,
+        payload["snippet"].get("id"),
+        message=comment["note"],
+        type="snippet",
+        title=payload["snippet"].get("title") if include_title else None,
+    )
+
+
+</source>
+</class>
+
+<class classid="23" nclones="4" nlines="10" similarity="100">
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/freshdesk/tests.py" startline="11" endline="36" pcid="1984">
+    def test_ticket_creation(self) -> None:
+        """
+        Messages are generated on ticket creation through Freshdesk's
+        "Dispatch'r" service.
+        """
+        expected_topic = "#11: Test ticket subject ☃"
+        expected_message = """
+Requester ☃ Bob <requester-bob@example.com> created [ticket #11](http://test1234zzz.freshdesk.com/helpdesk/tickets/11):
+
+``` quote
+Test ticket description ☃.
+```
+
+* **Type**: Incident
+* **Priority**: High
+* **Status**: Pending
+""".strip()
+
+        self.api_stream_message(
+            self.test_user,
+            "ticket_created",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/freshdesk/tests.py" startline="57" endline="75" pcid="1986">
+    def test_priority_change(self) -> None:
+        """
+        Messages are generated when a ticket's priority changes through
+        Freshdesk's "Observer" service.
+        """
+        expected_topic = "#11: Test ticket subject"
+        expected_message = """
+Requester Bob <requester-bob@example.com> updated [ticket #11](http://test1234zzz.freshdesk.com/helpdesk/tickets/11):
+
+* **Priority**: High -> Low
+""".strip()
+        self.api_stream_message(
+            self.test_user,
+            "priority_changed",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/freshdesk/tests.py" startline="117" endline="133" pcid="1991">
+    def test_inline_image(self) -> None:
+        """
+        Freshdesk sends us descriptions as HTML, so we have to make the
+        descriptions Zulip Markdown-friendly while still doing our best to
+        preserve links and images.
+        """
+        expected_topic = "#12: Not enough ☃ guinea pigs"
+        expected_message = """
+Requester \u2603 Bob <requester-bob@example.com> created [ticket #12](http://test1234zzz.freshdesk.com/helpdesk/tickets/12):\n\n``` quote\nThere are too many cat pictures on the internet \u2603. We need more guinea pigs.\nExhibit 1:\n\n  \n\n[guinea_pig.png](http://cdn.freshdesk.com/data/helpdesk/attachments/production/12744808/original/guinea_pig.png)\n```\n\n* **Type**: Problem\n* **Priority**: Urgent\n* **Status**: Open
+""".strip()
+        self.api_stream_message(
+            self.test_user,
+            "inline_images",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/freshdesk/tests.py" startline="37" endline="56" pcid="1985">
+    def test_status_change(self) -> None:
+        """
+        Messages are generated when a ticket's status changes through
+        Freshdesk's "Observer" service.
+        """
+        expected_topic = "#11: Test ticket subject ☃"
+        expected_message = """
+Requester Bob <requester-bob@example.com> updated [ticket #11](http://test1234zzz.freshdesk.com/helpdesk/tickets/11):
+
+* **Status**: Resolved -> Waiting on Customer
+""".strip()
+
+        self.api_stream_message(
+            self.test_user,
+            "status_changed",
+            expected_topic,
+            expected_message,
+            content_type="application/x-www-form-urlencoded",
+        )
+
+</source>
+</class>
+
+<class classid="24" nclones="2" nlines="10" similarity="100">
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/transifex/tests.py" startline="17" endline="27" pcid="2019">
+    def test_transifex_reviewed_message(self) -> None:
+        expected_topic = f"{self.PROJECT} in {self.LANGUAGE}"
+        expected_message = f"Resource {self.RESOURCE} fully reviewed."
+        self.url = self.build_webhook_url(
+            self.URL_REVIEWED_METHOD_TEMPLATE,
+            project=self.PROJECT,
+            language=self.LANGUAGE,
+            resource=self.RESOURCE,
+        )
+        self.check_webhook("", expected_topic, expected_message)
+
+</source>
+<source file="systems/zulip-5.0-rc1/zerver/webhooks/transifex/tests.py" startline="28" endline="38" pcid="2020">
+    def test_transifex_translated_message(self) -> None:
+        expected_topic = f"{self.PROJECT} in {self.LANGUAGE}"
+        expected_message = f"Resource {self.RESOURCE} fully translated."
+        self.url = self.build_webhook_url(
+            self.URL_TRANSLATED_METHOD_TEMPLATE,
+            project=self.PROJECT,
+            language=self.LANGUAGE,
+            resource=self.RESOURCE,
+        )
+        self.check_webhook("", expected_topic, expected_message)
+
+</source>
+</class>
+
+<class classid="25" nclones="2" nlines="14" similarity="100">
+<source file="systems/zulip-5.0-rc1/analytics/migrations/0009_remove_messages_to_stream_stat.py" startline="6" endline="22" pcid="2124">
+def delete_messages_sent_to_stream_stat(
+    apps: StateApps, schema_editor: DatabaseSchemaEditor
+) -> None:
+    UserCount = apps.get_model("analytics", "UserCount")
+    StreamCount = apps.get_model("analytics", "StreamCount")
+    RealmCount = apps.get_model("analytics", "RealmCount")
+    InstallationCount = apps.get_model("analytics", "InstallationCount")
+    FillState = apps.get_model("analytics", "FillState")
+
+    property = "messages_sent_to_stream:is_bot"
+    UserCount.objects.filter(property=property).delete()
+    StreamCount.objects.filter(property=property).delete()
+    RealmCount.objects.filter(property=property).delete()
+    InstallationCount.objects.filter(property=property).delete()
+    FillState.objects.filter(property=property).delete()
+
+
+</source>
+<source file="systems/zulip-5.0-rc1/analytics/migrations/0010_clear_messages_sent_values.py" startline="6" endline="22" pcid="2125">
+def clear_message_sent_by_message_type_values(
+    apps: StateApps, schema_editor: DatabaseSchemaEditor
+) -> None:
+    UserCount = apps.get_model("analytics", "UserCount")
+    StreamCount = apps.get_model("analytics", "StreamCount")
+    RealmCount = apps.get_model("analytics", "RealmCount")
+    InstallationCount = apps.get_model("analytics", "InstallationCount")
+    FillState = apps.get_model("analytics", "FillState")
+
+    property = "messages_sent:message_type:day"
+    UserCount.objects.filter(property=property).delete()
+    StreamCount.objects.filter(property=property).delete()
+    RealmCount.objects.filter(property=property).delete()
+    InstallationCount.objects.filter(property=property).delete()
+    FillState.objects.filter(property=property).delete()
+
+
+</source>
+</class>
+
+</clones>

@@ -1,0 +1,2537 @@
+<clones>
+<systeminfo processor="nicad6" system="DeepPavlov-0.17.1" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="841" npairs="51"/>
+<runinfo ncompares="31481" cputime="59068"/>
+<classinfo nclasses="33"/>
+
+<class classid="1" nclones="2" nlines="24" similarity="79">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/kbqa/rel_ranking_bert_infer.py" startline="164" endline="187" pcid="39">
+
+        return answers
+
+    def rank_rels(self, question: str, candidate_rels: List[str]) -> List[Tuple[str, Any]]:
+        rels_with_scores = []
+        n_batches = len(candidate_rels) // self.batch_size + int(len(candidate_rels) % self.batch_size > 0)
+        for i in range(n_batches):
+            questions_batch = []
+            rels_labels_batch = []
+            rels_batch = []
+            for candidate_rel in candidate_rels[i * self.batch_size: (i + 1) * self.batch_size]:
+                if candidate_rel in self.rel_q2name:
+                    questions_batch.append(question)
+                    rels_batch.append(candidate_rel)
+                    rels_labels_batch.append(self.rel_q2name[candidate_rel])
+            if questions_batch:
+                if self.use_mt_bert:
+                    features = self.bert_preprocessor(questions_batch, rels_labels_batch)
+                    probas = self.ranker(features)
+                else:
+                    probas = self.ranker(questions_batch, rels_labels_batch)
+                probas = [proba[1] for proba in probas]
+                for j, rel in enumerate(rels_batch):
+                    rels_with_scores.append((rel, probas[j]))
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/kbqa/rel_ranking_infer.py" startline="65" endline="89" pcid="55">
+
+    def rank_rels(self, question: str, candidate_rels: List[str]) -> List[Tuple[str, Any]]:
+        rels_with_scores = []
+        n_batches = len(candidate_rels) // self.batch_size + int(len(candidate_rels) % self.batch_size > 0)
+        for i in range(n_batches):
+            questions_batch = []
+            rels_labels_batch = []
+            rels_batch = []
+            for candidate_rel in candidate_rels[i * self.batch_size: (i + 1) * self.batch_size]:
+                if candidate_rel in self.rel_q2name:
+                    questions_batch.append(question)
+                    rels_batch.append(candidate_rel)
+                    rels_labels_batch.append(self.rel_q2name[candidate_rel])
+            if questions_batch:
+                probas = self.ranker(questions_batch, rels_labels_batch)
+                probas = [proba[1] for proba in probas]
+                for j, rel in enumerate(rels_batch):
+                    rels_with_scores.append((rel, probas[j]))
+        scores = [score for rel, score in rels_with_scores]
+        if scores:
+            softmax_scores = softmax(scores)
+            rels_with_scores = [(rel, softmax_score) for (rel, score), softmax_score in 
+                                                              zip(rels_with_scores, softmax_scores)]
+            rels_with_scores = sorted(rels_with_scores, key=lambda x: x[1], reverse=True)
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="58" similarity="80">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/bert/bert_sequence_tagger.py" startline="474" endline="527" pcid="85">
+        return_probas: set this to `True` if you need the probabilities instead of raw answers
+    """
+
+    def __init__(self,
+                 n_tags: List[str],
+                 keep_prob: float,
+                 bert_config_file: str,
+                 pretrained_bert: str = None,
+                 attention_probs_keep_prob: float = None,
+                 hidden_keep_prob: float = None,
+                 use_crf=False,
+                 encoder_layer_ids: List[int] = (-1,),
+                 encoder_dropout: float = 0.0,
+                 optimizer: str = None,
+                 weight_decay_rate: float = 1e-6,
+                 use_birnn: bool = False,
+                 birnn_cell_type: str = 'lstm',
+                 birnn_hidden_size: int = 128,
+                 ema_decay: float = None,
+                 ema_variables_on_cpu: bool = True,
+                 return_probas: bool = False,
+                 freeze_embeddings: bool = False,
+                 learning_rate: float = 1e-3,
+                 bert_learning_rate: float = 2e-5,
+                 min_learning_rate: float = 1e-07,
+                 learning_rate_drop_patience: int = 20,
+                 learning_rate_drop_div: float = 2.0,
+                 load_before_drop: bool = True,
+                 clip_norm: float = 1.0,
+                 **kwargs) -> None:
+        self.n_tags = n_tags
+        self.use_crf = use_crf
+        self.use_birnn = use_birnn
+        self.birnn_cell_type = birnn_cell_type
+        self.birnn_hidden_size = birnn_hidden_size
+        self.return_probas = return_probas
+        super().__init__(keep_prob=keep_prob,
+                         bert_config_file=bert_config_file,
+                         pretrained_bert=pretrained_bert,
+                         attention_probs_keep_prob=attention_probs_keep_prob,
+                         hidden_keep_prob=hidden_keep_prob,
+                         encoder_layer_ids=encoder_layer_ids,
+                         encoder_dropout=encoder_dropout,
+                         optimizer=optimizer,
+                         weight_decay_rate=weight_decay_rate,
+                         ema_decay=ema_decay,
+                         ema_variables_on_cpu=ema_variables_on_cpu,
+                         freeze_embeddings=freeze_embeddings,
+                         learning_rate=learning_rate,
+                         bert_learning_rate=bert_learning_rate,
+                         min_learning_rate=min_learning_rate,
+                         learning_rate_drop_div=learning_rate_drop_div,
+                         learning_rate_drop_patience=learning_rate_drop_patience,
+                         load_before_drop=load_before_drop,
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/syntax_parser/network.py" startline="150" endline="213" pcid="515">
+    def __init__(self,
+                 n_deps: int,
+                 keep_prob: float,
+                 bert_config_file: str,
+                 pretrained_bert: str = None,
+                 attention_probs_keep_prob: float = None,
+                 hidden_keep_prob: float = None,
+                 embeddings_dropout: float = 0.0,
+                 encoder_layer_ids: List[int] = (-1,),
+                 encoder_dropout: float = 0.0,
+                 optimizer: str = None,
+                 weight_decay_rate: float = 1e-6,
+                 state_size: int = 256,
+                 use_birnn: bool = True,
+                 birnn_cell_type: str = 'lstm',
+                 birnn_hidden_size: int = 256,
+                 ema_decay: float = None,
+                 ema_variables_on_cpu: bool = True,
+                 predict_tags = False,
+                 n_tags = None,
+                 tag_weight = 1.0,
+                 return_probas: bool = False,
+                 freeze_embeddings: bool = False,
+                 learning_rate: float = 1e-3,
+                 bert_learning_rate: float = 2e-5,
+                 min_learning_rate: float = 1e-07,
+                 learning_rate_drop_patience: int = 20,
+                 learning_rate_drop_div: float = 2.0,
+                 load_before_drop: bool = True,
+                 clip_norm: float = 1.0,
+                 **kwargs) -> None:
+        self.n_deps = n_deps
+        self.embeddings_dropout = embeddings_dropout
+        self.state_size = state_size
+        self.use_birnn = use_birnn
+        self.birnn_cell_type = birnn_cell_type
+        self.birnn_hidden_size = birnn_hidden_size
+        self.return_probas = return_probas
+        self.predict_tags = predict_tags
+        self.n_tags = n_tags
+        self.tag_weight = tag_weight
+        if self.predict_tags and self.n_tags is None:
+            raise ValueError("n_tags should be given if `predict_tags`=True.")
+        super().__init__(keep_prob=keep_prob,
+                         bert_config_file=bert_config_file,
+                         pretrained_bert=pretrained_bert,
+                         attention_probs_keep_prob=attention_probs_keep_prob,
+                         hidden_keep_prob=hidden_keep_prob,
+                         encoder_layer_ids=encoder_layer_ids,
+                         encoder_dropout=encoder_dropout,
+                         optimizer=optimizer,
+                         weight_decay_rate=weight_decay_rate,
+                         ema_decay=ema_decay,
+                         ema_variables_on_cpu=ema_variables_on_cpu,
+                         freeze_embeddings=freeze_embeddings,
+                         learning_rate=learning_rate,
+                         bert_learning_rate=bert_learning_rate,
+                         min_learning_rate=min_learning_rate,
+                         learning_rate_drop_div=learning_rate_drop_div,
+                         learning_rate_drop_patience=learning_rate_drop_patience,
+                         load_before_drop=load_before_drop,
+                         clip_norm=clip_norm,
+                         **kwargs)
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="17" similarity="100">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/bert/bert_classifier.py" startline="164" endline="185" pcid="102">
+
+    def _init_optimizer(self):
+        with tf.variable_scope('Optimizer'):
+            self.global_step = tf.get_variable('global_step', shape=[], dtype=tf.int32,
+                                               initializer=tf.constant_initializer(0), trainable=False)
+            # default optimizer for Bert is Adam with fixed L2 regularization
+            if self.optimizer is None:
+
+                self.train_op = self.get_train_op(self.loss, learning_rate=self.learning_rate_ph,
+                                                  optimizer=AdamWeightDecayOptimizer,
+                                                  weight_decay_rate=self.weight_decay_rate,
+                                                  beta_1=0.9,
+                                                  beta_2=0.999,
+                                                  epsilon=1e-6,
+                                                  exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"]
+                                                  )
+            else:
+                self.train_op = self.get_train_op(self.loss, learning_rate=self.learning_rate_ph)
+
+            if self.optimizer is None:
+                new_global_step = self.global_step + 1
+                self.train_op = tf.group(self.train_op, [self.global_step.assign(new_global_step)])
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/bert/bert_squad.py" startline="181" endline="202" pcid="109">
+
+    def _init_optimizer(self):
+        with tf.variable_scope('Optimizer'):
+            self.global_step = tf.get_variable('global_step', shape=[], dtype=tf.int32,
+                                               initializer=tf.constant_initializer(0), trainable=False)
+            # default optimizer for Bert is Adam with fixed L2 regularization
+            if self.optimizer is None:
+
+                self.train_op = self.get_train_op(self.loss, learning_rate=self.learning_rate_ph,
+                                                  optimizer=AdamWeightDecayOptimizer,
+                                                  weight_decay_rate=self.weight_decay_rate,
+                                                  beta_1=0.9,
+                                                  beta_2=0.999,
+                                                  epsilon=1e-6,
+                                                  exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"]
+                                                  )
+            else:
+                self.train_op = self.get_train_op(self.loss, learning_rate=self.learning_rate_ph)
+
+            if self.optimizer is None:
+                new_global_step = self.global_step + 1
+                self.train_op = tf.group(self.train_op, [self.global_step.assign(new_global_step)])
+</source>
+</class>
+
+<class classid="4" nclones="3" nlines="15" similarity="73">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/bert/bert_classifier.py" startline="186" endline="201" pcid="103">
+
+    def _build_feed_dict(self, input_ids, input_masks, token_types, y=None):
+        feed_dict = {
+            self.input_ids_ph: input_ids,
+            self.input_masks_ph: input_masks,
+            self.token_types_ph: token_types,
+        }
+        if y is not None:
+            feed_dict.update({
+                self.y_ph: y,
+                self.learning_rate_ph: max(self.get_learning_rate(), self.min_learning_rate),
+                self.keep_prob_ph: self.keep_prob,
+                self.is_train_ph: True,
+            })
+
+        return feed_dict
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/squad/squad.py" startline="234" endline="251" pcid="372">
+    def _build_feed_dict(self, c_tokens, c_chars, q_tokens, q_chars, y1=None, y2=None):
+        feed_dict = {
+            self.c_ph: c_tokens,
+            self.cc_ph: c_chars,
+            self.q_ph: q_tokens,
+            self.qc_ph: q_chars,
+        }
+        if y1 is not None and y2 is not None:
+            feed_dict.update({
+                self.y1_ph: y1,
+                self.y2_ph: y2,
+                self.lear_rate_ph: max(self.get_learning_rate(), self.min_learning_rate),
+                self.keep_prob_ph: self.keep_prob,
+                self.is_train_ph: True,
+            })
+
+        return feed_dict
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/bert/bert_squad.py" startline="203" endline="219" pcid="110">
+
+    def _build_feed_dict(self, input_ids, input_masks, token_types, y_st=None, y_end=None):
+        feed_dict = {
+            self.input_ids_ph: input_ids,
+            self.input_masks_ph: input_masks,
+            self.token_types_ph: token_types,
+        }
+        if y_st is not None and y_end is not None:
+            feed_dict.update({
+                self.y_st_ph: y_st,
+                self.y_end_ph: y_end,
+                self.learning_rate_ph: max(self.get_learning_rate(), self.min_learning_rate),
+                self.keep_prob_ph: self.keep_prob,
+                self.is_train_ph: True,
+            })
+
+        return feed_dict
+</source>
+</class>
+
+<class classid="5" nclones="3" nlines="48" similarity="80">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/ranking/matching_models/dam_utils/layers.py" startline="313" endline="381" pcid="184">
+def CNN_3d(x, out_channels_0, out_channels_1, add_relu=True):
+    '''Add a 3d convlution layer with relu and max pooling layer.
+
+    Args:
+        x: a tensor with shape [batch, in_depth, in_height, in_width, in_channels]
+        out_channels: a number
+        filter_size: a number
+        pooling_size: a number
+
+    Returns:
+        a flattened tensor with shape [batch, num_features]
+
+    Raises:
+    '''
+    in_channels = x.shape[-1]
+    weights_0 = tf.get_variable(
+        name='filter_0',
+        shape=[3, 3, 3, in_channels, out_channels_0],
+        dtype=tf.float32,
+        initializer=tf.random_uniform_initializer(-0.001, 0.001))
+    bias_0 = tf.get_variable(
+        name='bias_0',
+        shape=[out_channels_0],
+        dtype=tf.float32,
+        initializer=tf.zeros_initializer())
+
+    conv_0 = tf.nn.conv3d(x, weights_0, strides=[1, 1, 1, 1, 1], padding="SAME")
+    log.info('conv_0 shape: %s' % conv_0.shape)
+    conv_0 = conv_0 + bias_0
+
+    if add_relu:
+        conv_0 = tf.nn.elu(conv_0)
+
+    pooling_0 = tf.nn.max_pool3d(
+        conv_0,
+        ksize=[1, 3, 3, 3, 1],
+        strides=[1, 3, 3, 3, 1],
+        padding="SAME")
+    log.info('pooling_0 shape: %s' % pooling_0.shape)
+
+    # layer_1
+    weights_1 = tf.get_variable(
+        name='filter_1',
+        shape=[3, 3, 3, out_channels_0, out_channels_1],
+        dtype=tf.float32,
+        initializer=tf.random_uniform_initializer(-0.001, 0.001))
+    bias_1 = tf.get_variable(
+        name='bias_1',
+        shape=[out_channels_1],
+        dtype=tf.float32,
+        initializer=tf.zeros_initializer())
+
+    conv_1 = tf.nn.conv3d(pooling_0, weights_1, strides=[1, 1, 1, 1, 1], padding="SAME")
+    log.info('conv_1 shape: %s' % conv_1.shape)
+    conv_1 = conv_1 + bias_1
+
+    if add_relu:
+        conv_1 = tf.nn.elu(conv_1)
+
+    pooling_1 = tf.nn.max_pool3d(
+        conv_1,
+        ksize=[1, 3, 3, 3, 1],
+        strides=[1, 3, 3, 3, 1],
+        padding="SAME")
+    log.info('pooling_1 shape: %s' % pooling_1.shape)
+
+    return tf.contrib.layers.flatten(pooling_1)
+
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/ranking/matching_models/dam_utils/layers.py" startline="382" endline="450" pcid="185">
+def CNN_3d_2d(x, out_channels_0, out_channels_1, add_relu=True):
+    '''Add a 3d convlution layer with relu and max pooling layer.
+
+    Args:
+        x: a tensor with shape [batch, in_depth, in_height, in_width, in_channels]
+        out_channels: a number
+        filter_size: a number
+        pooling_size: a number
+
+    Returns:
+        a flattened tensor with shape [batch, num_features]
+
+    Raises:
+    '''
+    in_channels = x.shape[-1]
+    weights_0 = tf.get_variable(
+        name='filter_0',
+        shape=[1, 3, 3, in_channels, out_channels_0],
+        dtype=tf.float32,
+        initializer=tf.random_uniform_initializer(-0.01, 0.01))
+    bias_0 = tf.get_variable(
+        name='bias_0',
+        shape=[out_channels_0],
+        dtype=tf.float32,
+        initializer=tf.zeros_initializer())
+
+    conv_0 = tf.nn.conv3d(x, weights_0, strides=[1, 1, 1, 1, 1], padding="SAME")
+    log.info('conv_0 shape: %s' % conv_0.shape)
+    conv_0 = conv_0 + bias_0
+
+    if add_relu:
+        conv_0 = tf.nn.elu(conv_0)
+
+    pooling_0 = tf.nn.max_pool3d(
+        conv_0,
+        ksize=[1, 1, 3, 3, 1],
+        strides=[1, 1, 3, 3, 1],
+        padding="SAME")
+    log.info('pooling_0 shape: %s' % pooling_0.shape)
+
+    # layer_1
+    weights_1 = tf.get_variable(
+        name='filter_1',
+        shape=[1, 3, 3, out_channels_0, out_channels_1],
+        dtype=tf.float32,
+        initializer=tf.random_uniform_initializer(-0.01, 0.01))
+    bias_1 = tf.get_variable(
+        name='bias_1',
+        shape=[out_channels_1],
+        dtype=tf.float32,
+        initializer=tf.zeros_initializer())
+
+    conv_1 = tf.nn.conv3d(pooling_0, weights_1, strides=[1, 1, 1, 1, 1], padding="SAME")
+    log.info('conv_1 shape: %s' % conv_1.shape)
+    conv_1 = conv_1 + bias_1
+
+    if add_relu:
+        conv_1 = tf.nn.elu(conv_1)
+
+    pooling_1 = tf.nn.max_pool3d(
+        conv_1,
+        ksize=[1, 1, 3, 3, 1],
+        strides=[1, 1, 3, 3, 1],
+        padding="SAME")
+    log.info('pooling_1 shape: %s' % pooling_1.shape)
+
+    return tf.contrib.layers.flatten(pooling_1)
+
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/ranking/matching_models/dam_utils/layers.py" startline="451" endline="540" pcid="186">
+def CNN_3d_change(x, out_channels_0, out_channels_1, add_relu=True):
+    '''Add a 3d convlution layer with relu and max pooling layer.
+
+    Args:
+        x: a tensor with shape [batch, in_depth, in_height, in_width, in_channels]
+        out_channels: a number
+        filter_size: a number
+        pooling_size: a number
+
+    Returns:
+        a flattened tensor with shape [batch, num_features]
+
+    Raises:
+    '''
+    in_channels = x.shape[-1]
+    weights_0 = tf.get_variable(
+        name='filter_0',
+        shape=[3, 3, 3, in_channels, out_channels_0],
+        dtype=tf.float32,
+        # initializer=tf.random_normal_initializer(0, 0.05))
+        initializer=tf.random_uniform_initializer(-0.01, 0.01))
+    bias_0 = tf.get_variable(
+        name='bias_0',
+        shape=[out_channels_0],
+        dtype=tf.float32,
+        initializer=tf.zeros_initializer())
+    # Todo
+    g_0 = tf.get_variable(name='scale_0',
+                          shape=[out_channels_0],
+                          dtype=tf.float32,
+                          initializer=tf.ones_initializer())
+    weights_0 = tf.reshape(g_0, [1, 1, 1, out_channels_0]) * tf.nn.l2_normalize(weights_0, [0, 1, 2])
+
+    conv_0 = tf.nn.conv3d(x, weights_0, strides=[1, 1, 1, 1, 1], padding="VALID")
+    log.info('conv_0 shape: %s' % conv_0.shape)
+    conv_0 = conv_0 + bias_0
+    #######
+    '''
+    with tf.variable_scope('layer_0'):
+        conv_0 = op.layer_norm(conv_0, axis=[1, 2, 3, 4])
+        log.info('layer_norm in cnn')
+    '''
+    if add_relu:
+        conv_0 = tf.nn.elu(conv_0)
+
+    pooling_0 = tf.nn.max_pool3d(
+        conv_0,
+        ksize=[1, 2, 3, 3, 1],
+        strides=[1, 2, 3, 3, 1],
+        padding="VALID")
+    log.info('pooling_0 shape: %s' % pooling_0.shape)
+
+    # layer_1
+    weights_1 = tf.get_variable(
+        name='filter_1',
+        shape=[2, 2, 2, out_channels_0, out_channels_1],
+        dtype=tf.float32,
+        initializer=tf.random_uniform_initializer(-0.01, 0.01))
+
+    bias_1 = tf.get_variable(
+        name='bias_1',
+        shape=[out_channels_1],
+        dtype=tf.float32,
+        initializer=tf.zeros_initializer())
+
+    g_1 = tf.get_variable(name='scale_1',
+                          shape=[out_channels_1],
+                          dtype=tf.float32,
+                          initializer=tf.ones_initializer())
+    weights_1 = tf.reshape(g_1, [1, 1, 1, out_channels_1]) * tf.nn.l2_normalize(weights_1, [0, 1, 2])
+
+    conv_1 = tf.nn.conv3d(pooling_0, weights_1, strides=[1, 1, 1, 1, 1], padding="VALID")
+    log.info('conv_1 shape: %s' % conv_1.shape)
+    conv_1 = conv_1 + bias_1
+    # with tf.variable_scope('layer_1'):
+    #    conv_1 = op.layer_norm(conv_1, axis=[1, 2, 3, 4])
+
+    if add_relu:
+        conv_1 = tf.nn.elu(conv_1)
+
+    pooling_1 = tf.nn.max_pool3d(
+        conv_1,
+        ksize=[1, 3, 3, 3, 1],
+        strides=[1, 3, 3, 3, 1],
+        padding="VALID")
+    log.info('pooling_1 shape: %s' % pooling_1.shape)
+
+    return tf.contrib.layers.flatten(pooling_1)
+
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="14" similarity="78">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/ranking/matching_models/dam_utils/operations.py" startline="51" endline="80" pcid="190">
+def bilinear_sim_4d(x, y, is_nor=True):
+    '''calulate bilinear similarity with two 4d tensor.
+    
+    Args:
+        x: a tensor with shape [batch, time_x, dimension_x, num_stacks]
+        y: a tensor with shape [batch, time_y, dimension_y, num_stacks]
+
+    Returns:
+        a tensor with shape [batch, time_x, time_y, num_stacks]
+
+    Raises:
+        ValueError: if
+            the shapes of x and y are not match;
+            bilinear matrix reuse error.
+    '''
+    M = tf.get_variable(
+        name="bilinear_matrix",
+        shape=[x.shape[2], y.shape[2], x.shape[3]],
+        dtype=tf.float32,
+        initializer=tf.orthogonal_initializer())
+    sim = tf.einsum('biks,kls,bjls->bijs', x, M, y)
+
+    if is_nor:
+        scale = tf.sqrt(tf.cast(x.shape[2] * y.shape[2], tf.float32))
+        scale = tf.maximum(1.0, scale)
+        return sim / scale
+    else:
+        return sim
+
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/ranking/matching_models/dam_utils/operations.py" startline="81" endline="109" pcid="191">
+def bilinear_sim(x, y, is_nor=True):
+    '''calculate bilinear similarity with two tensor.
+    Args:
+        x: a tensor with shape [batch, time_x, dimension_x]
+        y: a tensor with shape [batch, time_y, dimension_y]
+    
+    Returns:
+        a tensor with shape [batch, time_x, time_y]
+    Raises:
+        ValueError: if
+            the shapes of x and y are not match;
+            bilinear matrix reuse error.
+    '''
+    M = tf.get_variable(
+        name="bilinear_matrix",
+        shape=[x.shape[-1], y.shape[-1]],
+        dtype=tf.float32,
+        # initializer=tf.orthogonal_initializer())
+        initializer=tf.keras.initializers.glorot_uniform(seed=42))
+    sim = tf.einsum('bik,kl,bjl->bij', x, M, y)
+
+    if is_nor:
+        scale = tf.sqrt(tf.cast(x.shape[-1] * y.shape[-1], tf.float32))
+        scale = tf.maximum(1.0, scale)
+        return sim / scale
+    else:
+        return sim
+
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="19" similarity="73">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/ranking/matching_models/dam_utils/operations.py" startline="135" endline="167" pcid="193">
+def layer_norm(x, axis=None, epsilon=1e-6):
+    '''Add layer normalization.
+
+    Args:
+        x: a tensor
+        axis: the dimensions to normalize
+
+    Returns:
+        a tensor the same shape as x.
+
+    Raises:
+    '''
+    log.info('wrong version of layer_norm')
+    scale = tf.get_variable(
+        name='scale',
+        shape=[1],
+        dtype=tf.float32,
+        initializer=tf.ones_initializer())
+    bias = tf.get_variable(
+        name='bias',
+        shape=[1],
+        dtype=tf.float32,
+        initializer=tf.zeros_initializer())
+
+    if axis is None:
+        axis = [-1]
+
+    mean = tf.reduce_mean(x, axis=axis, keepdims=True)
+    variance = tf.reduce_mean(tf.square(x - mean), axis=axis, keepdims=True)
+    norm = (x - mean) * tf.rsqrt(variance + epsilon)
+    return scale * norm + bias
+
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/ranking/matching_models/dam_utils/operations.py" startline="168" endline="200" pcid="194">
+def layer_norm_debug(x, axis=None, epsilon=1e-6):
+    '''Add layer normalization.
+
+    Args:
+        x: a tensor
+        axis: the dimensions to normalize
+
+    Returns:
+        a tensor the same shape as x.
+
+    Raises:
+    '''
+    if axis is None:
+        axis = [-1]
+    shape = [x.shape[i] for i in axis]
+
+    scale = tf.get_variable(
+        name='scale',
+        shape=shape,
+        dtype=tf.float32,
+        initializer=tf.ones_initializer())
+    bias = tf.get_variable(
+        name='bias',
+        shape=shape,
+        dtype=tf.float32,
+        initializer=tf.zeros_initializer())
+
+    mean = tf.reduce_mean(x, axis=axis, keepdims=True)
+    variance = tf.reduce_mean(tf.square(x - mean), axis=axis, keepdims=True)
+    norm = (x - mean) * tf.rsqrt(variance + epsilon)
+    return scale * norm + bias
+
+
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="22" similarity="82">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/ranking/matching_models/dam_utils/operations.py" startline="291" endline="327" pcid="198">
+def positional_encoding(x, min_timescale=1.0, max_timescale=1.0e4, value=0):
+    '''Adds a bunch of sinusoids of different frequencies to a tensor.
+
+    Args:
+        x: a tensor with shape [batch, length, channels]
+        min_timescale: a float
+        max_timescale: a float
+
+    Returns:
+        a tensor the same shape as x.
+
+    Raises:
+    '''
+    length = x.shape[1]
+    channels = x.shape[2]
+    _lambda = tf.get_variable(
+        name='lambda',
+        shape=[1],
+        dtype=tf.float32,
+        initializer=tf.constant_initializer(value))
+
+    position = tf.to_float(tf.range(length))
+    num_timescales = channels // 2
+    log_timescale_increment = (
+            math.log(float(max_timescale) / float(min_timescale)) /
+            (tf.to_float(num_timescales) - 1))
+    inv_timescales = min_timescale * tf.exp(
+        tf.to_float(tf.range(num_timescales)) * -log_timescale_increment)
+    scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(inv_timescales, 0)
+    signal = tf.concat([tf.sin(scaled_time), tf.cos(scaled_time)], axis=1)
+    signal = tf.pad(signal, [[0, 0], [0, tf.mod(channels, 2)]])
+    # signal = tf.reshape(signal, [1, length, channels])
+    signal = tf.expand_dims(signal, axis=0)
+
+    return x + _lambda * signal
+
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/ranking/matching_models/dam_utils/operations.py" startline="328" endline="366" pcid="199">
+def positional_encoding_vector(x, min_timescale=1.0, max_timescale=1.0e4, value=0):
+    '''Adds a bunch of sinusoids of different frequencies to a tensor.
+
+    Args:
+        x: a tensor with shape [batch, length, channels]
+        min_timescale: a float
+        max_timescale: a float
+
+    Returns:
+        a tensor the same shape as x.
+
+    Raises:
+    '''
+    length = x.shape[1]
+    channels = x.shape[2]
+    _lambda = tf.get_variable(
+        name='lambda',
+        shape=[length],
+        dtype=tf.float32,
+        initializer=tf.constant_initializer(value))
+    _lambda = tf.expand_dims(_lambda, axis=-1)
+
+    position = tf.to_float(tf.range(length))
+    num_timescales = channels // 2
+    log_timescale_increment = (
+            math.log(float(max_timescale) / float(min_timescale)) /
+            (tf.to_float(num_timescales) - 1))
+    inv_timescales = min_timescale * tf.exp(
+        tf.to_float(tf.range(num_timescales)) * -log_timescale_increment)
+    scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(inv_timescales, 0)
+    signal = tf.concat([tf.sin(scaled_time), tf.cos(scaled_time)], axis=1)
+    signal = tf.pad(signal, [[0, 0], [0, tf.mod(channels, 2)]])
+
+    signal = tf.multiply(_lambda, signal)
+    signal = tf.expand_dims(signal, axis=0)
+
+    return x + signal
+
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="13" similarity="84">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/ranking/bilstm_siamese_network.py" startline="172" endline="185" pcid="219">
+    def create_score_model(self) -> Model:
+        cr = self.model.inputs
+        if self.triplet_mode:
+            emb_c = self.model.get_layer("sentence_embedding").get_output_at(0)
+            emb_r = self.model.get_layer("sentence_embedding").get_output_at(1)
+            dist_score = Lambda(lambda x: self._euclidian_dist(x), name="score_model")
+            score = dist_score([emb_c, emb_r])
+        else:
+            score = self.model.get_layer("score_model").output
+            score = Lambda(lambda x: 1. - K.squeeze(x, -1))(score)
+        score = Lambda(lambda x: 1. - x)(score)
+        model = Model(cr, score)
+        return model
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/ranking/bilstm_gru_siamese_network.py" startline="88" endline="101" pcid="239">
+    def create_score_model(self) -> Model:
+        cr = self.model.inputs
+        if self.triplet_mode:
+            emb_c = self.model.get_layer("gru").output
+            emb_r = self.model.get_layer("pooling").get_output(-1)
+            dist_score = Lambda(lambda x: self.euclidian_dist(x), name="score_model")
+            score = dist_score([emb_c, emb_r])
+        else:
+            score = self.model.get_layer("score_model").output
+            score = Lambda(lambda x: 1. - K.squeeze(x, -1))(score)
+        score = Lambda(lambda x: 1. - x)(score)
+        model = Model(cr, score)
+        return model
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="16" similarity="76">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/ranking/mpm_siamese_network.py" startline="70" endline="85" pcid="232">
+    def create_lstm_layer_1(self):
+        ker_in = glorot_uniform(seed=self.seed)
+        rec_in = Orthogonal(seed=self.seed)
+        bioutp = Bidirectional(LSTM(self.hidden_dim,
+                                    input_shape=(self.max_sequence_length, self.embedding_dim,),
+                                    kernel_regularizer=None,
+                                    recurrent_regularizer=None,
+                                    bias_regularizer=None,
+                                    activity_regularizer=None,
+                                    recurrent_dropout=self.recdrop_val,
+                                    dropout=self.inpdrop_val,
+                                    kernel_initializer=ker_in,
+                                    recurrent_initializer=rec_in,
+                                    return_sequences=True), merge_mode=None)
+        return bioutp
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/ranking/mpm_siamese_network.py" startline="86" endline="103" pcid="233">
+    def create_lstm_layer_2(self):
+        ker_in = glorot_uniform(seed=self.seed)
+        rec_in = Orthogonal(seed=self.seed)
+        bioutp = Bidirectional(LSTM(self.aggregation_dim,
+                                    input_shape=(self.max_sequence_length, 8 * self.perspective_num,),
+                                    kernel_regularizer=None,
+                                    recurrent_regularizer=None,
+                                    bias_regularizer=None,
+                                    activity_regularizer=None,
+                                    recurrent_dropout=self.recdrop_val,
+                                    dropout=self.inpdrop_val,
+                                    kernel_initializer=ker_in,
+                                    recurrent_initializer=rec_in,
+                                    return_sequences=False),
+                               merge_mode='concat',
+                               name="sentence_embedding")
+        return bioutp
+
+</source>
+</class>
+
+<class classid="11" nclones="2" nlines="21" similarity="81">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/squad/utils.py" startline="20" endline="43" pcid="358">
+    def __init__(self, num_layers, num_units, batch_size, input_size, keep_prob=1.0):
+        self.num_layers = num_layers
+        self.grus = []
+        self.inits = []
+        self.dropout_mask = []
+        for layer in range(num_layers):
+            input_size_ = input_size if layer == 0 else 2 * num_units
+            gru_fw = tf.contrib.cudnn_rnn.CudnnGRU(num_layers=1, num_units=num_units)
+            gru_bw = tf.contrib.cudnn_rnn.CudnnGRU(num_layers=1, num_units=num_units)
+
+            init_fw = tf.Variable(tf.zeros([num_units]))
+            init_fw = tf.expand_dims(tf.tile(tf.expand_dims(init_fw, axis=0), [batch_size, 1]), axis=0)
+            init_bw = tf.Variable(tf.zeros([num_units]))
+            init_bw = tf.expand_dims(tf.tile(tf.expand_dims(init_bw, axis=0), [batch_size, 1]), axis=0)
+
+            mask_fw = tf.nn.dropout(tf.ones([1, batch_size, input_size_], dtype=tf.float32),
+                                    keep_prob=keep_prob)
+            mask_bw = tf.nn.dropout(tf.ones([1, batch_size, input_size_], dtype=tf.float32),
+                                    keep_prob=keep_prob)
+
+            self.grus.append((gru_fw, gru_bw,))
+            self.inits.append((init_fw, init_bw,))
+            self.dropout_mask.append((mask_fw, mask_bw,))
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/squad/utils.py" startline="68" endline="94" pcid="360">
+    def __init__(self, num_layers, num_units, batch_size, input_size, keep_prob=1.0):
+        self.num_layers = num_layers
+        self.grus = []
+        self.inits = []
+        self.dropout_mask = []
+        for layer in range(num_layers):
+            input_size_ = input_size if layer == 0 else 2 * num_units
+            gru_fw = tf.nn.rnn_cell.MultiRNNCell([
+                tf.contrib.cudnn_rnn.CudnnCompatibleGRUCell(num_units=num_units)])
+
+            gru_bw = tf.nn.rnn_cell.MultiRNNCell([
+                tf.contrib.cudnn_rnn.CudnnCompatibleGRUCell(num_units=num_units)])
+
+            init_fw = tf.Variable(tf.zeros([num_units]))
+            init_fw = tf.expand_dims(tf.tile(tf.expand_dims(init_fw, axis=0), [batch_size, 1]), axis=0)
+            init_bw = tf.Variable(tf.zeros([num_units]))
+            init_bw = tf.expand_dims(tf.tile(tf.expand_dims(init_bw, axis=0), [batch_size, 1]), axis=0)
+
+            mask_fw = tf.nn.dropout(tf.ones([1, batch_size, input_size_], dtype=tf.float32),
+                                    keep_prob=keep_prob)
+            mask_bw = tf.nn.dropout(tf.ones([1, batch_size, input_size_], dtype=tf.float32),
+                                    keep_prob=keep_prob)
+
+            self.grus.append((gru_fw, gru_bw,))
+            self.inits.append((init_fw, init_bw,))
+            self.dropout_mask.append((mask_fw, mask_bw,))
+
+</source>
+</class>
+
+<class classid="12" nclones="2" nlines="23" similarity="76">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/squad/utils.py" startline="44" endline="66" pcid="359">
+    def __call__(self, inputs, seq_len, keep_prob=1.0, is_train=None, concat_layers=True):
+        outputs = [tf.transpose(inputs, [1, 0, 2])]
+        for layer in range(self.num_layers):
+            gru_fw, gru_bw = self.grus[layer]
+            init_fw, init_bw = self.inits[layer]
+            mask_fw, mask_bw = self.dropout_mask[layer]
+            with tf.variable_scope('fw_{}'.format(layer), reuse=tf.AUTO_REUSE):
+                out_fw, _ = gru_fw(outputs[-1] * mask_fw, (init_fw,))
+            with tf.variable_scope('bw_{}'.format(layer), reuse=tf.AUTO_REUSE):
+                inputs_bw = tf.reverse_sequence(
+                    outputs[-1] * mask_bw, seq_lengths=seq_len, seq_dim=0, batch_dim=1)
+                out_bw, _ = gru_bw(inputs_bw, (init_bw,))
+                out_bw = tf.reverse_sequence(
+                    out_bw, seq_lengths=seq_len, seq_dim=0, batch_dim=1)
+            outputs.append(tf.concat([out_fw, out_bw], axis=2))
+        if concat_layers:
+            res = tf.concat(outputs[1:], axis=2)
+        else:
+            res = outputs[-1]
+        res = tf.transpose(res, [1, 0, 2])
+        return res
+
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/squad/utils.py" startline="95" endline="123" pcid="361">
+    def __call__(self, inputs, seq_len, keep_prob=1.0, is_train=None, concat_layers=True):
+        outputs = [tf.transpose(inputs, [1, 0, 2])]
+        for layer in range(self.num_layers):
+            gru_fw, gru_bw = self.grus[layer]
+            init_fw, init_bw = self.inits[layer]
+            mask_fw, mask_bw = self.dropout_mask[layer]
+            with tf.variable_scope('fw_{}'.format(layer), reuse=tf.AUTO_REUSE):
+                with tf.variable_scope('cudnn_gru', reuse=tf.AUTO_REUSE):
+                    out_fw, _ = tf.nn.dynamic_rnn(cell=gru_fw, inputs=outputs[-1] * mask_fw, time_major=True,
+                                                  initial_state=tuple(tf.unstack(init_fw, axis=0)))
+
+            with tf.variable_scope('bw_{}'.format(layer), reuse=tf.AUTO_REUSE):
+                with tf.variable_scope('cudnn_gru', reuse=tf.AUTO_REUSE):
+                    inputs_bw = tf.reverse_sequence(
+                        outputs[-1] * mask_bw, seq_lengths=seq_len, seq_dim=0, batch_dim=1)
+                    out_bw, _ = tf.nn.dynamic_rnn(cell=gru_bw, inputs=inputs_bw, time_major=True,
+                                                  initial_state=tuple(tf.unstack(init_bw, axis=0)))
+                    out_bw = tf.reverse_sequence(
+                        out_bw, seq_lengths=seq_len, seq_dim=0, batch_dim=1)
+
+            outputs.append(tf.concat([out_fw, out_bw], axis=2))
+        if concat_layers:
+            res = tf.concat(outputs[1:], axis=2)
+        else:
+            res = outputs[-1]
+        res = tf.transpose(res, [1, 0, 2])
+        return res
+
+
+</source>
+</class>
+
+<class classid="13" nclones="2" nlines="19" similarity="75">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/embedders/tfidf_weighted_embedder.py" startline="212" endline="248" pcid="509">
+    def _encode(self, tokens: List[str], mean: bool) -> Union[List[np.ndarray], np.ndarray]:
+        """
+        Embed one text sample
+
+        Args:
+            tokens: tokenized text sample
+            mean: whether to return mean token embedding (does not depend on self.mean)
+
+        Returns:
+            list of embedded tokens or array of mean values
+        """
+        if self.vectorizer:
+            detokenized_sample = self.tokenizer([tokens])[0]  # str
+            vectorized_sample = self.vectorizer([detokenized_sample])  # (voc_size,)
+
+            weights = np.array([vectorized_sample[0, np.where(self.vocabulary == token)[0][0]]
+                                if len(np.where(self.vocabulary == token)[0]) else 0.
+                                for token in tokens])
+        else:
+            weights = np.array([self.get_weight(max(self.counter_vocab.get(token, 0), self.idf_base_count))
+                                for token in tokens])
+
+        if sum(weights) == 0:
+            weights = np.ones(len(tokens))
+
+        embedded_tokens = np.array(self.embedder([tokens]))[0, :, :]
+
+        if mean is None:
+            mean = self.mean
+
+        if mean:
+            embedded_tokens = np.average(embedded_tokens, weights=weights, axis=0)
+        else:
+            embedded_tokens = np.array([weights[i] * embedded_tokens[i] for i in range(len(tokens))])
+
+        return embedded_tokens
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/models/embedders/tfidf_weighted_embedder.py" startline="264" endline="304" pcid="511">
+    def _tags_encode(self, tokens: List[str], tags: List[str], mean: bool) -> Union[List[np.ndarray], np.ndarray]:
+        """
+        Embed one text sample
+
+        Args:
+            tokens: tokenized text sample
+            tags: tokenized tags sample
+            mean: whether to return mean token embedding (does not depend on self.mean)
+
+        Returns:
+            list of embedded tokens or array of mean values
+        """
+
+        embedded_tokens = np.array(self.embedder([tokens]))[0, :, :]
+
+        tags_weights = np.array([self.tags_vocab.get(tag, 1.0) for tag in tags])
+
+        detokenized_sample = self.tokenizer([tokens])[0]  # str
+        vectorized_sample = self.vectorizer([detokenized_sample])  # (voc_size,)
+
+        if self.vectorizer:
+            weights = np.array([vectorized_sample[0, np.where(self.vocabulary == token)[0][0]]
+                                if len(np.where(self.vocabulary == token)[0]) else 0.
+                                for token in tokens])
+        else:
+            weights = np.array([self.get_weight(max(self.counter_vocab.get(token, 0), self.idf_base_count))
+                                for token in tokens])
+
+        weights = np.multiply(weights, tags_weights)
+        if sum(weights) == 0:
+            weights = np.ones(len(tokens))
+
+        if mean is None:
+            mean = self.mean
+
+        if mean:
+            embedded_tokens = np.average(embedded_tokens, weights=weights, axis=0)
+        else:
+            embedded_tokens = np.array([weights[i] * embedded_tokens[i] for i in range(len(tokens))])
+
+        return embedded_tokens
+</source>
+</class>
+
+<class classid="14" nclones="2" nlines="10" similarity="100">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/dataset_readers/paraphraser_reader.py" startline="31" endline="49" pcid="530">
+    def read(self,
+             data_path: str,
+             do_lower_case: bool = True,
+             *args, **kwargs) -> Dict[str, List[Tuple[Tuple[str, str], int]]]:
+        """Read the paraphraser.ru dataset from files.
+
+        Args:
+            data_path: A path to a folder with dataset files.
+            do_lower_case: Do you want to lowercase all texts
+        """
+
+        data_path = expand_path(data_path)
+        train_fname = data_path / 'paraphrases.xml'
+        test_fname = data_path / 'paraphrases_gold.xml'
+
+        train_data = self._build_data(train_fname, do_lower_case)
+        test_data = self._build_data(test_fname, do_lower_case)
+        return {"train": train_data, "valid": [], "test": test_data}
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/dataset_readers/rel_ranking_reader.py" startline="31" endline="49" pcid="550">
+    def read(self,
+             data_path: str,
+             do_lower_case: bool = True,
+             *args, **kwargs) -> Dict[str, List[Tuple[Tuple[str, str], int]]]:
+        """Read the paraphraser.ru dataset from files.
+​
+        Args:
+            data_path: A path to a folder with dataset files.
+            do_lower_case: Do you want to lowercase all texts
+        """
+
+        data_path = expand_path(data_path)
+        train_fname = data_path / 'paraphrases.xml'
+        test_fname = data_path / 'paraphrases_gold.xml'
+
+        train_data = self._build_data(train_fname, do_lower_case)
+        test_data = self._build_data(test_fname, do_lower_case)
+        return {"train": train_data, "valid": [], "test": test_data}
+
+</source>
+</class>
+
+<class classid="15" nclones="2" nlines="18" similarity="77">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/dataset_readers/ubuntu_v2_reader.py" startline="31" endline="55" pcid="537">
+    def read(self, data_path: str,
+             positive_samples=False,
+             *args, **kwargs) -> Dict[str, List[Tuple[List[str], int]]]:
+        """Read the Ubuntu V2 dataset from csv files.
+
+        Args:
+            data_path: A path to a folder with dataset csv files.
+            positive_samples: if `True`, only positive context-response pairs will be taken for train
+        """
+
+        data_path = expand_path(data_path)
+        dataset = {'train': None, 'valid': None, 'test': None}
+        train_fname = Path(data_path) / 'train.csv'
+        valid_fname = Path(data_path) / 'valid.csv'
+        test_fname = Path(data_path) / 'test.csv'
+        self.positive_samples = positive_samples
+        self.sen2int_vocab = {}
+        self.classes_vocab_train = {}
+        self.classes_vocab_valid = {}
+        self.classes_vocab_test = {}
+        dataset["train"] = self.preprocess_data_train(train_fname)
+        dataset["valid"] = self.preprocess_data_validation(valid_fname)
+        dataset["test"] = self.preprocess_data_validation(test_fname)
+        return dataset
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/dataset_readers/ubuntu_v2_mt_reader.py" startline="35" endline="64" pcid="565">
+    def read(self, data_path: str,
+             num_context_turns: int = 1,
+             padding: str = "post",
+             *args, **kwargs) -> Dict[str, List[Tuple[List[str], int]]]:
+        """Read the Ubuntu V2 dataset from csv files taking into account multi-turn dialogue ``context``.
+
+        Args:
+            data_path: A path to a folder with dataset csv files.
+            num_context_turns: A maximum number of dialogue ``context`` turns.
+            padding: "post" or "pre" context sentences padding
+
+        Returns:
+            Dictionary with keys "train", "valid", "test" and parts of the dataset as their values
+        """
+
+        self.num_turns = num_context_turns
+        self.padding = padding
+        dataset = {'train': None, 'valid': None, 'test': None}
+        train_fname = Path(data_path) / 'train.csv'
+        valid_fname = Path(data_path) / 'valid.csv'
+        test_fname = Path(data_path) / 'test.csv'
+        self.sen2int_vocab = {}
+        self.classes_vocab_train = {}
+        self.classes_vocab_valid = {}
+        self.classes_vocab_test = {}
+        dataset["train"] = self.preprocess_data_train(train_fname)
+        dataset["valid"] = self.preprocess_data_validation(valid_fname)
+        dataset["test"] = self.preprocess_data_validation(test_fname)
+        return dataset
+
+</source>
+</class>
+
+<class classid="16" nclones="2" nlines="16" similarity="70">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/dataset_readers/ubuntu_v2_reader.py" startline="56" endline="73" pcid="538">
+    def preprocess_data_train(self, train_fname: Union[Path, str]) -> List[Tuple[List[str], int]]:
+        contexts = []
+        responses = []
+        labels = []
+        with open(train_fname, 'r') as f:
+            reader = csv.reader(f)
+            next(reader)
+            for el in reader:
+                contexts.append(el[0])
+                responses.append(el[1])
+                labels.append(int(el[2]))
+            data = list(zip(contexts, responses))
+            data = list(zip(data, labels))
+            if self.positive_samples:
+                data = [el[0] for el in data if el[1] == 1]
+                data = list(zip(data, range(len(data))))
+        return data
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/dataset_readers/ubuntu_v2_mt_reader.py" startline="65" endline="79" pcid="566">
+    def preprocess_data_train(self, train_fname: Union[Path, str]) -> List[Tuple[List[str], int]]:
+        contexts = []
+        responses = []
+        labels = []
+        with open(train_fname, 'r') as f:
+            reader = csv.reader(f)
+            next(reader)
+            for el in reader:
+                contexts.append(self._expand_context(el[0].split('__eot__'), padding=self.padding))
+                responses.append(el[1])
+                labels.append(int(el[2]))
+        data = [el[0] + [el[1]] for el in zip(contexts, responses)]
+        data = list(zip(data, labels))
+        return data
+
+</source>
+</class>
+
+<class classid="17" nclones="2" nlines="12" similarity="83">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/dataset_readers/ubuntu_v2_reader.py" startline="74" endline="85" pcid="539">
+    def preprocess_data_validation(self, fname: Union[Path, str]) -> List[Tuple[List[str], int]]:
+        contexts = []
+        responses = []
+        with open(fname, 'r') as f:
+            reader = csv.reader(f)
+            next(reader)
+            for el in reader:
+                contexts.append(el[0])
+                responses.append(el[1:])
+        data = [[el[0]] + el[1] for el in zip(contexts, responses)]
+        data = [(el, 1) for el in data]
+        return data
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/dataset_readers/ubuntu_v2_mt_reader.py" startline="80" endline="92" pcid="567">
+    def preprocess_data_validation(self, fname: Union[Path, str]) -> List[Tuple[List[str], int]]:
+        contexts = []
+        responses = []
+        with open(fname, 'r') as f:
+            reader = csv.reader(f)
+            next(reader)
+            for el in reader:
+                contexts.append(self._expand_context(el[0].split('__eot__'), padding=self.padding))
+                responses.append(el[1:])
+        data = [el[0] + el[1] for el in zip(contexts, responses)]
+        data = [(el, 1) for el in data]  # NOTE: labels are useless here actually...
+        return data
+
+</source>
+</class>
+
+<class classid="18" nclones="2" nlines="14" similarity="92">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/dataset_readers/dstc2_reader.py" startline="77" endline="108" pcid="555">
+    def read(self, data_path: str, dialogs: bool = False) -> Dict[str, List]:
+        """
+        Downloads ``'dstc2_v2.tar.gz'`` archive from ipavlov internal server,
+        decompresses and saves files to ``data_path``.
+
+        Parameters:
+            data_path: path to save DSTC2 dataset
+            dialogs: flag which indicates whether to output list of turns or
+             list of dialogs
+
+        Returns:
+            dictionary that contains ``'train'`` field with dialogs from
+            ``'dstc2-trn.jsonlist'``, ``'valid'`` field with dialogs from
+            ``'dstc2-val.jsonlist'`` and ``'test'`` field with dialogs from
+            ``'dstc2-tst.jsonlist'``. Each field is a list of tuples ``(x_i, y_i)``.
+        """
+        required_files = (self._data_fname(dt) for dt in ('trn', 'val', 'tst'))
+        if not all(Path(data_path, f).exists() for f in required_files):
+            log.info(f"[downloading data from {self.url} to {data_path}]")
+            download_decompress(self.url, data_path)
+            mark_done(data_path)
+
+        data = {
+            'train': self._read_from_file(
+                Path(data_path, self._data_fname('trn')), dialogs),
+            'valid': self._read_from_file(
+                Path(data_path, self._data_fname('val')), dialogs),
+            'test': self._read_from_file(
+                Path(data_path, self._data_fname('tst')), dialogs)
+        }
+        return data
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/dataset_readers/kvret_reader.py" startline="48" endline="75" pcid="580">
+    def read(self, data_path: str, dialogs: bool = False) -> Dict[str, List]:
+        """
+        Downloads ``'kvrest_public.tar.gz'``, decompresses, saves files to ``data_path``.
+
+        Parameters:
+            data_path: path to save data
+            dialogs: flag indices whether to output list of turns or list of dialogs
+
+        Returns:
+            dictionary with ``'train'`` containing dialogs from ``'kvret_train_public.json'``, ``'valid'`` containing dialogs from ``'kvret_valid_public.json'``, ``'test'`` containing dialogs from ``'kvret_test_public.json'``. Each fields is a list of tuples ``(x_i, y_i)``.
+        """
+
+        required_files = (self._data_fname(dt) for dt in ('train', 'dev', 'test'))
+        if not all(Path(data_path, f).exists() for f in required_files):
+            log.info('[downloading dstc2 from {} to {}]'.format(self.url, data_path))
+            download_decompress(self.url, data_path)
+            mark_done(data_path)
+
+        data = {
+            'train': self._read_from_file(
+                Path(data_path, self._data_fname('train')), dialogs),
+            'valid': self._read_from_file(
+                Path(data_path, self._data_fname('dev')), dialogs),
+            'test': self._read_from_file(
+                Path(data_path, self._data_fname('test')), dialogs)
+        }
+        return data
+
+</source>
+</class>
+
+<class classid="19" nclones="3" nlines="11" similarity="72">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/core/common/params_search.py" startline="99" endline="121" pcid="721">
+    def insert_value_or_dict_into_config(config: dict, path: list,
+                                         value: [int, float, str, bool, list, dict, np.ndarray]) -> None:
+        """
+        Insert value to dictionary determined by path[:-1] in field with key path[-1]
+
+        Args:
+            config: dictionary
+            path: list of keys and/or integers (for list)
+            value: value to be inserted
+
+        Returns:
+            config with inserted value
+        """
+        config_pointer = config
+        for el in path[:-1]:
+            if isinstance(config_pointer, dict):
+                config_pointer = config_pointer.setdefault(el, {})
+            elif isinstance(config_pointer, list):
+                config_pointer = config_pointer[el]
+            else:
+                pass
+        config_pointer[path[-1]] = value
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/core/common/params_search.py" startline="123" endline="144" pcid="722">
+    def get_value_from_config(config: dict, path: list) -> Any:
+        """
+        Return value of config element determined by path
+
+        Args:
+            config: dictionary
+            path: list of keys and/or integers (for list)
+
+        Returns:
+            value
+        """
+        config_copy = deepcopy(config)
+        config_pointer = config_copy
+        for el in path[:-1]:
+            if isinstance(config_pointer, dict):
+                config_pointer = config_pointer.setdefault(el, {})
+            elif isinstance(config_pointer, list):
+                config_pointer = config_pointer[el]
+            else:
+                pass
+        return config_pointer[path[-1]]
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/core/common/params_search.py" startline="146" endline="168" pcid="723">
+    def remove_key_from_config(config: dict, path: list) -> Tuple[dict, Any]:
+        """
+        Remove config element determined by path
+
+        Args:
+            config: dictionary
+            path: list of keys and/or integers (for list)
+
+        Returns:
+            dictionary without value from path, value from path
+        """
+        config_copy = deepcopy(config)
+        config_pointer = config_copy
+        for el in path[:-1]:
+            if isinstance(config_pointer, dict):
+                config_pointer = config_pointer.setdefault(el, {})
+            elif isinstance(config_pointer, list):
+                config_pointer = config_pointer[el]
+            else:
+                pass
+        value = config_pointer.pop(path[-1])
+        return config_copy, value
+
+</source>
+</class>
+
+<class classid="20" nclones="3" nlines="29" similarity="72">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/core/layers/tf_attention_mechanisms.py" startline="25" endline="72" pcid="728">
+def general_attention(key, context, hidden_size, projected_align=False):
+    """ It is a implementation of the Luong et al. attention mechanism with general score. Based on the paper:
+        https://arxiv.org/abs/1508.04025 "Effective Approaches to Attention-based Neural Machine Translation"
+    Args:
+        key: A tensorflow tensor with dimensionality [None, None, key_size]
+        context: A tensorflow tensor with dimensionality [None, None, max_num_tokens, token_size]
+        hidden_size: Number of units in hidden representation
+        projected_align: Using bidirectional lstm for hidden representation of context.
+        If true, beetween input and attention mechanism insert layer of bidirectional lstm with dimensionality [hidden_size].
+        If false, bidirectional lstm is not used.
+    Returns:
+        output: Tensor at the output with dimensionality [None, None, hidden_size]
+    """
+
+    if hidden_size % 2 != 0:
+        raise ValueError("hidden size must be dividable by two")
+    batch_size = tf.shape(context)[0]
+    max_num_tokens, token_size = context.get_shape().as_list()[-2:]
+    r_context = tf.reshape(context, shape=[-1, max_num_tokens, token_size])
+
+    # projected_key: [None, None, hidden_size]
+    projected_key = \
+        tf.layers.dense(key, hidden_size, kernel_initializer=xav())
+    r_projected_key = tf.reshape(projected_key, shape=[-1, hidden_size, 1])
+
+    lstm_fw_cell = tf.nn.rnn_cell.LSTMCell(hidden_size // 2)
+    lstm_bw_cell = tf.nn.rnn_cell.LSTMCell(hidden_size // 2)
+    (output_fw, output_bw), states = \
+        tf.nn.bidirectional_dynamic_rnn(cell_fw=lstm_fw_cell,
+                                        cell_bw=lstm_bw_cell,
+                                        inputs=r_context,
+                                        dtype=tf.float32)
+    # bilstm_output: [-1, max_num_tokens, hidden_size]
+    bilstm_output = tf.concat([output_fw, output_bw], -1)
+
+    attn = tf.nn.softmax(tf.matmul(bilstm_output, r_projected_key), dim=1)
+
+    if projected_align:
+        log.info("Using projected attention alignment")
+        t_context = tf.transpose(bilstm_output, [0, 2, 1])
+        output = tf.reshape(tf.matmul(t_context, attn),
+                            shape=[batch_size, -1, hidden_size])
+    else:
+        log.info("Using without projected attention alignment")
+        t_context = tf.transpose(r_context, [0, 2, 1])
+        output = tf.reshape(tf.matmul(t_context, attn),
+                            shape=[batch_size, -1, token_size])
+    return output
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/core/layers/tf_attention_mechanisms.py" startline="164" endline="217" pcid="731">
+            h_state_for_sketch, h_state_for_attn_alignment, key, depth)
+        output = \
+            tf.reshape(aligned_h_state, shape=[batch_size, -1, depth * token_size])
+    return output
+
+
+def bahdanau_attention(key, context, hidden_size, projected_align=False):
+    """ It is a implementation of the Bahdanau et al. attention mechanism. Based on the paper:
+        https://arxiv.org/abs/1409.0473 "Neural Machine Translation by Jointly Learning to Align and Translate"
+    Args:
+        key: A tensorflow tensor with dimensionality [None, None, key_size]
+        context: A tensorflow tensor with dimensionality [None, None, max_num_tokens, token_size]
+        hidden_size: Number of units in hidden representation
+        projected_align: Using bidirectional lstm for hidden representation of context.
+        If true, beetween input and attention mechanism insert layer of bidirectional lstm with dimensionality [hidden_size].
+        If false, bidirectional lstm is not used.
+    Returns:
+        output: Tensor at the output with dimensionality [None, None, hidden_size]
+    """
+    if hidden_size % 2 != 0:
+        raise ValueError("hidden size must be dividable by two")
+    batch_size = tf.shape(context)[0]
+    max_num_tokens, token_size = context.get_shape().as_list()[-2:]
+    r_context = tf.reshape(context, shape=[-1, max_num_tokens, token_size])
+
+    # projected_key: [None, None, hidden_size]
+    projected_key = tf.layers.dense(key, hidden_size, kernel_initializer=xav())
+    r_projected_key = \
+        tf.tile(tf.reshape(projected_key, shape=[-1, 1, hidden_size]),
+                [1, max_num_tokens, 1])
+
+    lstm_fw_cell = tf.nn.rnn_cell.LSTMCell(hidden_size // 2)
+    lstm_bw_cell = tf.nn.rnn_cell.LSTMCell(hidden_size // 2)
+    (output_fw, output_bw), states = \
+        tf.nn.bidirectional_dynamic_rnn(cell_fw=lstm_fw_cell,
+                                        cell_bw=lstm_bw_cell,
+                                        inputs=r_context,
+                                        dtype=tf.float32)
+
+    # bilstm_output: [-1,self.max_num_tokens,_n_hidden]
+    bilstm_output = tf.concat([output_fw, output_bw], -1)
+    concat_h_state = tf.concat([r_projected_key, output_fw, output_bw], -1)
+    projected_state = \
+        tf.layers.dense(concat_h_state, hidden_size, use_bias=False,
+                        kernel_initializer=xav())
+    score = \
+        tf.layers.dense(tf.tanh(projected_state), units=1, use_bias=False,
+                        kernel_initializer=xav())
+
+    attn = tf.nn.softmax(score, dim=1)
+
+    if projected_align:
+        log.info("Using projected attention alignment")
+        t_context = tf.transpose(bilstm_output, [0, 2, 1])
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/core/layers/tf_attention_mechanisms.py" startline="218" endline="263" pcid="732">
+        output = tf.reshape(tf.matmul(t_context, attn),
+                            shape=[batch_size, -1, hidden_size])
+    else:
+        log.info("Using without projected attention alignment")
+        t_context = tf.transpose(r_context, [0, 2, 1])
+        output = tf.reshape(tf.matmul(t_context, attn),
+                            shape=[batch_size, -1, token_size])
+    return output
+
+
+def light_bahdanau_attention(key, context, hidden_size, projected_align=False):
+    """ It is a implementation of the Bahdanau et al. attention mechanism. Based on the paper:
+        https://arxiv.org/abs/1409.0473 "Neural Machine Translation by Jointly Learning to Align and Translate"
+    Args:
+        key: A tensorflow tensor with dimensionality [None, None, key_size]
+        context: A tensorflow tensor with dimensionality [None, None, max_num_tokens, token_size]
+        hidden_size: Number of units in hidden representation
+        projected_align: Using dense layer for hidden representation of context.
+        If true, between input and attention mechanism insert a dense layer with dimensionality [hidden_size].
+        If false, a dense layer is not used.
+    Returns:
+        output: Tensor at the output with dimensionality [None, None, hidden_size]
+    """
+    batch_size = tf.shape(context)[0]
+    max_num_tokens, token_size = context.get_shape().as_list()[-2:]
+    r_context = tf.reshape(context, shape=[-1, max_num_tokens, token_size])
+
+    # projected_key: [None, None, hidden_size]
+    projected_key = tf.layers.dense(key, hidden_size, kernel_initializer=xav())
+    r_projected_key = \
+        tf.tile(tf.reshape(projected_key, shape=[-1, 1, hidden_size]),
+                [1, max_num_tokens, 1])
+
+    # projected_context: [None, max_num_tokens, hidden_size]
+    projected_context = \
+        tf.layers.dense(r_context, hidden_size, kernel_initializer=xav())
+    concat_h_state = tf.concat([projected_context, r_projected_key], -1)
+
+    projected_state = \
+        tf.layers.dense(concat_h_state, hidden_size, use_bias=False,
+                        kernel_initializer=xav())
+    score = \
+        tf.layers.dense(tf.tanh(projected_state), units=1, use_bias=False,
+                        kernel_initializer=xav())
+
+    attn = tf.nn.softmax(score, dim=1)
+</source>
+</class>
+
+<class classid="21" nclones="2" nlines="33" similarity="79">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/core/layers/tf_attention_mechanisms.py" startline="112" endline="163" pcid="730">
+    return output
+
+
+def cs_general_attention(key, context, hidden_size, depth, projected_align=False):
+    """ It is a implementation of the Luong et al. attention mechanism with general score and the constrained softmax (csoftmax).
+        Based on the papers:
+        https://arxiv.org/abs/1508.04025 "Effective Approaches to Attention-based Neural Machine Translation"
+        https://andre-martins.github.io/docs/emnlp2017_final.pdf "Learning What's Easy: Fully Differentiable Neural Easy-First Taggers"
+    Args:
+        key: A tensorflow tensor with dimensionality [None, None, key_size]
+        context: A tensorflow tensor with dimensionality [None, None, max_num_tokens, token_size]
+        hidden_size: Number of units in hidden representation
+        depth: Number of csoftmax usages
+        projected_align: Using bidirectional lstm for hidden representation of context.
+        If true, beetween input and attention mechanism insert layer of bidirectional lstm with dimensionality [hidden_size].
+        If false, bidirectional lstm is not used.
+    Returns:
+        output: Tensor at the output with dimensionality [None, None, depth * hidden_size]
+    """
+    if hidden_size % 2 != 0:
+        raise ValueError("hidden size must be dividable by two")
+    key_size = tf.shape(key)[-1]
+    batch_size = tf.shape(context)[0]
+    max_num_tokens, token_size = context.get_shape().as_list()[-2:]
+    r_context = tf.reshape(context, shape=[-1, max_num_tokens, token_size])
+    # projected_context: [None, max_num_tokens, token_size]
+    projected_context = tf.layers.dense(r_context, token_size,
+                                        kernel_initializer=xav(),
+                                        name='projected_context')
+
+    lstm_fw_cell = tf.nn.rnn_cell.LSTMCell(hidden_size // 2)
+    lstm_bw_cell = tf.nn.rnn_cell.LSTMCell(hidden_size // 2)
+    (output_fw, output_bw), states = \
+        tf.nn.bidirectional_dynamic_rnn(cell_fw=lstm_fw_cell,
+                                        cell_bw=lstm_bw_cell,
+                                        inputs=projected_context,
+                                        dtype=tf.float32)
+    # bilstm_output: [-1, max_num_tokens, hidden_size]
+    bilstm_output = tf.concat([output_fw, output_bw], -1)
+    h_state_for_sketch = bilstm_output
+
+    if projected_align:
+        log.info("Using projected attention alignment")
+        h_state_for_attn_alignment = bilstm_output
+        aligned_h_state = csoftmax_attention.attention_gen_block(
+            h_state_for_sketch, h_state_for_attn_alignment, key, depth)
+        output = \
+            tf.reshape(aligned_h_state, shape=[batch_size, -1, depth * hidden_size])
+    else:
+        log.info("Using without projected attention alignment")
+        h_state_for_attn_alignment = projected_context
+        aligned_h_state = csoftmax_attention.attention_gen_block(
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/core/layers/tf_attention_mechanisms.py" startline="264" endline="319" pcid="733">
+
+    if projected_align:
+        log.info("Using projected attention alignment")
+        t_context = tf.transpose(projected_context, [0, 2, 1])
+        output = tf.reshape(tf.matmul(t_context, attn),
+                            shape=[batch_size, -1, hidden_size])
+    else:
+        log.info("Using without projected attention alignment")
+        t_context = tf.transpose(r_context, [0, 2, 1])
+        output = tf.reshape(tf.matmul(t_context, attn),
+                            shape=[batch_size, -1, token_size])
+    return output
+
+
+def cs_bahdanau_attention(key, context, hidden_size, depth, projected_align=False):
+    """ It is a implementation of the Bahdanau et al. attention mechanism. Based on the papers:
+        https://arxiv.org/abs/1409.0473 "Neural Machine Translation by Jointly Learning to Align and Translate"
+        https://andre-martins.github.io/docs/emnlp2017_final.pdf "Learning What's Easy: Fully Differentiable Neural Easy-First Taggers"
+    Args:
+        key: A tensorflow tensor with dimensionality [None, None, key_size]
+        context: A tensorflow tensor with dimensionality [None, None, max_num_tokens, token_size]
+        hidden_size: Number of units in hidden representation
+        depth: Number of csoftmax usages
+        projected_align: Using bidirectional lstm for hidden representation of context.
+        If true, beetween input and attention mechanism insert layer of bidirectional lstm with dimensionality [hidden_size].
+        If false, bidirectional lstm is not used.
+    Returns:
+        output: Tensor at the output with dimensionality [None, None, depth * hidden_size]
+    """
+    if hidden_size % 2 != 0:
+        raise ValueError("hidden size must be dividable by two")
+    batch_size = tf.shape(context)[0]
+    max_num_tokens, token_size = context.get_shape().as_list()[-2:]
+
+    r_context = tf.reshape(context, shape=[-1, max_num_tokens, token_size])
+    # projected context: [None, max_num_tokens, token_size]
+    projected_context = tf.layers.dense(r_context, token_size,
+                                        kernel_initializer=xav(),
+                                        name='projected_context')
+
+    # projected_key: [None, None, hidden_size]
+    projected_key = tf.layers.dense(key, hidden_size, kernel_initializer=xav(),
+                                    name='projected_key')
+    r_projected_key = \
+        tf.tile(tf.reshape(projected_key, shape=[-1, 1, hidden_size]),
+                [1, max_num_tokens, 1])
+
+    lstm_fw_cell = tf.nn.rnn_cell.LSTMCell(hidden_size // 2)
+    lstm_bw_cell = tf.nn.rnn_cell.LSTMCell(hidden_size // 2)
+    (output_fw, output_bw), states = \
+        tf.nn.bidirectional_dynamic_rnn(cell_fw=lstm_fw_cell,
+                                        cell_bw=lstm_bw_cell,
+                                        inputs=projected_context,
+                                        dtype=tf.float32)
+
+    # bilstm_output: [-1, max_num_tokens, hidden_size]
+</source>
+</class>
+
+<class classid="22" nclones="2" nlines="23" similarity="82">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/core/layers/tf_csoftmax_attention.py" startline="93" endline="140" pcid="737">
+def attention_gen_step(hidden_for_sketch, hidden_for_attn_alignment, sketch, key, cum_att):
+    """ It is a implementation one step of block of the Luong et al. attention mechanism with general score and the constrained softmax (csoftmax).
+        Based on the papers:
+        https://arxiv.org/abs/1508.04025 "Effective Approaches to Attention-based Neural Machine Translation"
+        https://andre-martins.github.io/docs/emnlp2017_final.pdf "Learning What's Easy: Fully Differentiable Neural Easy-First Taggers"
+    Args:
+        hidden_for_sketch: A tensorflow tensor for a sketch computing. This tensor have dimensionality [None, max_num_tokens, sketch_hidden_size]
+        hidden_for_attn_alignment: A tensorflow tensor is aligned for output during a performing. This tensor have dimensionality [None, max_num_tokens, hidden_size_for_attn_alignment]
+        sketch: A previous step sketch tensor for a sketch computing. This tensor have dimensionality [None, sketch_hidden_size]
+        key: A tensorflow tensor with dimensionality [None, None, key_size]
+        cum_att: A cumulative attention tensor with dimensionality [None, max_num_tokens]
+    Returns:
+        next_sketch: Tensor of the current step sketch with dimensionality [None, sketch_hidden_size]
+        att: Tensor of the current step attention with dimensionality [None, max_num_tokens]
+        aligned_hidden_sketch: Tensor of aligned hidden state of current step with dimensionality [None, hidden_size_for_attn_alignment]
+    """
+    with tf.name_scope('attention_step'):
+        sketch_dims = hidden_for_sketch.get_shape().as_list()
+        batch_size = sketch_dims[0]
+        num_tokens = sketch_dims[1]
+        hidden_size = sketch_dims[2]
+        attn_alignment_dims = hidden_for_attn_alignment.get_shape().as_list()
+        attn_alignment_hidden_size = attn_alignment_dims[2]
+
+        repeated_sketch = tf.tile(tf.reshape(sketch, [-1, 1, hidden_size]), (1, num_tokens, 1))
+        concat_mem = tf.concat([hidden_for_sketch, repeated_sketch], -1)
+
+        concat_mem = tf.reshape(concat_mem, [-1, num_tokens, 2 * hidden_size])  # dirty trick
+        reduce_mem = tf.layers.dense(concat_mem, hidden_size)
+
+        projected_key = tf.layers.dense(key, hidden_size)
+        t_key = tf.reshape(projected_key, [-1, hidden_size, 1])
+
+        score = tf.reshape(tf.matmul(reduce_mem, t_key), [-1, num_tokens])
+
+        inv_cum_att = tf.reshape(tf.ones_like(cum_att) - cum_att, [-1, num_tokens])
+        att = csoftmax(score, inv_cum_att)
+
+        t_reduce_mem = tf.transpose(reduce_mem, [0, 2, 1])
+        t_hidden_for_attn_alignment = tf.transpose(hidden_for_attn_alignment, [0, 2, 1])
+
+        r_att = tf.reshape(att, [-1, num_tokens, 1])
+
+        next_sketch = tf.squeeze(tf.matmul(t_reduce_mem, r_att), -1)
+        aligned_hidden_sketch = tf.squeeze(tf.matmul(t_hidden_for_attn_alignment, r_att), -1)
+    return next_sketch, att, aligned_hidden_sketch
+
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/core/layers/tf_csoftmax_attention.py" startline="177" endline="221" pcid="739">
+def attention_bah_step(hidden_for_sketch, hidden_for_attn_alignment, sketch, cum_att):
+    """ It is a implementation one step of block of the Bahdanau et al. attention mechanism with concat score and the constrained softmax (csoftmax).
+        Based on the papers:
+            https://arxiv.org/abs/1409.0473 "Neural Machine Translation by Jointly Learning to Align and Translate"
+            https://andre-martins.github.io/docs/emnlp2017_final.pdf "Learning What's Easy: Fully Differentiable Neural Easy-First Taggers"
+    Args:
+        hidden_for_sketch: A tensorflow tensor for a sketch computing. This tensor have dimensionality [None, max_num_tokens, sketch_hidden_size]
+        hidden_for_attn_alignment: A tensorflow tensor is aligned for output during a performing. This tensor have dimensionality [None, max_num_tokens, hidden_size_for_attn_alignment]
+        sketch: A previous step sketch tensor for a sketch computing. This tensor have dimensionality [None, sketch_hidden_size]
+        key: A tensorflow tensor with dimensionality [None, None, key_size]
+        cum_att: A cumulative attention tensor with dimensionality [None, max_num_tokens]
+    Returns:
+        next_sketch: Tensor of the current step sketch with dimensionality [None, sketch_hidden_size]
+        att: Tensor of the current step attention with dimensionality [None, max_num_tokens]
+        aligned_hidden_sketch: Tensor of aligned hidden state of current step with dimensionality [None, hidden_size_for_attn_alignment]
+    """
+    with tf.name_scope('attention_step'):
+        sketch_dims = hidden_for_sketch.get_shape().as_list()
+        batch_size = sketch_dims[0]
+        num_tokens = sketch_dims[1]
+        hidden_size = sketch_dims[2]
+        attn_alignment_dims = hidden_for_attn_alignment.get_shape().as_list()
+        attn_alignment_hidden_size = attn_alignment_dims[2]
+
+        repeated_sketch = tf.tile(tf.reshape(sketch, [-1, 1, hidden_size]), (1, num_tokens, 1))
+        concat_mem = tf.concat([hidden_for_sketch, repeated_sketch], -1)
+
+        concat_mem = tf.reshape(concat_mem, [-1, num_tokens, 2 * hidden_size])  # dirty trick
+        reduce_mem = tf.layers.dense(concat_mem, hidden_size)
+
+        score = tf.squeeze(tf.layers.dense(reduce_mem, units=1,
+                                           use_bias=False), -1)
+        inv_cum_att = tf.reshape(tf.ones_like(cum_att) - cum_att, [-1, num_tokens])
+        att = csoftmax(score, inv_cum_att)
+
+        t_reduce_mem = tf.transpose(reduce_mem, [0, 2, 1])
+        t_hidden_for_attn_alignment = tf.transpose(hidden_for_attn_alignment, [0, 2, 1])
+
+        r_att = tf.reshape(att, [-1, num_tokens, 1])
+
+        next_sketch = tf.squeeze(tf.matmul(t_reduce_mem, r_att), -1)
+        aligned_hidden_sketch = tf.squeeze(tf.matmul(t_hidden_for_attn_alignment, r_att), -1)
+    return next_sketch, att, aligned_hidden_sketch
+
+
+</source>
+</class>
+
+<class classid="23" nclones="2" nlines="20" similarity="90">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/core/layers/tf_csoftmax_attention.py" startline="141" endline="176" pcid="738">
+def attention_gen_block(hidden_for_sketch, hidden_for_attn_alignment, key, attention_depth):
+    """ It is a implementation of the Luong et al. attention mechanism with general score and the constrained softmax (csoftmax).
+        Based on the papers:
+        https://arxiv.org/abs/1508.04025 "Effective Approaches to Attention-based Neural Machine Translation"
+        https://andre-martins.github.io/docs/emnlp2017_final.pdf "Learning What's Easy: Fully Differentiable Neural Easy-First Taggers"
+    Args:
+        hidden_for_sketch: A tensorflow tensor for a sketch computing. This tensor have dimensionality [None, max_num_tokens, sketch_hidden_size]
+        hidden_for_attn_alignment: A tensorflow tensor is aligned for output during a performing. This tensor have dimensionality [None, max_num_tokens, hidden_size_for_attn_alignment]
+        key: A tensorflow tensor with dimensionality [None, None, key_size]
+        attention_depth: Number of usage csoftmax
+    Returns:
+        final_aligned_hiddens: Tensor at the output with dimensionality [1, attention_depth, hidden_size_for_attn_alignment]
+    """
+    with tf.name_scope('attention_block'):
+        sketch_dims = tf.shape(hidden_for_sketch)
+        batch_size = sketch_dims[0]
+        num_tokens = sketch_dims[1]
+        hidden_size = sketch_dims[2]
+
+        attn_alignment_dims = tf.shape(hidden_for_attn_alignment)
+        attn_alignment_hidden_size = attn_alignment_dims[2]
+
+        sketches = [tf.zeros(shape=[batch_size, hidden_size], dtype=tf.float32)]
+        aligned_hiddens = []
+        cum_att = tf.zeros(shape=[batch_size, num_tokens])  # cumulative attention
+        for i in range(attention_depth):
+            sketch, cum_att_, aligned_hidden = attention_gen_step(hidden_for_sketch, hidden_for_attn_alignment,
+                                                                  sketches[-1], key, cum_att)
+            sketches.append(sketch)  # sketch
+            aligned_hiddens.append(aligned_hidden)  # sketch
+            cum_att += cum_att_
+        final_aligned_hiddens = tf.reshape(tf.transpose(tf.stack(aligned_hiddens), [1, 0, 2]),
+                                           [1, attention_depth, attn_alignment_hidden_size])
+    return final_aligned_hiddens
+
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/core/layers/tf_csoftmax_attention.py" startline="222" endline="255" pcid="740">
+def attention_bah_block(hidden_for_sketch, hidden_for_attn_alignment, attention_depth):
+    """ It is a implementation of the Bahdanau et al. attention mechanism with concat score and the constrained softmax (csoftmax).
+        Based on the papers:
+            https://arxiv.org/abs/1409.0473 "Neural Machine Translation by Jointly Learning to Align and Translate"
+            https://andre-martins.github.io/docs/emnlp2017_final.pdf "Learning What's Easy: Fully Differentiable Neural Easy-First Taggers"
+    Args:
+        hidden_for_sketch: A tensorflow tensor for a sketch computing. This tensor have dimensionality [None, max_num_tokens, sketch_hidden_size]
+        hidden_for_attn_alignment: A tensorflow tensor is aligned for output during a performing. This tensor have dimensionality [None, max_num_tokens, hidden_size_for_attn_alignment]
+        key: A tensorflow tensor with dimensionality [None, None, key_size]
+        attention_depth: Number of usage csoftmax
+    Returns:
+        final_aligned_hiddens: Tensor at the output with dimensionality [1, attention_depth, hidden_size_for_attn_alignment]
+    """
+    with tf.name_scope('attention_block'):
+        sketch_dims = tf.shape(hidden_for_sketch)
+        batch_size = sketch_dims[0]
+        num_tokens = sketch_dims[1]
+        hidden_size = sketch_dims[2]
+
+        attn_alignment_dims = tf.shape(hidden_for_attn_alignment)
+        attn_alignment_hidden_size = attn_alignment_dims[2]
+
+        sketches = [tf.zeros(shape=[batch_size, hidden_size], dtype=tf.float32)]
+        aligned_hiddens = []
+        cum_att = tf.zeros(shape=[batch_size, num_tokens])  # cumulative attention
+        for i in range(attention_depth):
+            sketch, cum_att_, aligned_hidden = attention_bah_step(hidden_for_sketch, hidden_for_attn_alignment,
+                                                                  sketches[-1], cum_att)
+            sketches.append(sketch)  # sketch
+            aligned_hiddens.append(aligned_hidden)  # sketch
+            cum_att += cum_att_
+        final_aligned_hiddens = tf.reshape(tf.transpose(tf.stack(aligned_hiddens), [1, 0, 2]),
+                                           [1, attention_depth, attn_alignment_hidden_size])
+    return final_aligned_hiddens
+</source>
+</class>
+
+<class classid="24" nclones="3" nlines="25" similarity="74">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/core/layers/tf_layers.py" startline="31" endline="74" pcid="741">
+def stacked_cnn(units: tf.Tensor,
+                n_hidden_list: List,
+                filter_width=3,
+                use_batch_norm=False,
+                use_dilation=False,
+                training_ph=None,
+                add_l2_losses=False):
+    """ Number of convolutional layers stacked on top of each other
+
+    Args:
+        units: a tensorflow tensor with dimensionality [None, n_tokens, n_features]
+        n_hidden_list: list with number of hidden units at the ouput of each layer
+        filter_width: width of the kernel in tokens
+        use_batch_norm: whether to use batch normalization between layers
+        use_dilation: use power of 2 dilation scheme [1, 2, 4, 8 .. ] for layers 1, 2, 3, 4 ...
+        training_ph: boolean placeholder determining whether is training phase now or not.
+            It is used only for batch normalization to determine whether to use
+            current batch average (std) or memory stored average (std)
+        add_l2_losses: whether to add l2 losses on network kernels to
+                tf.GraphKeys.REGULARIZATION_LOSSES or not
+
+    Returns:
+        units: tensor at the output of the last convolutional layer
+    """
+    l2_reg = tf.nn.l2_loss if add_l2_losses else None
+    for n_layer, n_hidden in enumerate(n_hidden_list):
+        if use_dilation:
+            dilation_rate = 2 ** n_layer
+        else:
+            dilation_rate = 1
+        units = tf.layers.conv1d(units,
+                                 n_hidden,
+                                 filter_width,
+                                 padding='same',
+                                 dilation_rate=dilation_rate,
+                                 kernel_initializer=INITIALIZER(),
+                                 kernel_regularizer=l2_reg)
+        if use_batch_norm:
+            assert training_ph is not None
+            units = tf.layers.batch_normalization(units, training=training_ph)
+        units = tf.nn.relu(units)
+    return units
+
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/core/layers/tf_layers.py" startline="75" endline="116" pcid="742">
+def dense_convolutional_network(units: tf.Tensor,
+                                n_hidden_list: List,
+                                filter_width=3,
+                                use_dilation=False,
+                                use_batch_norm=False,
+                                training_ph=None):
+    """ Densely connected convolutional layers. Based on the paper:
+        [Gao 17] https://arxiv.org/abs/1608.06993
+
+        Args:
+            units: a tensorflow tensor with dimensionality [None, n_tokens, n_features]
+            n_hidden_list: list with number of hidden units at the ouput of each layer
+            filter_width: width of the kernel in tokens
+            use_batch_norm: whether to use batch normalization between layers
+            use_dilation: use power of 2 dilation scheme [1, 2, 4, 8 .. ] for layers 1, 2, 3, 4 ...
+            training_ph: boolean placeholder determining whether is training phase now or not.
+                It is used only for batch normalization to determine whether to use
+                current batch average (std) or memory stored average (std)
+        Returns:
+            units: tensor at the output of the last convolutional layer
+                with dimensionality [None, n_tokens, n_hidden_list[-1]]
+        """
+    units_list = [units]
+    for n_layer, n_filters in enumerate(n_hidden_list):
+        total_units = tf.concat(units_list, axis=-1)
+        if use_dilation:
+            dilation_rate = 2 ** n_layer
+        else:
+            dilation_rate = 1
+        units = tf.layers.conv1d(total_units,
+                                 n_filters,
+                                 filter_width,
+                                 dilation_rate=dilation_rate,
+                                 padding='same',
+                                 kernel_initializer=INITIALIZER())
+        if use_batch_norm:
+            units = tf.layers.batch_normalization(units, training=training_ph)
+        units = tf.nn.relu(units)
+        units_list.append(units)
+    return units
+
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/core/layers/tf_layers.py" startline="291" endline="337" pcid="746">
+
+
+def stacked_highway_cnn(units: tf.Tensor,
+                        n_hidden_list: List,
+                        filter_width=3,
+                        use_batch_norm=False,
+                        use_dilation=False,
+                        training_ph=None):
+    """ Highway convolutional network. Skip connection with gating
+        mechanism.
+
+    Args:
+        units: a tensorflow tensor with dimensionality [None, n_tokens, n_features]
+        n_hidden_list: list with number of hidden units at the output of each layer
+        filter_width: width of the kernel in tokens
+        use_batch_norm: whether to use batch normalization between layers
+        use_dilation: use power of 2 dilation scheme [1, 2, 4, 8 .. ] for layers 1, 2, 3, 4 ...
+        training_ph: boolean placeholder determining whether is training phase now or not.
+            It is used only for batch normalization to determine whether to use
+            current batch average (std) or memory stored average (std)
+    Returns:
+        units: tensor at the output of the last convolutional layer
+                with dimensionality [None, n_tokens, n_hidden_list[-1]]
+    """
+
+    for n_layer, n_hidden in enumerate(n_hidden_list):
+        input_units = units
+        # Projection if needed
+        if input_units.get_shape().as_list()[-1] != n_hidden:
+            input_units = tf.layers.dense(input_units, n_hidden)
+        if use_dilation:
+            dilation_rate = 2 ** n_layer
+        else:
+            dilation_rate = 1
+        units = tf.layers.conv1d(units,
+                                 n_hidden,
+                                 filter_width,
+                                 padding='same',
+                                 dilation_rate=dilation_rate,
+                                 kernel_initializer=INITIALIZER())
+        if use_batch_norm:
+            units = tf.layers.batch_normalization(units, training=training_ph)
+        sigmoid_gate = tf.layers.dense(input_units, 1, activation=tf.sigmoid, kernel_initializer=INITIALIZER())
+        input_units = sigmoid_gate * input_units + (1 - sigmoid_gate) * units
+        input_units = tf.nn.relu(input_units)
+    units = input_units
+    return units
+</source>
+</class>
+
+<class classid="25" nclones="2" nlines="26" similarity="81">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/core/layers/tf_layers.py" startline="768" endline="821" pcid="758">
+
+
+def cudnn_bi_gru(units,
+                 n_hidden,
+                 seq_lengths=None,
+                 n_layers=1,
+                 trainable_initial_states=False,
+                 name='cudnn_bi_gru',
+                 reuse=False):
+    """ Fast CuDNN Bi-GRU implementation
+
+    Args:
+        units: tf.Tensor with dimensions [B x T x F], where
+            B - batch size
+            T - number of tokens
+            F - features
+        n_hidden: dimensionality of hidden state
+        seq_lengths: number of tokens in each sample in the batch
+        n_layers: number of layers
+        trainable_initial_states: whether to create a special trainable variable
+                to initialize the hidden states of the network or use just zeros
+        name: name of the variable scope to use
+        reuse:whether to reuse already initialized variable
+
+
+    Returns:
+        h - all hidden states along T dimension,
+            tf.Tensor with dimensionality [B x T x F]
+        h_last - last hidden state, tf.Tensor with dimensionality [B x H * 2]
+            where H - number of hidden units
+    """
+
+    with tf.variable_scope(name, reuse=reuse):
+        if seq_lengths is None:
+            seq_lengths = tf.ones([tf.shape(units)[0]], dtype=tf.int32) * tf.shape(units)[1]
+        with tf.variable_scope('Forward'):
+            h_fw, h_last_fw = cudnn_gru_wrapper(units,
+                                                n_hidden,
+                                                n_layers=n_layers,
+                                                trainable_initial_states=trainable_initial_states,
+                                                seq_lengths=seq_lengths,
+                                                reuse=reuse)
+
+        with tf.variable_scope('Backward'):
+            reversed_units = tf.reverse_sequence(units, seq_lengths=seq_lengths, seq_dim=1, batch_dim=0)
+            h_bw, h_last_bw = cudnn_gru_wrapper(reversed_units,
+                                                n_hidden,
+                                                n_layers=n_layers,
+                                                trainable_initial_states=trainable_initial_states,
+                                                seq_lengths=seq_lengths,
+                                                reuse=reuse)
+            h_bw = tf.reverse_sequence(h_bw, seq_lengths=seq_lengths, seq_dim=1, batch_dim=0)
+
+    return (h_fw, h_bw), (h_last_fw, h_last_bw)
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/core/layers/tf_layers.py" startline="822" endline="873" pcid="759">
+
+
+def cudnn_bi_lstm(units,
+                  n_hidden,
+                  seq_lengths=None,
+                  n_layers=1,
+                  trainable_initial_states=False,
+                  name='cudnn_bi_gru',
+                  reuse=False):
+    """ Fast CuDNN Bi-LSTM implementation
+
+    Args:
+        units: tf.Tensor with dimensions [B x T x F], where
+            B - batch size
+            T - number of tokens
+            F - features
+        n_hidden: dimensionality of hidden state
+        seq_lengths: number of tokens in each sample in the batch
+        n_layers: number of layers
+        trainable_initial_states: whether to create a special trainable variable
+            to initialize the hidden states of the network or use just zeros
+        name: name of the variable scope to use
+        reuse:whether to reuse already initialized variable
+
+    Returns:
+        h - all hidden states along T dimension,
+            tf.Tensor with dimensionality [B x T x F]
+        h_last - last hidden state, tf.Tensor with dimensionality [B x H * 2]
+            where H - number of hidden units
+        c_last - last cell state, tf.Tensor with dimensionality [B x H * 2]
+            where H - number of hidden units
+        """
+    with tf.variable_scope(name, reuse=reuse):
+        if seq_lengths is None:
+            seq_lengths = tf.ones([tf.shape(units)[0]], dtype=tf.int32) * tf.shape(units)[1]
+        with tf.variable_scope('Forward'):
+            h_fw, (h_fw_last, c_fw_last) = cudnn_lstm_wrapper(units,
+                                                              n_hidden,
+                                                              n_layers=n_layers,
+                                                              trainable_initial_states=trainable_initial_states,
+                                                              seq_lengths=seq_lengths)
+
+        with tf.variable_scope('Backward'):
+            reversed_units = tf.reverse_sequence(units, seq_lengths=seq_lengths, seq_dim=1, batch_dim=0)
+            h_bw, (h_bw_last, c_bw_last) = cudnn_lstm_wrapper(reversed_units,
+                                                              n_hidden,
+                                                              n_layers=n_layers,
+                                                              trainable_initial_states=trainable_initial_states,
+                                                              seq_lengths=seq_lengths)
+
+            h_bw = tf.reverse_sequence(h_bw, seq_lengths=seq_lengths, seq_dim=1, batch_dim=0)
+        return (h_fw, h_bw), ((h_fw_last, c_fw_last), (h_bw_last, c_bw_last))
+</source>
+</class>
+
+<class classid="26" nclones="2" nlines="17" similarity="94">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/core/layers/keras_layers.py" startline="127" endline="145" pcid="768">
+    def call(self, x, **kwargs):
+        assert isinstance(x, list)
+        inp_a, inp_b = x
+        last_state = K.expand_dims(inp_b[:, -1, :], 1)
+        m = []
+        for i in range(self.output_dim):
+            outp_a = inp_a * self.W[i]
+            outp_last = last_state * self.W[i]
+            outp_a = K.l2_normalize(outp_a, -1)
+            outp_last = K.l2_normalize(outp_last, -1)
+            outp = K.batch_dot(outp_a, outp_last, axes=[2, 2])
+            m.append(outp)
+        if self.output_dim > 1:
+            persp = K.concatenate(m, 2)
+        else:
+            persp = m[0]
+        return [persp, persp]
+
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/core/layers/keras_layers.py" startline="148" endline="166" pcid="769">
+    def call(self, x, **kwargs):
+        assert isinstance(x, list)
+        inp_a, inp_b = x
+        m = []
+        for i in range(self.output_dim):
+            outp_a = inp_a * self.W[i]
+            outp_b = inp_b * self.W[i]
+            outp_a = K.l2_normalize(outp_a, -1)
+            outp_b = K.l2_normalize(outp_b, -1)
+            outp = K.batch_dot(outp_a, outp_b, axes=[2, 2])
+            outp = K.max(outp, -1, keepdims=True)
+            m.append(outp)
+        if self.output_dim > 1:
+            persp = K.concatenate(m, 2)
+        else:
+            persp = m[0]
+        return [persp, persp]
+
+
+</source>
+</class>
+
+<class classid="27" nclones="2" nlines="24" similarity="95">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/core/layers/keras_layers.py" startline="169" endline="195" pcid="770">
+    def call(self, x, **kwargs):
+        assert isinstance(x, list)
+        inp_a, inp_b = x
+
+        outp_a = K.l2_normalize(inp_a, -1)
+        outp_b = K.l2_normalize(inp_b, -1)
+        alpha = K.batch_dot(outp_b, outp_a, axes=[1, 1])
+        alpha = K.l2_normalize(alpha, 1)
+        hmean = K.batch_dot(outp_b, alpha, axes=[2, 1])
+        kcon = K.eye(K.int_shape(inp_a)[1], dtype='float32')
+
+        m = []
+        for i in range(self.output_dim):
+            outp_a = inp_a * self.W[i]
+            outp_hmean = hmean * self.W[i]
+            outp_a = K.l2_normalize(outp_a, -1)
+            outp_hmean = K.l2_normalize(outp_hmean, -1)
+            outp = K.batch_dot(outp_hmean, outp_a, axes=[2, 2])
+            outp = K.sum(outp * kcon, -1, keepdims=True)
+            m.append(outp)
+        if self.output_dim > 1:
+            persp = K.concatenate(m, 2)
+        else:
+            persp = m[0]
+        return [persp, persp]
+
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/core/layers/keras_layers.py" startline="198" endline="223" pcid="771">
+    def call(self, x, **kwargs):
+        assert isinstance(x, list)
+        inp_a, inp_b = x
+
+        outp_a = K.l2_normalize(inp_a, -1)
+        outp_b = K.l2_normalize(inp_b, -1)
+        alpha = K.batch_dot(outp_b, outp_a, axes=[2, 2])
+        alpha = K.l2_normalize(alpha, 1)
+        alpha = K.one_hot(K.argmax(alpha, 1), K.int_shape(inp_a)[1])
+        hmax = K.batch_dot(alpha, outp_b, axes=[1, 1])
+        kcon = K.eye(K.int_shape(inp_a)[1], dtype='float32')
+
+        m = []
+        for i in range(self.output_dim):
+            outp_a = inp_a * self.W[i]
+            outp_hmax = hmax * self.W[i]
+            outp_a = K.l2_normalize(outp_a, -1)
+            outp_hmax = K.l2_normalize(outp_hmax, -1)
+            outp = K.batch_dot(outp_hmax, outp_a, axes=[2, 2])
+            outp = K.sum(outp * kcon, -1, keepdims=True)
+            m.append(outp)
+        if self.output_dim > 1:
+            persp = K.concatenate(m, 2)
+        else:
+            persp = m[0]
+        return [persp, persp]
+</source>
+</class>
+
+<class classid="28" nclones="2" nlines="22" similarity="77">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/metrics/squad_metrics.py" startline="68" endline="102" pcid="790">
+def squad_v2_f1(y_true: List[List[str]], y_predicted: List[str]) -> float:
+    """ Calculates F-1 score between y_true and y_predicted
+        F-1 score uses the best matching y_true answer
+
+    The same as in SQuAD-v2.0
+
+    Args:
+        y_true: list of correct answers (correct answers are represented by list of strings)
+        y_predicted: list of predicted answers
+
+    Returns:
+        F-1 score : float
+    """
+    f1_total = 0.0
+    for ground_truth, prediction in zip(y_true, y_predicted):
+        prediction_tokens = normalize_answer(prediction).split()
+        f1s = []
+        for gt in ground_truth:
+            gt_tokens = normalize_answer(gt).split()
+            if len(gt_tokens) == 0 or len(prediction_tokens) == 0:
+                f1s.append(float(gt_tokens == prediction_tokens))
+                continue
+            common = Counter(prediction_tokens) & Counter(gt_tokens)
+            num_same = sum(common.values())
+            if num_same == 0:
+                f1s.append(0.0)
+                continue
+            precision = 1.0 * num_same / len(prediction_tokens)
+            recall = 1.0 * num_same / len(gt_tokens)
+            f1 = (2 * precision * recall) / (precision + recall)
+            f1s.append(f1)
+        f1_total += max(f1s)
+    return 100 * f1_total / len(y_true) if len(y_true) > 0 else 0
+
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/metrics/squad_metrics.py" startline="104" endline="138" pcid="791">
+def squad_v1_f1(y_true: List[List[str]], y_predicted: List[str]) -> float:
+    """ Calculates F-1 score between y_true and y_predicted
+        F-1 score uses the best matching y_true answer
+
+        Skips examples without an answer.
+    Args:
+        y_true: list of correct answers (correct answers are represented by list of strings)
+        y_predicted: list of predicted answers
+    Returns:
+        F-1 score : float
+    """
+    f1_total = 0.0
+    count = 0
+    for ground_truth, prediction in zip(y_true, y_predicted):
+        if len(ground_truth[0]) == 0:
+            # skip empty answers
+            continue
+        count += 1
+        prediction_tokens = normalize_answer(prediction).split()
+        f1s = []
+        for gt in ground_truth:
+            gt_tokens = normalize_answer(gt).split()
+            common = Counter(prediction_tokens) & Counter(gt_tokens)
+            num_same = sum(common.values())
+            if num_same == 0:
+                f1s.append(0.0)
+                continue
+            precision = 1.0 * num_same / len(prediction_tokens)
+            recall = 1.0 * num_same / len(gt_tokens)
+            f1 = (2 * precision * recall) / (precision + recall)
+            f1s.append(f1)
+        f1_total += max(f1s)
+    return 100 * f1_total / count if count > 0 else 0
+
+
+</source>
+</class>
+
+<class classid="29" nclones="2" nlines="11" similarity="90">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/metrics/squad_metrics.py" startline="139" endline="153" pcid="792">
+def normalize_answer(s: str) -> str:
+    def remove_articles(text):
+        return re.sub(r'\b(a|an|the)\b', ' ', text)
+
+    def white_space_fix(text):
+        return ' '.join(text.split())
+
+    def remove_punc(text):
+        exclude = set(string.punctuation)
+        return ''.join(ch for ch in text if ch not in exclude)
+
+    def lower(text):
+        return text.lower()
+
+    return white_space_fix(remove_articles(remove_punc(lower(s))))
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/metrics/record_metrics.py" startline="54" endline="74" pcid="802">
+def normalize_answer(s):
+    """Lower text and remove punctuation, articles and extra whitespace.
+    From official ReCoRD eval script
+    """
+
+    def remove_articles(text):
+        return re.sub(r"\b(a|an|the)\b", " ", text)
+
+    def white_space_fix(text):
+        return " ".join(text.split())
+
+    def remove_punc(text):
+        exclude = set(string.punctuation)
+        return "".join(ch for ch in text if ch not in exclude)
+
+    def lower(text):
+        return text.lower()
+
+    return white_space_fix(remove_articles(remove_punc(lower(s))))
+
+
+</source>
+</class>
+
+<class classid="30" nclones="2" nlines="10" similarity="100">
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/metrics/record_metrics.py" startline="13" endline="32" pcid="800">
+def record_f1_score(record_examples: List[RecordNestedExample]):
+    """Calculate F1 score for given nested ReCoRD examples
+
+    Args:
+        record_examples: processed ReCoRD examples
+
+    Returns:
+        float: F1 score
+    """
+    if not record_examples:
+        return 0.
+    f1_scores = []
+    for example in record_examples:
+        example_f1s = []
+        for answer in example.answers:
+            example_f1s.append(exact_match_score(example.prediction, answer))
+        f1_scores.append(max(example_f1s))
+    return np.mean(f1_scores)
+
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/deeppavlov/metrics/record_metrics.py" startline="34" endline="53" pcid="801">
+def record_em_score(record_examples: List[RecordNestedExample]):
+    """Calculate Exact Match score for given nested ReCoRD examples
+
+    Args:
+        record_examples: processed ReCoRD examples
+
+    Returns:
+        float: Exact Match score
+    """
+    if not record_examples:
+        return 0.
+    em_scores = []
+    for example in record_examples:
+        example_ems = []
+        for answer in example.answers:
+            example_ems.append(string_f1_score(example.prediction, answer))
+        em_scores.append(max(example_ems))
+    return np.mean(em_scores)
+
+
+</source>
+</class>
+
+<class classid="31" nclones="4" nlines="10" similarity="90">
+<source file="systems/DeepPavlov-0.17.1/tests/test_tf_layers.py" startline="25" endline="38" pcid="815">
+    def __init__(self, num_layers, num_units):
+        sess_config = tf.ConfigProto(allow_soft_placement=True)
+        sess_config.gpu_options.allow_growth = True
+        self.sess = tf.Session(config=sess_config)
+
+        self.x = tf.placeholder(shape=(None, None, 50), dtype=tf.float32)
+        with tf.variable_scope('cudnn_model'):
+            h, (h_last, c_last) = cudnn_lstm(self.x, num_units, num_layers, trainable_initial_states=True)
+
+            self.h = h
+            self.h_last = h_last
+
+        self.sess.run(tf.global_variables_initializer())
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/tests/test_tf_layers.py" startline="87" endline="100" pcid="823">
+    def __init__(self, num_layers, num_units):
+        sess_config = tf.ConfigProto(allow_soft_placement=True)
+        sess_config.gpu_options.allow_growth = True
+        self.sess = tf.Session(config=sess_config)
+
+        self.x = tf.placeholder(shape=(None, None, 50), dtype=tf.float32)
+        with tf.variable_scope('cudnn_model'):
+            h, h_last = cudnn_gru(self.x, num_units, num_layers, trainable_initial_states=True)
+
+            self.h = h
+            self.h_last = h_last
+
+        self.sess.run(tf.global_variables_initializer())
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/tests/test_tf_layers.py" startline="56" endline="69" pcid="819">
+    def __init__(self, num_layers, num_units):
+        sess_config = tf.ConfigProto(allow_soft_placement=True)
+        sess_config.gpu_options.allow_growth = True
+        self.sess = tf.Session(config=sess_config)
+
+        self.x = tf.placeholder(shape=(None, None, 50), dtype=tf.float32)
+        with tf.variable_scope('cudnn_model'):
+            h, (h_last, c_last) = cudnn_compatible_lstm(self.x, num_units, num_layers, trainable_initial_states=True)
+
+            self.h = h
+            self.h_last = h_last
+
+        self.sess.run(tf.global_variables_initializer())
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/tests/test_tf_layers.py" startline="118" endline="131" pcid="827">
+    def __init__(self, num_layers, num_units):
+        sess_config = tf.ConfigProto(allow_soft_placement=True)
+        sess_config.gpu_options.allow_growth = True
+        self.sess = tf.Session(config=sess_config)
+
+        self.x = tf.placeholder(shape=(None, None, 50), dtype=tf.float32)
+        with tf.variable_scope('cudnn_model'):
+            h, h_last = cudnn_compatible_gru(self.x, num_units, num_layers, trainable_initial_states=True)
+
+            self.h = h
+            self.h_last = h_last
+
+        self.sess.run(tf.global_variables_initializer())
+
+</source>
+</class>
+
+<class classid="32" nclones="4" nlines="14" similarity="100">
+<source file="systems/DeepPavlov-0.17.1/tests/test_tf_layers.py" startline="157" endline="174" pcid="832">
+    def test_cudnn_lstm_save_load(self, num_layers):
+        x = np.random.normal(size=(10, 10, 50))
+        tf.reset_default_graph()
+        cdnnlstmmodel = DPCudnnLSTMModel(num_layers=num_layers, num_units=100)
+        before_load_hidden, before_load_state = cdnnlstmmodel(x)[0], cdnnlstmmodel(x)[1]
+        cdnnlstmmodel.save(str(tf_layers_data_path / 'dpcudnnlstmmodel' / 'model'))
+
+        tf.reset_default_graph()
+        cdnnlstmmodel = DPCudnnLSTMModel(num_layers=num_layers, num_units=100)
+        cdnnlstmmodel.load(str(tf_layers_data_path / 'dpcudnnlstmmodel' / 'model'))
+        after_load_hidden, after_load_state = cdnnlstmmodel(x)[0], cdnnlstmmodel(x)[1]
+
+        equal_hidden = self.equal_values(after_load_hidden, before_load_hidden)
+        equal_state = self.equal_values(after_load_state, before_load_state)
+
+        assert equal_hidden > 1 - self.allowed_error_lvl
+        assert equal_state > 1 - self.allowed_error_lvl
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/tests/test_tf_layers.py" startline="214" endline="230" pcid="835">
+    def test_cudnn_gru_save_and_cudnn_compatible_load(self, num_layers):
+        x = np.random.normal(size=(10, 10, 50))
+        tf.reset_default_graph()
+        cdnngrumodel = DPCudnnGRUModel(num_layers=num_layers, num_units=100)
+        before_load_hidden, before_load_state = cdnngrumodel(x)[0], cdnngrumodel(x)[1]
+        cdnngrumodel.save(str(tf_layers_data_path / 'cdnngrumodel' / 'model'))
+
+        tf.reset_default_graph()
+        cdnngrumodel = DPGRUModel(num_layers=num_layers, num_units=100)
+        cdnngrumodel.load(str(tf_layers_data_path / 'cdnngrumodel' / 'model'))
+        after_load_hidden, after_load_state = cdnngrumodel(x)[0], cdnngrumodel(x)[1]
+
+        equal_hidden = self.equal_values(after_load_hidden, before_load_hidden)
+        equal_state = self.equal_values(after_load_state, before_load_state)
+
+        assert equal_hidden > 1 - self.allowed_error_lvl
+        assert equal_state > 1 - self.allowed_error_lvl
+</source>
+<source file="systems/DeepPavlov-0.17.1/tests/test_tf_layers.py" startline="195" endline="212" pcid="834">
+    def test_cudnn_gru_save_load(self, num_layers):
+        x = np.random.normal(size=(10, 10, 50))
+        tf.reset_default_graph()
+        cdnngrumodel = DPCudnnGRUModel(num_layers=num_layers, num_units=100)
+        before_load_hidden, before_load_state = cdnngrumodel(x)[0], cdnngrumodel(x)[1]
+        cdnngrumodel.save(str(tf_layers_data_path / 'cdnngrumodel' / 'model'))
+
+        tf.reset_default_graph()
+        cdnngrumodel = DPCudnnGRUModel(num_layers=num_layers, num_units=100)
+        cdnngrumodel.load(str(tf_layers_data_path / 'cdnngrumodel' / 'model'))
+        after_load_hidden, after_load_state = cdnngrumodel(x)[0], cdnngrumodel(x)[1]
+
+        equal_hidden = self.equal_values(after_load_hidden, before_load_hidden)
+        equal_state = self.equal_values(after_load_state, before_load_state)
+
+        assert equal_hidden > 1 - self.allowed_error_lvl
+        assert equal_state > 1 - self.allowed_error_lvl
+
+</source>
+<source file="systems/DeepPavlov-0.17.1/tests/test_tf_layers.py" startline="176" endline="193" pcid="833">
+    def test_cudnn_lstm_save_and_cudnn_compatible_load(self, num_layers):
+        x = np.random.normal(size=(10, 10, 50))
+        tf.reset_default_graph()
+        cdnnlstmmodel = DPCudnnLSTMModel(num_layers=num_layers, num_units=100)
+        before_load_hidden, before_load_state = cdnnlstmmodel(x)[0], cdnnlstmmodel(x)[1]
+        cdnnlstmmodel.save(str(tf_layers_data_path / 'dpcudnnlstmmodel' / 'model'))
+
+        tf.reset_default_graph()
+        cdnnlstmmodel = DPLSTMModel(num_layers=num_layers, num_units=100)
+        cdnnlstmmodel.load(str(tf_layers_data_path / 'dpcudnnlstmmodel' / 'model'))
+        after_load_hidden, after_load_state = cdnnlstmmodel(x)[0], cdnnlstmmodel(x)[1]
+
+        equal_hidden = self.equal_values(after_load_hidden, before_load_hidden)
+        equal_state = self.equal_values(after_load_state, before_load_state)
+
+        assert equal_hidden > 1 - self.allowed_error_lvl
+        assert equal_state > 1 - self.allowed_error_lvl
+
+</source>
+</class>
+
+<class classid="33" nclones="2" nlines="18" similarity="83">
+<source file="systems/DeepPavlov-0.17.1/tests/test_rasa_skill.py" startline="15" endline="37" pcid="837">
+    def test_simple_reaction(self):
+        user_messages_sequence = [
+            "Hello",
+            "What can you do?",
+            "Tell me a joke",
+            "Learn my pants are Red",
+            "LET DISCUSS MOVIES",
+            "Comedy movies are nice to watch",
+            "I LIKE WATCHING COMEDY!",
+            "Ok, goodbye"
+        ]
+
+        history_of_responses = []
+        for each_utt in user_messages_sequence:
+            log.info(f"User says: {each_utt}")
+            responses_batch, _ = self.rasa_skill([each_utt])
+            log.info(f" Bot says: {responses_batch[0]}")
+            history_of_responses.append(responses_batch)
+
+        print("history_of_responses:")
+        print(history_of_responses)
+        # # check the first greeting message in 0th batch
+        # assert "Hey! How are you?" in history_of_responses[0][0]
+</source>
+<source file="systems/DeepPavlov-0.17.1/tests/test_aiml_skill.py" startline="15" endline="37" pcid="839">
+    def test_simple_reaction(self):
+        user_messages_sequence = [
+            "Hello",
+            "What s up?",
+            "Tell me a joke",
+            "Learn my pants are Red",
+            "LET DISCUSS MOVIES",
+            "Comedy movies are nice to watch",
+            "I LIKE WATCHING COMEDY!",
+            "Ok, goodbye"
+        ]
+
+        history_of_responses = []
+        for each_utt in user_messages_sequence:
+            log.info(f"User says: {each_utt}")
+            responses_batch, _, _ = self.aiml_skill([each_utt], [None])
+            log.info(f" Bot says: {responses_batch[0]}")
+            history_of_responses.append(responses_batch)
+
+        # check the first greeting message in 0th batch
+        assert "Well, hello!" in history_of_responses[0][0]
+        # check fifth message in 0th batch
+        assert "Yes movies" in history_of_responses[4][0]
+</source>
+</class>
+
+</clones>

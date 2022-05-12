@@ -1,0 +1,133 @@
+<clonepair1>
+<source file="systems/luminoth-0.1.2/luminoth/tools/dataset/readers/object_detection/taggerine.py" startline="129" endline="196" pcid="408"></source>
+    def iterate(self):
+        for annotation in self.annotations:
+            # Checks that we don't yield more records than necessary.
+            if self._stop_iteration():
+                return
+
+            image_id = annotation['image_id']
+
+            # Checks that the image is valid using the "only images" filter.
+            if not self._is_valid(image_id):
+                continue
+
+            try:
+                image = read_image(annotation['path'])
+            except tf.errors.NotFoundError:
+                tf.logging.debug(
+                    'Error reading image or annotation for "{}".'.format(
+                        image_id))
+                self.errors += 1
+                continue
+
+            # Parse image bytes with PIL to get width and height.
+            image_pil = Image.open(six.BytesIO(image))
+            img_width = image_pil.width
+            img_height = image_pil.height
+
+            gt_boxes = []
+            for b in annotation['gt_boxes']:
+                try:
+                    label_id = self.classes.index(
+                        b.get('label', self._default_class)
+                    )
+                except ValueError:
+                    continue
+
+                if 'height' in b and 'width' in b and 'x' in b and 'y' in b:
+                    gt_boxes.append({
+                        'label': label_id,
+                        'xmin': b['x'] * img_width,
+                        'ymin': b['y'] * img_height,
+                        'xmax': b['x'] * img_width + b['width'] * img_width,
+                        'ymax': b['y'] * img_height + b['height'] * img_height,
+                    })
+                else:
+                    gt_boxes.append({
+                        'label': label_id,
+                        'xmin': b['x_min'] * img_width,
+                        'ymin': b['y_min'] * img_height,
+                        'xmax': b['x_max'] * img_width,
+                        'ymax': b['y_max'] * img_height,
+                    })
+
+            if len(gt_boxes) == 0:
+                tf.logging.debug('Image "{}" has zero valid gt_boxes.'.format(
+                    image_id))
+                self.errors += 1
+                continue
+
+            self.yielded_records += 1
+
+            yield {
+                'width': img_width,
+                'height': img_height,
+                'depth': 3,
+                'filename': image_id,
+                'image_raw': image,
+                'gt_boxes': gt_boxes,
+            }
+</clonepair1>
+
+<clonepair1>
+<source file="systems/luminoth-0.1.2/luminoth/tools/dataset/readers/object_detection/flat_reader.py" startline="79" endline="136" pcid="359"></source>
+    def iterate(self):
+        for annotation in self.annotations:
+            if self._stop_iteration():
+                return
+
+            image_id = annotation['image_id']
+
+            if not self._is_valid(image_id):
+                continue
+
+            try:
+                image_path = self._get_image_path(image_id)
+                image = read_image(image_path)
+            except tf.errors.NotFoundError:
+                tf.logging.debug(
+                    'Error reading image or annotation for "{}".'.format(
+                        image_id))
+                self.errors += 1
+                continue
+
+            image_pil = Image.open(six.BytesIO(image))
+            width = image_pil.width
+            height = image_pil.height
+
+            gt_boxes = []
+            for b in annotation[self._objects_key]:
+                try:
+                    label_id = self.classes.index(
+                        b.get('label', self._default_class)
+                    )
+                except ValueError:
+                    continue
+
+                gt_boxes.append({
+                    'label': label_id,
+                    'xmin': b[self._x_min_key],
+                    'ymin': b[self._y_min_key],
+                    'xmax': b[self._x_max_key],
+                    'ymax': b[self._y_max_key],
+                })
+
+            if len(gt_boxes) == 0:
+                tf.logging.debug('Image "{}" has zero valid gt_boxes.'.format(
+                    image_id))
+                self.errors += 1
+                continue
+
+            self.yielded_records += 1
+
+            yield {
+                'width': width,
+                'height': height,
+                'depth': 3,
+                'filename': image_id,
+                'image_raw': image,
+                'gt_boxes': gt_boxes,
+            }
+
+</clonepair1>

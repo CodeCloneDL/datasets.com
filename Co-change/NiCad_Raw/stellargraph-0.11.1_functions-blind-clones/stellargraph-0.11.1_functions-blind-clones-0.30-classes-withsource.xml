@@ -1,0 +1,4149 @@
+<clones>
+<systeminfo processor="nicad6" system="stellargraph-0.11.1" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="672" npairs="100"/>
+<runinfo ncompares="32691" cputime="69101"/>
+<classinfo nclasses="43"/>
+
+<class classid="1" nclones="2" nlines="15" similarity="100">
+<source file="systems/stellargraph-0.11.1/stellargraph/mapper/sampled_node_generators.py" startline="68" endline="94" pcid="38">
+    def __init__(self, G, batch_size, schema=None):
+        if not isinstance(G, StellarGraph):
+            raise TypeError("Graph must be a StellarGraph or StellarDiGraph object.")
+
+        self.graph = G
+        self.batch_size = batch_size
+
+        # This is a node generator and requries a model with one root nodes per query
+        self.multiplicity = 1
+
+        # Check if the graph has features
+        G.check_graph_for_ml()
+
+        # We need a schema for compatibility with HinSAGE
+        if schema is None:
+            self.schema = G.create_graph_schema()
+        elif isinstance(schema, GraphSchema):
+            self.schema = schema
+        else:
+            raise TypeError("Schema must be a GraphSchema object")
+
+        # We will need real node types here
+        self.head_node_types = None
+
+        # Create sampler for GraphSAGE
+        self.sampler = None
+
+</source>
+<source file="systems/stellargraph-0.11.1/stellargraph/mapper/sampled_link_generators.py" startline="53" endline="79" pcid="87">
+    def __init__(self, G, batch_size, schema=None):
+        if not isinstance(G, StellarGraph):
+            raise TypeError("Graph must be a StellarGraph or StellarDiGraph object.")
+
+        self.graph = G
+        self.batch_size = batch_size
+
+        # This is a link generator and requries a model with two root nodes per query
+        self.multiplicity = 2
+
+        # Check if the graph has features
+        G.check_graph_for_ml()
+
+        # We need a schema for compatibility with HinSAGE
+        if schema is None:
+            self.schema = G.create_graph_schema()
+        elif isinstance(schema, GraphSchema):
+            self.schema = schema
+        else:
+            raise TypeError("Schema must be a GraphSchema object")
+
+        # Do we need real node types here?
+        self.head_node_types = None
+
+        # Sampler (if required)
+        self.sampler = None
+
+</source>
+</class>
+
+<class classid="2" nclones="4" nlines="16" similarity="70">
+<source file="systems/stellargraph-0.11.1/stellargraph/mapper/sampled_node_generators.py" startline="203" endline="223" pcid="42">
+    def __init__(self, G, batch_size, num_samples, seed=None, name=None):
+        super().__init__(G, batch_size)
+
+        self.num_samples = num_samples
+        self.head_node_types = self.schema.node_types
+        self.name = name
+
+        # Check that there is only a single node type for GraphSAGE
+        if len(self.head_node_types) > 1:
+            warnings.warn(
+                "running homogeneous GraphSAGE on a graph with multiple node types",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
+        # Create sampler for GraphSAGE
+        self._samplers = SeededPerBatch(
+            lambda s: SampledBreadthFirstWalk(G, graph_schema=self.schema, seed=s),
+            seed=seed,
+        )
+
+</source>
+<source file="systems/stellargraph-0.11.1/stellargraph/mapper/sampled_node_generators.py" startline="305" endline="326" pcid="45">
+    def __init__(self, G, batch_size, in_samples, out_samples, seed=None, name=None):
+        super().__init__(G, batch_size)
+
+        # TODO Add checks for in- and out-nodes sizes
+        self.in_samples = in_samples
+        self.out_samples = out_samples
+        self.head_node_types = self.schema.node_types
+        self.name = name
+
+        # Check that there is only a single node type for GraphSAGE
+        if len(self.head_node_types) > 1:
+            warnings.warn(
+                "running homogeneous GraphSAGE on a graph with multiple node types",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
+        # Create sampler for GraphSAGE
+        self.sampler = DirectedBreadthFirstNeighbours(
+            G, graph_schema=self.schema, seed=seed
+        )
+
+</source>
+<source file="systems/stellargraph-0.11.1/stellargraph/mapper/sampled_link_generators.py" startline="220" endline="243" pcid="91">
+    def __init__(self, G, batch_size, num_samples, seed=None, name=None):
+        super().__init__(G, batch_size)
+
+        self.num_samples = num_samples
+        self.name = name
+
+        # Check that there is only a single node type for GraphSAGE
+        if len(self.schema.node_types) > 1:
+            warnings.warn(
+                "running homogeneous GraphSAGE on a graph with multiple node types",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
+        self.head_node_types = self.schema.node_types * 2
+
+        self._graph = G
+        self._samplers = SeededPerBatch(
+            lambda s: SampledBreadthFirstWalk(
+                self._graph, graph_schema=self.schema, seed=s
+            ),
+            seed=seed,
+        )
+
+</source>
+<source file="systems/stellargraph-0.11.1/stellargraph/mapper/sampled_link_generators.py" startline="533" endline="558" pcid="99">
+    def __init__(self, G, batch_size, in_samples, out_samples, seed=None, name=None):
+        super().__init__(G, batch_size)
+
+        self.in_samples = in_samples
+        self.out_samples = out_samples
+        self._name = name
+
+        # Check that there is only a single node type for GraphSAGE
+        if len(self.schema.node_types) > 1:
+            warnings.warn(
+                "running homogeneous GraphSAGE on a graph with multiple node types",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
+        self.head_node_types = self.schema.node_types * 2
+
+        self._graph = G
+
+        self._samplers = SeededPerBatch(
+            lambda s: DirectedBreadthFirstNeighbours(
+                self._graph, graph_schema=self.schema, seed=s
+            ),
+            seed=seed,
+        )
+
+</source>
+</class>
+
+<class classid="3" nclones="2" nlines="23" similarity="78">
+<source file="systems/stellargraph-0.11.1/stellargraph/mapper/sampled_node_generators.py" startline="403" endline="435" pcid="47">
+    def __init__(
+        self,
+        G,
+        batch_size,
+        num_samples,
+        head_node_type,
+        schema=None,
+        seed=None,
+        name=None,
+    ):
+        super().__init__(G, batch_size, schema=schema)
+
+        self.num_samples = num_samples
+        self.name = name
+
+        # The head node type
+        if head_node_type not in self.schema.node_types:
+            raise KeyError("Supplied head node type must exist in the graph")
+        self.head_node_types = [head_node_type]
+
+        # Create sampling schema
+        self._sampling_schema = self.schema.sampling_layout(
+            self.head_node_types, self.num_samples
+        )
+        self._type_adjacency_list = self.schema.type_adjacency_list(
+            self.head_node_types, len(self.num_samples)
+        )
+
+        # Create sampler for HinSAGE
+        self.sampler = SampledHeterogeneousBreadthFirstWalk(
+            G, graph_schema=self.schema, seed=seed
+        )
+
+</source>
+<source file="systems/stellargraph-0.11.1/stellargraph/mapper/sampled_link_generators.py" startline="339" endline="372" pcid="94">
+    def __init__(
+        self,
+        G,
+        batch_size,
+        num_samples,
+        head_node_types,
+        schema=None,
+        seed=None,
+        name=None,
+    ):
+        super().__init__(G, batch_size, schema)
+        self.num_samples = num_samples
+        self.name = name
+
+        # This is a link generator and requires two nodes per query
+        self.head_node_types = head_node_types
+        if len(self.head_node_types) != 2:
+            raise ValueError(
+                "The head_node_types should be of length 2 for a link generator"
+            )
+
+        # Create sampling schema
+        self._sampling_schema = self.schema.sampling_layout(
+            self.head_node_types, self.num_samples
+        )
+        self._type_adjacency_list = self.schema.type_adjacency_list(
+            self.head_node_types, len(self.num_samples)
+        )
+
+        # The sampler used to generate random samples of neighbours
+        self.sampler = SampledHeterogeneousBreadthFirstWalk(
+            G, graph_schema=self.schema, seed=seed
+        )
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="27" similarity="89">
+<source file="systems/stellargraph-0.11.1/stellargraph/mapper/sequences.py" startline="70" endline="107" pcid="53">
+    def __init__(
+        self, sample_function, batch_size, ids, targets=None, shuffle=True, seed=None
+    ):
+        # Check that ids is an iterable
+        if not is_real_iterable(ids):
+            raise TypeError("IDs must be an iterable or numpy array of graph node IDs")
+
+        # Check targets is iterable & has the correct length
+        if targets is not None:
+            if not is_real_iterable(targets):
+                raise TypeError("Targets must be None or an iterable or numpy array ")
+            if len(ids) != len(targets):
+                raise ValueError(
+                    "The length of the targets must be the same as the length of the ids"
+                )
+            self.targets = np.asanyarray(targets)
+        else:
+            self.targets = None
+
+        # Store the generator to draw samples from graph
+        if isinstance(sample_function, collections.abc.Callable):
+            self._sample_function = sample_function
+        else:
+            raise TypeError(
+                "({}) The sampling function expects a callable function.".format(
+                    type(self).__name__
+                )
+            )
+
+        self.ids = list(ids)
+        self.data_size = len(self.ids)
+        self.shuffle = shuffle
+        self.batch_size = batch_size
+        self._rs, _ = random_state(seed)
+
+        # Shuffle IDs to start
+        self.on_epoch_end()
+
+</source>
+<source file="systems/stellargraph-0.11.1/stellargraph/mapper/sequences.py" startline="170" endline="211" pcid="57">
+    def __init__(
+        self, sample_function, batch_size, ids, targets=None, shuffle=True, seed=None
+    ):
+        # Check that ids is an iterable
+        if not is_real_iterable(ids):
+            raise TypeError("IDs must be an iterable or numpy array of graph node IDs")
+
+        # Check targets is iterable & has the correct length
+        if targets is not None:
+            if not is_real_iterable(targets):
+                raise TypeError("Targets must be None or an iterable or numpy array ")
+            if len(ids) != len(targets):
+                raise ValueError(
+                    "The length of the targets must be the same as the length of the ids"
+                )
+            self.targets = np.asanyarray(targets)
+        else:
+            self.targets = None
+
+        # Ensure number of labels matches number of ids
+        if targets is not None and len(ids) != len(targets):
+            raise ValueError("Length of link ids must match length of link targets")
+
+        # Store the generator to draw samples from graph
+        if isinstance(sample_function, collections.abc.Callable):
+            self._sample_features = sample_function
+        else:
+            raise TypeError(
+                "({}) The sampling function expects a callable function.".format(
+                    type(self).__name__
+                )
+            )
+
+        self.batch_size = batch_size
+        self.ids = list(ids)
+        self.data_size = len(self.ids)
+        self.shuffle = shuffle
+        self._rs, _ = random_state(seed)
+
+        # Shuffle the IDs to begin
+        self.on_epoch_end()
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="10" similarity="100">
+<source file="systems/stellargraph-0.11.1/stellargraph/mapper/sequences.py" startline="112" endline="144" pcid="55">
+    def __getitem__(self, batch_num):
+        """
+        Generate one batch of data
+
+        Args:
+            batch_num (int): number of a batch
+
+        Returns:
+            batch_feats (list): Node features for nodes and neighbours sampled from a
+                batch of the supplied IDs
+            batch_targets (list): Targets/labels for the batch.
+
+        """
+        start_idx = self.batch_size * batch_num
+        end_idx = start_idx + self.batch_size
+        if start_idx >= self.data_size:
+            raise IndexError("Mapper: batch_num larger than length of data")
+        # print("Fetching batch {} [{}]".format(batch_num, start_idx))
+
+        # The ID indices for this batch
+        batch_indices = self.indices[start_idx:end_idx]
+
+        # Get head (root) nodes
+        head_ids = [self.ids[ii] for ii in batch_indices]
+
+        # Get corresponding targets
+        batch_targets = None if self.targets is None else self.targets[batch_indices]
+
+        # Get features for nodes
+        batch_feats = self._sample_function(head_ids, batch_num)
+
+        return batch_feats, batch_targets
+
+</source>
+<source file="systems/stellargraph-0.11.1/stellargraph/mapper/sequences.py" startline="216" endline="246" pcid="59">
+    def __getitem__(self, batch_num):
+        """
+        Generate one batch of data
+        Args:
+            batch_num (int): number of a batch
+        Returns:
+            batch_feats (list): Node features for nodes and neighbours sampled from a
+                batch of the supplied IDs
+            batch_targets (list): Targets/labels for the batch.
+        """
+        start_idx = self.batch_size * batch_num
+        end_idx = start_idx + self.batch_size
+
+        if start_idx >= self.data_size:
+            raise IndexError("Mapper: batch_num larger than length of data")
+        # print("Fetching {} batch {} [{}]".format(self.name, batch_num, start_idx))
+
+        # The ID indices for this batch
+        batch_indices = self.indices[start_idx:end_idx]
+
+        # Get head (root) nodes for links
+        head_ids = [self.ids[ii] for ii in batch_indices]
+
+        # Get targets for nodes
+        batch_targets = None if self.targets is None else self.targets[batch_indices]
+
+        # Get node features for batch of link ids
+        batch_feats = self._sample_features(head_ids, batch_num)
+
+        return batch_feats, batch_targets
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="15" similarity="70">
+<source file="systems/stellargraph-0.11.1/stellargraph/interpretability/saliency_maps/saliency_gat.py" startline="66" endline="84" pcid="102">
+    def compute_node_gradients(self, node_mask_tensors):
+
+        for i, x in enumerate(node_mask_tensors):
+            if not isinstance(x, tf.Tensor):
+                node_mask_tensors[i] = tf.convert_to_tensor(x)
+
+        X_val, out_indices, A_val, _, class_of_interest = node_mask_tensors
+        model_input = [X_val, out_indices, A_val]
+
+        with tf.GradientTape() as tape:
+            tape.watch(X_val)
+            output = self.model(model_input)
+
+            cost_value = K.gather(output[0, 0], class_of_interest)
+
+        node_gradients = tape.gradient(cost_value, X_val)
+
+        return node_gradients
+
+</source>
+<source file="systems/stellargraph-0.11.1/stellargraph/interpretability/saliency_maps/saliency_gat.py" startline="85" endline="107" pcid="103">
+    def compute_link_gradients(self, link_mask_tensors):
+        for i, x in enumerate(link_mask_tensors):
+            if not isinstance(x, tf.Tensor):
+                link_mask_tensors[i] = tf.convert_to_tensor(x)
+
+        X_val, out_indices, A_val, _, class_of_interest = link_mask_tensors
+        model_input = [X_val, out_indices, A_val]
+
+        with tf.GradientTape() as tape:
+            tape.watch(A_val)
+            output = self.model(model_input)
+            if self.is_sparse:
+                cost_value = (
+                    K.gather(K.gather(output, out_indices), class_of_interest),
+                )
+
+            else:
+                cost_value = K.gather(output[0, 0], class_of_interest)
+
+        link_gradients = tape.gradient(cost_value, A_val)
+
+        return link_gradients
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="13" similarity="71">
+<source file="systems/stellargraph-0.11.1/stellargraph/interpretability/saliency_maps/saliency_gat.py" startline="121" endline="148" pcid="105">
+    def get_node_masks(self, node_id, class_of_interest, X_val=None, A_val=None):
+        """
+        Args:
+            This function computes the saliency maps (gradients) which measure the importance of each feature to the prediction score of 'class_of_interest'
+            for node 'node_id'.
+
+            node_id (int): The node ID in the StellarGraph object.
+            class_of_interest (int): The  class of interest for which the saliency maps are computed.
+            X_val (Numpy array): The feature matrix, we do not directly get it from generator to support the integrated gradients computation.
+            A_val (Numpy array): The adjacency matrix, we do not directly get it from generator to support the integrated gradients computation.
+        Returns:
+            gradients (Numpy array): Returns a vanilla gradient mask for the nodes.
+        """
+        out_indices = np.array([[node_id]])
+
+        if X_val is None:
+            X_val = self.X
+        if A_val is None:
+            A_val = self.A
+        # Execute the function to compute the gradient
+        self.set_ig_values(1.0, 0.0)
+        if self.is_sparse and not sp.issparse(A_val):
+            A_val = sp.lil_matrix(A_val)
+        gradients = self.compute_node_gradients(
+            [X_val, out_indices, A_val, 0, class_of_interest]
+        )
+        return gradients[0]
+
+</source>
+<source file="systems/stellargraph-0.11.1/stellargraph/interpretability/saliency_maps/saliency_gat.py" startline="149" endline="182" pcid="106">
+    def get_link_masks(
+        self, alpha, node_id, class_of_interest, non_exist_edge, X_val=None, A_val=None
+    ):
+        """
+        This function computes the saliency maps (gradients) which measure the importance of each edge to the prediction score of 'class_of_interest'
+        for node 'node_id'.
+
+        Args:
+            alpha (float): The path position parameter to support integrated gradient computation.
+            node_id (int): The node ID in the StellarGraph object.
+            class_of_interest (int): The  class of interest for which the saliency maps are computed.
+            non_exist_edge (bool): Setting to True allows the function to get the importance for non-exist edges. This is useful when we want to understand
+                adding which edges could change the current predictions. But the results for existing edges are not reliable. Simiarly, setting to False ((A_baseline = all zero matrix))
+                could only accurately measure the importance of existing edges.
+            X_val (Numpy array): The feature matrix, we do not directly get it from generator to support the integrated gradients computation.
+            A_val (Numpy array): The adjacency matrix, we do not directly get it from generator to support the integrated gradients computation.
+        Returns:
+            gradients (Numpy array): Returns a vanilla gradient mask for the nodes.
+        """
+        out_indices = np.array([[node_id]])
+
+        if X_val is None:
+            X_val = self.X
+        if A_val is None:
+            A_val = self.A
+        # Execute the function to compute the gradient
+        self.set_ig_values(alpha, non_exist_edge)
+        if self.is_sparse and not sp.issparse(A_val):
+            A_val = sp.lil_matrix(A_val)
+        gradients = self.compute_link_gradients(
+            [X_val, out_indices, A_val, 0, class_of_interest]
+        )
+        return gradients[0]
+
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="65" similarity="75">
+<source file="systems/stellargraph-0.11.1/stellargraph/ensemble.py" startline="191" endline="298" pcid="167">
+    def fit(
+        self,
+        generator,
+        steps_per_epoch=None,
+        epochs=1,
+        verbose=1,
+        validation_data=None,
+        validation_steps=None,
+        class_weight=None,
+        max_queue_size=10,
+        workers=1,
+        use_multiprocessing=False,
+        shuffle=True,
+        initial_epoch=0,
+        use_early_stopping=False,
+        early_stopping_monitor="val_loss",
+    ):
+        """
+        This method trains the ensemble on the data specified by the generator. If validation data are given, then the
+        training metrics are evaluated on these data and results printed on screen if verbose level is greater than 0.
+
+        The method trains each model in the ensemble in series for the number of epochs specified. Training can
+        also stop early with the best model as evaluated on the validation data, if use_early_stopping is set to True.
+
+        For detail descriptions of Keras-specific parameters consult the Keras documentation
+        at https://keras.io/models/sequential/
+
+        Args:
+            generator: The generator object for training data. It should be one of type
+                NodeSequence, LinkSequence, SparseFullBatchSequence, or FullBatchSequence.
+            steps_per_epoch (None or int): (Keras-specific parameter) If not None, it specifies the number of steps
+                to yield from the generator before declaring one epoch finished and starting a new epoch.
+            epochs (int): (Keras-specific parameter) The number of training epochs.
+            verbose (int): (Keras-specific parameter) The verbocity mode that should be 0 , 1, or 2 meaning silent,
+                progress bar, and one line per epoch respectively.
+            validation_data: A generator for validation data that is optional (None). If not None then, it should
+                be one of type NodeSequence, LinkSequence, SparseFullBatchSequence, or FullBatchSequence.
+            validation_steps (None or int): (Keras-specific parameter) If validation_generator is not None, then it
+                specifies the number of steps to yield from the generator before stopping at the end of every epoch.
+            class_weight (None or dict): (Keras-specific parameter) If not None, it should be a dictionary
+                mapping class indices (integers) to a weight (float) value, used for weighting the loss function (during
+                training only). This can be useful to tell the model to "pay more attention" to samples from an
+                under-represented class.
+            max_queue_size (int): (Keras-specific parameter) The maximum size for the generator queue.
+            workers (int): (Keras-specific parameter) The maximum number of workers to use.
+            use_multiprocessing (bool): (Keras-specific parameter) If True then use process based threading.
+            shuffle (bool): (Keras-specific parameter) If True, then it shuffles the order of batches at the
+                beginning of each training epoch.
+            initial_epoch (int): (Keras-specific parameter) Epoch at which to start training (useful for resuming a
+                previous training run).
+            use_early_stopping (bool): If set to True, then early stopping is used when training each model
+                in the ensemble. The default is False.
+            early_stopping_monitor (str): The quantity to monitor for early stopping, e.g., 'val_loss',
+                'val_weighted_acc'. It should be a valid Keras metric.
+
+        Returns:
+            list: It returns a list of Keras History objects each corresponding to one trained model in the ensemble.
+
+        """
+        if not isinstance(
+            generator,
+            (
+                sg.mapper.NodeSequence,
+                sg.mapper.LinkSequence,
+                sg.mapper.FullBatchSequence,
+                sg.mapper.SparseFullBatchSequence,
+            ),
+        ):
+            raise ValueError(
+                "({}) If train_data is None, generator must be one of type NodeSequence, LinkSequence, FullBatchSequence "
+                "but received object of type {}".format(
+                    type(self).__name__, type(generator)
+                )
+            )
+
+        self.history = []
+
+        es_callback = None
+        if use_early_stopping and validation_data is not None:
+            es_callback = [
+                EarlyStopping(
+                    monitor=early_stopping_monitor,
+                    patience=self.early_stoppping_patience,
+                    restore_best_weights=True,
+                )
+            ]
+
+        for model in self.models:
+            self.history.append(
+                model.fit(
+                    generator,
+                    steps_per_epoch=steps_per_epoch,
+                    epochs=epochs,
+                    verbose=verbose,
+                    callbacks=es_callback,
+                    validation_data=validation_data,
+                    validation_steps=validation_steps,
+                    class_weight=class_weight,
+                    max_queue_size=max_queue_size,
+                    workers=workers,
+                    use_multiprocessing=use_multiprocessing,
+                    shuffle=shuffle,
+                    initial_epoch=initial_epoch,
+                )
+            )
+
+        return self.history
+
+</source>
+<source file="systems/stellargraph-0.11.1/stellargraph/ensemble.py" startline="568" endline="716" pcid="174">
+    def fit(
+        self,
+        generator,
+        train_data,
+        train_targets,
+        steps_per_epoch=None,
+        epochs=1,
+        verbose=1,
+        validation_data=None,
+        validation_steps=None,
+        class_weight=None,
+        max_queue_size=10,
+        workers=1,
+        use_multiprocessing=False,
+        shuffle=True,
+        initial_epoch=0,
+        bag_size=None,
+        use_early_stopping=False,
+        early_stopping_monitor="val_loss",
+    ):
+        """
+        This method trains the ensemble on the data given in train_data and train_targets. If validation data are
+        also given, then the training metrics are evaluated on these data and results printed on screen if verbose
+        level is greater than 0.
+
+        The method trains each model in the ensemble in series for the number of epochs specified. Training can
+        also stop early with the best model as evaluated on the validation data, if use_early_stopping is enabled.
+
+        Each model in the ensemble is trained using a bootstrapped sample of the data (the train data are re-sampled
+        with replacement.) The number of bootstrap samples can be specified via the bag_size parameter; by default,
+        the number of bootstrap samples equals the number of training points.
+
+        For detail descriptions of Keras-specific parameters consult the Keras documentation
+        at https://keras.io/models/sequential/
+
+        Args:
+            generator: The generator object for training data. It should be one of type
+                GraphSAGENodeGenerator, HinSAGENodeGenerator, FullBatchNodeGenerator, GraphSAGELinkGenerator,
+                or HinSAGELinkGenerator.
+            train_data (iterable): It is an iterable, e.g. list, that specifies the data
+                to train the model with.
+            train_targets (iterable): It is an iterable, e.g. list, that specifies the target
+                values for the train data.
+            steps_per_epoch (None or int): (Keras-specific parameter) If not None, it specifies the number of steps
+                to yield from the generator before declaring one epoch finished and starting a new epoch.
+            epochs (int): (Keras-specific parameter) The number of training epochs.
+            verbose (int): (Keras-specific parameter) The verbocity mode that should be 0 , 1, or 2 meaning silent,
+                progress bar, and one line per epoch respectively.
+            validation_data: A generator for validation data that is optional (None). If not None then, it should
+                be one of type GraphSAGENodeGenerator, HinSAGENodeGenerator, FullBatchNodeGenerator,
+                GraphSAGELinkGenerator, or HinSAGELinkGenerator.
+            validation_steps (None or int): (Keras-specific parameter) If validation_generator is not None, then it
+                specifies the number of steps to yield from the generator before stopping at the end of every epoch.
+            class_weight (None or dict): (Keras-specific parameter) If not None, it should be a dictionary
+                mapping class indices (integers) to a weight (float) value, used for weighting the loss function (during
+                training only). This can be useful to tell the model to "pay more attention" to samples from an
+                under-represented class.
+            max_queue_size (int): (Keras-specific parameter) The maximum size for the generator queue.
+            workers (int): (Keras-specific parameter) The maximum number of workers to use.
+            use_multiprocessing (bool): (Keras-specific parameter) If True then use process based threading.
+            shuffle (bool): (Keras-specific parameter) If True, then it shuffles the order of batches at the
+                beginning of each training epoch.
+            initial_epoch (int): (Keras-specific parameter) Epoch at which to start training (useful for resuming a
+                previous training run).
+            bag_size (None or int): The number of samples in a bootstrap sample. If None and bagging is used, then
+                the number of samples is equal to the number of training points.
+            use_early_stopping (bool): If set to True, then early stopping is used when training each model
+                in the ensemble. The default is False.
+            early_stopping_monitor (str): The quantity to monitor for early stopping, e.g., 'val_loss',
+                'val_weighted_acc'. It should be a valid Keras metric.
+
+        Returns:
+            list: It returns a list of Keras History objects each corresponding to one trained model in the ensemble.
+
+        """
+        if not isinstance(
+            generator,
+            (
+                sg.mapper.GraphSAGENodeGenerator,
+                sg.mapper.HinSAGENodeGenerator,
+                sg.mapper.FullBatchNodeGenerator,
+                sg.mapper.GraphSAGELinkGenerator,
+                sg.mapper.HinSAGELinkGenerator,
+            ),
+        ):
+            raise ValueError(
+                "({}) generator parameter must be of type GraphSAGENodeGenerator, HinSAGENodeGenerator, "
+                "FullBatchNodeGenerator, GraphSAGELinkGenerator, or HinSAGELinkGenerator if you want to use Bagging. "
+                "Received type {}".format(type(self).__name__, type(generator))
+            )
+        if bag_size is not None and (bag_size > len(train_data) or bag_size <= 0):
+            raise ValueError(
+                "({}) bag_size must be positive and less than or equal to the number of training points ({})".format(
+                    type(self).__name__, len(train_data)
+                )
+            )
+        if train_targets is None:
+            raise ValueError(
+                "({}) If train_data is given then train_targets must be given as well.".format(
+                    type(self).__name__
+                )
+            )
+
+        self.history = []
+
+        num_points_per_bag = bag_size if bag_size is not None else len(train_data)
+
+        # Prepare the training data for each model. Use sampling with replacement to create len(self.models)
+        # datasets.
+        for model in self.models:
+            di_index = np.random.choice(
+                len(train_data), size=num_points_per_bag
+            )  # sample with replacement
+            di_train = train_data[di_index]
+
+            di_targets = train_targets[di_index]
+
+            di_gen = generator.flow(di_train, di_targets)
+
+            es_callback = None
+            if use_early_stopping and validation_data is not None:
+                es_callback = [
+                    EarlyStopping(
+                        monitor=early_stopping_monitor,
+                        patience=self.early_stoppping_patience,
+                        restore_best_weights=True,
+                    )
+                ]
+
+            self.history.append(
+                model.fit(
+                    di_gen,
+                    steps_per_epoch=steps_per_epoch,
+                    epochs=epochs,
+                    verbose=verbose,
+                    callbacks=es_callback,
+                    validation_data=validation_data,
+                    validation_steps=validation_steps,
+                    class_weight=class_weight,
+                    max_queue_size=max_queue_size,
+                    workers=workers,
+                    use_multiprocessing=use_multiprocessing,
+                    shuffle=shuffle,
+                    initial_epoch=initial_epoch,
+                )
+            )
+
+        return self.history
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="57" similarity="70">
+<source file="systems/stellargraph-0.11.1/stellargraph/ensemble.py" startline="310" endline="402" pcid="169">
+    def evaluate(
+        self,
+        generator,
+        test_data=None,
+        test_targets=None,
+        max_queue_size=10,
+        workers=1,
+        use_multiprocessing=False,
+        verbose=0,
+    ):
+        """
+        Evaluates the ensemble on a data (node or link) generator. It makes `n_predictions` for each data point for each
+        of the `n_estimators` and returns the mean and standard deviation of the predictions.
+
+        For detailed descriptions of Keras-specific parameters consult the Keras documentation
+        at https://keras.io/models/sequential/
+
+        Args:
+            generator: The generator object that, if test_data is not None, should be one of type
+                GraphSAGENodeGenerator, HinSAGENodeGenerator, FullBatchNodeGenerator, GraphSAGELinkGenerator,
+                or HinSAGELinkGenerator. However, if test_data is None, then generator should be one of type
+                NodeSequence, LinkSequence, or FullBatchSequence.
+            test_data (None or iterable): If not None, then it is an iterable, e.g. list, that specifies the node IDs
+                to evaluate the model on.
+            test_targets (None or iterable): If not None, then it is an iterable, e.g. list, that specifies the target
+                values for the test_data.
+            max_queue_size (int): (Keras-specific parameter) The maximum size for the generator queue.
+            workers (int): (Keras-specific parameter) The maximum number of workers to use.
+            use_multiprocessing (bool): (Keras-specific parameter) If True then use process based threading.
+            verbose (int): (Keras-specific parameter) The verbocity mode that should be 0 or 1 with the former turning
+                verbocity off and the latter on.
+
+        Returns:
+            tuple: The mean and standard deviation of the model metrics for the given data.
+
+        """
+        if test_data is not None and not isinstance(
+            generator,
+            (
+                sg.mapper.GraphSAGENodeGenerator,
+                sg.mapper.HinSAGENodeGenerator,
+                sg.mapper.FullBatchNodeGenerator,
+                sg.mapper.GraphSAGELinkGenerator,
+                sg.mapper.HinSAGELinkGenerator,
+            ),
+        ):
+            raise ValueError(
+                "({}) generator parameter must be of type GraphSAGENodeGenerator, HinSAGENodeGenerator, FullBatchNodeGenerator, "
+                "GraphSAGELinkGenerator, or HinSAGELinkGenerator. Received type {}".format(
+                    type(self).__name__, type(generator)
+                )
+            )
+        elif not isinstance(
+            generator,
+            (
+                sg.mapper.NodeSequence,
+                sg.mapper.LinkSequence,
+                sg.mapper.FullBatchSequence,
+                sg.mapper.SparseFullBatchSequence,
+            ),
+        ):
+            raise ValueError(
+                "({}) If test_data is None, generator must be one of type NodeSequence, "
+                "LinkSequence, FullBatchSequence, or SparseFullBatchSequence "
+                "but received object of type {}".format(
+                    type(self).__name__, type(generator)
+                )
+            )
+        if test_data is not None and test_targets is None:
+            raise ValueError("({}) test_targets not given.".format(type(self).__name__))
+
+        data_generator = generator
+        if test_data is not None:
+            data_generator = generator.flow(test_data, test_targets)
+
+        test_metrics = []
+        for model in self.models:
+            tm = []
+            for _ in range(self.n_predictions):
+                tm.append(
+                    model.evaluate(
+                        data_generator,
+                        max_queue_size=max_queue_size,
+                        workers=workers,
+                        use_multiprocessing=use_multiprocessing,
+                        verbose=verbose,
+                    )  # Keras evaluate_generator returns a scalar
+                )
+            test_metrics.append(np.mean(tm, axis=0))
+
+        # Return the mean and standard deviation of the metrics
+        return np.mean(test_metrics, axis=0), np.std(test_metrics, axis=0)
+
+</source>
+<source file="systems/stellargraph-0.11.1/stellargraph/ensemble.py" startline="414" endline="526" pcid="171">
+    def predict(
+        self,
+        generator,
+        predict_data=None,
+        summarise=False,
+        output_layer=None,
+        max_queue_size=10,
+        workers=1,
+        use_multiprocessing=False,
+        verbose=0,
+    ):
+        """
+        This method generates predictions for the data produced by the given generator or alternatively the data
+        given in parameter predict_data.
+
+        For detailed descriptions of Keras-specific parameters consult the Keras documentation
+        at https://keras.io/models/sequential/
+
+        Args:
+            generator: The generator object that, if predict_data is None, should be one of type
+                GraphSAGENodeGenerator, HinSAGENodeGenerator, FullBatchNodeGenerator, GraphSAGELinkGenerator,
+                or HinSAGELinkGenerator. However, if predict_data is not None, then generator should be one of type
+                NodeSequence, LinkSequence, SparseFullBatchSequence, or FullBatchSequence.
+            predict_data (None or iterable): If not None, then it is an iterable, e.g. list, that specifies the node IDs
+                to make predictions for. If generator is of type FullBatchNodeGenerator then predict_data should be all
+                the nodes in the graph since full batch approaches such as GCN and GAT can only be used to make
+                predictions for all graph nodes.
+            summarise (bool): If True, then the mean of the predictions over self.n_estimators and
+                self.n_predictions are returned for each query point. If False, then all predictions are returned.
+            output_layer (None or int): If not None, then the predictions are the outputs of the layer specified.
+                The default is the model's output layer.
+            max_queue_size (int): (Keras-specific parameter) The maximum size for the generator queue.
+            workers (int): (Keras-specific parameter) The maximum number of workers to use.
+            use_multiprocessing (bool): (Keras-specific parameter) If True then use process based threading.
+            verbose (int): (Keras-specific parameter) The verbocity mode that should be 0 or 1 with the former turning
+                verbocity off and the latter on.
+
+
+        Returns:
+            numpy array: The predictions. It will have shape `MxKxNxF` if **summarise** is set to `False`, or NxF
+            otherwise. `M` is the number of estimators in the ensemble; `K` is the number of predictions per query
+            point; `N` is the number of query points; and `F` is the output dimensionality of the specified layer
+            determined by the shape of the output layer.
+
+        """
+        data_generator = generator
+        if predict_data is not None:
+            if not isinstance(
+                generator,
+                (
+                    sg.mapper.GraphSAGENodeGenerator,
+                    sg.mapper.HinSAGENodeGenerator,
+                    sg.mapper.FullBatchNodeGenerator,
+                ),
+            ):
+                raise ValueError(
+                    "({}) generator parameter must be of type GraphSAGENodeGenerator, HinSAGENodeGenerator, or FullBatchNodeGenerator. Received type {}".format(
+                        type(self).__name__, type(generator)
+                    )
+                )
+            data_generator = generator.flow(predict_data)
+        elif not isinstance(
+            generator,
+            (
+                sg.mapper.NodeSequence,
+                sg.mapper.LinkSequence,
+                sg.mapper.FullBatchSequence,
+                sg.mapper.SparseFullBatchSequence,
+            ),
+        ):
+            raise ValueError(
+                "({}) If x is None, generator must be one of type NodeSequence, "
+                "LinkSequence, SparseFullBatchSequence, or FullBatchSequence.".format(
+                    type(self).__name__
+                )
+            )
+
+        predictions = []
+
+        if output_layer is not None:
+            predict_models = [
+                K.Model(inputs=model.input, outputs=model.layers[output_layer].output)
+                for model in self.models
+            ]
+        else:
+            predict_models = self.models
+
+        for model in predict_models:
+            model_predictions = []
+            for _ in range(self.n_predictions):
+                model_predictions.append(
+                    model.predict(
+                        data_generator,
+                        max_queue_size=max_queue_size,
+                        workers=workers,
+                        use_multiprocessing=use_multiprocessing,
+                        verbose=verbose,
+                    )
+                )
+            # add to predictions list
+            predictions.append(model_predictions)
+
+        predictions = np.array(predictions)
+
+        if summarise is True:
+            # average the predictions across models and predictions per query point
+            predictions = np.mean(predictions, axis=(0, 1))
+
+        # if len(predictions.shape) > 4:
+        #     predictions = predictions.reshape(predictions.shape[0:3] + (-1,))
+
+        return predictions
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="13" similarity="84">
+<source file="systems/stellargraph-0.11.1/stellargraph/layer/link_inference.py" startline="273" endline="318" pcid="219">
+def link_classification(
+    output_dim: int = 1,
+    output_act: AnyStr = "sigmoid",
+    edge_embedding_method: AnyStr = "ip",
+):
+    """
+    Defines a function that predicts a binary or multi-class edge classification output from
+    (source, destination) node embeddings (node features).
+
+    This function takes as input as either:
+
+     * A list of two tensors of shape (N, M) being the embeddings for each of the nodes in the link,
+       where N is the number of links, and M is the node embedding size.
+     * A single tensor of shape (..., N, 2, M) where the axis second from last indexes the nodes
+       in the link and N is the number of links and M the embedding size.
+
+    Note that the output tensor is flattened before being returned.
+
+    Args:
+        output_dim (int): Number of classifier's output units -- desired dimensionality of the output,
+        output_act (str), optional: activation function applied to the output, one of "softmax", "sigmoid", etc.,
+            or any activation function supported by Keras, see https://keras.io/activations/ for more information.
+        edge_embedding_method (str), optional: Name of the method of combining (src,dst) node features/embeddings into edge embeddings.
+            One of:
+             * 'concat' -- concatenation,
+             * 'ip' or 'dot' -- inner product, :math:`ip(u,v) = sum_{i=1..d}{u_i*v_i}`,
+             * 'mul' or 'hadamard' -- element-wise multiplication, :math:`h(u,v)_i = u_i*v_i`,
+             * 'l1' -- L1 operator, :math:`l_1(u,v)_i = |u_i-v_i|`,
+             * 'l2' -- L2 operator, :math:`l_2(u,v)_i = (u_i-v_i)^2`,
+             * 'avg' -- average, :math:`avg(u,v) = (u+v)/2`.
+
+    Returns:
+        Function taking edge tensors with src, dst node embeddings (i.e., pairs of (node_src, node_dst) tensors) and
+        returning logits of output_dim length (e.g., edge class probabilities).
+    """
+
+    edge_function = link_inference(
+        output_dim=output_dim,
+        output_act=output_act,
+        edge_embedding_method=edge_embedding_method,
+        name="link_classification",
+    )
+
+    return edge_function
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/stellargraph/layer/link_inference.py" startline="319" endline="363" pcid="220">
+def link_regression(
+    output_dim: int = 1,
+    clip_limits: Optional[Tuple[float]] = None,
+    edge_embedding_method: AnyStr = "ip",
+):
+    """
+    Defines a function that predicts a numeric edge regression output vector/scalar from
+    (source, destination) node embeddings (node features).
+
+    This function takes as input as either:
+
+     * A list of two tensors of shape (N, M) being the embeddings for each of the nodes in the link,
+       where N is the number of links, and M is the node embedding size.
+     * A single tensor of shape (..., N, 2, M) where the axis second from last indexes the nodes
+       in the link and N is the number of links and M the embedding size.
+
+    Note that the output tensor is flattened before being returned.
+
+    Args:
+        output_dim (int): Number of classifier's output units -- desired dimensionality of the output,
+        clip_limits (tuple): lower and upper thresholds for LeakyClippedLinear unit on top. If None (not provided),
+            the LeakyClippedLinear unit is not applied.
+        edge_embedding_method (str), optional: Name of the method of combining (src,dst) node features/embeddings into edge embeddings.
+            One of:
+             * 'concat' -- concatenation,
+             * 'ip' or 'dot' -- inner product, :math:`ip(u,v) = sum_{i=1..d}{u_i*v_i}`,
+             * 'mul' or 'hadamard' -- element-wise multiplication, :math:`h(u,v)_i = u_i*v_i`,
+             * 'l1' -- L1 operator, :math:`l_1(u,v)_i = |u_i-v_i|`,
+             * 'l2' -- L2 operator, :math:`l_2(u,v)_i = (u_i-v_i)^2`,
+             * 'avg' -- average, :math:`avg(u,v) = (u+v)/2`.
+
+    Returns:
+        Function taking edge tensors with src, dst node embeddings (i.e., pairs of (node_src, node_dst) tensors) and
+        returning a numeric value (e.g., edge attribute being predicted) constructed according to edge_embedding_method.
+    """
+
+    edge_function = link_inference(
+        output_dim=output_dim,
+        output_act="linear",
+        edge_embedding_method=edge_embedding_method,
+        clip_limits=clip_limits,
+        name="link_regression",
+    )
+
+    return edge_function
+</source>
+</class>
+
+<class classid="11" nclones="2" nlines="11" similarity="100">
+<source file="systems/stellargraph-0.11.1/demos/link-prediction/random-walks/utils/node2vec_feature_learning.py" startline="125" endline="136" pcid="272">
+    def select_operator_from_str(self, binary_operator):
+        if binary_operator == "l1":
+            return self.operator_l1
+        elif binary_operator == "l2":
+            return self.operator_l2
+        elif binary_operator == "avg":
+            return self.operator_avg
+        elif binary_operator == "h":  # hadamard
+            return self.operator_hadamard
+        else:
+            raise ValueError("Invalid binary operator {}".format(binary_operator))
+
+</source>
+<source file="systems/stellargraph-0.11.1/demos/link-prediction/random-walks/utils/metapath2vec_feature_learning.py" startline="138" endline="149" pcid="295">
+    def select_operator_from_str(self, binary_operator):
+        if binary_operator == "l1":
+            return self.operator_l1
+        elif binary_operator == "l2":
+            return self.operator_l2
+        elif binary_operator == "avg":
+            return self.operator_avg
+        elif binary_operator == "h":  # hadamard
+            return self.operator_hadamard
+        else:
+            raise ValueError("Invalid binary operator {}".format(binary_operator))
+
+</source>
+</class>
+
+<class classid="12" nclones="2" nlines="12" similarity="100">
+<source file="systems/stellargraph-0.11.1/demos/link-prediction/random-walks/utils/node2vec_feature_learning.py" startline="149" endline="173" pcid="277">
+    def transform(self, edge_data, binary_operator="h"):
+        """
+        It calculates edge features for the given binary operator applied to the node features in data_edge
+
+        :param edge_data: (2-tuple) It is a list of pairs of nodes that make an edge in the graph
+        :param binary_operator: The binary operator to apply to the node features to calculate an edge feature
+        :return: Features in X (Nxd array where N is the number of edges and d is the dimensionality of the edge
+            features that is the same as the dimensionality of the node features) and edge labels in y (0 for no edge
+            and 1 for edge).
+        """
+        X = []  # data matrix, each row is a d-dimensional feature of an edge
+
+        func_bin_operator = self.select_operator_from_str(binary_operator)
+
+        for ids in edge_data[0]:
+            u_str = str(ids[0])
+            v_str = str(ids[1])
+            if type(self.model) is Word2Vec:
+                X.append(func_bin_operator(self.model[u_str], self.model[v_str]))
+            else:  # Pandas Dataframe
+                X.append(
+                    func_bin_operator(self.model.loc[u_str], self.model.loc[v_str])
+                )
+
+        return np.array(X), edge_data[1]
+</source>
+<source file="systems/stellargraph-0.11.1/demos/link-prediction/random-walks/utils/metapath2vec_feature_learning.py" startline="162" endline="186" pcid="300">
+    def transform(self, edge_data, binary_operator="h"):
+        """
+        It calculates edge features for the given binary operator applied to the node features in data_edge
+
+        :param edge_data: (2-tuple) It is a list of pairs of nodes that make an edge in the graph
+        :param binary_operator: The binary operator to apply to the node features to calculate an edge feature
+        :return: Features in X (Nxd array where N is the number of edges and d is the dimensionality of the edge
+            features that is the same as the dimensionality of the node features) and edge labels in y (0 for no edge
+            and 1 for edge).
+        """
+        X = []  # data matrix, each row is a d-dimensional feature of an edge
+
+        func_bin_operator = self.select_operator_from_str(binary_operator)
+
+        for ids in edge_data[0]:
+            u_str = str(ids[0])
+            v_str = str(ids[1])
+            if type(self.model) is Word2Vec:
+                X.append(func_bin_operator(self.model[u_str], self.model[v_str]))
+            else:  # Pandas Dataframe
+                X.append(
+                    func_bin_operator(self.model.loc[u_str], self.model.loc[v_str])
+                )
+
+        return np.array(X), edge_data[1]
+</source>
+</class>
+
+<class classid="13" nclones="2" nlines="75" similarity="92">
+<source file="systems/stellargraph-0.11.1/demos/link-prediction/random-walks/utils/predictors.py" startline="164" endline="261" pcid="304">
+def train_homogeneous_graph(
+    g_train,
+    g_test,
+    output_node_features,  # filename for writing node embeddings
+    edge_data_ids_train,
+    edge_data_labels_train,  # train edge data
+    edge_data_ids_test,
+    edge_data_labels_test,  # test edge data
+    parameters,
+):
+    # Using g_train and edge_data_train train a classifier for edge prediction
+    feature_learner_train = Node2VecFeatureLearning(
+        g_train, embeddings_filename=os.path.expanduser(output_node_features)
+    )
+    print(
+        "Learning {}-dimensional node features (embeddings) from g_train using node2vec algorithm with the following parameters:".format(
+            parameters["dimensions"]
+        )
+    )
+    print("\tp = {}, q = {}".format(parameters["p"], parameters["q"]))
+    print(
+        "\tnum_walks = {}, walk length = {}, context window size = {}".format(
+            parameters["num_walks"],
+            parameters["walk_length"],
+            parameters["window_size"],
+        )
+    )
+    feature_learner_train.fit(
+        p=parameters["p"],
+        q=parameters["q"],
+        d=parameters["dimensions"],
+        r=parameters["num_walks"],
+        l=parameters["walk_length"],
+        k=parameters["window_size"],
+    )
+    # Train the classifier
+    binary_operators = ["h", "avg", "l1", "l2"]
+    print(
+        "Training binary link classifiers (link predictors) using the following binary operators: {}".format(
+            binary_operators
+        )
+    )
+    scores_train, clf_edge, binary_operator = link_prediction_clf(
+        feature_learner=feature_learner_train,
+        edge_data=(edge_data_ids_train, edge_data_labels_train),
+        binary_operators=binary_operators,
+    )
+
+    # Do representation learning on g_test and use the previously trained classifier on g_train to predict
+    # edge_data_test
+    feature_learner_test = Node2VecFeatureLearning(
+        g_test, embeddings_filename=os.path.expanduser(output_node_features)
+    )
+    print(
+        "Learning {}-dimensional node features (embeddings) from g_test using node2vec algorithm with the following parameters:".format(
+            parameters["dimensions"]
+        )
+    )
+    print("\tp = {}, q = {}".format(parameters["p"], parameters["q"]))
+    print(
+        "\tnum_walks = {}, walk length = {}, context window size = {}".format(
+            parameters["num_walks"],
+            parameters["walk_length"],
+            parameters["window_size"],
+        )
+    )
+    feature_learner_test.fit(
+        p=parameters["p"],
+        q=parameters["q"],
+        d=parameters["dimensions"],
+        r=parameters["num_walks"],
+        l=parameters["walk_length"],
+        k=parameters["window_size"],
+    )
+    print(
+        "Evaluating best link predictor with {} binary operator on test links in g_test".format(
+            binary_operator
+        )
+    )
+    scores = predict_links(
+        feature_learner=feature_learner_test,
+        edge_data=(edge_data_ids_test, edge_data_labels_test),
+        clf=clf_edge,
+        binary_operators=[binary_operator],
+    )
+
+    print("\n  **** Scores on test set of links ****\n")
+    for score in scores:
+        print(
+            "     Operator: {}  Score (ROC AUC): {:.2f}".format(
+                score["op"], score["score"]
+            )
+        )
+    print("\n  ****************************")
+
+    return feature_learner_train, feature_learner_test, clf_edge
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/demos/link-prediction/random-walks/utils/predictors.py" startline="262" endline="360" pcid="305">
+def train_heterogeneous_graph(
+    g_train,
+    g_test,
+    output_node_features,  # filename for writing node embeddings
+    edge_data_ids_train,
+    edge_data_labels_train,  # train edge data
+    edge_data_ids_test,
+    edge_data_labels_test,  # test edge data
+    metapaths,
+    parameters,
+):
+    # metapaths = [["Person", "Group", "Person"], ["Person", "Group", "Person", "Person"]]
+
+    # Using g_train and edge_data_train train a classifier for edge prediction
+    feature_learner_train = Metapath2VecFeatureLearning(
+        g_train, embeddings_filename=os.path.expanduser(output_node_features)
+    )
+    print(
+        "Learning {}-dimensional node features (embeddings) from g_train using metapath2vec algorithm with the following parameters:".format(
+            parameters["dimensions"]
+        )
+    )
+    print("metapaths: {}".format(metapaths))
+    print(
+        "\tnum_walks = {}, walk length = {}, context window size = {}".format(
+            parameters["num_walks"],
+            parameters["walk_length"],
+            parameters["window_size"],
+        )
+    )
+    feature_learner_train.fit(
+        metapaths=metapaths,
+        d=parameters["dimensions"],
+        r=parameters["num_walks"],
+        l=parameters["walk_length"],
+        k=parameters["window_size"],
+    )
+    # Train the classifier
+    binary_operators = ["h", "avg", "l1", "l2"]
+    print(
+        "Training binary link classifiers (link predictors) using the following binary operators: {}".format(
+            binary_operators
+        )
+    )
+    scores_train, clf_edge, binary_operator = link_prediction_clf(
+        feature_learner=feature_learner_train,
+        edge_data=(edge_data_ids_train, edge_data_labels_train),
+        binary_operators=binary_operators,
+    )
+
+    # Do representation learning on g_test and use the previously trained classifier on g_train to predict
+    # edge_data_test
+    feature_learner_test = Metapath2VecFeatureLearning(
+        g_test, embeddings_filename=os.path.expanduser(output_node_features)
+    )
+    print(
+        "Learning {}-dimensional node features (embeddings) from g_test using metapath2vec algorithm with the following parameters:".format(
+            parameters["dimensions"]
+        )
+    )
+    print("metapaths: {}".format(metapaths))
+    print(
+        "\tnum_walks = {}, walk length = {}, context window size = {}".format(
+            parameters["num_walks"],
+            parameters["walk_length"],
+            parameters["window_size"],
+        )
+    )
+    feature_learner_test.fit(
+        metapaths=metapaths,
+        d=parameters["dimensions"],
+        r=parameters["num_walks"],
+        l=parameters["walk_length"],
+        k=parameters["window_size"],
+    )
+
+    print(
+        "Evaluating best link predictor with {} binary operator on test links in g_test".format(
+            binary_operator
+        )
+    )
+
+    scores = predict_links(
+        feature_learner=feature_learner_test,
+        edge_data=(edge_data_ids_test, edge_data_labels_test),
+        clf=clf_edge,
+        binary_operators=[binary_operator],
+    )
+
+    print("\n  **** Scores on test set of links (HIN) ****\n")
+    for score in scores:
+        print(
+            "     Operator: {}  Score (ROC AUC): {:.2f}".format(
+                score["op"], score["score"]
+            )
+        )
+    print("\n  ****************************")
+
+    return feature_learner_train, feature_learner_test, clf_edge
+</source>
+</class>
+
+<class classid="14" nclones="2" nlines="12" similarity="91">
+<source file="systems/stellargraph-0.11.1/tests/mapper/test_benchmark_generators.py" startline="34" endline="51" pcid="329">
+def test_benchmark_setup_generator_small(benchmark):
+    n_feat = 1024
+    n_edges = 100
+    batch_size = 10
+    num_samples = [20, 10]
+
+    G = example_Graph_2(n_feat)
+    nodes = list(G.nodes())
+    edges_to_sample = np.reshape(random.choices(nodes, k=2 * n_edges), (n_edges, 2))
+
+    def setup_generator():
+        generator = GraphSAGELinkGenerator(
+            G, batch_size=batch_size, num_samples=num_samples
+        )
+
+    benchmark(setup_generator)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/mapper/test_benchmark_generators.py" startline="53" endline="70" pcid="331">
+def test_benchmark_setup_generator_large(benchmark):
+    n_feat = 1024
+    n_edges = 100
+    batch_size = 10
+    num_samples = [20, 10]
+
+    G = example_Graph_2(n_feat, 5000, 20000)
+    nodes = list(G.nodes())
+    edges_to_sample = np.reshape(random.choices(nodes, k=2 * n_edges), (n_edges, 2))
+
+    def setup_generator():
+        generator = GraphSAGELinkGenerator(
+            G, batch_size=batch_size, num_samples=num_samples
+        )
+
+    benchmark(setup_generator)
+
+
+</source>
+</class>
+
+<class classid="15" nclones="4" nlines="16" similarity="87">
+<source file="systems/stellargraph-0.11.1/tests/mapper/test_benchmark_generators.py" startline="72" endline="95" pcid="333">
+def test_benchmark_link_generator_small(benchmark):
+    n_feat = 1024
+    n_edges = 100
+    batch_size = 10
+    num_samples = [20, 10]
+
+    G = example_Graph_2(n_feat)
+    nodes = list(G.nodes())
+    edges_to_sample = np.reshape(random.choices(nodes, k=2 * n_edges), (n_edges, 2))
+
+    generator = GraphSAGELinkGenerator(
+        G, batch_size=batch_size, num_samples=num_samples
+    )
+
+    def read_generator():
+        gen = generator.flow(edges_to_sample)
+
+        for ii in range(len(gen)):
+            xf, xl = gen[ii]
+        return xf, xl
+
+    benchmark(read_generator)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/mapper/test_benchmark_generators.py" startline="122" endline="145" pcid="337">
+def test_benchmark_node_generator_small(benchmark):
+    n_feat = 1024
+    n_nodes = 200
+    batch_size = 10
+    num_samples = [20, 10]
+
+    G = example_Graph_2(n_feat)
+    nodes = list(G.nodes())
+    nodes_to_sample = random.choices(nodes, k=n_nodes)
+
+    generator = GraphSAGENodeGenerator(
+        G, batch_size=batch_size, num_samples=num_samples
+    )
+
+    def read_generator():
+        gen = generator.flow(nodes_to_sample)
+
+        for ii in range(len(gen)):
+            xf, xl = gen[ii]
+        return xf, xl
+
+    benchmark(read_generator)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/mapper/test_benchmark_generators.py" startline="97" endline="120" pcid="335">
+def test_benchmark_link_generator_large(benchmark):
+    n_feat = 1024
+    n_edges = 100
+    batch_size = 10
+    num_samples = [20, 10]
+
+    G = example_Graph_2(n_feat, 5000, 20000)
+    nodes = list(G.nodes())
+    edges_to_sample = np.reshape(random.choices(nodes, k=2 * n_edges), (n_edges, 2))
+
+    generator = GraphSAGELinkGenerator(
+        G, batch_size=batch_size, num_samples=num_samples
+    )
+
+    def read_generator():
+        gen = generator.flow(edges_to_sample)
+
+        for ii in range(len(gen)):
+            xf, xl = gen[ii]
+        return xf, xl
+
+    benchmark(read_generator)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/mapper/test_benchmark_generators.py" startline="147" endline="168" pcid="339">
+def test_benchmark_node_generator_large(benchmark):
+    n_feat = 1024
+    n_nodes = 200
+    batch_size = 10
+    num_samples = [20, 10]
+
+    G = example_Graph_2(n_feat, 5000, 20000)
+    nodes = list(G.nodes())
+    nodes_to_sample = random.choices(nodes, k=n_nodes)
+
+    generator = GraphSAGENodeGenerator(
+        G, batch_size=batch_size, num_samples=num_samples
+    )
+
+    def read_generator():
+        gen = generator.flow(nodes_to_sample)
+
+        for ii in range(len(gen)):
+            xf, xl = gen[ii]
+        return xf, xl
+
+    benchmark(read_generator)
+</source>
+</class>
+
+<class classid="16" nclones="2" nlines="16" similarity="76">
+<source file="systems/stellargraph-0.11.1/tests/mapper/test_link_mappers.py" startline="138" endline="160" pcid="343">
+    def test_LinkMapper_constructor(self):
+
+        G = example_graph(feature_size=self.n_feat)
+        edge_labels = [0] * G.number_of_edges()
+
+        generator = GraphSAGELinkGenerator(
+            G, batch_size=self.batch_size, num_samples=self.num_samples
+        )
+        mapper = generator.flow(G.edges(), edge_labels)
+        assert generator.batch_size == self.batch_size
+        assert mapper.data_size == G.number_of_edges()
+        assert len(mapper.ids) == G.number_of_edges()
+
+        G = example_graph(feature_size=self.n_feat, is_directed=True)
+        edge_labels = [0] * G.number_of_edges()
+        generator = GraphSAGELinkGenerator(
+            G, batch_size=self.batch_size, num_samples=self.num_samples
+        )
+        mapper = generator.flow(G.edges(), edge_labels)
+        assert generator.batch_size == self.batch_size
+        assert mapper.data_size == G.number_of_edges()
+        assert len(mapper.ids) == G.number_of_edges()
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/mapper/test_link_mappers.py" startline="640" endline="658" pcid="361">
+    def test_LinkMapper_constructor(self):
+
+        G = example_graph(feature_size=self.n_feat)
+        edge_labels = [0] * G.number_of_edges()
+
+        generator = Attri2VecLinkGenerator(G, batch_size=self.batch_size)
+        mapper = generator.flow(G.edges(), edge_labels)
+        assert generator.batch_size == self.batch_size
+        assert mapper.data_size == G.number_of_edges()
+        assert len(mapper.ids) == G.number_of_edges()
+
+        G = example_graph(feature_size=self.n_feat, is_directed=True)
+        edge_labels = [0] * G.number_of_edges()
+        generator = Attri2VecLinkGenerator(G, batch_size=self.batch_size)
+        mapper = generator.flow(G.edges(), edge_labels)
+        assert generator.batch_size == self.batch_size
+        assert mapper.data_size == G.number_of_edges()
+        assert len(mapper.ids) == G.number_of_edges()
+
+</source>
+</class>
+
+<class classid="17" nclones="2" nlines="15" similarity="73">
+<source file="systems/stellargraph-0.11.1/tests/mapper/test_link_mappers.py" startline="195" endline="214" pcid="346">
+        def test_edge_consistency(shuffle):
+            G = example_graph(feature_size=1)
+            edges = list(G.edges())
+            edge_labels = list(range(len(edges)))
+
+            mapper = GraphSAGELinkGenerator(G, batch_size=2, num_samples=[0]).flow(
+                edges, edge_labels, shuffle=shuffle
+            )
+
+            assert len(mapper) == 2
+
+            for batch in range(len(mapper)):
+                nf, nl = mapper[batch]
+                e1 = edges[nl[0]]
+                e2 = edges[nl[1]]
+                assert nf[0][0, 0, 0] == e1[0]
+                assert nf[1][0, 0, 0] == e1[1]
+                assert nf[0][1, 0, 0] == e2[0]
+                assert nf[1][1, 0, 0] == e2[1]
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/mapper/test_link_mappers.py" startline="843" endline="863" pcid="370">
+    def test_shuffle(self, shuffle):
+
+        G = example_graph(feature_size=1, is_directed=True)
+        edges = list(G.edges())
+        edge_labels = list(range(len(edges)))
+
+        mapper = DirectedGraphSAGELinkGenerator(
+            G, batch_size=2, in_samples=[0], out_samples=[0]
+        ).flow(edges, edge_labels, shuffle=shuffle)
+
+        assert len(mapper) == 2
+
+        for batch in range(len(mapper)):
+            nf, nl = mapper[batch]
+            e1 = edges[nl[0]]
+            e2 = edges[nl[1]]
+            assert nf[0][0, 0, 0] == e1[0]
+            assert nf[1][0, 0, 0] == e1[1]
+            assert nf[0][1, 0, 0] == e2[0]
+            assert nf[1][1, 0, 0] == e2[1]
+
+</source>
+</class>
+
+<class classid="18" nclones="2" nlines="32" similarity="75">
+<source file="systems/stellargraph-0.11.1/tests/mapper/test_link_mappers.py" startline="801" endline="841" pcid="369">
+    def test_batch_feature_shapes(self):
+
+        G = example_graph(feature_size=self.n_feat, is_directed=True)
+        data_size = G.number_of_edges()
+        edge_labels = [0] * data_size
+
+        mapper = DirectedGraphSAGELinkGenerator(
+            G,
+            batch_size=self.batch_size,
+            in_samples=self.in_samples,
+            out_samples=self.out_samples,
+        ).flow(G.edges(), edge_labels)
+
+        assert len(mapper) == 2
+
+        for batch in range(len(mapper)):
+            nf, nl = mapper[batch]
+
+            assert len(nf) == 2 ** (len(self.in_samples) + 2) - 2
+
+            ins, outs = self.in_samples, self.out_samples
+            dims = [
+                1,
+                ins[0],
+                outs[0],
+                ins[0] * ins[1],
+                ins[0] * outs[1],
+                outs[0] * ins[1],
+                outs[0] * outs[1],
+            ]
+
+            for ii, dim in zip(range(7), dims):
+                assert (
+                    nf[2 * ii].shape
+                    == nf[2 * ii + 1].shape
+                    == (min(self.batch_size, data_size), dim, self.n_feat)
+                )
+
+        with pytest.raises(IndexError):
+            nf, nl = mapper[2]
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/mapper/test_link_mappers.py" startline="1015" endline="1055" pcid="376">
+    def test_unsupervisedSampler_sample_generation(self):
+
+        G = example_graph(feature_size=self.n_feat, is_directed=True)
+
+        unsupervisedSamples = UnsupervisedSampler(G)
+
+        gen = DirectedGraphSAGELinkGenerator(
+            G,
+            batch_size=self.batch_size,
+            in_samples=self.in_samples,
+            out_samples=self.out_samples,
+        )
+        mapper = gen.flow(unsupervisedSamples)
+
+        assert mapper.data_size == len(list(G.nodes())) * 2
+        assert mapper.batch_size == self.batch_size
+        assert len(mapper) == np.ceil(mapper.data_size / mapper.batch_size)
+        assert len(set(gen.head_node_types)) == 1
+
+        for batch in range(len(mapper)):
+            nf, nl = mapper[batch]
+
+            assert len(nf) == 2 ** (len(self.in_samples) + 2) - 2
+
+            ins, outs = self.in_samples, self.out_samples
+            dims = [
+                1,
+                ins[0],
+                outs[0],
+                ins[0] * ins[1],
+                ins[0] * outs[1],
+                outs[0] * ins[1],
+                outs[0] * outs[1],
+            ]
+
+            for ii, dim in zip(range(7), dims):
+                assert (
+                    nf[2 * ii].shape
+                    == nf[2 * ii + 1].shape
+                    == (min(self.batch_size, mapper.data_size), dim, self.n_feat)
+                )
+</source>
+</class>
+
+<class classid="19" nclones="2" nlines="36" similarity="91">
+<source file="systems/stellargraph-0.11.1/tests/mapper/test_full_batch_generators.py" startline="81" endline="123" pcid="385">
+    def generator_flow(
+        self,
+        G,
+        node_ids,
+        node_targets,
+        sparse=False,
+        method="none",
+        k=1,
+        teleport_probability=0.1,
+    ):
+        generator = FullBatchNodeGenerator(
+            G,
+            sparse=sparse,
+            method=method,
+            k=k,
+            teleport_probability=teleport_probability,
+        )
+        n_nodes = G.number_of_nodes()
+
+        gen = generator.flow(node_ids, node_targets)
+        if sparse:
+            [X, tind, A_ind, A_val], y = gen[0]
+            A_sparse = sps.coo_matrix(
+                (A_val[0], (A_ind[0, :, 0], A_ind[0, :, 1])), shape=(n_nodes, n_nodes)
+            )
+            A_dense = A_sparse.toarray()
+
+        else:
+            [X, tind, A], y = gen[0]
+            A_dense = A[0]
+
+        assert np.allclose(X, gen.features)  # X should be equal to gen.features
+        assert tind.shape[1] == len(node_ids)
+
+        if node_targets is not None:
+            assert np.allclose(y, node_targets)
+
+        # Check that the diagonals are one
+        if method == "self_loops":
+            assert np.allclose(A_dense.diagonal(), 1)
+
+        return A_dense, tind, y
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/mapper/test_full_batch_generators.py" startline="312" endline="357" pcid="398">
+    def generator_flow(
+        self,
+        G,
+        link_ids,
+        link_targets,
+        sparse=False,
+        method="none",
+        k=1,
+        teleport_probability=0.1,
+    ):
+        generator = FullBatchLinkGenerator(
+            G,
+            sparse=sparse,
+            method=method,
+            k=k,
+            teleport_probability=teleport_probability,
+        )
+        n_nodes = G.number_of_nodes()
+
+        gen = generator.flow(link_ids, link_targets)
+        if sparse:
+            [X, tind, A_ind, A_val], y = gen[0]
+            A_sparse = sps.coo_matrix(
+                (A_val[0], (A_ind[0, :, 0], A_ind[0, :, 1])), shape=(n_nodes, n_nodes)
+            )
+            A_dense = A_sparse.toarray()
+
+        else:
+            [X, tind, A], y = gen[0]
+            A_dense = A[0]
+
+        assert np.allclose(X, gen.features)  # X should be equal to gen.features
+        assert isinstance(tind, np.ndarray)
+        assert tind.ndim == 3
+        assert tind.shape[1] == len(link_ids)
+        assert tind.shape[2] == 2
+
+        if link_targets is not None:
+            assert np.allclose(y, link_targets)
+
+        # Check that the diagonals are one
+        if method == "self_loops":
+            assert np.allclose(A_dense.diagonal(), 1)
+
+        return A_dense, tind, y
+
+</source>
+</class>
+
+<class classid="20" nclones="2" nlines="59" similarity="98">
+<source file="systems/stellargraph-0.11.1/tests/mapper/test_full_batch_generators.py" startline="207" endline="286" pcid="394">
+    def test_generator_methods(self):
+        node_ids = list(self.G.nodes())
+        Aadj = self.G.to_adjacency_matrix().toarray()
+        Aadj_selfloops = Aadj + np.eye(*Aadj.shape) - np.diag(Aadj.diagonal())
+        Dtilde = np.diag(Aadj_selfloops.sum(axis=1) ** (-0.5))
+        Agcn = Dtilde.dot(Aadj_selfloops).dot(Dtilde)
+        Appnp = 0.1 * np.linalg.inv(np.eye(Agcn.shape[0]) - ((1 - 0.1) * Agcn))
+
+        A_dense, _, _ = self.generator_flow(
+            self.G, node_ids, None, sparse=True, method="none"
+        )
+        assert np.allclose(A_dense, Aadj)
+        A_dense, _, _ = self.generator_flow(
+            self.G, node_ids, None, sparse=False, method="none"
+        )
+        assert np.allclose(A_dense, Aadj)
+
+        A_dense, _, _ = self.generator_flow(
+            self.G, node_ids, None, sparse=True, method="self_loops"
+        )
+        assert np.allclose(A_dense, Aadj_selfloops)
+        A_dense, _, _ = self.generator_flow(
+            self.G, node_ids, None, sparse=False, method="self_loops"
+        )
+        assert np.allclose(A_dense, Aadj_selfloops)
+
+        A_dense, _, _ = self.generator_flow(
+            self.G, node_ids, None, sparse=True, method="gat"
+        )
+        assert np.allclose(A_dense, Aadj_selfloops)
+        A_dense, _, _ = self.generator_flow(
+            self.G, node_ids, None, sparse=False, method="gat"
+        )
+        assert np.allclose(A_dense, Aadj_selfloops)
+
+        A_dense, _, _ = self.generator_flow(
+            self.G, node_ids, None, sparse=True, method="gcn"
+        )
+        assert np.allclose(A_dense, Agcn)
+        A_dense, _, _ = self.generator_flow(
+            self.G, node_ids, None, sparse=False, method="gcn"
+        )
+        assert np.allclose(A_dense, Agcn)
+
+        # Check other pre-processing options
+        A_dense, _, _ = self.generator_flow(
+            self.G, node_ids, None, sparse=True, method="sgc", k=2
+        )
+        assert np.allclose(A_dense, Agcn.dot(Agcn))
+        A_dense, _, _ = self.generator_flow(
+            self.G, node_ids, None, sparse=False, method="sgc", k=2
+        )
+        assert np.allclose(A_dense, Agcn.dot(Agcn))
+
+        A_dense, _, _ = self.generator_flow(
+            self.G,
+            node_ids,
+            None,
+            sparse=False,
+            method="ppnp",
+            teleport_probability=0.1,
+        )
+        assert np.allclose(A_dense, Appnp)
+
+        ppnp_sparse_failed = False
+        try:
+            A_dense, _, _ = self.generator_flow(
+                self.G,
+                node_ids,
+                None,
+                sparse=True,
+                method="ppnp",
+                teleport_probability=0.1,
+            )
+        except ValueError as e:
+            ppnp_sparse_failed = True
+
+        assert ppnp_sparse_failed
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/mapper/test_full_batch_generators.py" startline="408" endline="485" pcid="405">
+    def test_generator_methods(self):
+        link_ids = list(self.G.edges())[:10]
+        Aadj = self.G.to_adjacency_matrix().toarray()
+        Aadj_selfloops = Aadj + np.eye(*Aadj.shape) - np.diag(Aadj.diagonal())
+        Dtilde = np.diag(Aadj_selfloops.sum(axis=1) ** (-0.5))
+        Agcn = Dtilde.dot(Aadj_selfloops).dot(Dtilde)
+        Appnp = 0.1 * np.linalg.inv(np.eye(Agcn.shape[0]) - ((1 - 0.1) * Agcn))
+
+        A_dense, _, _ = self.generator_flow(
+            self.G, link_ids, None, sparse=True, method="none"
+        )
+        assert np.allclose(A_dense, Aadj)
+        A_dense, _, _ = self.generator_flow(
+            self.G, link_ids, None, sparse=False, method="none"
+        )
+        assert np.allclose(A_dense, Aadj)
+
+        A_dense, _, _ = self.generator_flow(
+            self.G, link_ids, None, sparse=True, method="self_loops"
+        )
+        assert np.allclose(A_dense, Aadj_selfloops)
+        A_dense, _, _ = self.generator_flow(
+            self.G, link_ids, None, sparse=False, method="self_loops"
+        )
+        assert np.allclose(A_dense, Aadj_selfloops)
+
+        A_dense, _, _ = self.generator_flow(
+            self.G, link_ids, None, sparse=True, method="gat"
+        )
+        assert np.allclose(A_dense, Aadj_selfloops)
+        A_dense, _, _ = self.generator_flow(
+            self.G, link_ids, None, sparse=False, method="gat"
+        )
+        assert np.allclose(A_dense, Aadj_selfloops)
+
+        A_dense, _, _ = self.generator_flow(
+            self.G, link_ids, None, sparse=True, method="gcn"
+        )
+        assert np.allclose(A_dense, Agcn)
+        A_dense, _, _ = self.generator_flow(
+            self.G, link_ids, None, sparse=False, method="gcn"
+        )
+        assert np.allclose(A_dense, Agcn)
+
+        # Check other pre-processing options
+        A_dense, _, _ = self.generator_flow(
+            self.G, link_ids, None, sparse=True, method="sgc", k=2
+        )
+        assert np.allclose(A_dense, Agcn.dot(Agcn))
+        A_dense, _, _ = self.generator_flow(
+            self.G, link_ids, None, sparse=False, method="sgc", k=2
+        )
+        assert np.allclose(A_dense, Agcn.dot(Agcn))
+
+        A_dense, _, _ = self.generator_flow(
+            self.G,
+            link_ids,
+            None,
+            sparse=False,
+            method="ppnp",
+            teleport_probability=0.1,
+        )
+        assert np.allclose(A_dense, Appnp)
+
+        ppnp_sparse_failed = False
+        try:
+            A_dense, _, _ = self.generator_flow(
+                self.G,
+                link_ids,
+                None,
+                sparse=True,
+                method="ppnp",
+                teleport_probability=0.1,
+            )
+        except ValueError as e:
+            ppnp_sparse_failed = True
+
+        assert ppnp_sparse_failed
+</source>
+</class>
+
+<class classid="21" nclones="2" nlines="16" similarity="100">
+<source file="systems/stellargraph-0.11.1/tests/interpretability/test_saliency_maps_gcn.py" startline="28" endline="47" pcid="406">
+def create_GCN_model_dense(graph):
+    generator = FullBatchNodeGenerator(graph, sparse=False, method="gcn")
+    train_gen = generator.flow([0, 1], np.array([[1, 0], [0, 1]]))
+
+    layer_sizes = [2, 2]
+    gcn = GCN(
+        layer_sizes=layer_sizes,
+        activations=["elu", "elu"],
+        generator=generator,
+        dropout=0.3,
+        kernel_regularizer=regularizers.l2(5e-4),
+    )
+
+    for layer in gcn._layers:
+        layer._initializer = "ones"
+    x_inp, x_out = gcn.in_out_tensors()
+    keras_model = Model(inputs=x_inp, outputs=x_out)
+    return gcn, keras_model, generator, train_gen
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/interpretability/test_saliency_maps_gcn.py" startline="48" endline="67" pcid="407">
+def create_GCN_model_sparse(graph):
+    generator = FullBatchNodeGenerator(graph, sparse=True, method="gcn")
+    train_gen = generator.flow([0, 1], np.array([[1, 0], [0, 1]]))
+
+    layer_sizes = [2, 2]
+    gcn = GCN(
+        layer_sizes=layer_sizes,
+        activations=["elu", "elu"],
+        generator=generator,
+        dropout=0.3,
+        kernel_regularizer=regularizers.l2(5e-4),
+    )
+
+    for layer in gcn._layers:
+        layer._initializer = "ones"
+    x_inp, x_out = gcn.in_out_tensors()
+    keras_model = Model(inputs=x_inp, outputs=x_out)
+    return gcn, keras_model, generator, train_gen
+
+
+</source>
+</class>
+
+<class classid="22" nclones="3" nlines="15" similarity="80">
+<source file="systems/stellargraph-0.11.1/tests/reproducibility/test_graphsage.py" startline="32" endline="52" pcid="415">
+def unsup_gs_model(num_samples, generator, optimizer, bias, dropout, normalize):
+    layer_sizes = [50] * len(num_samples)
+    graphsage = GraphSAGE(
+        layer_sizes=layer_sizes,
+        generator=generator,
+        bias=bias,
+        dropout=dropout,
+        normalize=normalize,
+    )
+    # Build the model and expose input and output sockets of graphsage, for node pair inputs:
+    x_inp, x_out = graphsage.in_out_tensors()
+    prediction = link_classification(
+        output_dim=1, output_act="sigmoid", edge_embedding_method="ip"
+    )(x_out)
+    model = tf.keras.Model(inputs=x_inp, outputs=prediction)
+
+    model.compile(optimizer=optimizer, loss=tf.keras.losses.binary_crossentropy)
+
+    return model
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/reproducibility/test_graphsage.py" startline="92" endline="110" pcid="417">
+def gs_nai_model(num_samples, generator, targets, optimizer, bias, dropout, normalize):
+    layer_sizes = [50] * len(num_samples)
+    graphsage = GraphSAGE(
+        layer_sizes=layer_sizes,
+        generator=generator,
+        bias=bias,
+        dropout=dropout,
+        normalize=normalize,
+    )
+    # Build the model and expose input and output sockets of graphsage, for node pair inputs:
+    x_inp, x_out = graphsage.in_out_tensors()
+    pred = tf.keras.layers.Dense(units=targets.shape[1], activation="softmax")(x_out)
+    model = tf.keras.Model(inputs=x_inp, outputs=pred)
+
+    model.compile(optimizer=optimizer, loss=tf.keras.losses.categorical_crossentropy)
+
+    return model
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/reproducibility/test_graphsage.py" startline="148" endline="171" pcid="419">
+def gs_link_pred_model(num_samples, generator, optimizer, bias, dropout, normalize):
+    layer_sizes = [50] * len(num_samples)
+    graphsage = GraphSAGE(
+        layer_sizes=layer_sizes,
+        generator=generator,
+        bias=bias,
+        dropout=dropout,
+        normalize=normalize,
+    )
+    # Build the model and expose input and output sockets of graphsage, for node pair inputs:
+    x_inp, x_out = graphsage.in_out_tensors()
+    pred = link_classification(
+        output_dim=1, output_act="relu", edge_embedding_method="ip"
+    )(x_out)
+
+    model = tf.keras.Model(inputs=x_inp, outputs=pred)
+
+    model.compile(
+        optimizer=optimizer, loss=tf.keras.losses.binary_crossentropy,
+    )
+
+    return model
+
+
+</source>
+</class>
+
+<class classid="23" nclones="3" nlines="32" similarity="78">
+<source file="systems/stellargraph-0.11.1/tests/reproducibility/test_graphsage.py" startline="53" endline="91" pcid="416">
+def unsup_gs(
+    g,
+    num_samples,
+    optimizer,
+    batch_size=4,
+    epochs=4,
+    bias=True,
+    dropout=0.0,
+    normalize="l2",
+    number_of_walks=1,
+    walk_length=5,
+    seed=0,
+    shuffle=True,
+):
+    set_seed(seed)
+    tf.random.set_seed(seed)
+    if shuffle:
+        random.seed(seed)
+
+    nodes = list(g.nodes())
+    unsupervised_samples = UnsupervisedSampler(
+        g, nodes=nodes, length=walk_length, number_of_walks=number_of_walks
+    )
+    generator = GraphSAGELinkGenerator(g, batch_size, num_samples)
+    train_gen = generator.flow(unsupervised_samples)
+
+    model = unsup_gs_model(num_samples, generator, optimizer, bias, dropout, normalize)
+
+    model.fit(
+        train_gen,
+        epochs=epochs,
+        verbose=1,
+        use_multiprocessing=False,
+        workers=4,
+        shuffle=shuffle,
+    )
+    return model
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/reproducibility/test_graphsage.py" startline="111" endline="147" pcid="418">
+def gs_nai(
+    g,
+    targets,
+    num_samples,
+    optimizer,
+    batch_size=4,
+    epochs=4,
+    bias=True,
+    dropout=0.0,
+    normalize="l2",
+    seed=0,
+    shuffle=True,
+):
+    set_seed(seed)
+    tf.random.set_seed(seed)
+    if shuffle:
+        random.seed(seed)
+
+    nodes = list(g.nodes())
+    generator = GraphSAGENodeGenerator(g, batch_size, num_samples)
+    train_gen = generator.flow(nodes, targets, shuffle=True)
+
+    model = gs_nai_model(
+        num_samples, generator, targets, optimizer, bias, dropout, normalize
+    )
+
+    model.fit(
+        train_gen,
+        epochs=epochs,
+        verbose=1,
+        use_multiprocessing=False,
+        workers=4,
+        shuffle=shuffle,
+    )
+    return model
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/reproducibility/test_graphsage.py" startline="172" endline="208" pcid="420">
+def gs_link_prediction(
+    g,
+    edge_ids,
+    edge_labels,
+    num_samples,
+    optimizer,
+    batch_size=4,
+    epochs=4,
+    bias=True,
+    dropout=0.0,
+    normalize="l2",
+    seed=0,
+    shuffle=True,
+):
+    set_seed(seed)
+    tf.random.set_seed(seed)
+    if shuffle:
+        random.seed(seed)
+
+    generator = GraphSAGELinkGenerator(g, batch_size, num_samples)
+    train_gen = generator.flow(edge_ids, edge_labels, shuffle=True)
+
+    model = gs_link_pred_model(
+        num_samples, generator, optimizer, bias, dropout, normalize
+    )
+
+    model.fit(
+        train_gen,
+        epochs=epochs,
+        verbose=1,
+        use_multiprocessing=False,
+        workers=4,
+        shuffle=shuffle,
+    )
+    return model
+
+
+</source>
+</class>
+
+<class classid="24" nclones="2" nlines="15" similarity="80">
+<source file="systems/stellargraph-0.11.1/tests/data/test_epgm.py" startline="39" endline="64" pcid="433">
+    def test_load_epgm(self):
+        """Test that the EPGM is loaded correctly from epgm path"""
+        G_epgm = EPGM(self.input_dir)
+        print(self.input_dir)
+
+        assert "graphs" in G_epgm.G.keys()
+        assert "vertices" in G_epgm.G.keys()
+        assert "edges" in G_epgm.G.keys()
+
+        # check that G_epgm.G['graphs] has at least one graph head:
+        assert len(G_epgm.G["graphs"]) > 0
+
+        # cora nodes should have a subject attribute
+        graph_id = G_epgm.G["graphs"][0]["id"]
+        assert self.target_attribute in G_epgm.node_attributes(graph_id, self.node_type)
+
+        # cora should have 2708 vertices
+        n_nodes = 2708
+        nodes = G_epgm.G["vertices"]
+        assert len(nodes) == n_nodes
+
+        # cora nodes should have 7 unique values for subject attribute:
+        assert sum(["data" in v for v in nodes]) == n_nodes
+        subjects = np.unique([v["data"][self.target_attribute] for v in nodes])
+        assert len(subjects) == 7
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/data/test_epgm.py" startline="123" endline="149" pcid="436">
+    def test_load_epgm(self):
+        """Test that the EPGM is loaded correctly from epgm path"""
+        G_epgm = EPGM(self.input_dir)
+
+        assert "graphs" in G_epgm.G.keys()
+        assert "vertices" in G_epgm.G.keys()
+        assert "edges" in G_epgm.G.keys()
+
+        # check that G_epgm.G['graphs] has at least one graph head:
+        assert len(G_epgm.G["graphs"]) > 0
+
+        # graph nodes of self.node_type type should have a self.target_attribute attribute
+        graph_id = G_epgm.G["graphs"][0]["id"]
+        assert self.target_attribute in G_epgm.node_attributes(graph_id, self.node_type)
+
+        # graph should have 260 vertices
+        n_nodes = 260
+        nodes = G_epgm.G["vertices"]
+        assert len(nodes) == n_nodes
+
+        # 'user' nodes should have 3 unique values for 'elite' attribute:
+        # first make sure that all nodes have 'data' key
+        assert sum(["data" in v for v in nodes]) == n_nodes
+        labels_all = [v["data"].get(self.target_attribute) for v in nodes]
+        labels = list(filter(lambda l: l is not None, labels_all))
+        assert len(np.unique(labels)) == 3
+
+</source>
+</class>
+
+<class classid="25" nclones="2" nlines="62" similarity="82">
+<source file="systems/stellargraph-0.11.1/tests/test_ensemble.py" startline="451" endline="548" pcid="505">
+def test_evaluate():
+    tf.keras.backend.clear_session()
+
+    test_data = np.array([3, 4, 5])
+    test_targets = np.array([[1, 0], [0, 1], [0, 1]])
+
+    graph = example_graph_1(feature_size=5)
+
+    # base_model, keras_model, generator, train_gen
+    gnn_models = [
+        create_graphSAGE_model(graph),
+        create_HinSAGE_model(graph),
+        create_GCN_model(graph),
+        create_GAT_model(graph),
+    ]
+
+    for gnn_model in gnn_models:
+        keras_model = gnn_model[1]
+        generator = gnn_model[2]
+
+        ens = Ensemble(keras_model, n_estimators=2, n_predictions=1)
+
+        ens.compile(
+            optimizer=Adam(), loss=categorical_crossentropy, weighted_metrics=["acc"]
+        )
+
+        # Check that passing invalid parameters is handled correctly. We will not check error handling for those
+        # parameters that Keras will be responsible for.
+        with pytest.raises(ValueError):
+            ens.evaluate(
+                generator=generator, test_data=test_data, test_targets=test_targets
+            )
+
+        with pytest.raises(ValueError):
+            ens.evaluate(
+                generator=generator,
+                test_data=test_data,
+                test_targets=None,  # must give test_targets
+            )
+
+        with pytest.raises(ValueError):
+            ens.evaluate(
+                generator=generator.flow(test_data, test_targets),
+                test_data=test_data,
+                test_targets=test_targets,
+            )
+
+        # We won't train the model instead use the initial random weights to test
+        # the evaluate method.
+        test_metrics_mean, test_metrics_std = ens.evaluate(
+            generator.flow(test_data, test_targets)
+        )
+
+        assert len(test_metrics_mean) == len(test_metrics_std)
+        assert len(test_metrics_mean.shape) == 1
+        assert len(test_metrics_std.shape) == 1
+
+        #
+        # Repeat for BaggingEnsemble
+
+        ens = BaggingEnsemble(keras_model, n_estimators=2, n_predictions=1)
+
+        ens.compile(
+            optimizer=Adam(), loss=categorical_crossentropy, weighted_metrics=["acc"]
+        )
+
+        # Check that passing invalid parameters is handled correctly. We will not check error handling for those
+        # parameters that Keras will be responsible for.
+        with pytest.raises(ValueError):
+            ens.evaluate(
+                generator=generator, test_data=test_data, test_targets=test_targets
+            )
+
+        with pytest.raises(ValueError):
+            ens.evaluate(
+                generator=generator,
+                test_data=test_data,
+                test_targets=None,  # must give test_targets
+            )
+
+        with pytest.raises(ValueError):
+            ens.evaluate(
+                generator=generator.flow(test_data, test_targets),
+                test_data=test_data,
+                test_targets=test_targets,
+            )
+
+        # We won't train the model instead use the initial random weights to test
+        # the evaluate method.
+        test_metrics_mean, test_metrics_std = ens.evaluate(
+            generator.flow(test_data, test_targets)
+        )
+
+        assert len(test_metrics_mean) == len(test_metrics_std)
+        assert len(test_metrics_mean.shape) == 1
+        assert len(test_metrics_std.shape) == 1
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/test_ensemble.py" startline="647" endline="745" pcid="507">
+def test_evaluate_link_prediction():
+    tf.keras.backend.clear_session()
+    edge_ids_test = np.array([[1, 2], [2, 3], [1, 3]])
+    edge_labels_test = np.array([1, 1, 0])
+
+    graph = example_graph_1(feature_size=4)
+
+    # base_model, keras_model, generator, train_gen
+    gnn_models = [
+        create_graphSAGE_model(graph, link_prediction=True),
+        create_HinSAGE_model(graph, link_prediction=True),
+    ]
+
+    for gnn_model in gnn_models:
+        keras_model = gnn_model[1]
+        generator = gnn_model[2]
+
+        ens = Ensemble(keras_model, n_estimators=2, n_predictions=1)
+
+        ens.compile(
+            optimizer=Adam(), loss=binary_crossentropy, weighted_metrics=["acc"]
+        )
+
+        # Check that passing invalid parameters is handled correctly. We will not check error handling for those
+        # parameters that Keras will be responsible for.
+        with pytest.raises(ValueError):
+            ens.evaluate(
+                generator=generator,
+                test_data=edge_ids_test,
+                test_targets=edge_labels_test,
+            )
+
+        with pytest.raises(ValueError):
+            ens.evaluate(
+                generator=generator,
+                test_data=edge_labels_test,
+                test_targets=None,  # must give test_targets
+            )
+
+        with pytest.raises(ValueError):
+            ens.evaluate(
+                generator=generator.flow(edge_ids_test, edge_labels_test),
+                test_data=edge_ids_test,
+                test_targets=edge_labels_test,
+            )
+
+        # We won't train the model instead use the initial random weights to test
+        # the evaluate method.
+        test_metrics_mean, test_metrics_std = ens.evaluate(
+            generator.flow(edge_ids_test, edge_labels_test)
+        )
+
+        assert len(test_metrics_mean) == len(test_metrics_std)
+        assert len(test_metrics_mean.shape) == 1
+        assert len(test_metrics_std.shape) == 1
+
+        #
+        # Repeat for BaggingEnsemble
+
+        ens = BaggingEnsemble(keras_model, n_estimators=2, n_predictions=1)
+
+        ens.compile(
+            optimizer=Adam(), loss=binary_crossentropy, weighted_metrics=["acc"]
+        )
+
+        # Check that passing invalid parameters is handled correctly. We will not check error handling for those
+        # parameters that Keras will be responsible for.
+        with pytest.raises(ValueError):
+            ens.evaluate(
+                generator=generator,
+                test_data=edge_ids_test,
+                test_targets=edge_labels_test,
+            )
+
+        with pytest.raises(ValueError):
+            ens.evaluate(
+                generator=generator,
+                test_data=edge_labels_test,
+                test_targets=None,  # must give test_targets
+            )
+
+        with pytest.raises(ValueError):
+            ens.evaluate(
+                generator=generator.flow(edge_ids_test, edge_labels_test),
+                test_data=edge_ids_test,
+                test_targets=edge_labels_test,
+            )
+
+        # We won't train the model instead use the initial random weights to test
+        # the evaluate method.
+        test_metrics_mean, test_metrics_std = ens.evaluate(
+            generator.flow(edge_ids_test, edge_labels_test)
+        )
+
+        assert len(test_metrics_mean) == len(test_metrics_std)
+        assert len(test_metrics_mean.shape) == 1
+        assert len(test_metrics_std.shape) == 1
+
+
+</source>
+</class>
+
+<class classid="26" nclones="3" nlines="16" similarity="75">
+<source file="systems/stellargraph-0.11.1/tests/layer/test_graph_attention.py" startline="425" endline="442" pcid="520">
+    def test_gat_build_constructor(self):
+        G = example_graph(feature_size=self.F_in)
+        gen = FullBatchNodeGenerator(G, sparse=self.sparse, method=self.method)
+        gat = GAT(
+            layer_sizes=self.layer_sizes,
+            activations=self.activations,
+            attn_heads=self.attn_heads,
+            generator=gen,
+            bias=True,
+        )
+
+        assert len(gat.in_out_tensors()) == 2
+        x_in, x_out = gat.in_out_tensors()
+        assert len(x_in) == 4 if self.sparse else 3
+        assert int(x_in[0].shape[-1]) == self.F_in
+        assert K.int_shape(x_in[-1]) == (1, G.number_of_nodes(), G.number_of_nodes())
+        assert int(x_out.shape[-1]) == self.layer_sizes[-1]
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_graph_attention.py" startline="460" endline="477" pcid="522">
+    def test_gat_build_constructor_no_generator(self):
+        G = example_graph(feature_size=self.F_in)
+        gat = GAT(
+            layer_sizes=self.layer_sizes,
+            activations=self.activations,
+            attn_heads=self.attn_heads,
+            bias=True,
+            num_nodes=1000,
+            num_features=self.F_in,
+            multiplicity=1,
+        )
+        assert gat.use_sparse == False
+
+        x_in, x_out = gat.in_out_tensors()
+        assert len(x_in) == 4 if self.sparse else 3
+        assert int(x_in[0].shape[-1]) == self.F_in
+        assert int(x_out.shape[-1]) == self.layer_sizes[-1]
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_graph_attention.py" startline="443" endline="459" pcid="521">
+    def test_gat_build_linkmodel_constructor(self):
+        G = example_graph(feature_size=self.F_in)
+        gen = FullBatchLinkGenerator(G, sparse=self.sparse, method=self.method)
+        gat = GAT(
+            layer_sizes=self.layer_sizes,
+            activations=self.activations,
+            attn_heads=self.attn_heads,
+            generator=gen,
+            bias=True,
+        )
+
+        assert len(gat.in_out_tensors()) == 2
+        x_in, x_out = gat.in_out_tensors()
+        assert len(x_in) == 4 if self.sparse else 3
+        assert int(x_in[0].shape[-1]) == self.F_in
+        assert int(x_out.shape[-1]) == self.layer_sizes[-1]
+
+</source>
+</class>
+
+<class classid="27" nclones="2" nlines="12" similarity="83">
+<source file="systems/stellargraph-0.11.1/tests/layer/test_graph_attention.py" startline="478" endline="491" pcid="523">
+    def test_gat_build_constructor_wrong_generator(self):
+        G = example_graph(feature_size=self.F_in)
+        gen = GraphSAGENodeGenerator(G, self.N, [5, 10])
+
+        # test error where generator is of the wrong type for GAT:
+        with pytest.raises(TypeError):
+            gat = GAT(
+                layer_sizes=self.layer_sizes,
+                activations=self.activations,
+                attn_heads=self.attn_heads,
+                bias=True,
+                generator=gen,
+            )
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_graph_attention.py" startline="547" endline="559" pcid="526">
+    def test_gat_build_wrong_norm(self):
+        G = example_graph(feature_size=self.F_in)
+        gen = FullBatchNodeGenerator(G)
+        with pytest.raises(ValueError):
+            gat = GAT(
+                layer_sizes=self.layer_sizes,
+                activations=self.activations,
+                attn_heads=self.attn_heads,
+                generator=gen,
+                bias=True,
+                normalize="whatever",
+            )
+
+</source>
+</class>
+
+<class classid="28" nclones="3" nlines="22" similarity="78">
+<source file="systems/stellargraph-0.11.1/tests/layer/test_graph_attention.py" startline="492" endline="517" pcid="524">
+    def test_gat_build_l2norm(self):
+        G = example_graph(feature_size=self.F_in)
+        gen = FullBatchNodeGenerator(G, sparse=self.sparse, method=self.method)
+        gat = GAT(
+            layer_sizes=self.layer_sizes,
+            activations=self.activations,
+            attn_heads=self.attn_heads,
+            generator=gen,
+            bias=True,
+            normalize="l2",
+            kernel_initializer="ones",
+            attn_kernel_initializer="ones",
+        )
+
+        x_in, x_out = gat.in_out_tensors()
+
+        model = keras.Model(inputs=x_in, outputs=x_out)
+
+        ng = gen.flow(G.nodes())
+        actual = model.predict(ng)
+        expected = np.ones((G.number_of_nodes(), self.layer_sizes[-1])) * (
+            1.0 / G.number_of_nodes()
+        )
+
+        assert np.allclose(expected, actual[0])
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_graph_attention.py" startline="560" endline="595" pcid="527">
+    def test_gat_serialize(self):
+        G = example_graph(feature_size=self.F_in)
+        gen = FullBatchNodeGenerator(G, sparse=self.sparse, method=self.method)
+        gat = GAT(
+            layer_sizes=self.layer_sizes,
+            activations=self.activations,
+            attn_heads=self.attn_heads,
+            generator=gen,
+            bias=True,
+            normalize="l2",
+        )
+
+        x_in, x_out = gat.in_out_tensors()
+        model = keras.Model(inputs=x_in, outputs=x_out)
+
+        ng = gen.flow(G.nodes())
+
+        # Save model
+        model_json = model.to_json()
+
+        # Set all weights to one
+        model_weights = [np.ones_like(w) for w in model.get_weights()]
+
+        # Load model from json & set all weights
+        model2 = keras.models.model_from_json(
+            model_json, custom_objects={"GraphAttention": GraphAttention}
+        )
+        model2.set_weights(model_weights)
+
+        # Test deserialized model
+        actual = model2.predict(ng)
+        expected = np.ones((G.number_of_nodes(), self.layer_sizes[-1])) * (
+            1.0 / G.number_of_nodes()
+        )
+        assert np.allclose(expected, actual[0])
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_graph_attention.py" startline="518" endline="546" pcid="525">
+    def test_gat_build_no_norm(self):
+        G = example_graph(feature_size=self.F_in)
+        gen = FullBatchNodeGenerator(G, sparse=self.sparse, method=self.method)
+        gat = GAT(
+            layer_sizes=self.layer_sizes,
+            activations=self.activations,
+            attn_heads=self.attn_heads,
+            generator=gen,
+            bias=True,
+            normalize=None,
+            kernel_initializer="ones",
+            attn_kernel_initializer="ones",
+        )
+
+        x_in, x_out = gat.in_out_tensors()
+
+        model = keras.Model(inputs=x_in, outputs=x_out)
+
+        ng = gen.flow(G.nodes())
+        actual = model.predict(ng)
+
+        expected = np.ones((G.number_of_nodes(), self.layer_sizes[-1])) * (
+            self.F_in
+            * self.layer_sizes[0]
+            * self.attn_heads
+            * np.max(G.node_features(G.nodes()))
+        )
+        assert np.allclose(expected, actual[0])
+
+</source>
+</class>
+
+<class classid="29" nclones="11" nlines="16" similarity="71">
+<source file="systems/stellargraph-0.11.1/tests/layer/test_ppnp.py" startline="57" endline="78" pcid="531">
+def test_PPNP_apply_dense():
+    G, features = create_graph_features()
+    adj = G.to_adjacency_matrix()
+    features, adj = PPNP_Aadj_feats_op(features, adj)
+    adj = adj[None, :, :]
+
+    generator = FullBatchNodeGenerator(G, sparse=False, method="ppnp")
+    ppnpModel = PPNP([2], generator=generator, activations=["relu"], dropout=0.5)
+
+    x_in, x_out = ppnpModel.in_out_tensors()
+    model = keras.Model(inputs=x_in, outputs=x_out)
+
+    # Check fit method
+    out_indices = np.array([[0, 1]], dtype="int32")
+    preds_1 = model.predict([features[None, :, :], out_indices, adj])
+    assert preds_1.shape == (1, 2, 2)
+
+    # Check fit method
+    preds_2 = model.predict(generator.flow(["a", "b"]))
+    assert preds_2.shape == (1, 2, 2)
+
+    assert preds_1 == pytest.approx(preds_2)
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_appnp.py" startline="93" endline="116" pcid="625">
+def test_APPNP_apply_dense():
+    G, features = create_graph_features()
+    adj = G.to_adjacency_matrix()
+    features, adj = GCN_Aadj_feats_op(features, adj)
+    adj = np.array(adj.todense()[None, :, :])
+
+    generator = FullBatchNodeGenerator(G, sparse=False, method="gcn")
+    appnpModel = APPNP([2], generator=generator, activations=["relu"], dropout=0.5)
+
+    x_in, x_out = appnpModel.in_out_tensors()
+    model = keras.Model(inputs=x_in, outputs=x_out)
+
+    # Check fit method
+    out_indices = np.array([[0, 1]], dtype="int32")
+    preds_1 = model.predict([features[None, :, :], out_indices, adj])
+    assert preds_1.shape == (1, 2, 2)
+
+    # Check fit method
+    preds_2 = model.predict(generator.flow(["a", "b"]))
+    assert preds_2.shape == (1, 2, 2)
+
+    assert preds_1 == pytest.approx(preds_2)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_appnp.py" startline="196" endline="222" pcid="629">
+def test_APPNP_apply_propagate_model_dense():
+    G, features = create_graph_features()
+    adj = G.to_adjacency_matrix()
+    features, adj = GCN_Aadj_feats_op(features, adj)
+    adj = np.array(adj.todense()[None, :, :])
+
+    generator = FullBatchNodeGenerator(G, sparse=False, method="gcn")
+    appnpnModel = APPNP([2], generator=generator, activations=["relu"], dropout=0.5)
+
+    fully_connected_model = keras.Sequential()
+    fully_connected_model.add(Dense(2))
+
+    x_in, x_out = appnpnModel.propagate_model(fully_connected_model)
+    model = keras.Model(inputs=x_in, outputs=x_out)
+
+    # Check fit method
+    out_indices = np.array([[0, 1]], dtype="int32")
+    preds_1 = model.predict([features[None, :, :], out_indices, adj])
+    assert preds_1.shape == (1, 2, 2)
+
+    # Check fit method
+    preds_2 = model.predict(generator.flow(["a", "b"]))
+    assert preds_2.shape == (1, 2, 2)
+
+    assert preds_1 == pytest.approx(preds_2)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_appnp.py" startline="117" endline="143" pcid="626">
+def test_APPNP_apply_sparse():
+
+    G, features = create_graph_features()
+    adj = G.to_adjacency_matrix()
+    features, adj = GCN_Aadj_feats_op(features, adj)
+    adj = adj.tocoo()
+    A_indices = np.expand_dims(np.hstack((adj.row[:, None], adj.col[:, None])), 0)
+    A_values = np.expand_dims(adj.data, 0)
+
+    generator = FullBatchNodeGenerator(G, sparse=True, method="gcn")
+    appnpnModel = APPNP([2], generator=generator, activations=["relu"], dropout=0.5)
+
+    x_in, x_out = appnpnModel.in_out_tensors()
+    model = keras.Model(inputs=x_in, outputs=x_out)
+
+    # Check fit method
+    out_indices = np.array([[0, 1]], dtype="int32")
+    preds_1 = model.predict([features[None, :, :], out_indices, A_indices, A_values])
+    assert preds_1.shape == (1, 2, 2)
+
+    # Check fit method
+    preds_2 = model.predict(generator.flow(["a", "b"]))
+    assert preds_2.shape == (1, 2, 2)
+
+    assert preds_1 == pytest.approx(preds_2)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_gcn.py" startline="141" endline="163" pcid="572">
+def test_GCN_apply_dense():
+    G, features = create_graph_features()
+    adj = G.to_adjacency_matrix().toarray()[None, :, :]
+    n_nodes = features.shape[0]
+
+    generator = FullBatchNodeGenerator(G, sparse=False, method="none")
+    gcnModel = GCN([2], generator, activations=["relu"], dropout=0.5)
+
+    x_in, x_out = gcnModel.in_out_tensors()
+    model = keras.Model(inputs=x_in, outputs=x_out)
+
+    # Check fit method
+    out_indices = np.array([[0, 1]], dtype="int32")
+    preds_1 = model.predict([features[None, :, :], out_indices, adj])
+    assert preds_1.shape == (1, 2, 2)
+
+    # Check fit method
+    preds_2 = model.predict(generator.flow(["a", "b"]))
+    assert preds_2.shape == (1, 2, 2)
+
+    assert preds_1 == pytest.approx(preds_2)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_appnp.py" startline="223" endline="250" pcid="630">
+def test_APPNP_apply_propagate_model_sparse():
+
+    G, features = create_graph_features()
+    adj = G.to_adjacency_matrix()
+    features, adj = GCN_Aadj_feats_op(features, adj)
+    adj = adj.tocoo()
+    A_indices = np.expand_dims(np.hstack((adj.row[:, None], adj.col[:, None])), 0)
+    A_values = np.expand_dims(adj.data, 0)
+
+    generator = FullBatchNodeGenerator(G, sparse=True, method="gcn")
+    appnpnModel = APPNP([2], generator=generator, activations=["relu"], dropout=0.5)
+
+    fully_connected_model = keras.Sequential()
+    fully_connected_model.add(Dense(2))
+
+    x_in, x_out = appnpnModel.propagate_model(fully_connected_model)
+    model = keras.Model(inputs=x_in, outputs=x_out)
+
+    # Check fit method
+    out_indices = np.array([[0, 1]], dtype="int32")
+    preds_1 = model.predict([features[None, :, :], out_indices, A_indices, A_values])
+    assert preds_1.shape == (1, 2, 2)
+
+    # Check fit method
+    preds_2 = model.predict(generator.flow(["a", "b"]))
+    assert preds_2.shape == (1, 2, 2)
+
+    assert preds_1 == pytest.approx(preds_2)
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_gcn.py" startline="164" endline="192" pcid="573">
+def test_GCN_apply_sparse():
+
+    G, features = create_graph_features()
+    adj = G.to_adjacency_matrix()
+    features, adj = GCN_Aadj_feats_op(features, adj)
+    adj = adj.tocoo()
+    A_indices = np.expand_dims(np.hstack((adj.row[:, None], adj.col[:, None])), 0)
+    A_values = np.expand_dims(adj.data, 0)
+
+    generator = FullBatchNodeGenerator(G, sparse=True, method="gcn")
+    gcnModel = GCN(
+        layer_sizes=[2], activations=["relu"], generator=generator, dropout=0.5
+    )
+
+    x_in, x_out = gcnModel.in_out_tensors()
+    model = keras.Model(inputs=x_in, outputs=x_out)
+
+    # Check fit method
+    out_indices = np.array([[0, 1]], dtype="int32")
+    preds_1 = model.predict([features[None, :, :], out_indices, A_indices, A_values])
+    assert preds_1.shape == (1, 2, 2)
+
+    # Check fit method
+    preds_2 = model.predict(generator.flow(["a", "b"]))
+    assert preds_2.shape == (1, 2, 2)
+
+    assert preds_1 == pytest.approx(preds_2)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_gcn.py" startline="193" endline="215" pcid="574">
+def test_GCN_linkmodel_apply_dense():
+    G, features = create_graph_features()
+    adj = G.to_adjacency_matrix().toarray()[None, :, :]
+    n_nodes = features.shape[0]
+
+    generator = FullBatchLinkGenerator(G, sparse=False, method="none")
+    gcnModel = GCN([3], generator, activations=["relu"], dropout=0.5)
+
+    x_in, x_out = gcnModel.in_out_tensors()
+    model = keras.Model(inputs=x_in, outputs=x_out)
+
+    # Check fit method
+    out_indices = np.array([[[0, 1], [1, 2]]], dtype="int32")
+    preds_1 = model.predict([features[None, :, :], out_indices, adj])
+    assert preds_1.shape == (1, 2, 2, 3)
+
+    # Check fit method
+    preds_2 = model.predict(generator.flow([("a", "b"), ("b", "c")]))
+    assert preds_2.shape == (1, 2, 2, 3)
+
+    assert preds_1 == pytest.approx(preds_2)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_gcn.py" startline="216" endline="244" pcid="575">
+def test_GCN_linkmodel_apply_sparse():
+
+    G, features = create_graph_features()
+    adj = G.to_adjacency_matrix()
+    features, adj = GCN_Aadj_feats_op(features, adj)
+    adj = adj.tocoo()
+    A_indices = np.expand_dims(np.hstack((adj.row[:, None], adj.col[:, None])), 0)
+    A_values = np.expand_dims(adj.data, 0)
+
+    generator = FullBatchLinkGenerator(G, sparse=True, method="gcn")
+    gcnModel = GCN(
+        layer_sizes=[3], activations=["relu"], generator=generator, dropout=0.5
+    )
+
+    x_in, x_out = gcnModel.in_out_tensors()
+    model = keras.Model(inputs=x_in, outputs=x_out)
+
+    # Check fit method
+    out_indices = np.array([[[0, 1], [1, 2]]], dtype="int32")
+    preds_1 = model.predict([features[None, :, :], out_indices, A_indices, A_values])
+    assert preds_1.shape == (1, 2, 2, 3)
+
+    # Check fit method
+    preds_2 = model.predict(generator.flow([("a", "b"), ("b", "c")]))
+    assert preds_2.shape == (1, 2, 2, 3)
+
+    assert preds_1 == pytest.approx(preds_2)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_appnp.py" startline="167" endline="195" pcid="628">
+def test_APPNP_linkmodel_apply_sparse():
+
+    G, features = create_graph_features()
+    adj = G.to_adjacency_matrix()
+    features, adj = GCN_Aadj_feats_op(features, adj)
+    adj = adj.tocoo()
+    A_indices = np.expand_dims(np.hstack((adj.row[:, None], adj.col[:, None])), 0)
+    A_values = np.expand_dims(adj.data, 0)
+
+    generator = FullBatchLinkGenerator(G, sparse=True, method="gcn")
+    appnpnModel = APPNP(
+        layer_sizes=[3], activations=["relu"], generator=generator, dropout=0.5
+    )
+
+    x_in, x_out = appnpnModel.in_out_tensors()
+    model = keras.Model(inputs=x_in, outputs=x_out)
+
+    # Check fit method
+    out_indices = np.array([[[0, 1], [1, 2]]], dtype="int32")
+    preds_1 = model.predict([features[None, :, :], out_indices, A_indices, A_values])
+    assert preds_1.shape == (1, 2, 2, 3)
+
+    # Check fit method
+    preds_2 = model.predict(generator.flow([("a", "b"), ("b", "c")]))
+    assert preds_2.shape == (1, 2, 2, 3)
+
+    assert preds_1 == pytest.approx(preds_2)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_appnp.py" startline="144" endline="166" pcid="627">
+def test_APPNP_linkmodel_apply_dense():
+    G, features = create_graph_features()
+    adj = G.to_adjacency_matrix()
+    adj = np.array(adj.todense()[None, :, :])
+
+    generator = FullBatchLinkGenerator(G, sparse=False, method="none")
+    appnpnModel = APPNP([3], generator, activations=["relu"], dropout=0.5)
+
+    x_in, x_out = appnpnModel.in_out_tensors()
+    model = keras.Model(inputs=x_in, outputs=x_out)
+
+    # Check fit method
+    out_indices = np.array([[[0, 1], [1, 2]]], dtype="int32")
+    preds_1 = model.predict([features[None, :, :], out_indices, adj])
+    assert preds_1.shape == (1, 2, 2, 3)
+
+    # Check fit method
+    preds_2 = model.predict(generator.flow([("a", "b"), ("b", "c")]))
+    assert preds_2.shape == (1, 2, 2, 3)
+
+    assert preds_1 == pytest.approx(preds_2)
+
+
+</source>
+</class>
+
+<class classid="30" nclones="5" nlines="12" similarity="75">
+<source file="systems/stellargraph-0.11.1/tests/layer/test_graphsage.py" startline="64" endline="79" pcid="540">
+def test_mean_agg_apply():
+    agg = MeanAggregator(5, bias=True, act=lambda x: x, kernel_initializer="ones")
+    inp1 = keras.Input(shape=(1, 2))
+    inp2 = keras.Input(shape=(1, 2, 2))
+    out = agg([inp1, inp2])
+
+    assert agg.weight_dims == [3, 2]
+
+    model = keras.Model(inputs=[inp1, inp2], outputs=out)
+    x1 = np.array([[[1, 1]]])
+    x2 = np.array([[[[2, 2], [3, 3]]]])
+    actual = model.predict([x1, x2])
+    expected = np.array([[[2, 2, 2, 5, 5]]])
+    assert expected == pytest.approx(actual)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_graphsage.py" startline="315" endline="334" pcid="552">
+def test_meanpool_agg_zero_neighbours():
+    agg = MeanPoolingAggregator(4, bias=False, act="linear", kernel_initializer="ones")
+
+    inp1 = keras.Input(shape=(1, 2))
+    inp2 = keras.Input(shape=(1, 0, 2))
+    out = agg([inp1, inp2])
+
+    # Now we have an input shape with a 0, the attention model switches to
+    # a MLP and the first group will have non-zero output size.
+    assert agg.weight_dims == [4, 0]
+
+    model = keras.Model(inputs=[inp1, inp2], outputs=out)
+    x1 = np.array([[[1, 1]]])
+    x2 = np.zeros((1, 1, 0, 2))
+
+    actual = model.predict([x1, x2])
+    expected = np.array([[[2, 2, 2, 2]]])
+    assert expected == pytest.approx(actual)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_graphsage.py" startline="101" endline="117" pcid="542">
+def test_mean_agg_zero_neighbours():
+    agg = MeanAggregator(4, bias=False, act=lambda x: x, kernel_initializer="ones")
+
+    inp1 = keras.Input(shape=(1, 2))
+    inp2 = keras.Input(shape=(1, 0, 2))
+
+    out = agg([inp1, inp2])
+    model = keras.Model(inputs=[inp1, inp2], outputs=out)
+
+    x1 = np.array([[[1, 1]]])
+    x2 = np.zeros((1, 1, 0, 2))
+
+    actual = model.predict([x1, x2])
+    expected = np.array([[[2, 2, 2, 2]]])
+    assert expected == pytest.approx(actual)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_graphsage.py" startline="389" endline="405" pcid="556">
+def test_attn_agg_zero_neighbours():
+    agg = AttentionalAggregator(4, bias=False, act="linear", kernel_initializer="ones")
+
+    inp1 = keras.Input(shape=(1, 2))
+    inp2 = keras.Input(shape=(1, 0, 2))
+
+    out = agg([inp1, inp2])
+    model = keras.Model(inputs=[inp1, inp2], outputs=out)
+
+    x1 = np.array([[[1, 1]]])
+    x2 = np.zeros((1, 1, 0, 2))
+
+    actual = model.predict([x1, x2])
+    expected = np.array([[[2, 2, 2, 2]]])
+    assert expected == pytest.approx(actual)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_graphsage.py" startline="205" endline="221" pcid="547">
+def test_maxpool_agg_zero_neighbours():
+    agg = MaxPoolingAggregator(4, bias=False, act="linear", kernel_initializer="ones")
+
+    inp1 = keras.Input(shape=(1, 2))
+    inp2 = keras.Input(shape=(1, 0, 2))
+
+    out = agg([inp1, inp2])
+    model = keras.Model(inputs=[inp1, inp2], outputs=out)
+
+    x1 = np.array([[[1, 1]]])
+    x2 = np.zeros((1, 1, 0, 2))
+
+    actual = model.predict([x1, x2])
+    expected = np.array([[[2, 2, 2, 2]]])
+    assert expected == pytest.approx(actual)
+
+
+</source>
+</class>
+
+<class classid="31" nclones="2" nlines="11" similarity="90">
+<source file="systems/stellargraph-0.11.1/tests/layer/test_graphsage.py" startline="119" endline="133" pcid="543">
+def test_maxpool_agg_constructor():
+    agg = MaxPoolingAggregator(2, bias=False)
+    assert agg.output_dim == 2
+    assert agg.hidden_dim == 2
+    assert not agg.has_bias
+    assert agg.act.__name__ == "relu"
+    assert agg.hidden_act.__name__ == "relu"
+
+    # Check config
+    config = agg.get_config()
+    assert config["output_dim"] == 2
+    assert config["bias"] == False
+    assert config["act"] == "relu"
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_graphsage.py" startline="223" endline="237" pcid="548">
+def test_meanpool_agg_constructor():
+    agg = MeanPoolingAggregator(2, bias=False)
+    assert agg.output_dim == 2
+    assert agg.hidden_dim == 2
+    assert not agg.has_bias
+    assert agg.act.__name__ == "relu"
+    assert agg.hidden_act.__name__ == "relu"
+
+    # Check config
+    config = agg.get_config()
+    assert config["output_dim"] == 2
+    assert config["bias"] is False
+    assert config["act"] == "relu"
+
+
+</source>
+</class>
+
+<class classid="32" nclones="4" nlines="15" similarity="86">
+<source file="systems/stellargraph-0.11.1/tests/layer/test_graphsage.py" startline="142" endline="174" pcid="545">
+def test_maxpool_agg_apply_hidden_bias():
+    # Specifying bias_initializer="ones" initialises all bias terms to ones;
+    # using bias=False turns of outer bias but retains hidden bias.
+    agg = MaxPoolingAggregator(
+        2, bias=False, act="linear", kernel_initializer="ones", bias_initializer="ones"
+    )
+    assert agg.get_config()["kernel_initializer"]["class_name"] == "Ones"
+    assert agg.get_config()["bias_initializer"]["class_name"] == "Ones"
+
+    # Self features
+    inp1 = keras.Input(shape=(1, 2))
+    # Neighbour features
+    inp2 = keras.Input(shape=(1, 2, 2))
+    out = agg([inp1, inp2])
+
+    # Check sizes
+    assert agg.weight_dims == [1, 1]
+
+    # Numerical test values
+    x1 = np.array([[[1, 1]]])
+    x2 = np.array([[[[2, 2], [3, 3]]]])
+
+    # Agg output:
+    # neigh_agg = max(relu(x2 · ones(2x2)) + ones(2)), axis=1) = max([[5,5],[7,7]]) = [[7,7]]
+    # from_self = K.dot(x1, ones) = [[2]]
+    # from_neigh = K.dot(neigh_agg, ones) = [[14]]
+    model = keras.Model(inputs=[inp1, inp2], outputs=out)
+    actual = model.predict([x1, x2])
+    expected = np.array([[[2, 14]]])
+
+    assert expected == pytest.approx(actual)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_graphsage.py" startline="282" endline="314" pcid="551">
+def test_meanpool_agg_apply_no_bias():
+    # By default, bias_initializers="zeros", so all bias terms are initialised to zeros.
+    agg = MeanPoolingAggregator(2, act="linear", kernel_initializer="ones")
+    assert agg.get_config()["kernel_initializer"]["class_name"] == "Ones"
+    assert agg.get_config()["bias_initializer"]["class_name"] == "Zeros"
+
+    # Self features
+    inp1 = keras.Input(shape=(1, 2))
+    # Neighbour features
+    inp2 = keras.Input(shape=(1, 2, 2))
+
+    out = agg([inp1, inp2])
+
+    # Check sizes
+    assert agg.weight_dims == [1, 1]
+
+    # Numerical test values
+    x1 = np.array([[[1, 1]]])
+    x2 = np.array([[[[2, 2], [3, 3]]]])
+
+    # Agg output:
+    # neigh_agg = mean(relu(x2 · ones(2x2) + zeros(2)), axis=1)
+    #   = mean([[4,4],[6,6]]) = [[5,5]]
+    # from_self = K.dot(x1, ones) = [[2]]
+    # from_neigh = K.dot(neigh_agg, ones) = [[10]]
+
+    model = keras.Model(inputs=[inp1, inp2], outputs=out)
+    actual = model.predict([x1, x2])
+    expected = np.array([[[2, 10]]])
+
+    assert expected == pytest.approx(actual)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_graphsage.py" startline="246" endline="281" pcid="550">
+def test_meanpool_agg_apply_hidden_bias():
+    # Specifying bias_initializer="ones" initialises all bias terms to ones;
+    # using bias=False turns of outer bias but retains hidden bias.
+    agg = MeanPoolingAggregator(
+        2, bias=False, act="linear", kernel_initializer="ones", bias_initializer="ones"
+    )
+    assert agg.get_config()["kernel_initializer"]["class_name"] == "Ones"
+    assert agg.get_config()["bias_initializer"]["class_name"] == "Ones"
+
+    # Self features
+    inp1 = keras.Input(shape=(1, 2))
+    # Neighbour features
+    inp2 = keras.Input(shape=(1, 2, 2))
+
+    out = agg([inp1, inp2])
+
+    # Check sizes
+    assert agg.weight_dims == [1, 1]
+
+    # Numerical test values
+    x1 = np.array([[[1, 1]]])
+    x2 = np.array([[[[2, 2], [3, 3]]]])
+
+    # Agg output:
+    # neigh_agg = mean(relu(x2 · ones(2x2) + ones(2)), axis=1)
+    #   = mean([[5,5],[7,7]]) = [[6,6]]
+    # from_self = K.dot(x1, ones) = [[2]]
+    # from_neigh = K.dot(neigh_agg, ones(2x1)) = [[12]]
+
+    model = keras.Model(inputs=[inp1, inp2], outputs=out)
+    actual = model.predict([x1, x2])
+    expected = np.array([[[2, 12]]])
+
+    assert expected == pytest.approx(actual)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_graphsage.py" startline="175" endline="204" pcid="546">
+def test_maxpool_agg_apply_no_bias():
+    # By default, bias_initializers="zeros", so all bias terms are initialised to zeros.
+    agg = MaxPoolingAggregator(2, act="linear", kernel_initializer="ones")
+    assert agg.get_config()["kernel_initializer"]["class_name"] == "Ones"
+    assert agg.get_config()["bias_initializer"]["class_name"] == "Zeros"
+
+    # Self features
+    inp1 = keras.Input(shape=(1, 2))
+    # Neighbour features
+    inp2 = keras.Input(shape=(1, 2, 2))
+    out = agg([inp1, inp2])
+
+    # Check sizes
+    assert agg.weight_dims == [1, 1]
+
+    # Numerical test values
+    x1 = np.array([[[1, 1]]])
+    x2 = np.array([[[[2, 2], [3, 3]]]])
+
+    # Agg output:
+    # neigh_agg = max(relu(x2 · ones(2x2)) + zeros(2)), axis=1) = max([[4,4],[6,6]]) = [[6,6]]
+    # from_self = K.dot(x1, ones) = [[2]]
+    # from_neigh = K.dot(neigh_agg, ones) = [[12]]
+    model = keras.Model(inputs=[inp1, inp2], outputs=out)
+    actual = model.predict([x1, x2])
+    expected = np.array([[[2, 12]]])
+
+    assert expected == pytest.approx(actual)
+
+
+</source>
+</class>
+
+<class classid="33" nclones="2" nlines="12" similarity="100">
+<source file="systems/stellargraph-0.11.1/tests/layer/test_gcn.py" startline="37" endline="51" pcid="567">
+def test_GraphConvolution_config():
+    gcn_layer = GraphConvolution(units=16)
+    conf = gcn_layer.get_config()
+
+    assert conf["units"] == 16
+    assert conf["activation"] == "linear"
+    assert conf["use_bias"] == True
+    assert conf["kernel_initializer"]["class_name"] == "GlorotUniform"
+    assert conf["bias_initializer"]["class_name"] == "Zeros"
+    assert conf["kernel_regularizer"] == None
+    assert conf["bias_regularizer"] == None
+    assert conf["kernel_constraint"] == None
+    assert conf["bias_constraint"] == None
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_cluster_gcn.py" startline="35" endline="49" pcid="616">
+def test_ClusterGraphConvolution_config():
+    cluster_gcn_layer = ClusterGraphConvolution(units=16)
+    conf = cluster_gcn_layer.get_config()
+
+    assert conf["units"] == 16
+    assert conf["activation"] == "linear"
+    assert conf["use_bias"] == True
+    assert conf["kernel_initializer"]["class_name"] == "GlorotUniform"
+    assert conf["bias_initializer"]["class_name"] == "Zeros"
+    assert conf["kernel_regularizer"] == None
+    assert conf["bias_regularizer"] == None
+    assert conf["kernel_constraint"] == None
+    assert conf["bias_constraint"] == None
+
+
+</source>
+</class>
+
+<class classid="34" nclones="2" nlines="23" similarity="87">
+<source file="systems/stellargraph-0.11.1/tests/layer/test_gcn.py" startline="60" endline="95" pcid="569">
+def test_GraphConvolution_dense():
+    G, features = create_graph_features()
+
+    # We need to specify the batch shape as one for the GraphConvolutional logic to work
+    x_t = Input(batch_shape=(1,) + features.shape, name="X")
+    A_t = Input(batch_shape=(1, 3, 3), name="A")
+    output_indices_t = Input(batch_shape=(1, None), dtype="int32", name="outind")
+
+    # Note we add a batch dimension of 1 to model inputs
+    adj = G.to_adjacency_matrix().toarray()[None, :, :]
+    out_indices = np.array([[0, 1]], dtype="int32")
+    x = features[None, :, :]
+
+    # For dense matrix, remove batch dimension
+    A_mat = Lambda(lambda A: K.squeeze(A, 0))(A_t)
+
+    # Test with final_layer=False
+    out = GraphConvolution(2, final_layer=False)([x_t, output_indices_t, A_mat])
+    model = keras.Model(inputs=[x_t, A_t, output_indices_t], outputs=out)
+    preds = model.predict([x, adj, out_indices], batch_size=1)
+    assert preds.shape == (1, 3, 2)
+
+    # Now try with final_layer=True
+    out = GraphConvolution(2, final_layer=True)([x_t, output_indices_t, A_mat])
+    model = keras.Model(inputs=[x_t, A_t, output_indices_t], outputs=out)
+    preds = model.predict([x, adj, out_indices], batch_size=1)
+    assert preds.shape == (1, 2, 2)
+
+    # Check for errors with batch size != 1
+    # We need to specify the batch shape as one for the GraphConvolutional logic to work
+    x_t = Input(batch_shape=(2,) + features.shape)
+    output_indices_t = Input(batch_shape=(2, None), dtype="int32")
+    with pytest.raises(ValueError):
+        out = GraphConvolution(2)([x_t, A_t, output_indices_t])
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_cluster_gcn.py" startline="58" endline="99" pcid="618">
+def test_GraphConvolution():
+    G, features = create_graph_features()
+
+    # We need to specify the batch shape as one for the ClusterGraphConvolutional logic to work
+    x_t = Input(batch_shape=(1,) + features.shape, name="X")
+    A_t = Input(batch_shape=(1, 3, 3), name="A")
+    output_indices_t = Input(batch_shape=(1, None), dtype="int32", name="outind")
+
+    # Note we add a batch dimension of 1 to model inputs
+    adj = G.to_adjacency_matrix().toarray()[None, :, :]
+    out_indices = np.array([[0, 1]], dtype="int32")
+    x = features[None, :, :]
+
+    # Remove batch dimension
+    A_mat = Lambda(lambda A: K.squeeze(A, 0))(A_t)
+
+    # Test with final_layer=False
+    out = ClusterGraphConvolution(2, final_layer=False)([x_t, output_indices_t, A_mat])
+    model = keras.Model(inputs=[x_t, A_t, output_indices_t], outputs=out)
+    preds = model.predict([x, adj, out_indices], batch_size=1)
+    assert preds.shape == (1, 3, 2)
+
+    # Now try with final_layer=True
+    out = ClusterGraphConvolution(2, final_layer=True)([x_t, output_indices_t, A_mat])
+    # The final layer removes the batch dimension and causes the call to predict to fail.
+    # We are going to manually add the batch dimension before calling predict.
+    out = K.expand_dims(out, 0)
+    model = keras.Model(inputs=[x_t, A_t, output_indices_t], outputs=out)
+    print(
+        f"x_t: {x_t.shape} A_t: {A_t.shape} output_indices_t: {output_indices_t.shape}"
+    )
+    preds = model.predict([x, adj, out_indices], batch_size=1)
+    assert preds.shape == (1, 2, 2)
+
+    # Check for errors with batch size != 1
+    # We need to specify the batch shape as one for the ClusterGraphConvolutional logic to work
+    x_t = Input(batch_shape=(2,) + features.shape)
+    output_indices_t = Input(batch_shape=(2, None), dtype="int32")
+    with pytest.raises(ValueError):
+        out = ClusterGraphConvolution(2)([x_t, A_t, output_indices_t])
+
+
+</source>
+</class>
+
+<class classid="35" nclones="3" nlines="12" similarity="76">
+<source file="systems/stellargraph-0.11.1/tests/layer/test_gcn.py" startline="298" endline="310" pcid="578">
+def test_kernel_and_bias_defaults():
+    graph, _ = create_graph_features()
+    generator = FullBatchNodeGenerator(graph, sparse=False, method="none")
+    gcn = GCN([2, 2], generator)
+
+    for layer in gcn._layers:
+        if isinstance(layer, GraphConvolution):
+            assert isinstance(layer.kernel_initializer, tf.initializers.GlorotUniform)
+            assert isinstance(layer.bias_initializer, tf.initializers.Zeros)
+            assert layer.kernel_regularizer is None
+            assert layer.bias_regularizer is None
+            assert layer.kernel_constraint is None
+            assert layer.bias_constraint is None
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_cluster_gcn.py" startline="210" endline="223" pcid="623">
+def test_kernel_and_bias_defaults():
+    graph, _ = create_graph_features()
+    generator = ClusterNodeGenerator(graph)
+    cluster_gcn = ClusterGCN(
+        layer_sizes=[2, 2], activations=["relu", "relu"], generator=generator
+    )
+    for layer in cluster_gcn._layers:
+        if isinstance(layer, ClusterGraphConvolution):
+            assert isinstance(layer.kernel_initializer, tf.initializers.GlorotUniform)
+            assert isinstance(layer.bias_initializer, tf.initializers.Zeros)
+            assert layer.kernel_regularizer is None
+            assert layer.bias_regularizer is None
+            assert layer.kernel_constraint is None
+            assert layer.bias_constraint is None
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_rgcn.py" startline="388" endline="399" pcid="609">
+def test_kernel_and_bias_defaults():
+    graph, _ = create_graph_features()
+    generator = RelationalFullBatchNodeGenerator(graph, sparse=False)
+    rgcn = RGCN([2, 2], generator, num_bases=10)
+    for layer in rgcn._layers:
+        if isinstance(layer, RelationalGraphConvolution):
+            assert isinstance(layer.kernel_initializer, tf.initializers.GlorotUniform)
+            assert isinstance(layer.bias_initializer, tf.initializers.Zeros)
+            assert layer.kernel_regularizer is None
+            assert layer.bias_regularizer is None
+            assert layer.kernel_constraint is None
+            assert layer.bias_constraint is None
+</source>
+</class>
+
+<class classid="36" nclones="2" nlines="17" similarity="83">
+<source file="systems/stellargraph-0.11.1/tests/layer/test_link_inference.py" startline="166" endline="195" pcid="584">
+    def test_ip(self):
+        """ Test the 'ip' binary operator on orthogonal vectors"""
+
+        x_src, x_dst = make_orthonormal_vectors(self.d)
+        x_src = tf.constant(x_src, shape=(1, self.d), dtype="float64")
+        x_dst = tf.constant(x_dst, shape=(1, self.d), dtype="float64")
+
+        li = link_inference(edge_embedding_method="ip", output_act="linear")(
+            [x_src, x_dst]
+        )
+        print("link inference with 'ip' operator on orthonormal vectors: {}".format(li))
+        assert li.numpy() == pytest.approx(0, abs=1.5e-7)
+
+        li = link_inference(edge_embedding_method="ip", output_act="linear")(
+            [x_src, x_src]
+        )
+        print("link inference with 'ip' operator on unit vector: ", li)
+        assert li.numpy() == pytest.approx(1, abs=1.5e-7)
+
+        # Test sigmoid activation
+        li = link_classification(edge_embedding_method="ip", output_act="sigmoid")(
+            [x_src, x_dst]
+        )
+        assert li.numpy() == pytest.approx(0.5, abs=1.5e-7)
+
+        li = link_classification(edge_embedding_method="ip", output_act="sigmoid")(
+            [x_src, x_src]
+        )
+        assert li.numpy() == pytest.approx(0.7310586, abs=1.5e-7)
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_link_inference.py" startline="229" endline="258" pcid="586">
+    def test_ip(self):
+        """ Test the 'ip' binary operator on orthogonal vectors"""
+
+        x_src, x_dst = make_orthonormal_vectors(self.d)
+
+        x_src = tf.constant(x_src, shape=(1, self.d), dtype="float64")
+        x_dst = tf.constant(x_dst, shape=(1, self.d), dtype="float64")
+
+        # Test linear activation
+        li = link_classification(edge_embedding_method="ip", output_act="linear")(
+            [x_src, x_dst]
+        )
+        assert li.numpy() == pytest.approx(0, abs=1.5e-7)
+
+        li = link_classification(edge_embedding_method="ip", output_act="linear")(
+            [x_src, x_src]
+        )
+        assert li.numpy()[0, 0] == pytest.approx(1, abs=1.5e-7)
+
+        # Test sigmoid activation
+        li = link_classification(edge_embedding_method="ip", output_act="sigmoid")(
+            [x_src, x_dst]
+        )
+        assert li.numpy() == pytest.approx(0.5, abs=1.5e-7)
+
+        li = link_classification(edge_embedding_method="ip", output_act="sigmoid")(
+            [x_src, x_src]
+        )
+        assert li.numpy() == pytest.approx(0.7310586, abs=1.5e-7)
+
+</source>
+</class>
+
+<class classid="37" nclones="3" nlines="15" similarity="76">
+<source file="systems/stellargraph-0.11.1/tests/layer/test_link_inference.py" startline="196" endline="220" pcid="585">
+    def test_mul_l1_l2_avg(self):
+        """ Test the binary operators: 'mul'/'hadamard', 'l1', 'l2', 'avg'"""
+
+        x_src, x_dst = make_orthonormal_vectors(self.d)
+        x_src = x_src.reshape(1, 1, self.d)
+        x_dst = x_dst.reshape(1, 1, self.d)
+
+        inp_src = keras.Input(shape=(1, self.d))
+        inp_dst = keras.Input(shape=(1, self.d))
+
+        for op in ["mul", "l1", "l2", "avg", "concat"]:
+            out = link_inference(output_dim=self.d_out, edge_embedding_method=op)(
+                [inp_src, inp_dst]
+            )
+            li = keras.Model(inputs=[inp_src, inp_dst], outputs=out)
+
+            print(x_src.shape)
+
+            res = li.predict(x=[x_src, x_dst])
+            print("link inference with '{}' operator: {}".format(op, res.flatten()))
+
+            assert res.shape == (1, self.d_out)
+            assert isinstance(res.flatten()[0], np.float32)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_link_inference.py" startline="316" endline="337" pcid="589">
+    def test_mul_l1_l2_avg(self):
+        """ Test the binary operators: 'mul'/'hadamard', 'l1', 'l2', 'avg'"""
+
+        x_src, x_dst = make_orthonormal_vectors(self.d)
+        x_src = x_src.reshape(1, 1, self.d)
+        x_dst = x_dst.reshape(1, 1, self.d)
+
+        inp_src = keras.Input(shape=(1, self.d))
+        inp_dst = keras.Input(shape=(1, self.d))
+
+        for op in ["mul", "l1", "l2", "avg", "concat"]:
+            out = link_regression(output_dim=self.d_out, edge_embedding_method=op)(
+                [inp_src, inp_dst]
+            )
+            li = keras.Model(inputs=[inp_src, inp_dst], outputs=out)
+
+            res = li.predict(x=[x_src, x_dst])
+            print("link regression with '{}' operator: {}".format(op, res.flatten()))
+
+            assert res.shape == (1, self.d_out)
+            assert isinstance(res.flatten()[0], np.float32)
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_link_inference.py" startline="259" endline="285" pcid="587">
+    def test_mul_l1_l2_avg(self):
+        """ Test the binary operators: 'mul'/'hadamard', 'l1', 'l2', 'avg'"""
+
+        x_src, x_dst = make_orthonormal_vectors(self.d)
+        x_src = x_src.reshape(1, 1, self.d)
+        x_dst = x_dst.reshape(1, 1, self.d)
+
+        inp_src = keras.Input(shape=(1, self.d))
+        inp_dst = keras.Input(shape=(1, self.d))
+
+        for op in ["mul", "l1", "l2", "avg", "concat"]:
+            out = link_classification(output_dim=self.d_out, edge_embedding_method=op)(
+                [inp_src, inp_dst]
+            )
+            li = keras.Model(inputs=[inp_src, inp_dst], outputs=out)
+
+            res = li.predict(x=[x_src, x_dst])
+            print(
+                "link classification with '{}' operator: {}".format(op, res.flatten())
+            )
+
+            assert res.shape == (1, self.d_out)
+            assert isinstance(res.flatten()[0], np.float32)
+            assert all(res.flatten() >= 0)
+            assert all(res.flatten() <= 1)
+
+
+</source>
+</class>
+
+<class classid="38" nclones="2" nlines="14" similarity="85">
+<source file="systems/stellargraph-0.11.1/tests/layer/test_misc.py" startline="40" endline="62" pcid="592">
+def test_squeezedsparseconversion():
+    N = 10
+    x_t = keras.Input(batch_shape=(1, N, 1), dtype="float32")
+    A_ind = keras.Input(batch_shape=(1, None, 2), dtype="int64")
+    A_val = keras.Input(batch_shape=(1, None), dtype="float32")
+
+    # Test with final_layer=False
+    A_mat = SqueezedSparseConversion(shape=(N, N), dtype=A_val.dtype)([A_ind, A_val])
+
+    x_out = keras.layers.Lambda(
+        lambda xin: K.expand_dims(K.dot(xin[0], K.squeeze(xin[1], 0)), 0)
+    )([A_mat, x_t])
+
+    model = keras.Model(inputs=[x_t, A_ind, A_val], outputs=x_out)
+
+    x = np.random.randn(1, N, 1)
+    A_indices, A_values, A = sparse_matrix_example(N)
+
+    z = model.predict([x, np.expand_dims(A_indices, 0), np.expand_dims(A_values, 0)])
+
+    assert np.allclose(z.squeeze(), A.dot(x.squeeze()), atol=1e-7)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_misc.py" startline="63" endline="86" pcid="593">
+def test_squeezedsparseconversion_dtype():
+    N = 10
+    x_t = keras.Input(batch_shape=(1, N, 1), dtype="float64")
+    A_ind = keras.Input(batch_shape=(1, None, 2), dtype="int64")
+    A_val = keras.Input(batch_shape=(1, None), dtype="float32")
+
+    # Test with final_layer=False
+    A_mat = SqueezedSparseConversion(shape=(N, N), dtype="float64")([A_ind, A_val])
+
+    x_out = keras.layers.Lambda(
+        lambda xin: K.expand_dims(K.dot(xin[0], K.squeeze(xin[1], 0)), 0)
+    )([A_mat, x_t])
+
+    model = keras.Model(inputs=[x_t, A_ind, A_val], outputs=x_out)
+
+    x = np.random.randn(1, N, 1)
+    A_indices, A_values, A = sparse_matrix_example(N)
+
+    z = model.predict([x, np.expand_dims(A_indices, 0), np.expand_dims(A_values, 0)])
+
+    assert A_mat.dtype == tf.dtypes.float64
+    assert np.allclose(z.squeeze(), A.dot(x.squeeze()), atol=1e-7)
+
+
+</source>
+</class>
+
+<class classid="39" nclones="2" nlines="18" similarity="94">
+<source file="systems/stellargraph-0.11.1/tests/layer/test_rgcn.py" startline="200" endline="227" pcid="602">
+def test_RGCN_apply_sparse():
+    G, features = create_graph_features()
+
+    As = get_As(G)
+    As = [A.tocoo() for A in As]
+    A_indices = [
+        np.expand_dims(np.hstack((A.row[:, None], A.col[:, None])), 0) for A in As
+    ]
+    A_values = [np.expand_dims(A.data, 0) for A in As]
+
+    generator = RelationalFullBatchNodeGenerator(G, sparse=True)
+    rgcnModel = RGCN([2], generator, num_bases=10, activations=["relu"], dropout=0.5)
+
+    x_in, x_out = rgcnModel.in_out_tensors()
+    model = keras.Model(inputs=x_in, outputs=x_out)
+
+    # Check fit method
+    out_indices = np.array([[0, 1]], dtype="int32")
+    preds_1 = model.predict([features[None, :, :], out_indices] + A_indices + A_values)
+    assert preds_1.shape == (1, 2, 2)
+
+    # Check fit method
+    preds_2 = model.predict(generator.flow(["a", "b"]))
+    assert preds_2.shape == (1, 2, 2)
+
+    assert preds_1 == pytest.approx(preds_2)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_rgcn.py" startline="252" endline="280" pcid="604">
+def test_RGCN_apply_sparse_directed():
+    G, features = create_graph_features(is_directed=True)
+
+    As = get_As(G)
+    As = [A.tocoo() for A in As]
+
+    A_indices = [
+        np.expand_dims(np.hstack((A.row[:, None], A.col[:, None])), 0) for A in As
+    ]
+    A_values = [np.expand_dims(A.data, 0) for A in As]
+
+    generator = RelationalFullBatchNodeGenerator(G, sparse=True)
+    rgcnModel = RGCN([2], generator, num_bases=10, activations=["relu"], dropout=0.5)
+
+    x_in, x_out = rgcnModel.in_out_tensors()
+    model = keras.Model(inputs=x_in, outputs=x_out)
+
+    # Check fit method
+    out_indices = np.array([[0, 1]], dtype="int32")
+    preds_1 = model.predict([features[None, :, :], out_indices] + A_indices + A_values)
+    assert preds_1.shape == (1, 2, 2)
+
+    # Check fit method
+    preds_2 = model.predict(generator.flow(["a", "b"]))
+    assert preds_2.shape == (1, 2, 2)
+
+    assert preds_1 == pytest.approx(preds_2)
+
+
+</source>
+</class>
+
+<class classid="40" nclones="2" nlines="14" similarity="92">
+<source file="systems/stellargraph-0.11.1/tests/layer/test_rgcn.py" startline="228" endline="251" pcid="603">
+def test_RGCN_apply_dense():
+    G, features = create_graph_features()
+
+    As = get_As(G)
+    As = [np.expand_dims(A.todense(), 0) for A in As]
+
+    generator = RelationalFullBatchNodeGenerator(G, sparse=False)
+    rgcnModel = RGCN([2], generator, num_bases=10, activations=["relu"], dropout=0.5)
+
+    x_in, x_out = rgcnModel.in_out_tensors()
+    model = keras.Model(inputs=x_in, outputs=x_out)
+
+    # Check fit method
+    out_indices = np.array([[0, 1]], dtype="int32")
+    preds_1 = model.predict([features[None, :, :], out_indices] + As)
+    assert preds_1.shape == (1, 2, 2)
+
+    # Check fit method
+    preds_2 = model.predict(generator.flow(["a", "b"]))
+    assert preds_2.shape == (1, 2, 2)
+
+    assert preds_1 == pytest.approx(preds_2)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_rgcn.py" startline="281" endline="303" pcid="605">
+def test_RGCN_apply_dense_directed():
+    G, features = create_graph_features(is_directed=True)
+
+    As = get_As(G)
+    As = [np.expand_dims(A.todense(), 0) for A in As]
+
+    generator = RelationalFullBatchNodeGenerator(G, sparse=False)
+    rgcnModel = RGCN([2], generator, num_bases=10, activations=["relu"], dropout=0.5)
+    x_in, x_out = rgcnModel.in_out_tensors()
+    model = keras.Model(inputs=x_in, outputs=x_out)
+
+    # Check fit method
+    out_indices = np.array([[0, 1]], dtype="int32")
+    preds_1 = model.predict([features[None, :, :], out_indices] + As)
+    assert preds_1.shape == (1, 2, 2)
+
+    # Check fit method
+    preds_2 = model.predict(generator.flow(["a", "b"]))
+    assert preds_2.shape == (1, 2, 2)
+
+    assert preds_1 == pytest.approx(preds_2)
+
+
+</source>
+</class>
+
+<class classid="41" nclones="2" nlines="36" similarity="72">
+<source file="systems/stellargraph-0.11.1/tests/layer/test_hinsage.py" startline="133" endline="170" pcid="636">
+def test_hinsage_constructor():
+    hs = HinSAGE(
+        layer_sizes=[{"1": 2, "2": 2}, {"1": 2}],
+        n_samples=[2, 2],
+        input_neighbor_tree=[
+            ("1", [1, 2]),
+            ("1", [3, 4]),
+            ("2", [5]),
+            ("1", []),
+            ("2", []),
+            ("2", []),
+        ],
+        multiplicity=1,
+        input_dim={"1": 2, "2": 2},
+    )
+    assert hs.n_layers == 2
+    assert hs.n_samples == [2, 2]
+    assert hs.bias
+
+    hs = HinSAGE(
+        layer_sizes=[2, 2],
+        n_samples=[2, 2],
+        input_neighbor_tree=[
+            ("1", [1, 2]),
+            ("1", [3, 4]),
+            ("2", [5]),
+            ("1", []),
+            ("2", []),
+            ("2", []),
+        ],
+        multiplicity=1,
+        input_dim={"1": 2, "2": 2},
+    )
+    assert hs.n_layers == 2
+    assert hs.n_samples == [2, 2]
+    assert hs.bias
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_hinsage.py" startline="494" endline="532" pcid="646">
+def test_hinsage_regularisers():
+    hs = HinSAGE(
+        layer_sizes=[2, 2],
+        n_samples=[2, 2],
+        input_neighbor_tree=[
+            ("1", [1, 2]),
+            ("1", [3, 4]),
+            ("2", [5]),
+            ("1", []),
+            ("2", []),
+            ("2", []),
+        ],
+        input_dim={"1": 2, "2": 4},
+        multiplicity=1,
+        normalize="none",
+        kernel_initializer="ones",
+        kernel_regularizer=regularizers.l2(0.01),
+    )
+
+    with pytest.raises(ValueError):
+        hs = HinSAGE(
+            layer_sizes=[2, 2],
+            n_samples=[2, 2],
+            input_neighbor_tree=[
+                ("1", [1, 2]),
+                ("1", [3, 4]),
+                ("2", [5]),
+                ("1", []),
+                ("2", []),
+                ("2", []),
+            ],
+            input_dim={"1": 2, "2": 4},
+            multiplicity=1,
+            normalize="none",
+            kernel_initializer="ones",
+            kernel_regularizer="fred",
+        )
+
+
+</source>
+</class>
+
+<class classid="42" nclones="4" nlines="17" similarity="72">
+<source file="systems/stellargraph-0.11.1/tests/layer/test_hinsage.py" startline="171" endline="191" pcid="637">
+def test_hinsage_constructor_with_agg():
+    hs = HinSAGE(
+        layer_sizes=[{"1": 2, "2": 2}, {"1": 2}],
+        n_samples=[2, 2],
+        input_neighbor_tree=[
+            ("1", [1, 2]),
+            ("1", [3, 4]),
+            ("2", [5]),
+            ("1", []),
+            ("2", []),
+            ("2", []),
+        ],
+        multiplicity=1,
+        input_dim={"1": 2, "2": 2},
+        aggregator=MeanHinAggregator,
+    )
+    assert hs.n_layers == 2
+    assert hs.n_samples == [2, 2]
+    assert hs.bias
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_hinsage.py" startline="192" endline="209" pcid="638">
+def test_hinsage_input_shapes():
+    hs = HinSAGE(
+        layer_sizes=[{"1": 2, "2": 2}, 2],
+        n_samples=[2, 2],
+        input_neighbor_tree=[
+            ("1", [1, 2]),
+            ("1", [3, 4]),
+            ("2", [5]),
+            ("1", []),
+            ("2", []),
+            ("2", []),
+        ],
+        multiplicity=1,
+        input_dim={"1": 2, "2": 4},
+    )
+    assert hs._input_shapes() == [(1, 2), (2, 2), (2, 4), (4, 2), (4, 4), (4, 4)]
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_hinsage.py" startline="210" endline="228" pcid="639">
+def test_hinsage_constructor_wrong_normalisation():
+    with pytest.raises(ValueError):
+        hs = HinSAGE(
+            layer_sizes=[{"1": 2, "2": 2}, {"1": 2}],
+            n_samples=[2, 2],
+            input_neighbor_tree=[
+                ("1", [1, 2]),
+                ("1", [3, 4]),
+                ("2", [5]),
+                ("1", []),
+                ("2", []),
+                ("2", []),
+            ],
+            multiplicity=1,
+            input_dim={"1": 2, "2": 2},
+            normalize="unknown",
+        )
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_hinsage.py" startline="533" endline="552" pcid="647">
+def test_hinsage_unitary_layer_size():
+    with pytest.raises(ValueError):
+        hs = HinSAGE(
+            layer_sizes=[2, 1],
+            n_samples=[2, 2],
+            input_neighbor_tree=[
+                ("1", [1, 2]),
+                ("1", [3, 4]),
+                ("2", [5]),
+                ("1", []),
+                ("2", []),
+                ("2", []),
+            ],
+            input_dim={"1": 2, "2": 4},
+            multiplicity=1,
+            normalize="none",
+            kernel_initializer="ones",
+        )
+
+
+</source>
+</class>
+
+<class classid="43" nclones="5" nlines="34" similarity="71">
+<source file="systems/stellargraph-0.11.1/tests/layer/test_hinsage.py" startline="229" endline="272" pcid="640">
+def test_hinsage_apply():
+    hs = HinSAGE(
+        layer_sizes=[{"1": 2, "2": 2}, 2],
+        n_samples=[2, 2],
+        input_neighbor_tree=[
+            ("1", [1, 2]),
+            ("1", [3, 4]),
+            ("2", [5]),
+            ("1", []),
+            ("2", []),
+            ("2", []),
+        ],
+        multiplicity=1,
+        input_dim={"1": 2, "2": 4},
+        normalize="none",
+        kernel_initializer="ones",
+    )
+
+    inp = [
+        keras.Input(shape=(1, 2)),
+        keras.Input(shape=(2, 2)),
+        keras.Input(shape=(2, 4)),
+        keras.Input(shape=(4, 2)),
+        keras.Input(shape=(4, 4)),
+        keras.Input(shape=(4, 4)),
+    ]
+
+    out = hs(inp)
+    model = keras.Model(inputs=inp, outputs=out)
+
+    x = [
+        np.array([[[1, 1]]]),
+        np.array([[[2, 2], [2, 2]]]),
+        np.array([[[4, 4, 4, 4], [4, 4, 4, 4]]]),
+        np.array([[[3, 3], [3, 3], [3, 3], [3, 3]]]),
+        np.array([[[6, 6, 6, 6], [6, 6, 6, 6], [6, 6, 6, 6], [6, 6, 6, 6]]]),
+        np.array([[[9, 9, 9, 9], [9, 9, 9, 9], [9, 9, 9, 9], [9, 9, 9, 9]]]),
+    ]
+
+    actual = model.predict(x)
+    expected = np.array([[12, 35.5]])
+    assert actual == pytest.approx(expected)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_hinsage.py" startline="389" endline="424" pcid="644">
+def test_hinsage_aggregators():
+    hs = HinSAGE(
+        layer_sizes=[2, 2],
+        n_samples=[2, 2],
+        input_neighbor_tree=[
+            ("1", [1, 2]),
+            ("1", [3, 4]),
+            ("2", [5]),
+            ("1", []),
+            ("2", []),
+            ("2", []),
+        ],
+        multiplicity=1,
+        input_dim={"1": 2, "2": 4},
+        aggregator=MeanHinAggregator,
+        normalize="none",
+        kernel_initializer="ones",
+    )
+
+    xin, xout = hs.in_out_tensors()
+    model = keras.Model(inputs=xin, outputs=xout)
+
+    x = [
+        np.array([[[1, 1]]]),
+        np.array([[[2, 2], [2, 2]]]),
+        np.array([[[4, 4, 4, 4], [4, 4, 4, 4]]]),
+        np.array([[[3, 3], [3, 3], [3, 3], [3, 3]]]),
+        np.array([[[6, 6, 6, 6], [6, 6, 6, 6], [6, 6, 6, 6], [6, 6, 6, 6]]]),
+        np.array([[[9, 9, 9, 9], [9, 9, 9, 9], [9, 9, 9, 9], [9, 9, 9, 9]]]),
+    ]
+
+    actual = model.predict(x)
+    expected = np.array([[12, 35.5]])
+    assert actual == pytest.approx(expected)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_hinsage.py" startline="273" endline="307" pcid="641">
+def test_hinsage_in_out_tensors():
+    hs = HinSAGE(
+        layer_sizes=[2, 2],
+        n_samples=[2, 2],
+        input_neighbor_tree=[
+            ("1", [1, 2]),
+            ("1", [3, 4]),
+            ("2", [5]),
+            ("1", []),
+            ("2", []),
+            ("2", []),
+        ],
+        multiplicity=1,
+        input_dim={"1": 2, "2": 4},
+        normalize="none",
+        kernel_initializer="ones",
+    )
+
+    xin, xout = hs.in_out_tensors()
+    model = keras.Model(inputs=xin, outputs=xout)
+
+    x = [
+        np.array([[[1, 1]]]),
+        np.array([[[2, 2], [2, 2]]]),
+        np.array([[[4, 4, 4, 4], [4, 4, 4, 4]]]),
+        np.array([[[3, 3], [3, 3], [3, 3], [3, 3]]]),
+        np.array([[[6, 6, 6, 6], [6, 6, 6, 6], [6, 6, 6, 6], [6, 6, 6, 6]]]),
+        np.array([[[9, 9, 9, 9], [9, 9, 9, 9], [9, 9, 9, 9], [9, 9, 9, 9]]]),
+    ]
+
+    actual = model.predict(x)
+    expected = np.array([[12, 35.5]])
+    assert actual == pytest.approx(expected)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_hinsage.py" startline="308" endline="353" pcid="642">
+def test_hinsage_serialize():
+    hs = HinSAGE(
+        layer_sizes=[2, 2],
+        n_samples=[2, 2],
+        input_neighbor_tree=[
+            ("1", [1, 2]),
+            ("1", [3, 4]),
+            ("2", [5]),
+            ("1", []),
+            ("2", []),
+            ("2", []),
+        ],
+        multiplicity=1,
+        input_dim={"1": 2, "2": 4},
+        normalize="none",
+        bias=False,
+    )
+    xin, xout = hs.in_out_tensors()
+    model = keras.Model(inputs=xin, outputs=xout)
+
+    # Save model
+    model_json = model.to_json()
+
+    # Set all weights to one
+    model_weights = [np.ones_like(w) for w in model.get_weights()]
+
+    # Load model from json & set all weights
+    model2 = keras.models.model_from_json(
+        model_json, custom_objects={"MeanHinAggregator": MeanHinAggregator}
+    )
+    model2.set_weights(model_weights)
+
+    # Test loaded model
+    x = [
+        np.array([[[1, 1]]]),
+        np.array([[[2, 2], [2, 2]]]),
+        np.array([[[4, 4, 4, 4], [4, 4, 4, 4]]]),
+        np.array([[[3, 3], [3, 3], [3, 3], [3, 3]]]),
+        np.array([[[6, 6, 6, 6], [6, 6, 6, 6], [6, 6, 6, 6], [6, 6, 6, 6]]]),
+        np.array([[[9, 9, 9, 9], [9, 9, 9, 9], [9, 9, 9, 9], [9, 9, 9, 9]]]),
+    ]
+    actual = model2.predict(x)
+    expected = np.array([[12, 35.5]])
+    assert actual == pytest.approx(expected)
+
+
+</source>
+<source file="systems/stellargraph-0.11.1/tests/layer/test_hinsage.py" startline="354" endline="388" pcid="643">
+def test_hinsage_zero_neighbours():
+    hs = HinSAGE(
+        layer_sizes=[2, 2],
+        n_samples=[0, 0],
+        input_neighbor_tree=[
+            ("1", [1, 2]),
+            ("1", [3, 4]),
+            ("2", [5]),
+            ("1", []),
+            ("2", []),
+            ("2", []),
+        ],
+        multiplicity=1,
+        input_dim={"1": 2, "2": 4},
+        normalize="none",
+        kernel_initializer="ones",
+    )
+
+    xin, xout = hs.in_out_tensors()
+    model = keras.Model(inputs=xin, outputs=xout)
+
+    x = [
+        np.array([[[1.5, 1]]]),
+        np.zeros((1, 0, 2)),
+        np.zeros((1, 0, 4)),
+        np.zeros((1, 0, 2)),
+        np.zeros((1, 0, 4)),
+        np.zeros((1, 0, 4)),
+    ]
+
+    actual = model.predict(x)
+    expected = np.array([[2.5, 0]])
+    assert actual == pytest.approx(expected)
+
+
+</source>
+</class>
+
+</clones>

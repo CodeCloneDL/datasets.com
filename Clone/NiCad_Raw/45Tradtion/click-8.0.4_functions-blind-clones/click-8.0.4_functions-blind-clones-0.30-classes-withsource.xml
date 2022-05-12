@@ -1,0 +1,859 @@
+<clones>
+<systeminfo processor="nicad6" system="click-8.0.4" granularity="functions-blind" threshold="30%" minlines="10" maxlines="2500"/>
+<cloneinfo npcs="664" npairs="29"/>
+<runinfo ncompares="7197" cputime="40377"/>
+<classinfo nclasses="15"/>
+
+<class classid="1" nclones="3" nlines="15" similarity="81">
+<source file="systems/click-8.0.4/tests/test_basic.py" startline="134" endline="152" pcid="110">
+def test_int_option(runner):
+    @click.command()
+    @click.option("--foo", default=42)
+    def cli(foo):
+        click.echo(f"FOO:[{foo * 2}]")
+
+    result = runner.invoke(cli, [])
+    assert not result.exception
+    assert "FOO:[84]" in result.output
+
+    result = runner.invoke(cli, ["--foo=23"])
+    assert not result.exception
+    assert "FOO:[46]" in result.output
+
+    result = runner.invoke(cli, ["--foo=bar"])
+    assert result.exception
+    assert "Invalid value for '--foo': 'bar' is not a valid integer." in result.output
+
+
+</source>
+<source file="systems/click-8.0.4/tests/test_basic.py" startline="175" endline="194" pcid="114">
+def test_float_option(runner):
+    @click.command()
+    @click.option("--foo", default=42, type=click.FLOAT)
+    def cli(foo):
+        assert type(foo) is float
+        click.echo(f"FOO:[{foo}]")
+
+    result = runner.invoke(cli, [])
+    assert not result.exception
+    assert "FOO:[42.0]" in result.output
+
+    result = runner.invoke(cli, ["--foo=23.5"])
+    assert not result.exception
+    assert "FOO:[23.5]" in result.output
+
+    result = runner.invoke(cli, ["--foo=bar"])
+    assert result.exception
+    assert "Invalid value for '--foo': 'bar' is not a valid float." in result.output
+
+
+</source>
+<source file="systems/click-8.0.4/tests/test_basic.py" startline="153" endline="174" pcid="112">
+def test_uuid_option(runner):
+    @click.command()
+    @click.option(
+        "--u", default="ba122011-349f-423b-873b-9d6a79c688ab", type=click.UUID
+    )
+    def cli(u):
+        assert type(u) is uuid.UUID
+        click.echo(f"U:[{u}]")
+
+    result = runner.invoke(cli, [])
+    assert not result.exception
+    assert "U:[ba122011-349f-423b-873b-9d6a79c688ab]" in result.output
+
+    result = runner.invoke(cli, ["--u=821592c1-c50e-4971-9cd6-e89dc6832f86"])
+    assert not result.exception
+    assert "U:[821592c1-c50e-4971-9cd6-e89dc6832f86]" in result.output
+
+    result = runner.invoke(cli, ["--u=bar"])
+    assert result.exception
+    assert "Invalid value for '--u': 'bar' is not a valid UUID." in result.output
+
+
+</source>
+</class>
+
+<class classid="2" nclones="2" nlines="15" similarity="86">
+<source file="systems/click-8.0.4/tests/test_basic.py" startline="355" endline="375" pcid="132">
+def test_choice_option(runner):
+    @click.command()
+    @click.option("--method", type=click.Choice(["foo", "bar", "baz"]))
+    def cli(method):
+        click.echo(method)
+
+    result = runner.invoke(cli, ["--method=foo"])
+    assert not result.exception
+    assert result.output == "foo\n"
+
+    result = runner.invoke(cli, ["--method=meh"])
+    assert result.exit_code == 2
+    assert (
+        "Invalid value for '--method': 'meh' is not one of 'foo', 'bar', 'baz'."
+        in result.output
+    )
+
+    result = runner.invoke(cli, ["--help"])
+    assert "--method [foo|bar|baz]" in result.output
+
+
+</source>
+<source file="systems/click-8.0.4/tests/test_basic.py" startline="376" endline="396" pcid="134">
+def test_choice_argument(runner):
+    @click.command()
+    @click.argument("method", type=click.Choice(["foo", "bar", "baz"]))
+    def cli(method):
+        click.echo(method)
+
+    result = runner.invoke(cli, ["foo"])
+    assert not result.exception
+    assert result.output == "foo\n"
+
+    result = runner.invoke(cli, ["meh"])
+    assert result.exit_code == 2
+    assert (
+        "Invalid value for '{foo|bar|baz}': 'meh' is not one of 'foo',"
+        " 'bar', 'baz'." in result.output
+    )
+
+    result = runner.invoke(cli, ["--help"])
+    assert "{foo|bar|baz}" in result.output
+
+
+</source>
+</class>
+
+<class classid="3" nclones="3" nlines="10" similarity="71">
+<source file="systems/click-8.0.4/tests/test_basic.py" startline="500" endline="513" pcid="147">
+def test_hidden_command(runner):
+    @click.group()
+    def cli():
+        pass
+
+    @cli.command(hidden=True)
+    def nope():
+        pass
+
+    result = runner.invoke(cli, ["--help"])
+    assert result.exit_code == 0
+    assert "nope" not in result.output
+
+
+</source>
+<source file="systems/click-8.0.4/tests/test_basic.py" startline="533" endline="551" pcid="154">
+def test_summary_line(runner):
+    @click.group()
+    def cli():
+        pass
+
+    @cli.command()
+    def cmd():
+        """
+        Summary line without period
+
+        Here is a sentence. And here too.
+        """
+        pass
+
+    result = runner.invoke(cli, ["--help"])
+    assert "Summary line without period" in result.output
+    assert "Here is a sentence." not in result.output
+
+
+</source>
+<source file="systems/click-8.0.4/tests/test_basic.py" startline="514" endline="532" pcid="150">
+def test_hidden_group(runner):
+    @click.group()
+    def cli():
+        pass
+
+    @cli.group(hidden=True)
+    def subgroup():
+        pass
+
+    @subgroup.command()
+    def nope():
+        pass
+
+    result = runner.invoke(cli, ["--help"])
+    assert result.exit_code == 0
+    assert "subgroup" not in result.output
+    assert "nope" not in result.output
+
+
+</source>
+</class>
+
+<class classid="4" nclones="2" nlines="12" similarity="75">
+<source file="systems/click-8.0.4/tests/test_commands.py" startline="6" endline="21" pcid="158">
+def test_other_command_invoke(runner):
+    @click.command()
+    @click.pass_context
+    def cli(ctx):
+        return ctx.invoke(other_cmd, arg=42)
+
+    @click.command()
+    @click.argument("arg", type=click.INT)
+    def other_cmd(arg):
+        click.echo(arg)
+
+    result = runner.invoke(cli, [])
+    assert not result.exception
+    assert result.output == "42\n"
+
+
+</source>
+<source file="systems/click-8.0.4/tests/test_context.py" startline="203" endline="218" pcid="583">
+def test_pass_obj(runner):
+    @click.group()
+    @click.pass_context
+    def cli(ctx):
+        ctx.obj = "test"
+
+    @cli.command()
+    @click.pass_obj
+    def test(obj):
+        click.echo(obj)
+
+    result = runner.invoke(cli, ["test"])
+    assert not result.exception
+    assert result.output == "test\n"
+
+
+</source>
+</class>
+
+<class classid="5" nclones="2" nlines="10" similarity="100">
+<source file="systems/click-8.0.4/tests/test_custom_classes.py" startline="66" endline="83" pcid="215">
+def test_group_command_class(runner):
+    """A group with a custom ``command_class`` should create subcommands
+    of that type by default.
+    """
+
+    class CustomCommand(click.Command):
+        pass
+
+    class CustomGroup(click.Group):
+        command_class = CustomCommand
+
+    group = CustomGroup()
+    subcommand = group.command()(lambda: None)
+    assert type(subcommand) is CustomCommand
+    subcommand = group.command(cls=click.Command)(lambda: None)
+    assert type(subcommand) is click.Command
+
+
+</source>
+<source file="systems/click-8.0.4/tests/test_custom_classes.py" startline="84" endline="101" pcid="216">
+def test_group_group_class(runner):
+    """A group with a custom ``group_class`` should create subgroups
+    of that type by default.
+    """
+
+    class CustomSubGroup(click.Group):
+        pass
+
+    class CustomGroup(click.Group):
+        group_class = CustomSubGroup
+
+    group = CustomGroup()
+    subgroup = group.group()(lambda: None)
+    assert type(subgroup) is CustomSubGroup
+    subgroup = group.command(cls=click.Group)(lambda: None)
+    assert type(subgroup) is click.Group
+
+
+</source>
+</class>
+
+<class classid="6" nclones="2" nlines="11" similarity="72">
+<source file="systems/click-8.0.4/tests/test_arguments.py" startline="8" endline="20" pcid="256">
+def test_nargs_star(runner):
+    @click.command()
+    @click.argument("src", nargs=-1)
+    @click.argument("dst")
+    def copy(src, dst):
+        click.echo(f"src={'|'.join(src)}")
+        click.echo(f"dst={dst}")
+
+    result = runner.invoke(copy, ["foo.txt", "bar.txt", "dir"])
+    assert not result.exception
+    assert result.output.splitlines() == ["src=foo.txt|bar.txt", "dst=dir"]
+
+
+</source>
+<source file="systems/click-8.0.4/tests/test_arguments.py" startline="30" endline="43" pcid="260">
+def test_nargs_tup(runner):
+    @click.command()
+    @click.argument("name", nargs=1)
+    @click.argument("point", nargs=2, type=click.INT)
+    def copy(name, point):
+        click.echo(f"name={name}")
+        x, y = point
+        click.echo(f"point={x}/{y}")
+
+    result = runner.invoke(copy, ["peter", "1", "2"])
+    assert not result.exception
+    assert result.output.splitlines() == ["name=peter", "point=1/2"]
+
+
+</source>
+</class>
+
+<class classid="7" nclones="2" nlines="10" similarity="80">
+<source file="systems/click-8.0.4/tests/test_arguments.py" startline="277" endline="289" pcid="290">
+def test_nargs_star_ordering(runner):
+    @click.command()
+    @click.argument("a", nargs=-1)
+    @click.argument("b")
+    @click.argument("c")
+    def cmd(a, b, c):
+        for arg in (a, b, c):
+            click.echo(arg)
+
+    result = runner.invoke(cmd, ["a", "b", "c"])
+    assert result.output.splitlines() == ["('a',)", "b", "c"]
+
+
+</source>
+<source file="systems/click-8.0.4/tests/test_arguments.py" startline="290" endline="302" pcid="292">
+def test_nargs_specified_plus_star_ordering(runner):
+    @click.command()
+    @click.argument("a", nargs=-1)
+    @click.argument("b")
+    @click.argument("c", nargs=2)
+    def cmd(a, b, c):
+        for arg in (a, b, c):
+            click.echo(arg)
+
+    result = runner.invoke(cmd, ["a", "b", "c", "d", "e", "f"])
+    assert result.output.splitlines() == ["('a', 'b', 'c')", "d", "('e', 'f')"]
+
+
+</source>
+</class>
+
+<class classid="8" nclones="2" nlines="15" similarity="93">
+<source file="systems/click-8.0.4/tests/test_options.py" startline="272" endline="289" pcid="345">
+def test_dynamic_default_help_unset(runner):
+    @click.command()
+    @click.option(
+        "--username",
+        prompt=True,
+        default=lambda: os.environ.get("USER", ""),
+        show_default=True,
+    )
+    def cmd(username):
+        print("Hello,", username)
+
+    result = runner.invoke(cmd, ["--help"])
+    assert result.exit_code == 0
+    assert "--username" in result.output
+    assert "lambda" not in result.output
+    assert "(dynamic)" in result.output
+
+
+</source>
+<source file="systems/click-8.0.4/tests/test_options.py" startline="290" endline="307" pcid="347">
+def test_dynamic_default_help_text(runner):
+    @click.command()
+    @click.option(
+        "--username",
+        prompt=True,
+        default=lambda: os.environ.get("USER", ""),
+        show_default="current user",
+    )
+    def cmd(username):
+        print("Hello,", username)
+
+    result = runner.invoke(cmd, ["--help"])
+    assert result.exit_code == 0
+    assert "--username" in result.output
+    assert "lambda" not in result.output
+    assert "(current user)" in result.output
+
+
+</source>
+</class>
+
+<class classid="9" nclones="2" nlines="11" similarity="72">
+<source file="systems/click-8.0.4/tests/test_options.py" startline="591" endline="606" pcid="387">
+def test_argument_custom_class(runner):
+    class CustomArgument(click.Argument):
+        def get_default(self, ctx, call=True):
+            """a dumb override of a default value for testing"""
+            return "I am a default"
+
+    @click.command()
+    @click.argument("testarg", cls=CustomArgument, default="you wont see me")
+    def cmd(testarg):
+        click.echo(testarg)
+
+    result = runner.invoke(cmd)
+    assert "I am a default" in result.output
+    assert "you wont see me" not in result.output
+
+
+</source>
+<source file="systems/click-8.0.4/tests/test_options.py" startline="607" endline="622" pcid="390">
+def test_option_custom_class(runner):
+    class CustomOption(click.Option):
+        def get_help_record(self, ctx):
+            """a dumb override of a help text for testing"""
+            return ("--help", "I am a help text")
+
+    @click.command()
+    @click.option("--testoption", cls=CustomOption, help="you wont see me")
+    def cmd(testoption):
+        click.echo(testoption)
+
+    result = runner.invoke(cmd, ["--help"])
+    assert "I am a help text" in result.output
+    assert "you wont see me" not in result.output
+
+
+</source>
+</class>
+
+<class classid="10" nclones="2" nlines="29" similarity="93">
+<source file="systems/click-8.0.4/tests/test_formatting.py" startline="52" endline="86" pcid="425">
+def test_wrapping_long_options_strings(runner):
+    @click.group()
+    def cli():
+        """Top level command"""
+
+    @cli.group()
+    def a_very_long():
+        """Second level"""
+
+    @a_very_long.command()
+    @click.argument("first")
+    @click.argument("second")
+    @click.argument("third")
+    @click.argument("fourth")
+    @click.argument("fifth")
+    @click.argument("sixth")
+    def command():
+        """A command."""
+
+    # 54 is chosen as a length where the second line is one character
+    # longer than the maximum length.
+    result = runner.invoke(cli, ["a-very-long", "command", "--help"], terminal_width=54)
+    assert not result.exception
+    assert result.output.splitlines() == [
+        "Usage: cli a-very-long command [OPTIONS] FIRST SECOND",
+        "                               THIRD FOURTH FIFTH",
+        "                               SIXTH",
+        "",
+        "  A command.",
+        "",
+        "Options:",
+        "  --help  Show this message and exit.",
+    ]
+
+
+</source>
+<source file="systems/click-8.0.4/tests/test_formatting.py" startline="87" endline="121" pcid="429">
+def test_wrapping_long_command_name(runner):
+    @click.group()
+    def cli():
+        """Top level command"""
+
+    @cli.group()
+    def a_very_very_very_long():
+        """Second level"""
+
+    @a_very_very_very_long.command()
+    @click.argument("first")
+    @click.argument("second")
+    @click.argument("third")
+    @click.argument("fourth")
+    @click.argument("fifth")
+    @click.argument("sixth")
+    def command():
+        """A command."""
+
+    result = runner.invoke(
+        cli, ["a-very-very-very-long", "command", "--help"], terminal_width=54
+    )
+    assert not result.exception
+    assert result.output.splitlines() == [
+        "Usage: cli a-very-very-very-long command ",
+        "           [OPTIONS] FIRST SECOND THIRD FOURTH FIFTH",
+        "           SIXTH",
+        "",
+        "  A command.",
+        "",
+        "Options:",
+        "  --help  Show this message and exit.",
+    ]
+
+
+</source>
+</class>
+
+<class classid="11" nclones="6" nlines="13" similarity="75">
+<source file="systems/click-8.0.4/tests/test_formatting.py" startline="145" endline="160" pcid="435">
+def test_formatting_usage_error(runner):
+    @click.command()
+    @click.argument("arg")
+    def cmd(arg):
+        click.echo(f"arg:{arg}")
+
+    result = runner.invoke(cmd, [])
+    assert result.exit_code == 2
+    assert result.output.splitlines() == [
+        "Usage: cmd [OPTIONS] ARG",
+        "Try 'cmd --help' for help.",
+        "",
+        "Error: Missing argument 'ARG'.",
+    ]
+
+
+</source>
+<source file="systems/click-8.0.4/tests/test_formatting.py" startline="218" endline="232" pcid="444">
+def test_formatting_usage_error_no_help(runner):
+    @click.command(add_help_option=False)
+    @click.argument("arg")
+    def cmd(arg):
+        click.echo(f"arg:{arg}")
+
+    result = runner.invoke(cmd, [])
+    assert result.exit_code == 2
+    assert result.output.splitlines() == [
+        "Usage: cmd [OPTIONS] ARG",
+        "",
+        "Error: Missing argument 'ARG'.",
+    ]
+
+
+</source>
+<source file="systems/click-8.0.4/tests/test_formatting.py" startline="161" endline="181" pcid="437">
+def test_formatting_usage_error_metavar_missing_arg(runner):
+    """
+    :author: @r-m-n
+    Including attribution to #612
+    """
+
+    @click.command()
+    @click.argument("arg", metavar="metavar")
+    def cmd(arg):
+        pass
+
+    result = runner.invoke(cmd, [])
+    assert result.exit_code == 2
+    assert result.output.splitlines() == [
+        "Usage: cmd [OPTIONS] metavar",
+        "Try 'cmd --help' for help.",
+        "",
+        "Error: Missing argument 'metavar'.",
+    ]
+
+
+</source>
+<source file="systems/click-8.0.4/tests/test_formatting.py" startline="233" endline="248" pcid="446">
+def test_formatting_usage_custom_help(runner):
+    @click.command(context_settings=dict(help_option_names=["--man"]))
+    @click.argument("arg")
+    def cmd(arg):
+        click.echo(f"arg:{arg}")
+
+    result = runner.invoke(cmd, [])
+    assert result.exit_code == 2
+    assert result.output.splitlines() == [
+        "Usage: cmd [OPTIONS] ARG",
+        "Try 'cmd --man' for help.",
+        "",
+        "Error: Missing argument 'ARG'.",
+    ]
+
+
+</source>
+<source file="systems/click-8.0.4/tests/test_formatting.py" startline="182" endline="197" pcid="439">
+def test_formatting_usage_error_metavar_bad_arg(runner):
+    @click.command()
+    @click.argument("arg", type=click.INT, metavar="metavar")
+    def cmd(arg):
+        pass
+
+    result = runner.invoke(cmd, ["3.14"])
+    assert result.exit_code == 2
+    assert result.output.splitlines() == [
+        "Usage: cmd [OPTIONS] metavar",
+        "Try 'cmd --help' for help.",
+        "",
+        "Error: Invalid value for 'metavar': '3.14' is not a valid integer.",
+    ]
+
+
+</source>
+<source file="systems/click-8.0.4/tests/test_formatting.py" startline="198" endline="217" pcid="441">
+def test_formatting_usage_error_nested(runner):
+    @click.group()
+    def cmd():
+        pass
+
+    @cmd.command()
+    @click.argument("bar")
+    def foo(bar):
+        click.echo(f"foo:{bar}")
+
+    result = runner.invoke(cmd, ["foo"])
+    assert result.exit_code == 2
+    assert result.output.splitlines() == [
+        "Usage: cmd foo [OPTIONS] BAR",
+        "Try 'cmd foo --help' for help.",
+        "",
+        "Error: Missing argument 'BAR'.",
+    ]
+
+
+</source>
+</class>
+
+<class classid="12" nclones="3" nlines="15" similarity="73">
+<source file="systems/click-8.0.4/tests/test_testing.py" startline="12" endline="29" pcid="462">
+def test_runner():
+    @click.command()
+    def test():
+        i = click.get_binary_stream("stdin")
+        o = click.get_binary_stream("stdout")
+        while True:
+            chunk = i.read(4096)
+            if not chunk:
+                break
+            o.write(chunk)
+            o.flush()
+
+    runner = CliRunner()
+    result = runner.invoke(test, input="Hello World!\n")
+    assert not result.exception
+    assert result.output == "Hello World!\n"
+
+
+</source>
+<source file="systems/click-8.0.4/tests/test_testing.py" startline="30" endline="47" pcid="464">
+def test_echo_stdin_stream():
+    @click.command()
+    def test():
+        i = click.get_binary_stream("stdin")
+        o = click.get_binary_stream("stdout")
+        while True:
+            chunk = i.read(4096)
+            if not chunk:
+                break
+            o.write(chunk)
+            o.flush()
+
+    runner = CliRunner(echo_stdin=True)
+    result = runner.invoke(test, input="Hello World!\n")
+    assert not result.exception
+    assert result.output == "Hello World!\nHello World!\n"
+
+
+</source>
+<source file="systems/click-8.0.4/tests/test_testing.py" startline="88" endline="110" pcid="471">
+def test_runner_with_stream():
+    @click.command()
+    def test():
+        i = click.get_binary_stream("stdin")
+        o = click.get_binary_stream("stdout")
+        while True:
+            chunk = i.read(4096)
+            if not chunk:
+                break
+            o.write(chunk)
+            o.flush()
+
+    runner = CliRunner()
+    result = runner.invoke(test, input=BytesIO(b"Hello World!\n"))
+    assert not result.exception
+    assert result.output == "Hello World!\n"
+
+    runner = CliRunner(echo_stdin=True)
+    result = runner.invoke(test, input=BytesIO(b"Hello World!\n"))
+    assert not result.exception
+    assert result.output == "Hello World!\nHello World!\n"
+
+
+</source>
+</class>
+
+<class classid="13" nclones="2" nlines="15" similarity="100">
+<source file="systems/click-8.0.4/tests/test_chain.py" startline="71" endline="90" pcid="518">
+def test_chaining_with_options(runner):
+    @click.group(chain=True)
+    def cli():
+        pass
+
+    @cli.command("sdist")
+    @click.option("--format")
+    def sdist(format):
+        click.echo(f"sdist called {format}")
+
+    @cli.command("bdist")
+    @click.option("--format")
+    def bdist(format):
+        click.echo(f"bdist called {format}")
+
+    result = runner.invoke(cli, ["bdist", "--format=1", "sdist", "--format=2"])
+    assert not result.exception
+    assert result.output.splitlines() == ["bdist called 1", "sdist called 2"]
+
+
+</source>
+<source file="systems/click-8.0.4/tests/test_chain.py" startline="110" endline="129" pcid="525">
+def test_chaining_with_arguments(runner):
+    @click.group(chain=True)
+    def cli():
+        pass
+
+    @cli.command("sdist")
+    @click.argument("format")
+    def sdist(format):
+        click.echo(f"sdist called {format}")
+
+    @cli.command("bdist")
+    @click.argument("format")
+    def bdist(format):
+        click.echo(f"bdist called {format}")
+
+    result = runner.invoke(cli, ["bdist", "1", "sdist", "2"])
+    assert not result.exception
+    assert result.output.splitlines() == ["bdist called 1", "sdist called 2"]
+
+
+</source>
+</class>
+
+<class classid="14" nclones="2" nlines="18" similarity="84">
+<source file="systems/click-8.0.4/tests/test_chain.py" startline="173" endline="194" pcid="536">
+def test_args_and_chain(runner):
+    @click.group(chain=True)
+    def cli():
+        debug()
+
+    @cli.command()
+    def a():
+        debug()
+
+    @cli.command()
+    def b():
+        debug()
+
+    @cli.command()
+    def c():
+        debug()
+
+    result = runner.invoke(cli, ["a", "b", "c"])
+    assert not result.exception
+    assert result.output.splitlines() == ["cli=", "a=", "b=", "c="]
+
+
+</source>
+<source file="systems/click-8.0.4/tests/test_chain.py" startline="225" endline="248" pcid="546">
+def test_multicommand_chaining(runner):
+    @click.group(chain=True)
+    def cli():
+        debug()
+
+    @cli.group()
+    def l1a():
+        debug()
+
+    @l1a.command()
+    def l2a():
+        debug()
+
+    @l1a.command()
+    def l2b():
+        debug()
+
+    @cli.command()
+    def l1b():
+        debug()
+
+    result = runner.invoke(cli, ["l1a", "l2a", "l1b"])
+    assert not result.exception
+    assert result.output.splitlines() == ["cli=", "l1a=", "l2a=", "l1b="]
+</source>
+</class>
+
+<class classid="15" nclones="3" nlines="17" similarity="76">
+<source file="systems/click-8.0.4/tests/test_context.py" startline="10" endline="31" pcid="552">
+def test_ensure_context_objects(runner):
+    class Foo:
+        def __init__(self):
+            self.title = "default"
+
+    pass_foo = click.make_pass_decorator(Foo, ensure=True)
+
+    @click.group()
+    @pass_foo
+    def cli(foo):
+        pass
+
+    @cli.command()
+    @pass_foo
+    def test(foo):
+        click.echo(foo.title)
+
+    result = runner.invoke(cli, ["test"])
+    assert not result.exception
+    assert result.output == "default\n"
+
+
+</source>
+<source file="systems/click-8.0.4/tests/test_context.py" startline="32" endline="54" pcid="556">
+def test_get_context_objects(runner):
+    class Foo:
+        def __init__(self):
+            self.title = "default"
+
+    pass_foo = click.make_pass_decorator(Foo, ensure=True)
+
+    @click.group()
+    @click.pass_context
+    def cli(ctx):
+        ctx.obj = Foo()
+        ctx.obj.title = "test"
+
+    @cli.command()
+    @pass_foo
+    def test(foo):
+        click.echo(foo.title)
+
+    result = runner.invoke(cli, ["test"])
+    assert not result.exception
+    assert result.output == "test\n"
+
+
+</source>
+<source file="systems/click-8.0.4/tests/test_context.py" startline="55" endline="77" pcid="560">
+def test_get_context_objects_no_ensuring(runner):
+    class Foo:
+        def __init__(self):
+            self.title = "default"
+
+    pass_foo = click.make_pass_decorator(Foo)
+
+    @click.group()
+    @click.pass_context
+    def cli(ctx):
+        ctx.obj = Foo()
+        ctx.obj.title = "test"
+
+    @cli.command()
+    @pass_foo
+    def test(foo):
+        click.echo(foo.title)
+
+    result = runner.invoke(cli, ["test"])
+    assert not result.exception
+    assert result.output == "test\n"
+
+
+</source>
+</class>
+
+</clones>

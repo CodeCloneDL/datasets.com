@@ -1,0 +1,399 @@
+<clonepair1>
+<source file="systems/tensor2tensor-1.15.7/tensor2tensor/models/research/transformer_revnet.py" startline="74" endline="136" pcid="2740"></source>
+def transformer_revnet_encoder(encoder_input,
+                               encoder_self_attention_bias,
+                               hparams,
+                               name="encoder"):
+  """A stack of transformer layers.
+
+  Args:
+    encoder_input: a Tensor
+    encoder_self_attention_bias: bias Tensor for self-attention
+       (see common_attention.attention_bias())
+    hparams: hyperparameters for model
+    name: a string
+
+  Returns:
+    y: a Tensors
+  """
+
+  def f(x, side_input):
+    """f(x) for reversible layer, self-attention layer."""
+    encoder_self_attention_bias = side_input[0]
+
+    old_hid_size = hparams.hidden_size
+    hparams.hidden_size = old_hid_size // 2
+
+    with tf.variable_scope("self_attention"):
+      y = common_attention.multihead_attention(
+          common_layers.layer_preprocess(
+              x, hparams), None, encoder_self_attention_bias,
+          hparams.attention_key_channels or hparams.hidden_size,
+          hparams.attention_value_channels or hparams.hidden_size,
+          hparams.hidden_size, hparams.num_heads, hparams.attention_dropout)
+      y = common_layers.layer_postprocess(x, y, hparams)
+    hparams.hidden_size = old_hid_size
+    return y
+
+  def g(x):
+    """g(x) for reversible layer, feed-forward layer."""
+    old_hid_size = hparams.hidden_size
+    hparams.hidden_size = old_hid_size // 2
+
+    with tf.variable_scope("ffn"):
+      y = transformer.transformer_ffn_layer(
+          common_layers.layer_preprocess(x, hparams), hparams)
+      y = common_layers.layer_postprocess(x, y, hparams)
+    hparams.hidden_size = old_hid_size
+    return y
+
+  x1, x2 = tf.split(encoder_input, 2, axis=-1)
+
+  with tf.variable_scope(name):
+    y1, y2 = contrib.layers().rev_block(
+        x1,
+        x2,
+        f,
+        g,
+        num_layers=hparams.num_hidden_layers,
+        f_side_input=[encoder_self_attention_bias],
+        is_training=hparams.mode == tf.estimator.ModeKeys.TRAIN)
+    y = tf.concat([y1, y2], axis=-1)
+
+  return common_layers.layer_preprocess(y, hparams)
+
+
+</clonepair1>
+
+<clonepair1>
+<source file="systems/tensor2tensor-1.15.7/tensor2tensor/models/research/transformer_revnet.py" startline="137" endline="216" pcid="2743"></source>
+def transformer_revnet_decoder(decoder_input,
+                               encoder_output,
+                               decoder_self_attention_bias,
+                               encoder_decoder_attention_bias,
+                               hparams,
+                               name="decoder"):
+  """A stack of transformer layers.
+
+  Args:
+    decoder_input: a Tensor
+    encoder_output: a Tensor
+    decoder_self_attention_bias: bias Tensor for self-attention
+      (see common_attention.attention_bias())
+    encoder_decoder_attention_bias: bias Tensor for encoder-decoder attention
+      (see common_attention.attention_bias())
+    hparams: hyperparameters for model
+    name: a string
+
+  Returns:
+    y: a Tensors
+  """
+
+  def f(x, side_input):
+    """f(x) for reversible layer, self-attention and enc-dec attention."""
+    decoder_self_attention_bias = side_input[0]
+    encoder_decoder_attention_bias = side_input[1]
+    encoder_output = side_input[2]
+
+    old_hid_size = hparams.hidden_size
+    hparams.hidden_size = old_hid_size // 2
+
+    with tf.variable_scope("self_attention"):
+      y = common_attention.multihead_attention(
+          common_layers.layer_preprocess(
+              x, hparams), None, decoder_self_attention_bias,
+          hparams.attention_key_channels or hparams.hidden_size,
+          hparams.attention_value_channels or hparams.hidden_size,
+          hparams.hidden_size, hparams.num_heads, hparams.attention_dropout)
+      y = common_layers.layer_postprocess(x, y, hparams)
+      if encoder_output is not None:
+        with tf.variable_scope("encdec_attention"):
+          y = common_attention.multihead_attention(
+              common_layers.layer_preprocess(
+                  x, hparams), encoder_output, encoder_decoder_attention_bias,
+              hparams.attention_key_channels or hparams.hidden_size,
+              hparams.attention_value_channels or hparams.hidden_size,
+              hparams.hidden_size, hparams.num_heads, hparams.attention_dropout)
+          y = common_layers.layer_postprocess(x, y, hparams)
+    hparams.hidden_size = old_hid_size
+    return y
+
+  def g(x):
+    """g(x) for reversible layer, feed-forward layer."""
+    old_hid_size = hparams.hidden_size
+    hparams.hidden_size = old_hid_size // 2
+    with tf.variable_scope("ffn"):
+      y = transformer.transformer_ffn_layer(
+          common_layers.layer_preprocess(x, hparams), hparams)
+      y = common_layers.layer_postprocess(x, y, hparams)
+    hparams.hidden_size = old_hid_size
+    return y
+
+  x1, x2 = tf.split(decoder_input, 2, axis=-1)
+
+  with tf.variable_scope(name):
+    y1, y2 = contrib.layers().rev_block(
+        x1,
+        x2,
+        f,
+        g,
+        num_layers=hparams.num_hidden_layers,
+        f_side_input=[
+            decoder_self_attention_bias, encoder_decoder_attention_bias,
+            encoder_output
+        ],
+        is_training=hparams.mode == tf.estimator.ModeKeys.TRAIN)
+    y = tf.concat([y1, y2], axis=-1)
+    return common_layers.layer_preprocess(y, hparams)
+
+
+</clonepair1>
+<clonepair2>
+<source file="systems/tensor2tensor-1.15.7/tensor2tensor/data_generators/video_utils.py" startline="377" endline="397" pcid="1516"></source>
+  def example_reading_spec(self):
+    extra_data_fields, extra_data_items_to_decoders = self.extra_reading_spec
+
+    data_fields = {
+        "image/encoded": tf.FixedLenFeature((), tf.string),
+        "image/format": tf.FixedLenFeature((), tf.string),
+    }
+    data_fields.update(extra_data_fields)
+
+    data_items_to_decoders = {
+        "frame":
+            contrib.slim().tfexample_decoder.Image(
+                image_key="image/encoded",
+                format_key="image/format",
+                shape=[self.frame_height, self.frame_width, self.num_channels],
+                channels=self.num_channels),
+    }
+    data_items_to_decoders.update(extra_data_items_to_decoders)
+
+    return data_fields, data_items_to_decoders
+
+</clonepair2>
+
+<clonepair2>
+<source file="systems/tensor2tensor-1.15.7/tensor2tensor/data_generators/video_utils.py" startline="672" endline="687" pcid="1530"></source>
+  def example_reading_spec(self):
+    data_fields = {
+        "image/encoded": tf.FixedLenFeature((), tf.string),
+        "image/format": tf.FixedLenFeature((), tf.string),
+    }
+
+    data_items_to_decoders = {
+        "inputs":
+            contrib.slim().tfexample_decoder.Image(
+                image_key="image/encoded",
+                format_key="image/format",
+                channels=self.num_channels),
+    }
+
+    return data_fields, data_items_to_decoders
+
+</clonepair2>
+<clonepair3>
+<source file="systems/tensor2tensor-1.15.7/tensor2tensor/data_generators/allen_brain.py" startline="346" endline="361" pcid="200"></source>
+  def example_reading_spec(self):
+    data_fields = {
+        "image/encoded": tf.FixedLenFeature((), tf.string),
+        "image/format": tf.FixedLenFeature((), tf.string),
+    }
+
+    data_items_to_decoders = {
+        "targets":
+            contrib.slim().tfexample_decoder.Image(
+                image_key="image/encoded",
+                format_key="image/format",
+                channels=self.num_channels),
+    }
+
+    return data_fields, data_items_to_decoders
+
+</clonepair3>
+
+<clonepair3>
+<source file="systems/tensor2tensor-1.15.7/tensor2tensor/data_generators/video_utils.py" startline="377" endline="397" pcid="1516"></source>
+  def example_reading_spec(self):
+    extra_data_fields, extra_data_items_to_decoders = self.extra_reading_spec
+
+    data_fields = {
+        "image/encoded": tf.FixedLenFeature((), tf.string),
+        "image/format": tf.FixedLenFeature((), tf.string),
+    }
+    data_fields.update(extra_data_fields)
+
+    data_items_to_decoders = {
+        "frame":
+            contrib.slim().tfexample_decoder.Image(
+                image_key="image/encoded",
+                format_key="image/format",
+                shape=[self.frame_height, self.frame_width, self.num_channels],
+                channels=self.num_channels),
+    }
+    data_items_to_decoders.update(extra_data_items_to_decoders)
+
+    return data_fields, data_items_to_decoders
+
+</clonepair3>
+<clonepair4>
+<source file="systems/tensor2tensor-1.15.7/tensor2tensor/data_generators/video_utils.py" startline="377" endline="397" pcid="1516"></source>
+  def example_reading_spec(self):
+    extra_data_fields, extra_data_items_to_decoders = self.extra_reading_spec
+
+    data_fields = {
+        "image/encoded": tf.FixedLenFeature((), tf.string),
+        "image/format": tf.FixedLenFeature((), tf.string),
+    }
+    data_fields.update(extra_data_fields)
+
+    data_items_to_decoders = {
+        "frame":
+            contrib.slim().tfexample_decoder.Image(
+                image_key="image/encoded",
+                format_key="image/format",
+                shape=[self.frame_height, self.frame_width, self.num_channels],
+                channels=self.num_channels),
+    }
+    data_items_to_decoders.update(extra_data_items_to_decoders)
+
+    return data_fields, data_items_to_decoders
+
+</clonepair4>
+
+<clonepair4>
+<source file="systems/tensor2tensor-1.15.7/tensor2tensor/data_generators/image_utils.py" startline="168" endline="183" pcid="1642"></source>
+  def example_reading_spec(self):
+    data_fields = {
+        "image/encoded": tf.FixedLenFeature((), tf.string),
+        "image/format": tf.FixedLenFeature((), tf.string),
+    }
+
+    data_items_to_decoders = {
+        "inputs":
+            contrib.slim().tfexample_decoder.Image(
+                image_key="image/encoded",
+                format_key="image/format",
+                channels=self.num_channels),
+    }
+
+    return data_fields, data_items_to_decoders
+
+</clonepair4>
+<clonepair5>
+<source file="systems/tensor2tensor-1.15.7/tensor2tensor/data_generators/allen_brain.py" startline="346" endline="361" pcid="200"></source>
+  def example_reading_spec(self):
+    data_fields = {
+        "image/encoded": tf.FixedLenFeature((), tf.string),
+        "image/format": tf.FixedLenFeature((), tf.string),
+    }
+
+    data_items_to_decoders = {
+        "targets":
+            contrib.slim().tfexample_decoder.Image(
+                image_key="image/encoded",
+                format_key="image/format",
+                channels=self.num_channels),
+    }
+
+    return data_fields, data_items_to_decoders
+
+</clonepair5>
+
+<clonepair5>
+<source file="systems/tensor2tensor-1.15.7/tensor2tensor/data_generators/video_utils.py" startline="672" endline="687" pcid="1530"></source>
+  def example_reading_spec(self):
+    data_fields = {
+        "image/encoded": tf.FixedLenFeature((), tf.string),
+        "image/format": tf.FixedLenFeature((), tf.string),
+    }
+
+    data_items_to_decoders = {
+        "inputs":
+            contrib.slim().tfexample_decoder.Image(
+                image_key="image/encoded",
+                format_key="image/format",
+                channels=self.num_channels),
+    }
+
+    return data_fields, data_items_to_decoders
+
+</clonepair5>
+<clonepair6>
+<source file="systems/tensor2tensor-1.15.7/tensor2tensor/data_generators/video_utils.py" startline="672" endline="687" pcid="1530"></source>
+  def example_reading_spec(self):
+    data_fields = {
+        "image/encoded": tf.FixedLenFeature((), tf.string),
+        "image/format": tf.FixedLenFeature((), tf.string),
+    }
+
+    data_items_to_decoders = {
+        "inputs":
+            contrib.slim().tfexample_decoder.Image(
+                image_key="image/encoded",
+                format_key="image/format",
+                channels=self.num_channels),
+    }
+
+    return data_fields, data_items_to_decoders
+
+</clonepair6>
+
+<clonepair6>
+<source file="systems/tensor2tensor-1.15.7/tensor2tensor/data_generators/image_utils.py" startline="168" endline="183" pcid="1642"></source>
+  def example_reading_spec(self):
+    data_fields = {
+        "image/encoded": tf.FixedLenFeature((), tf.string),
+        "image/format": tf.FixedLenFeature((), tf.string),
+    }
+
+    data_items_to_decoders = {
+        "inputs":
+            contrib.slim().tfexample_decoder.Image(
+                image_key="image/encoded",
+                format_key="image/format",
+                channels=self.num_channels),
+    }
+
+    return data_fields, data_items_to_decoders
+
+</clonepair6>
+<clonepair7>
+<source file="systems/tensor2tensor-1.15.7/tensor2tensor/data_generators/allen_brain.py" startline="346" endline="361" pcid="200"></source>
+  def example_reading_spec(self):
+    data_fields = {
+        "image/encoded": tf.FixedLenFeature((), tf.string),
+        "image/format": tf.FixedLenFeature((), tf.string),
+    }
+
+    data_items_to_decoders = {
+        "targets":
+            contrib.slim().tfexample_decoder.Image(
+                image_key="image/encoded",
+                format_key="image/format",
+                channels=self.num_channels),
+    }
+
+    return data_fields, data_items_to_decoders
+
+</clonepair7>
+
+<clonepair7>
+<source file="systems/tensor2tensor-1.15.7/tensor2tensor/data_generators/image_utils.py" startline="168" endline="183" pcid="1642"></source>
+  def example_reading_spec(self):
+    data_fields = {
+        "image/encoded": tf.FixedLenFeature((), tf.string),
+        "image/format": tf.FixedLenFeature((), tf.string),
+    }
+
+    data_items_to_decoders = {
+        "inputs":
+            contrib.slim().tfexample_decoder.Image(
+                image_key="image/encoded",
+                format_key="image/format",
+                channels=self.num_channels),
+    }
+
+    return data_fields, data_items_to_decoders
+
+</clonepair7>

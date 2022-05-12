@@ -1,0 +1,134 @@
+<clonepair1>
+<source file="systems/horovod-0.23.0/test/parallel/test_tensorflow.py" startline="3889" endline="3935" pcid="303"></source>
+    def test_horovod_syncbn_gpu(self):
+        """Test that the SyncBatchNormalization implementation is correct on GPU."""
+        # Only do this test if there are GPUs available.
+        if not tf.test.is_gpu_available(cuda_only=True):
+            self.skipTest(("No GPUs available"))
+
+        hvd.init()
+        with tf.device("/gpu:%d" % hvd.local_rank()):
+            x_list = [
+                tf.convert_to_tensor(np.stack([
+                    np.array([
+                        [r, r + 1],
+                        [r * 2, r * 2 + 1],
+                        [r * 3, r * 3 + 1],
+                        [r * 4, r * 4 + 1]
+                    ], dtype=np.float32)
+                    for r in range(hvd.size())
+                ]), np.float32),
+                tf.convert_to_tensor(np.stack([
+                    np.array([
+                        [r + 1],
+                        [r * 2 + 1],
+                        [r * 3 + 1],
+                        [r * 4 + 1]
+                    ], dtype=np.float32)
+                    for r in range(hvd.size())
+                ]), np.float32),
+            ]
+
+            for x in x_list:
+                bn = tf.keras.layers.BatchNormalization(axis=1, fused=False)
+                sync_bn = hvd.SyncBatchNormalization(axis=1)
+                bn_func = bn.apply(x, training=True)
+                sync_bn_func = sync_bn.apply(tf.expand_dims(x[hvd.rank()], 0), training=True)
+
+                try:
+                  init = tf.global_variables_initializer()
+                except AttributeError:
+                  init = tf.compat.v1.global_variables_initializer()
+                self.evaluate(init)
+                bn_out = self.evaluate(bn_func)
+                sync_bn_out = self.evaluate(sync_bn_func)
+</clonepair1>
+
+<clonepair1>
+<source file="systems/horovod-0.23.0/test/parallel/test_tensorflow.py" startline="3936" endline="3979" pcid="304"></source>
+    def test_horovod_syncbn_cpu(self):
+        """Test that the SyncBatchNormalization implementation is correct on CPU."""
+
+        hvd.init()
+        with tf.device("/cpu:0"):
+            x_list = [
+                tf.convert_to_tensor(np.stack([
+                    np.array([
+                        [r, r + 1],
+                        [r * 2, r * 2 + 1],
+                        [r * 3, r * 3 + 1],
+                        [r * 4, r * 4 + 1]
+                    ], dtype=np.float32)
+                    for r in range(hvd.size())
+                ]), np.float32),
+                tf.convert_to_tensor(np.stack([
+                    np.array([
+                        [r + 1],
+                        [r * 2 + 1],
+                        [r * 3 + 1],
+                        [r * 4 + 1]
+                    ], dtype=np.float32)
+                    for r in range(hvd.size())
+                ]), np.float32),
+            ]
+
+            for x in x_list:
+                bn = tf.keras.layers.BatchNormalization(axis=1, fused=False)
+                sync_bn = hvd.SyncBatchNormalization(axis=1)
+                bn_func = bn.apply(x, training=True)
+                sync_bn_func = sync_bn.apply(tf.expand_dims(x[hvd.rank()], 0), training=True)
+
+                try:
+                  init = tf.global_variables_initializer()
+                except AttributeError:
+                  init = tf.compat.v1.global_variables_initializer()
+                self.evaluate(init)
+                bn_out = self.evaluate(bn_func)
+                sync_bn_out = self.evaluate(sync_bn_func)
+</clonepair1>
+<clonepair2>
+<source file="systems/horovod-0.23.0/horovod/spark/lightning/datamodule.py" startline="82" endline="100" pcid="1380"></source>
+    def train_dataloader(self):
+        if self.verbose:
+            print("Setup train dataloader")
+        kwargs = dict(reader=self.train_reader, batch_size=self.train_batch_size,
+                      name="train dataloader",
+                      limit_step_per_epoch=self.steps_per_epoch_train,
+                      verbose=self.verbose)
+        if self.inmemory_cache_all:
+            # Use inmem dataloader
+            dataloader_class = PytorchInmemAsyncDataLoader
+            kwargs['shuffle'] = self.shuffle_size > 0
+            kwargs['num_epochs'] = self.num_train_epochs
+        else:
+            dataloader_class = PytorchInfiniteAsyncDataLoader
+            kwargs['shuffling_queue_capacity'] = self.shuffle_size
+
+        self.train_dl = dataloader_class(**kwargs)
+        return self.train_dl
+
+</clonepair2>
+
+<clonepair2>
+<source file="systems/horovod-0.23.0/horovod/spark/lightning/datamodule.py" startline="101" endline="120" pcid="1381"></source>
+    def val_dataloader(self):
+        if not self.has_val:
+            return None
+        if self.verbose:
+            print("setup val dataloader")
+        kwargs = dict(reader=self.val_reader, batch_size=self.val_batch_size,
+                      name="val dataloader",
+                      limit_step_per_epoch=self.steps_per_epoch_val,
+                      verbose=self.verbose)
+        if self.inmemory_cache_all:
+            # Use inmem dataloader
+            dataloader_class = PytorchInmemAsyncDataLoader
+            kwargs['shuffle'] = False
+            kwargs['num_epochs'] = self.num_train_epochs
+        else:
+            dataloader_class = PytorchInfiniteAsyncDataLoader
+            kwargs['shuffling_queue_capacity'] = 0
+
+        self.val_dl = dataloader_class(**kwargs)
+        return self.val_dl
+</clonepair2>

@@ -1,0 +1,386 @@
+<clonepair1>
+<source file="systems/horovod-0.24.2/test/parallel/test_tensorflow.py" startline="4049" endline="4095" pcid="298"></source>
+    def test_horovod_syncbn_gpu(self):
+        """Test that the SyncBatchNormalization implementation is correct on GPU."""
+        # Only do this test if there are GPUs available.
+        if not tf.test.is_gpu_available(cuda_only=True):
+            self.skipTest(("No GPUs available"))
+
+        hvd.init()
+        with tf.device("/gpu:%d" % hvd.local_rank()):
+            x_list = [
+                tf.convert_to_tensor(np.stack([
+                    np.array([
+                        [r, r + 1],
+                        [r * 2, r * 2 + 1],
+                        [r * 3, r * 3 + 1],
+                        [r * 4, r * 4 + 1]
+                    ], dtype=np.float32)
+                    for r in range(hvd.size())
+                ]), np.float32),
+                tf.convert_to_tensor(np.stack([
+                    np.array([
+                        [r + 1],
+                        [r * 2 + 1],
+                        [r * 3 + 1],
+                        [r * 4 + 1]
+                    ], dtype=np.float32)
+                    for r in range(hvd.size())
+                ]), np.float32),
+            ]
+
+            for x in x_list:
+                bn = tf.keras.layers.BatchNormalization(axis=1, fused=False)
+                sync_bn = hvd.SyncBatchNormalization(axis=1)
+                bn_func = bn(x, training=True)
+                sync_bn_func = sync_bn(tf.expand_dims(x[hvd.rank()], 0), training=True)
+
+                try:
+                  init = tf.global_variables_initializer()
+                except AttributeError:
+                  init = tf.compat.v1.global_variables_initializer()
+                self.evaluate(init)
+                bn_out = self.evaluate(bn_func)
+                sync_bn_out = self.evaluate(sync_bn_func)
+</clonepair1>
+
+<clonepair1>
+<source file="systems/horovod-0.24.2/test/parallel/test_tensorflow.py" startline="4096" endline="4139" pcid="299"></source>
+    def test_horovod_syncbn_cpu(self):
+        """Test that the SyncBatchNormalization implementation is correct on CPU."""
+
+        hvd.init()
+        with tf.device("/cpu:0"):
+            x_list = [
+                tf.convert_to_tensor(np.stack([
+                    np.array([
+                        [r, r + 1],
+                        [r * 2, r * 2 + 1],
+                        [r * 3, r * 3 + 1],
+                        [r * 4, r * 4 + 1]
+                    ], dtype=np.float32)
+                    for r in range(hvd.size())
+                ]), np.float32),
+                tf.convert_to_tensor(np.stack([
+                    np.array([
+                        [r + 1],
+                        [r * 2 + 1],
+                        [r * 3 + 1],
+                        [r * 4 + 1]
+                    ], dtype=np.float32)
+                    for r in range(hvd.size())
+                ]), np.float32),
+            ]
+
+            for x in x_list:
+                bn = tf.keras.layers.BatchNormalization(axis=1, fused=False)
+                sync_bn = hvd.SyncBatchNormalization(axis=1)
+                bn_func = bn(x, training=True)
+                sync_bn_func = sync_bn(tf.expand_dims(x[hvd.rank()], 0), training=True)
+
+                try:
+                  init = tf.global_variables_initializer()
+                except AttributeError:
+                  init = tf.compat.v1.global_variables_initializer()
+                self.evaluate(init)
+                bn_out = self.evaluate(bn_func)
+                sync_bn_out = self.evaluate(sync_bn_func)
+</clonepair1>
+<clonepair2>
+<source file="systems/horovod-0.24.2/horovod/spark/torch/estimator.py" startline="354" endline="377" pcid="1191"></source>
+    def __init__(self,
+                 history=None,
+                 model=None,
+                 feature_columns=None,
+                 input_shapes=None,
+                 label_columns=None,
+                 optimizer=None,
+                 run_id=None,
+                 _metadata=None,
+                 loss=None,
+                 loss_constructors=None):
+        super(TorchModel, self).__init__()
+
+        if label_columns:
+            self.setOutputCols([col + '__output' for col in label_columns])
+
+        self._setDefault(optimizer=None,
+                         loss=None,
+                         loss_constructors=None,
+                         input_shapes=None)
+
+</clonepair2>
+
+<clonepair2>
+<source file="systems/horovod-0.24.2/horovod/spark/keras/estimator.py" startline="393" endline="412" pcid="1238"></source>
+    def __init__(self,
+                 history=None,
+                 model=None,
+                 feature_columns=None,
+                 label_columns=None,
+                 custom_objects=None,
+                 run_id=None,
+                 _metadata=None,
+                 _floatx=None):
+
+        super(KerasModel, self).__init__()
+
+        if label_columns:
+            self.setOutputCols([col + '__output' for col in label_columns])
+
+        self._setDefault(custom_objects={})
+
+        kwargs = self._input_kwargs
+        self.setParams(**kwargs)
+
+</clonepair2>
+<clonepair3>
+<source file="systems/horovod-0.24.2/horovod/spark/keras/estimator.py" startline="393" endline="412" pcid="1238"></source>
+    def __init__(self,
+                 history=None,
+                 model=None,
+                 feature_columns=None,
+                 label_columns=None,
+                 custom_objects=None,
+                 run_id=None,
+                 _metadata=None,
+                 _floatx=None):
+
+        super(KerasModel, self).__init__()
+
+        if label_columns:
+            self.setOutputCols([col + '__output' for col in label_columns])
+
+        self._setDefault(custom_objects={})
+
+        kwargs = self._input_kwargs
+        self.setParams(**kwargs)
+
+</clonepair3>
+
+<clonepair3>
+<source file="systems/horovod-0.24.2/horovod/spark/lightning/estimator.py" startline="533" endline="556" pcid="1329"></source>
+    def __init__(self,
+                 history=None,
+                 model=None,
+                 feature_columns=None,
+                 input_shapes=None,
+                 label_columns=None,
+                 optimizer=None,
+                 run_id=None,
+                 _metadata=None,
+                 loss=None,
+                 loss_constructors=None):
+        super(TorchModel, self).__init__()
+
+        if label_columns:
+            self.setOutputCols([col + '__output' for col in label_columns])
+
+        self._setDefault(optimizer=None,
+                         loss=None,
+                         loss_constructors=None,
+                         input_shapes=None)
+
+        kwargs = self._input_kwargs
+</clonepair3>
+<clonepair4>
+<source file="systems/horovod-0.24.2/horovod/mxnet/mpi_ops.py" startline="166" endline="216" pcid="677"></source>
+def grouped_allreduce(tensors, average=True, name=None, priority=0, prescale_factor=1.0,
+                      postscale_factor=1.0, process_set=global_process_set):
+    """
+    A function that performs averaging or summation of the input
+    tensors over all the Horovod processes. The input tensors are not modified.
+
+    The reduction operations are keyed by the base name. If a base name is not
+    provided, an incremented auto-generated base name is used. Reductions are
+    performed across tensors in the same list position. The tensor type and
+    shape must be the same on all Horovod processes for tensors sharing
+    positions in the input tensor list. The reduction will not start until all
+    processes are ready to send and receive the tensors.
+
+    Arguments:
+        tensors: A list of tensors to average or sum.
+        average: A flag indicating whether to compute average or summation,
+                 defaults to average.
+        name: A base name to use for the group reduction operation
+        priority: The priority of this operation. Higher priority operations
+                  are likely to be executed before other operations.
+        prescale_factor: Multiplicative factor to scale tensor before allreduce
+        postscale_factor: Multiplicative factor to scale tensor after allreduce
+        process_set: Process set object to limit this operation to a subset of
+                     Horovod processes. Default is the global process set.
+
+    Returns:
+        A list containing tensors of the same shape and type as in `tensors`,
+        averaged or summed across all processes.
+    """
+
+    if not tensors:
+      return tensors
+
+    outputs = [mx.nd.zeros(shape=tensor.shape, ctx=tensor.context,
+                         dtype=tensor.dtype) for tensor in tensors]
+
+    c_in = c_handle_array(tensors)
+    c_out = c_handle_array(outputs)
+    c_name = c_str(name) if isinstance(name, string_types) else ctypes.c_char_p(None)
+
+    check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_allreduce_async(
+        c_in, c_out, c_name, ctypes.c_bool(average),
+        ctypes.c_int(priority),
+        ctypes.c_double(prescale_factor),
+        ctypes.c_double(postscale_factor),
+        ctypes.c_int(len(tensors)),
+        ctypes.c_int(process_set.process_set_id)))
+
+    return outputs
+
+</clonepair4>
+
+<clonepair4>
+<source file="systems/horovod-0.24.2/horovod/mxnet/mpi_ops.py" startline="217" endline="264" pcid="678"></source>
+def grouped_allreduce_(tensors, average=True, name=None, priority=0, prescale_factor=1.0,
+                       postscale_factor=1.0, process_set=global_process_set):
+    """
+    A function that performs in-place averaging or summation of the input
+    tensors over all the Horovod processes.
+
+    The reduction operations are keyed by the base name. If a base name is not
+    provided, an incremented auto-generated base name is used. Reductions are
+    performed across tensors in the same list position. The tensor type and
+    shape must be the same on all Horovod processes for tensors sharing
+    positions in the input tensor list. The reduction will not start until all
+    processes are ready to send and receive the tensors.
+
+    Arguments:
+        tensors: A list of tensors to average or sum.
+        average: A flag indicating whether to compute average or summation,
+                 defaults to average.
+        name: A base name to use for the group reduction operation
+        priority: The priority of this operation. Higher priority operations
+                  are likely to be executed before other operations.
+        prescale_factor: Multiplicative factor to scale tensor before allreduce
+        postscale_factor: Multiplicative factor to scale tensor after allreduce
+        process_set: Process set object to limit this operation to a subset of
+                     Horovod processes. Default is the global process set.
+
+    Returns:
+        A list containing tensors of the same shape and type as in `tensors`,
+        averaged or summed across all processes.
+    """
+
+    if not tensors:
+      return tensors
+
+    c_in = c_handle_array(tensors)
+    c_out = c_handle_array(tensors)
+    c_name = c_str(name) if isinstance(name, string_types) else ctypes.c_char_p(None)
+
+    check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_allreduce_async(
+        c_in, c_out, c_name, ctypes.c_bool(average),
+        ctypes.c_int(priority),
+        ctypes.c_double(prescale_factor),
+        ctypes.c_double(postscale_factor),
+        ctypes.c_int(len(tensors)),
+        ctypes.c_int(process_set.process_set_id)))
+
+    return tensors
+
+</clonepair4>
+<clonepair5>
+<source file="systems/horovod-0.24.2/horovod/mxnet/mpi_ops.py" startline="74" endline="122" pcid="675"></source>
+def allreduce(tensor, average=True, name=None, priority=0, prescale_factor=1.0,
+              postscale_factor=1.0, process_set=global_process_set):
+    """
+    A function that performs averaging or summation of the input tensor over
+    all the Horovod processes. The input tensor is not modified.
+
+    The reduction operation is keyed by the name. If name is not provided, an
+    incremented auto-generated name is used. The tensor type and shape must be
+    the same on all Horovod processes for a given name. The reduction will not
+    start until all processes are ready to send and receive the tensor.
+
+    This acts as a thin wrapper around an autograd function.  If your input
+    tensor requires gradients, then callings this function will allow gradients
+    to be computed and backpropagated.
+
+    Arguments:
+        tensor: A tensor to average or sum.
+        average: A flag indicating whether to compute average or summation,
+                 defaults to average.
+        name: A name of the reduction operation.
+        priority: The priority of this operation. Higher priority operations
+                  are likely to be executed before other operations.
+        prescale_factor: Multiplicative factor to scale tensor before allreduce
+        postscale_factor: Multiplicative factor to scale tensor after allreduce
+        process_set: Process set object to limit this operation to a subset of
+                     Horovod processes. Default is the global process set.
+
+    Returns:
+        A tensor of the same shape and type as `tensor`, averaged or summed
+        across all processes.
+    """
+    output = mx.nd.zeros(shape=tensor.shape, ctx=tensor.context,
+                         dtype=tensor.dtype)
+
+    c_in = tensor.handle
+    c_out = output.handle
+    c_name = c_str(name) if isinstance(name, string_types) else ctypes.c_char_p(None)
+
+    check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_allreduce_async(
+        ctypes.byref(c_in), ctypes.byref(c_out), c_name, ctypes.c_bool(average),
+        ctypes.c_int(priority),
+        ctypes.c_double(prescale_factor),
+        ctypes.c_double(postscale_factor),
+        ctypes.c_int(1),
+        ctypes.c_int(process_set.process_set_id)))
+
+    return output
+
+</clonepair5>
+
+<clonepair5>
+<source file="systems/horovod-0.24.2/horovod/mxnet/mpi_ops.py" startline="123" endline="165" pcid="676"></source>
+def allreduce_(tensor, average=True, name=None, priority=0, prescale_factor=1.0,
+               postscale_factor=1.0, process_set=global_process_set):
+    """
+    A function that performs in-place averaging or summation of the input
+    tensor over all the Horovod processes.
+
+    The reduction operation is keyed by the name. If name is not provided, an
+    incremented auto-generated name is used. The tensor type and shape must be
+    the same on all Horovod processes for a given name. The reduction will not
+    start until all processes are ready to send and receive the tensor.
+
+    Arguments:
+        tensor: A tensor to average or sum.
+        average: A flag indicating whether to compute average or summation,
+                 defaults to average.
+        name: A name of the reduction operation.
+        priority: The priority of this operation. Higher priority operations
+                  are likely to be executed before other operations.
+        prescale_factor: Multiplicative factor to scale tensor before allreduce
+        postscale_factor: Multiplicative factor to scale tensor after allreduce
+        process_set: Process set object to limit this operation to a subset of
+                     Horovod processes. Default is the global process set.
+
+    Returns:
+        A tensor of the same shape and type as `tensor`, averaged or summed
+        across all processes.
+    """
+
+    c_in = tensor.handle
+    c_out = tensor.handle
+    c_name = c_str(name) if isinstance(name, string_types) else ctypes.c_char_p(None)
+
+    check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_allreduce_async(
+        ctypes.byref(c_in), ctypes.byref(c_out), c_name, ctypes.c_bool(average),
+        ctypes.c_int(priority),
+        ctypes.c_double(prescale_factor),
+        ctypes.c_double(postscale_factor),
+        ctypes.c_int(1),
+        ctypes.c_int(process_set.process_set_id)))
+
+    return tensor
+
+</clonepair5>
