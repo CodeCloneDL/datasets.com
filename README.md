@@ -1,4 +1,4 @@
-# CCDetector is a tool based on NiCad, suitable for Python Projects, implementing clone type separation as well as co-change detection.
+# CCDetector is a tool based on NiCad, suitable for Python projects, implementing clone type separation as well as co-change detection.
 
 ## Prerequisites
 You need to use [NiCad-6.2](https://www.txl.ca/txl-nicaddownload.html) to detect the clones of your projects and get the normalized result files.You can't modify any normalized files.
