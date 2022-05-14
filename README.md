@@ -31,5 +31,5 @@ This process is implemented by Class *CCCloneSeparator*.
 
 ![Image](https://user-images.githubusercontent.com/105061953/168298875-e27b5f34-a7e0-49ff-89b8-42d49add2d37.png)
 
-- Output.The result is written into the FinalResults in the *Co-change Detection* result files.
+- Output.The result is written into the *FinalResults* file in the *Co-change Detection* result files.
 
