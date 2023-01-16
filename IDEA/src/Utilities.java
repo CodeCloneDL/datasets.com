@@ -42,7 +42,7 @@ public class Utilities {
         return Integer.parseInt(strtmp.toString());
     }
 
-    public  static boolean judge1_4CCClone(String[] string1,String[] string2,String[] string3,String[] string4){
+    public static boolean judge1_4CCClone(String[] string1, String[] string2, String[] string3, String[] string4) {
         System.out.println("函数匹配成功！开始检测是否发生共变！");
         int changeflag1 = 0;
         for (int i = 0; i < string1.length; ++i) {
@@ -75,7 +75,7 @@ public class Utilities {
         return changeflag1 != 0 && changeflag2 != 0;
     }
 
-    public  static boolean judge1_3CCClone(String[] string1,String[] string2,String[] string3,String[] string4){
+    public static boolean judge1_3CCClone(String[] string1, String[] string2, String[] string3, String[] string4) {
         System.out.println("函数匹配成功！开始检测是否发生共变！");
         int changeflag1 = 0;
         for (int i = 0; i < string1.length; ++i) {
@@ -108,36 +108,35 @@ public class Utilities {
         return changeflag1 != 0 && changeflag2 != 0;
     }
 
-    public static void printTime(long l){
-        long minute,second;
-        minute=l/1000/60;
-        second=l/1000%60;
-        System.out.println("运行时间为："+minute+"分"+second+"秒");
+    public static void printTime(long l) {
+        long minute, second;
+        minute = l / 1000 / 60;
+        second = l / 1000 % 60;
+        System.out.println("运行时间为：" + minute + "分" + second + "秒");
     }
 
     public static void deleteFileOrDir(File file) throws Exception {
-        if (file.isFile()){//判断是否为文件，是，则删除
-            if(!file.delete())
-                throw new Exception("删除"+file.getAbsolutePath()+"文件失败！");
-        }
-        else{
+        if (file.isFile()) {//判断是否为文件，是，则删除
+            if (!file.delete())
+                throw new Exception("删除" + file.getAbsolutePath() + "文件失败！");
+        } else {
             File[] files = file.listFiles();
-            for (File filetmp : files){
+            for (File filetmp : files) {
                 deleteFileOrDir(filetmp);//递归，对每个都进行判断
             }
-            if(!file.delete())
-                throw  new Exception("删除"+file.getAbsolutePath()+"文件夹失败！");
+            if (!file.delete())
+                throw new Exception("删除" + file.getAbsolutePath() + "文件夹失败！");
         }
     }
 
-    public static void copyFile(String rename1,String rename2) throws Exception {
+    public static void copyFile(String rename1, String rename2) throws Exception {
 
         BufferedReader bufferedReader = new BufferedReader(new FileReader(rename1));
         BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(rename2));
 
         String str;
         while ((str = bufferedReader.readLine()) != null) {
-            bufferedWriter.write(str+"\n");
+            bufferedWriter.write(str + "\n");
         }
 
         //关闭文件
@@ -162,7 +161,7 @@ public class Utilities {
                 // 准备复制的目标文件夹
                 String dir2 = targetDir + File.separator + value.getName();
                 File file1 = new File(dir2);
-                if(!file1.exists())
+                if (!file1.exists())
                     file1.mkdir();
                 copyDir(dir1, dir2);
             }
@@ -179,7 +178,7 @@ public class Utilities {
         int startline, endline;
 
         while ((tmp = bufferedReader.readLine()) != null) {
-            if (!tmp.contains("startline")||!set.add(Utilities.getPcid(tmp)))
+            if (!tmp.contains("startline") || !set.add(Utilities.getPcid(tmp)))
                 continue;
             startline = tmp.indexOf("startline=") + 11;
             endline = tmp.indexOf("endline=") + 9;
@@ -194,7 +193,7 @@ public class Utilities {
                 str2.append(tmp.charAt(endline));
                 ++endline;
             }
-            sum += Integer.parseInt(str2.toString()) - Integer.parseInt(str1.toString())+1;
+            sum += Integer.parseInt(str2.toString()) - Integer.parseInt(str1.toString()) + 1;
         }
         bufferedReader.close();
         return sum;
@@ -203,7 +202,7 @@ public class Utilities {
     public static int GetNiCadTotalCloneNum(File file) throws IOException {
         FileReader fileReader = new FileReader(file);
         BufferedReader bufferedReader = new BufferedReader(fileReader);
-        String tmp ;
+        String tmp;
         int a, sum = 0;
         while ((tmp = bufferedReader.readLine()) != null) {
             a = tmp.indexOf("<clone nlines");
@@ -216,10 +215,10 @@ public class Utilities {
 
     public static int GetTotalCloneNum(File file) throws IOException {
         BufferedReader bufferedReader = new BufferedReader(new FileReader(file));
-        String tmp ;
+        String tmp;
         int a, sum = 0;
         while ((tmp = bufferedReader.readLine()) != null) {
-            if(tmp.contains("<clonepair")){
+            if (tmp.contains("<clonepair")) {
                 sum++;
             }
         }
@@ -228,7 +227,7 @@ public class Utilities {
     }
 }
 
-class AlphanumFileComparator<T> implements Comparator<T>{
+class AlphanumFileComparator<T> implements Comparator<T> {
 
     public String getUnit(String s, int strlength, int marker) {
         StringBuilder Unit = new StringBuilder();
@@ -243,8 +242,7 @@ class AlphanumFileComparator<T> implements Comparator<T>{
                 Unit.append(c);
                 marker++;
             }
-        }
-        else {
+        } else {
             while (marker < strlength) {
                 c = s.charAt(marker);
                 if (isDigit(c))
@@ -277,7 +275,7 @@ class AlphanumFileComparator<T> implements Comparator<T>{
             thatMarker += thatUnit.length();
 
 
-            int result ;
+            int result;
             if (isDigit(thisUnit.charAt(0)) && isDigit(thatUnit.charAt(0))) {
                 int thisUnitLength = thisUnit.length();
                 result = thisUnitLength - thatUnit.length();
@@ -300,7 +298,7 @@ class AlphanumFileComparator<T> implements Comparator<T>{
         return s1Length - s2Length;
     }
 
-    public  boolean isDigit(char ch) {
+    public boolean isDigit(char ch) {
         return ch >= 48 && ch <= 57;
     }
 }

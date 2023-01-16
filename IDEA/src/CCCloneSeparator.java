@@ -15,8 +15,8 @@ public class CCCloneSeparator {
         File[] inputCCTAS = new File("InputCCTA").listFiles();//该文件夹存入的共变数据结果来作为输入。
 
         assert inputCCTAS != null;
-        Arrays.sort(inputCCTAS,new AlphanumFileComparator<>());
-        int i=0;
+        Arrays.sort(inputCCTAS, new AlphanumFileComparator<>());
+        int i = 0;
 
         while (i < inputCCTAS.length) {//该循环遍历每个项目文件
 
@@ -29,21 +29,20 @@ public class CCCloneSeparator {
             }
             BufferedReader bufferedReader = new BufferedReader(new FileReader(files[j]));//打开noduplicated文件
 
-            j=0;
+            j = 0;
             while (!files[j].getName().contains("FinalResults")) {//该循环获得FinalResults后缀名的文件
                 j++;
             }
-            BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(files[j],true));//打开FinalResults文件
+            BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(files[j], true));//打开FinalResults文件
 
 
             String tmp;
             tmp = bufferedReader.readLine();
 
             int nums = 0;
-            int type1nums=0;
-            int type2nums=0;
-            int type3nums=0;
-
+            int type1nums = 0;
+            int type2nums = 0;
+            int type3nums = 0;
 
 
             int type1Loc = 0;
@@ -68,7 +67,7 @@ public class CCCloneSeparator {
 
                     nums++;//记录检测共变克隆数
 
-                    int tmpflag=0;
+                    int tmpflag = 0;
 
                     //取这一对克隆的PCID
                     tmp = bufferedReader.readLine();
@@ -77,319 +76,239 @@ public class CCCloneSeparator {
                     String pcid2 = Utilities.getPcid(tmp);
 
 
-
                     //在共变克隆中找到一对克隆，然后去对应的类型文件里面去匹配，从类型1文件开始。
                     String name = inputCCTAS[i].getName();
 
                     File[] inputCS = new File("InputCS").listFiles();
                     assert inputCS != null;
-                    Arrays.sort(inputCS,new AlphanumFileComparator<>());
+                    Arrays.sort(inputCS, new AlphanumFileComparator<>());
 
-                    int k=0;
+                    int k = 0;
 
-                    while(k<inputCS.length){//该循环用来查找clone-abstract文件夹
-                        if(inputCS[k].getName().contains(name+"_clone-abstract")){//找到对应项目克隆分类文件
+                    while (k < inputCS.length) {//该循环用来查找clone-abstract文件夹
+                        if (inputCS[k].getName().contains(name + "_clone-abstract")) {//找到对应项目克隆分类文件
                             File[] files1 = inputCS[k].listFiles();
                             assert files1 != null;
-                            Arrays.sort(files1,new AlphanumFileComparator<>());
+                            Arrays.sort(files1, new AlphanumFileComparator<>());
 
-                            int u=1;
-                            while(u<4){//该循环依次查找每个文件的每个克隆对
+                            int u = 1;
+                            while (u < 4) {//该循环依次查找每个文件的每个克隆对
                                 BufferedReader bufferedReader1 = new BufferedReader(new FileReader(files1[u]));
-                                String tmp1=bufferedReader1.readLine();
+                                String tmp1 = bufferedReader1.readLine();
 
-                                while(tmp1!=null){//该循环查找该文件的每一对克隆对
-                                    if(tmp1.contains("<clone nlines")){
+                                while (tmp1 != null) {//该循环查找该文件的每一对克隆对
+                                    if (tmp1.contains("<clone nlines")) {
 
                                         int loc;
 
-                                        tmp1=bufferedReader1.readLine();
-                                        String tmppcid1= Utilities.getPcid(tmp1);
+                                        tmp1 = bufferedReader1.readLine();
+                                        String tmppcid1 = Utilities.getPcid(tmp1);
 
                                         int loc1 = Utilities.getEndLine(tmp1) - Utilities.getStartLine(tmp1) + 1;
 
-                                        tmp1=bufferedReader1.readLine();
-                                        String tmppcid2=Utilities.getPcid(tmp1);
+                                        tmp1 = bufferedReader1.readLine();
+                                        String tmppcid2 = Utilities.getPcid(tmp1);
 
-                                        int loc2 = Utilities.getEndLine(tmp1) - Utilities.getStartLine(tmp1) + 1 ;
+                                        int loc2 = Utilities.getEndLine(tmp1) - Utilities.getStartLine(tmp1) + 1;
 
 
-                                        if(pcid1.equals(tmppcid1)&&pcid2.equals(tmppcid2)||
-                                        pcid1.equals(tmppcid2)&&pcid2.equals(tmppcid1)){
-                                            switch (u){
-                                                case 1 :{
-                                                    tmpflag=1;
+                                        if (pcid1.equals(tmppcid1) && pcid2.equals(tmppcid2) ||
+                                                pcid1.equals(tmppcid2) && pcid2.equals(tmppcid1)) {
+                                            switch (u) {
+                                                case 1: {
+                                                    tmpflag = 1;
                                                     type1nums++;
 
                                                     loc = loc1;
-                                                    if(loc <= 20)
-                                                    {
+                                                    if (loc <= 20) {
                                                         range1[0]++;
-                                                        if(set1.add(tmppcid1))
+                                                        if (set1.add(tmppcid1))
                                                             range1LOC[0] += loc;
-                                                    }
-
-                                                    else if(loc <= 40)
-                                                    {
+                                                    } else if (loc <= 40) {
                                                         range1[1]++;
-                                                        if(set1.add(tmppcid1))
+                                                        if (set1.add(tmppcid1))
                                                             range1LOC[1] += loc;
-                                                    }
-
-                                                    else if(loc <=60){
+                                                    } else if (loc <= 60) {
                                                         range1[2]++;
-                                                        if(set1.add(tmppcid1))
+                                                        if (set1.add(tmppcid1))
                                                             range1LOC[2] += loc;
-                                                    }
-
-                                                    else if(loc <= 80){
+                                                    } else if (loc <= 80) {
                                                         range1[3]++;
-                                                        if(set1.add(tmppcid1))
+                                                        if (set1.add(tmppcid1))
                                                             range1LOC[3] += loc;
-                                                    }
-
-                                                    else if(loc <= 100)
-                                                    {
+                                                    } else if (loc <= 100) {
                                                         range1[4]++;
-                                                        if(set1.add(tmppcid1))
+                                                        if (set1.add(tmppcid1))
                                                             range1LOC[4] += loc;
-                                                    }
-
-                                                    else{
+                                                    } else {
                                                         range1[5]++;
-                                                        if(set1.add(tmppcid1))
+                                                        if (set1.add(tmppcid1))
                                                             range1LOC[5] += loc;
                                                     }
 
 
                                                     loc = loc2;
-                                                    if(loc <= 20)
-                                                    {
+                                                    if (loc <= 20) {
                                                         range1[0]++;
-                                                        if(set1.add(tmppcid2))
+                                                        if (set1.add(tmppcid2))
                                                             range1LOC[0] += loc;
-                                                    }
-
-                                                    else if(loc <= 40)
-                                                    {
+                                                    } else if (loc <= 40) {
                                                         range1[1]++;
-                                                        if(set1.add(tmppcid2))
+                                                        if (set1.add(tmppcid2))
                                                             range1LOC[1] += loc;
-                                                    }
-
-                                                    else if(loc <=60){
+                                                    } else if (loc <= 60) {
                                                         range1[2]++;
-                                                        if(set1.add(tmppcid2))
+                                                        if (set1.add(tmppcid2))
                                                             range1LOC[2] += loc;
-                                                    }
-
-                                                    else if(loc <= 80){
+                                                    } else if (loc <= 80) {
                                                         range1[3]++;
-                                                        if(set1.add(tmppcid2))
+                                                        if (set1.add(tmppcid2))
                                                             range1LOC[3] += loc;
-                                                    }
-
-                                                    else if(loc <= 100)
-                                                    {
+                                                    } else if (loc <= 100) {
                                                         range1[4]++;
-                                                        if(set1.add(tmppcid2))
+                                                        if (set1.add(tmppcid2))
                                                             range1LOC[4] += loc;
-                                                    }
-
-                                                    else{
+                                                    } else {
                                                         range1[5]++;
-                                                        if(set1.add(tmppcid2))
+                                                        if (set1.add(tmppcid2))
                                                             range1LOC[5] += loc;
                                                     }
 
                                                     break;
                                                 }
-                                                case 2 :{
-                                                    tmpflag=1;
+                                                case 2: {
+                                                    tmpflag = 1;
                                                     type2nums++;
 
                                                     loc = loc1;
-                                                    if(loc <= 20)
-                                                    {
+                                                    if (loc <= 20) {
                                                         range2[0]++;
-                                                        if(set2.add(tmppcid1))
+                                                        if (set2.add(tmppcid1))
                                                             range2LOC[0] += loc;
-                                                    }
-
-                                                    else if(loc <= 40)
-                                                    {
+                                                    } else if (loc <= 40) {
                                                         range2[1]++;
-                                                        if(set2.add(tmppcid1))
+                                                        if (set2.add(tmppcid1))
                                                             range2LOC[1] += loc;
-                                                    }
-
-                                                    else if(loc <=60){
+                                                    } else if (loc <= 60) {
                                                         range2[2]++;
-                                                        if(set2.add(tmppcid1))
+                                                        if (set2.add(tmppcid1))
                                                             range2LOC[2] += loc;
-                                                    }
-
-                                                    else if(loc <= 80){
+                                                    } else if (loc <= 80) {
                                                         range2[3]++;
-                                                        if(set2.add(tmppcid1))
+                                                        if (set2.add(tmppcid1))
                                                             range2LOC[3] += loc;
-                                                    }
-
-                                                    else if(loc <= 100)
-                                                    {
+                                                    } else if (loc <= 100) {
                                                         range2[4]++;
-                                                        if(set2.add(tmppcid1))
+                                                        if (set2.add(tmppcid1))
                                                             range2LOC[4] += loc;
-                                                    }
-
-                                                    else{
+                                                    } else {
                                                         range2[5]++;
-                                                        if(set2.add(tmppcid1))
+                                                        if (set2.add(tmppcid1))
                                                             range2LOC[5] += loc;
                                                     }
 
 
-
                                                     loc = loc2;
-                                                    if(loc <= 20)
-                                                    {
+                                                    if (loc <= 20) {
                                                         range2[0]++;
-                                                        if(set2.add(tmppcid2))
+                                                        if (set2.add(tmppcid2))
                                                             range2LOC[0] += loc;
-                                                    }
-
-                                                    else if(loc <= 40)
-                                                    {
+                                                    } else if (loc <= 40) {
                                                         range2[1]++;
-                                                        if(set2.add(tmppcid2))
+                                                        if (set2.add(tmppcid2))
                                                             range2LOC[1] += loc;
-                                                    }
-
-                                                    else if(loc <=60){
+                                                    } else if (loc <= 60) {
                                                         range2[2]++;
-                                                        if(set2.add(tmppcid2))
+                                                        if (set2.add(tmppcid2))
                                                             range2LOC[2] += loc;
-                                                    }
-
-                                                    else if(loc <= 80){
+                                                    } else if (loc <= 80) {
                                                         range2[3]++;
-                                                        if(set2.add(tmppcid2))
+                                                        if (set2.add(tmppcid2))
                                                             range2LOC[3] += loc;
-                                                    }
-
-                                                    else if(loc <= 100)
-                                                    {
+                                                    } else if (loc <= 100) {
                                                         range2[4]++;
-                                                        if(set2.add(tmppcid2))
+                                                        if (set2.add(tmppcid2))
                                                             range2LOC[4] += loc;
-                                                    }
-
-                                                    else{
+                                                    } else {
                                                         range2[5]++;
-                                                        if(set2.add(tmppcid2))
+                                                        if (set2.add(tmppcid2))
                                                             range2LOC[5] += loc;
                                                     }
 
                                                     break;
                                                 }
-                                                case 3 :{
-                                                    tmpflag=1;
+                                                case 3: {
+                                                    tmpflag = 1;
                                                     type3nums++;
 
 
                                                     loc = loc1;
-                                                    if(loc <= 20)
-                                                    {
+                                                    if (loc <= 20) {
                                                         range3[0]++;
-                                                        if(set3.add(tmppcid1))
+                                                        if (set3.add(tmppcid1))
                                                             range3LOC[0] += loc;
-                                                    }
-
-                                                    else if(loc <= 40)
-                                                    {
+                                                    } else if (loc <= 40) {
                                                         range3[1]++;
-                                                        if(set3.add(tmppcid1))
+                                                        if (set3.add(tmppcid1))
                                                             range3LOC[1] += loc;
-                                                    }
-
-                                                    else if(loc <=60){
+                                                    } else if (loc <= 60) {
                                                         range3[2]++;
-                                                        if(set3.add(tmppcid1))
+                                                        if (set3.add(tmppcid1))
                                                             range3LOC[2] += loc;
-                                                    }
-
-                                                    else if(loc <= 80){
+                                                    } else if (loc <= 80) {
                                                         range3[3]++;
-                                                        if(set3.add(tmppcid1))
+                                                        if (set3.add(tmppcid1))
                                                             range3LOC[3] += loc;
-                                                    }
-
-                                                    else if(loc <= 100)
-                                                    {
+                                                    } else if (loc <= 100) {
                                                         range3[4]++;
-                                                        if(set3.add(tmppcid1))
+                                                        if (set3.add(tmppcid1))
                                                             range3LOC[4] += loc;
-                                                    }
-
-                                                    else{
+                                                    } else {
                                                         range3[5]++;
-                                                        if(set3.add(tmppcid1))
+                                                        if (set3.add(tmppcid1))
                                                             range3LOC[5] += loc;
                                                     }
 
 
-
                                                     loc = loc2;
-                                                    if(loc <= 20)
-                                                    {
+                                                    if (loc <= 20) {
                                                         range3[0]++;
-                                                        if(set3.add(tmppcid2))
+                                                        if (set3.add(tmppcid2))
                                                             range3LOC[0] += loc;
-                                                    }
-
-                                                    else if(loc <= 40)
-                                                    {
+                                                    } else if (loc <= 40) {
                                                         range3[1]++;
-                                                        if(set3.add(tmppcid2))
+                                                        if (set3.add(tmppcid2))
                                                             range3LOC[1] += loc;
-                                                    }
-
-                                                    else if(loc <=60){
+                                                    } else if (loc <= 60) {
                                                         range3[2]++;
-                                                        if(set3.add(tmppcid2))
+                                                        if (set3.add(tmppcid2))
                                                             range3LOC[2] += loc;
-                                                    }
-
-                                                    else if(loc <= 80){
+                                                    } else if (loc <= 80) {
                                                         range3[3]++;
-                                                        if(set3.add(tmppcid2))
+                                                        if (set3.add(tmppcid2))
                                                             range3LOC[3] += loc;
-                                                    }
-
-                                                    else if(loc <= 100)
-                                                    {
+                                                    } else if (loc <= 100) {
                                                         range3[4]++;
-                                                        if(set3.add(tmppcid2))
+                                                        if (set3.add(tmppcid2))
                                                             range3LOC[4] += loc;
-                                                    }
-
-                                                    else{
+                                                    } else {
                                                         range3[5]++;
-                                                        if(set3.add(tmppcid2))
+                                                        if (set3.add(tmppcid2))
                                                             range3LOC[5] += loc;
                                                     }
 
                                                     break;
                                                 }
-                                                default : break;
+                                                default:
+                                                    break;
                                             }
                                         }
-                                        if (tmpflag==1)
+                                        if (tmpflag == 1)
                                             break;
                                     }
-                                    tmp1=bufferedReader1.readLine();
+                                    tmp1 = bufferedReader1.readLine();
                                 }
-                                if(tmpflag==1)
+                                if (tmpflag == 1)
                                     break;
                                 u++;
                                 bufferedReader1.close();
@@ -409,27 +328,27 @@ public class CCCloneSeparator {
 
             bufferedWriter.write("\n\n\n/***************Here are the numbers for each clone type***************/\n");
 
-            bufferedWriter.write("\nThere are a total of "+ nums +" co-modified clones.\n\nAmong them,\n\nType1：  "+type1nums+" pairs     Type2:  "+type2nums+" pairs "
-            +"     Type3:  "+type3nums+" pairs");
+            bufferedWriter.write("\nThere are a total of " + nums + " co-modified clones.\n\nAmong them,\n\nType1：  " + type1nums + " pairs     Type2:  " + type2nums + " pairs "
+                    + "     Type3:  " + type3nums + " pairs");
 
             bufferedWriter.write("\n\n\n/********************Classifying methods in clones by LOC(Considering the number of times the method appears)***************/\n");
 
             bufferedWriter.write("\nThe LOC range is divided into： 5-20  21-40  41-60   61-80  81-100  >=101\n");
 
-            bufferedWriter.write("\nType1：  "+range1[0]+"  "+range1[1]+"  "+range1[2]+"  "+range1[3]+"  "+range1[4]+"  "+range1[5]+"\n");
+            bufferedWriter.write("\nType1：  " + range1[0] + "  " + range1[1] + "  " + range1[2] + "  " + range1[3] + "  " + range1[4] + "  " + range1[5] + "\n");
 
-            bufferedWriter.write("\nType2：  "+range2[0]+"  "+range2[1]+"  "+range2[2]+"  "+range2[3]+"  "+range2[4]+"  "+range2[5]+"\n");
+            bufferedWriter.write("\nType2：  " + range2[0] + "  " + range2[1] + "  " + range2[2] + "  " + range2[3] + "  " + range2[4] + "  " + range2[5] + "\n");
 
-            bufferedWriter.write("\nType3：  "+range3[0]+"  "+range3[1]+"  "+range3[2]+"  "+range3[3]+"  "+range3[4]+"  "+range3[5]+"\n");
+            bufferedWriter.write("\nType3：  " + range3[0] + "  " + range3[1] + "  " + range3[2] + "  " + range3[3] + "  " + range3[4] + "  " + range3[5] + "\n");
 
             bufferedWriter.write("\n\n\n/********************Classifying methods in clones by LOC(Considering the LOC size of the method)***************/\n");
             bufferedWriter.write("\nThe LOC range is divided into： 5-20  21-40  41-60   61-80  81-100  >=101\n");
 
-            bufferedWriter.write("\nType1：  "+range1LOC[0]+"  "+range1LOC[1]+"  "+range1LOC[2]+"  "+range1LOC[3]+"  "+range1LOC[4]+"  "+range1LOC[5]+"\n");
+            bufferedWriter.write("\nType1：  " + range1LOC[0] + "  " + range1LOC[1] + "  " + range1LOC[2] + "  " + range1LOC[3] + "  " + range1LOC[4] + "  " + range1LOC[5] + "\n");
 
-            bufferedWriter.write("\nType2：  "+range2LOC[0]+"  "+range2LOC[1]+"  "+range2LOC[2]+"  "+range2LOC[3]+"  "+range2LOC[4]+"  "+range2LOC[5]+"\n");
+            bufferedWriter.write("\nType2：  " + range2LOC[0] + "  " + range2LOC[1] + "  " + range2LOC[2] + "  " + range2LOC[3] + "  " + range2LOC[4] + "  " + range2LOC[5] + "\n");
 
-            bufferedWriter.write("\nType3：  "+range3LOC[0]+"  "+range3LOC[1]+"  "+range3LOC[2]+"  "+range3LOC[3]+"  "+range3LOC[4]+"  "+range3LOC[5]+"\n");
+            bufferedWriter.write("\nType3：  " + range3LOC[0] + "  " + range3LOC[1] + "  " + range3LOC[2] + "  " + range3LOC[3] + "  " + range3LOC[4] + "  " + range3LOC[5] + "\n");
 
 
             bufferedWriter.close();//关闭FinalResults文件
