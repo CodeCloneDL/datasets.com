@@ -139,88 +139,91 @@ public class LocationTaxonomy {
                         // 求出该对克隆是哪种位置类型。
                         if (temp1.equals(temp2)) { // 属于同一文件下克隆;
                             sameFileNum++;
+                            if (flag == 1) {
+                                sameFileNum1++;
+                            } else if (flag == 2) {
+                                sameFileNum2++;
+                            } else {
+                                sameFileNum3++;
+                            }
                             if (set.add(pcid1)) {
                                 sameFileLoc += loc1;
                                 if (flag == 1) { // 1型克隆
                                     sameFileLoc1 += loc1;
-                                    sameFileNum1++;
                                 } else if (flag == 2) { // 2型克隆
                                     sameFileLoc2 += loc1;
-                                    sameFileNum2++;
                                 } else if (flag == 3){ // 3型克隆
                                     sameFileLoc3 += loc1;
-                                    sameFileNum3++;
                                 }
                             }
                             if (set.add(pcid2)) {
                                 sameFileLoc += loc2;
                                 if (flag == 1) { // 1型克隆
                                     sameFileLoc1 += loc2;
-                                    sameFileNum1++;
                                 } else if (flag == 2) { // 2型克隆
                                     sameFileLoc2 += loc2;
-                                    sameFileNum2++;
                                 } else if (flag == 3){ // 3型克隆
                                     sameFileLoc3 += loc2;
-                                    sameFileNum3++;
                                 }
                             }
 
                         } else if (temp1.substring(0, temp1.lastIndexOf("/")).equals(temp2.substring(0, temp2.lastIndexOf("/")))){
                             // 同一目录下的共变克隆
                             sameDirNum++;
+                            if (flag == 1) {
+                                sameDirNum1++;
+                            } else if (flag == 2){
+                                sameDirNum2++;
+                            } else {
+                                sameDirNum3++;
+                            }
                             if (set.add(pcid1)) {
                                 sameDirLoc += loc1;
                                 if (flag == 1) { // 1型克隆
                                     sameDirLoc1 += loc1;
-                                    sameDirNum1++;
                                 } else if (flag == 2) { // 2型克隆
                                     sameDirLoc2 += loc1;
-                                    sameDirNum2++;
                                 } else if (flag == 3){ // 3型克隆
                                     sameDirLoc3 += loc1;
-                                    sameDirNum3++;
                                 }
                             }
                             if (set.add(pcid2)) {
                                 sameDirLoc += loc2;
                                 if (flag == 1) { // 1型克隆
                                     sameDirLoc1 += loc2;
-                                    sameDirNum1++;
                                 } else if (flag == 2) { // 2型克隆
                                     sameDirLoc2 += loc2;
-                                    sameDirNum2++;
                                 } else if (flag == 3){ // 3型克隆
                                     sameDirLoc3 += loc2;
-                                    sameDirNum3++;
                                 }
                             }
                         } else { // 不同目录下的共变克隆
                             DiffDirNum++;
+                            if (flag == 1) {
+                                DiffDirNum1++;
+                            } else if (flag == 2) {
+                                DiffDirNum2++;
+                            } else {
+                                DiffDirNum3++;
+                            }
                             if (set.add(pcid1)) {
                                 DiffDirLoc += loc1;
                                 if (flag == 1) { // 1型克隆
                                     DiffDirLoc1 += loc1;
-                                    DiffDirNum1++;
                                 } else if (flag == 2) { // 2型克隆
                                     DiffDirLoc2 += loc1;
-                                    DiffDirNum2++;
                                 } else if (flag == 3){ // 3型克隆
                                     DiffDirLoc3 += loc1;
-                                    DiffDirNum3++;
                                 }
                             }
                             if (set.add(pcid2)) {
                                 DiffDirLoc += loc2;
                                 if (flag == 1) { // 1型克隆
                                     DiffDirLoc1 += loc2;
-                                    DiffDirNum1++;
                                 } else if (flag == 2) { // 2型克隆
                                     DiffDirLoc2 += loc2;
-                                    DiffDirNum2++;
                                 } else if (flag == 3){ // 3型克隆
                                     DiffDirLoc3 += loc2;
-                                    DiffDirNum3++;
                                 }
                             }
                         }
