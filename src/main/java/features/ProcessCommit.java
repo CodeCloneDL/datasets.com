@@ -3,6 +3,7 @@ package features;
 import org.apache.commons.math3.distribution.RealDistribution;
 
 import java.io.*;
+import java.util.regex.Pattern;
 
 public class ProcessCommit {
     public static void main(String[] args) throws IOException {
@@ -30,25 +31,29 @@ public class ProcessCommit {
             BufferedReader bR = new BufferedReader(new FileReader(file)); // 读取这个文件;
             String temp = bR.readLine();
             while (temp != null) {
+                // 找到一个commit的位置
                 while (temp != null && !temp.contains("commit")) temp = bR.readLine();
                 if (temp == null) break; // 到达末尾;
-                // 如果commit的下一行不是Author，说明这个commit不是我们要的，跳过;
+
+                // 检验commit是否是正确的格式;
+                if (!checkIfIsCommit(temp)) {
+                    temp = bR.readLine();
+                    continue;
+                }
                 temp = bR.readLine();
-                if (!temp.contains("Author")) continue;
+                if (!temp.startsWith("Author")) continue;
+                // 跳过日期，直奔message主体
                 temp = bR.readLine();
-                if (!temp.contains("Date")) continue;
+
                 ++totalCommit; // 找到了一个commit;
-                temp = bR.readLine();
+                temp = bR.readLine(); // 开始读取内容
                 boolean bugFlag = false; // 只需要找一个关键词匹配到了就行。
-                while (temp != null && !temp.contains("commit")) {
+                while (temp != null && !checkIfIsCommit(temp)) {
                     if (!bugFlag) {
                         temp = temp.toLowerCase();
-                        for (String keyWord : keyWords) {
-                            if (temp.contains(keyWord)) {
-                                ++bugCommit;
-                                bugFlag = true;
-                                break;
-                            }
+                        if (checkIfKeyWordsMatch(temp, keyWords)) {
+                            bugFlag = true;
+                            bugCommit++;
                         }
                     }
                     temp = bR.readLine();
@@ -58,5 +63,18 @@ public class ProcessCommit {
             // 打印结果出来;
             System.out.println("commit总数: " + totalCommit +", bugfix数量: " + bugCommit + "    " + name);
         }
+    }
+    // 检查commit的格式是否是 commit + 空格 + 40位hash值
+    public static boolean checkIfIsCommit(String str) throws IOException {
+        String regex = "commit\\s[0-9a-f]{40}";
+        Pattern pattern = Pattern.compile(regex);
+        return pattern.matcher(str).matches();
+    }
+    // 检查关键字是否匹配;
+    public  static boolean checkIfKeyWordsMatch(String str, String[] keyWords) {
+        for (String keyWord : keyWords) {
+            if (Pattern.compile(keyWord).matcher(str).find()) return true;
+        }
+        return false;
     }
 }
