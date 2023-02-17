@@ -32,19 +32,15 @@ public class ProcessCommit {
             String temp = bR.readLine();
             while (temp != null) {
                 // 找到一个commit的位置
-                while (temp != null && !temp.contains("commit")) temp = bR.readLine();
+                while (temp != null && !checkIfIsCommit(temp)) temp = bR.readLine();
                 if (temp == null) break; // 到达末尾;
-
-                // 检验commit是否是正确的格式;
-                if (!checkIfIsCommit(temp)) {
-                    temp = bR.readLine();
-                    continue;
-                }
+                // 再次确认是否是需要的commit
                 temp = bR.readLine();
                 if (!temp.startsWith("Author")) continue;
-                // 跳过日期，直奔message主体
                 temp = bR.readLine();
+                if (!temp.startsWith("Date")) continue;
 
+                // 找到了需要的commit hunk
                 ++totalCommit; // 找到了一个commit;
                 temp = bR.readLine(); // 开始读取内容
                 boolean bugFlag = false; // 只需要找一个关键词匹配到了就行。
@@ -68,7 +64,7 @@ public class ProcessCommit {
     public static boolean checkIfIsCommit(String str) throws IOException {
         String regex = "commit\\s[0-9a-f]{40}";
         Pattern pattern = Pattern.compile(regex);
-        return pattern.matcher(str).matches();
+        return pattern.matcher(str).find();
     }
     // 检查关键字是否匹配;
     public  static boolean checkIfKeyWordsMatch(String str, String[] keyWords) {
