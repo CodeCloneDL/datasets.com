@@ -11,19 +11,21 @@ public class ProcessCommit {
         String path = "D:\\tmp"; // 每个项目的目录所在的目录; 自定义
         ProcessCommit.calCommitNum(path);
 
-        //
+        // 2.
     }
 
     // 功能： 1. 计算 'git log commit1..commit2'产生的commit信息文件中所有的commit数量
     // 2. 计算其中bug-fixing commit的数量
     // 3. 提取出bug-fixing 的所有commit id;
     public static void calCommitNum(String path) throws IOException {
+        // 用于bug-fixing commit的关键字匹配
         String[] keyWords = new String[]{"bug", "fix", "wrong", "error", "fail", "problem", "patch"};
+
         File[] Dir = new File(path).listFiles(); // 项目目录所在目录;
-        for (File project : Dir) { // 项目所在的目录
+        for (File project : Dir) { // 每次取一个项目目录
             String name = project.getName(); // 项目名
 
-            // 找到目标log文件;
+            // 找到项目文件夹中的目标log文件;
             File target = null;
             for (File file : project.listFiles()) {
                 if (file.getName().contains("_log.txt")) {
@@ -35,6 +37,7 @@ public class ProcessCommit {
             // 把所有的bug-fixing ID都写入以commitIds结尾的文件中;
             BufferedWriter bW = new BufferedWriter(new FileWriter(new File(project.getAbsolutePath() + File.separator + name + "_commitIds.txt")));
             int k = 0;
+
             // 开始读取文件，看文件中有多少commit和bug-fixing commit
             int totalCommit = 0, bugCommit = 0;
             BufferedReader bR = new BufferedReader(new FileReader(target)); // 读取这个文件;
@@ -43,7 +46,8 @@ public class ProcessCommit {
                 // 找到一个commit的位置
                 while (temp != null && !checkIfIsCommit(temp)) temp = bR.readLine();
                 if (temp == null) break; // 到达末尾;
-                String commitId = temp;
+
+                String commitId = temp; // 保存commit的信息
                 // 再次确认是否是需要的commit
                 String Author = bR.readLine();
                 if (!Author.startsWith("Author")) continue;
