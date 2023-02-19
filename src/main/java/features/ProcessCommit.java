@@ -10,13 +10,14 @@ public class ProcessCommit {
     public static void main(String[] args) throws IOException {
         // 1. 提取commit 和bug-fixing commit,及对应的id
         String projectsDir = "D:\\tmp"; // 每个项目的目录所在的目录; 自定义
-        ProcessCommit.calCommitNum(projectsDir);
+//        ProcessCommit.calCommitNum(projectsDir);
 
         // 2. 提取所有bug-fixing commit的diff结果到文件中;
         String gitRepoPath = "D:\\GitRepository";
-        extractAllDiffOfBugFixingCommitToFile(projectsDir, gitRepoPath);
+//        extractAllDiffOfBugFixingCommitToFile(projectsDir, gitRepoPath);
 
         // 3. 从diff文件提取修改行;
+        CalAllChangedLinesToFile(projectsDir, gitRepoPath);
     }
 
     // 功能： 1. 计算 'git log commit1..commit2'产生的commit信息文件中所有的commit数量
@@ -82,14 +83,12 @@ public class ProcessCommit {
             System.out.println("commit总数: " + totalCommit + ", bugfix数量: " + bugCommit + "    " + name);
         }
     }
-
     // 检查commit的格式是否是 commit + 空格 + 40位hash值
     public static boolean checkIfIsCommit(String str) throws IOException {
         String regex = "commit\\s[0-9a-f]{40}";
         Pattern pattern = Pattern.compile(regex);
         return pattern.matcher(str).find() && str.startsWith("commit");
     }
-
     // 检查关键字是否匹配;
     public static boolean checkIfKeyWordsMatch(String str, String[] keyWords) {
         for (String keyWord : keyWords) {
@@ -97,6 +96,8 @@ public class ProcessCommit {
         }
         return false;
     }
+
+
 
 
     // 功能2： 利用每个项目的所有bug-fixing Id，提取所有的bug_fixing commit的diff结果存到文件中;
@@ -132,7 +133,6 @@ public class ProcessCommit {
             bR.close();
         }
     }
-
     // 执行一个长命令，把命令结果输出到target文件所在目录的新文件中，文件的名字格式为 "bug_fixing_commit_" + index;
     public static void implLongCommand(List<String> command, int index, File target) {
         try {
@@ -156,6 +156,8 @@ public class ProcessCommit {
     }
 
 
+
+
     // 功能： 3. 从diff文件中提取修改行到目标文件中;
     public static void CalAllChangedLinesToFile(String projectDir, String gitRepoPath) throws IOException {
         File[] projects = new File(projectDir).listFiles();
@@ -164,39 +166,43 @@ public class ProcessCommit {
         for (File project : projects) { // 针对每一个项目，提取每个bug-fixing的修改行，存到对应的文件中;
             for (File file : project.listFiles()) {
                 String name = file.getName();
-                if (name.startsWith("bug_fixing_commit")) continue; // 只考虑每一个buf-fixing文件;
+                if (!name.startsWith("bug_fixing_commit")) continue; // 只考虑每一个buf-fixing文件;
                 int index = Integer.parseInt(name.substring(name.lastIndexOf("_") + 1, name.lastIndexOf(".txt"))); // 当前commit的序号
 
                 BufferedReader reader = new BufferedReader(new FileReader(file)); // 读取bug-fixing文件;
                 // 目标结果文件，保存新增行的结果;
-                BufferedWriter addWriter = new BufferedWriter(new FileWriter(new File(project.getAbsolutePath() + File.separator + "ChangedLines_commit_" + index + ".txt")));
+                BufferedWriter addWriter = new BufferedWriter(new FileWriter(new File(project.getAbsolutePath() + File.separator + "ChangedLines_commit_Add_" + index + ".txt")));
                 // 目标结果文件，保存删除行的结果;
                 BufferedWriter minusWriter = new BufferedWriter(new FileWriter(new File(project.getAbsolutePath() + File.separator + "ChangedLines_commit_Minus_" + index + ".txt")));
 
                 String line = reader.readLine();
                 while(line != null) { // 读取文件的每一行;
-                    if (line.startsWith("diff -git")) { // 处理每一个diff，一个diff就是一个文件的变化;
+                    // 处理每一个diff，一个diff就是一个文件内的变化，因此保存文件的路径，以及这个文件中发生修改的这些行号。
+                    if (line.startsWith("diff --git")) {
                         String[] str = line.split(" ");
-                        String minusFilePath = name + File.separator + str[2].substring(str[2].indexOf("/") + 1, str[2].length()); // 被比较文件的路径;
-                        String addFilePath = name + File.separator + str[3].substring(str[3].indexOf("/") + 1, str[3].length()); // 比较文件的路径;
-                        minusWriter.write("___" + minusFilePath + "___\n"); //每一diff都是一个文件;
-                        addWriter.write("___" + addFilePath + "___\n");
+                        String minusFilePath = project.getName() + "/" + str[2].substring(str[2].indexOf("/") + 1, str[2].length()); // 被比较文件的路径;
+                        String addFilePath = project.getName() + "/" + str[3].substring(str[3].indexOf("/") + 1, str[3].length()); // 比较文件的路径;
+                        minusWriter.write("___" + minusFilePath + "___\n"); //每一diff都是一个文件内的变化;
+                        addWriter.write("___" + addFilePath + "___\n"); // 每一个diff都是一个文件内的变化;
+                        // 保存发生修改的行号，是离散的行号
+                        StringBuilder msb = new StringBuilder(); // 被比较的 修改行
+                        StringBuilder asb = new StringBuilder(); // 比较的 修改行
+
                         line = reader.readLine();
-                        if (line.startsWith("index")) { // 同时删除和增加同一文件中的行;
+                        if (line.startsWith("index")) { // 情况一：同时删除和增加同一文件中的行的diff的模式，当前行一定是index开头的;
                             // 提取所有的hunk块
-                            StringBuilder msb = new StringBuilder();
-                            StringBuilder asb = new StringBuilder();
                             while (line != null) {
-                                while (line != null && !line.startsWith("diff -git") && !line.startsWith("@@")) line = reader.readLine();
-                                if (line == null || line.startsWith("diff -git")) break;
+                                while (line != null && !line.startsWith("diff --git") && !line.startsWith("@@")) line = reader.readLine();
+                                if (line == null || line.startsWith("diff --git")) break;
                                 // 找到了一对hunk块;
                                 // 提取被比较文件的起始行，和比较文件的起始行;
                                 int[] startsLine = analyzeHunk(line); // startLines[0]，是被比较文件的起始行，[1]是比较文件的起始行;
                                 int mK = startsLine[0] - 1, aK = startsLine[1] - 1;
                                 line = reader.readLine();
-                                while (line != null && !line.startsWith("diff -git") && !line.startsWith("@@")) {
+                                while (line != null && !line.startsWith("diff --git") && !line.startsWith("@@")) {
                                     if (line.startsWith(" ")) {
-                                        mK++; aK++;
+                                        mK++;
+                                        aK++;
                                     } else if (line.startsWith("-")) {
                                         mK++;
                                         msb.append(mK + " ");
@@ -206,31 +212,33 @@ public class ProcessCommit {
                                     }
                                     line = reader.readLine(); // 一直遍历当前hunk块;
                                 }
+                                if (line == null || line.startsWith("diff --git")) break;
                             }
                             // 删除最后一个空格
-                            msb.deleteCharAt(msb.length() - 2);
+                            if (msb.length() != 0) msb.deleteCharAt(msb.length() - 1);
                             minusWriter.write(msb.toString());
                             minusWriter.newLine();
                             minusWriter.newLine();
                             minusWriter.newLine();
                             // 删除最后一个空格
-                            asb.deleteCharAt(asb.length() - 2);
+                            if (asb.length() != 0) asb.deleteCharAt(asb.length() - 1);
                             addWriter.write(asb.toString());
                             addWriter.newLine();
                             addWriter.newLine();
                             addWriter.newLine();
-                        } else if (line.startsWith("deleted")){ // 删除了一个文件
 
-                        } else if (line.startsWith("new")) { // 增加了一个文件;
+                        } else if (line.startsWith("deleted")){ // 情况二：删除了一个文件
+
+                        } else if (line.startsWith("new")) { // 情况三：增加了一个文件;
 
                         }
+                        minusWriter.newLine();
+                        addWriter.newLine();
                     } else {
                         line = reader.readLine();
                     }
                 }
-
-
-
+                // 一个bug-fixing commit的文件读取结束，关闭所有流;
                 addWriter.close();
                 minusWriter.close();
                 reader.close();
