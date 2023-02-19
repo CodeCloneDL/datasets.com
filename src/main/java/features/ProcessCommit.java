@@ -8,16 +8,20 @@ import java.util.regex.Pattern;
 
 public class ProcessCommit {
     public static void main(String[] args) throws IOException {
+        String projectsDir = "D:\\tmp";
+        String gitRepoPath = "D:\\GitRepository";
         // 1. 提取commit 和bug-fixing commit,及对应的id
-        String projectsDir = "D:\\tmp"; // 每个项目的目录所在的目录; 自定义
+         // 每个项目的目录所在的目录; 自定义
 //        ProcessCommit.calCommitNum(projectsDir);
 
         // 2. 提取所有bug-fixing commit的diff结果到文件中;
-        String gitRepoPath = "D:\\GitRepository";
 //        extractAllDiffOfBugFixingCommitToFile(projectsDir, gitRepoPath);
 
         // 3. 从diff文件提取修改行;
-        CalAllChangedLinesToFile(projectsDir);
+//        CalAllChangedLinesToFile(projectsDir);
+
+        // 4. saveAllVersionFiles
+        saveAllBugFixingCommitDir(projectsDir, gitRepoPath);
     }
 
     // 功能： 1. 计算 'git log commit1..commit2'产生的commit信息文件中所有的commit数量
@@ -101,6 +105,8 @@ public class ProcessCommit {
     }
 
 
+
+
     // 功能2： 利用每个项目的所有bug-fixing Id，提取所有的bug_fixing commit的diff结果存到文件中;
     public static void extractAllDiffOfBugFixingCommitToFile(String projectsDir, String gitRepoPath) throws IOException {
         File[] projects = new File(projectsDir).listFiles();
@@ -160,7 +166,9 @@ public class ProcessCommit {
     }
 
 
-    // 功能： 3. 从diff文件中提取修改行到目标文件中;
+
+
+    // 功能3. 从diff文件中提取修改行到目标文件中;
     public static void CalAllChangedLinesToFile(String projectDir) throws IOException {
         File[] projects = new File(projectDir).listFiles();
 
@@ -266,4 +274,65 @@ public class ProcessCommit {
         return new int[]{minusK, addK};
     }
 
+
+
+
+    // 功能4： 到每个项目的git仓库中，切换到每一个bug-fixing commit版本以及commit^版本， 并将当前目录的所有文件都复制一份到
+    // 目标目录下即可;
+    public static void saveAllBugFixingCommitDir(String projectsDir, String gitRepoPath) throws IOException {
+        File projectDir = new File(projectsDir); // 项目所在的目录;
+        for (File project : Objects.requireNonNull(projectDir.listFiles())) { // 遍历每一个项目的目录;
+            String name = project.getName(); // 项目的名称;
+
+            // 找到保存所有commitId的文件;
+            File commitIdsFile = null;
+            for (File file : Objects.requireNonNull(project.listFiles())) {
+                if (!file.getName().endsWith("commitIds.txt")) continue;
+                commitIdsFile = file;
+                break;
+            }
+
+            // 开始读取每一个commitId
+            BufferedReader reader = new BufferedReader(new FileReader(commitIdsFile));
+            String line;
+            while ((line = reader.readLine()) != null) { // 读取每一个;
+                String[] arr = line.split(" ");
+                String commit = arr[0]; // commitId的值
+                int index = Integer.parseInt(arr[1]); // 第几个id;
+
+                // 拿到Id, 开始去git仓库里面切换版本，并保存版本文件;
+                // 第一次执行命令，拿到commitId的版本文件；
+                List<String> command = new ArrayList<>();
+                command.add("pwsh");
+                command.add("-Command");
+                command.add("cd " + "D:\\GitRepository\\" + name +"\n");
+                command.add("git switch --detach " + commit + "\n");
+                command.add("cp -r ..\\" + name + " D:\\tmp\\" + name + "\n");
+                command.add("mv D:\\tmp\\" + name + "\\" + name + " D:\\tmp\\" + name + "\\" + name + "_Add_" + index);
+                implCommand(command); // 执行命令，将每个commitId对应的diff结果存到文件中;
+
+                // 第二次执行命令，拿到commitId^的版本文件;
+                command = new ArrayList<>();
+                command.add("pwsh");
+                command.add("-Command");
+                command.add("cd " + "D:\\GitRepository\\" + name +"\n");
+                command.add("git switch --detach " + commit + "^\n");
+                command.add("cp -r ..\\" + name + " D:\\tmp\\" + name + "\n");
+                command.add("mv D:\\tmp\\" + name + "\\" + name + " D:\\tmp\\" + name + "\\" + name + "_Minus_" + index);
+                implCommand(command);
+            }
+        }
+    }
+
+    // 仅仅执行一次传入的命令， 不要求返回值;
+    public static void implCommand(List<String> command) {
+        try {
+            ProcessBuilder processBuilder = new ProcessBuilder(command);
+            processBuilder.redirectErrorStream(true);
+            Process process = processBuilder.start();
+            process.waitFor();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }

@@ -1,42 +1,39 @@
 import org.apache.logging.log4j.message.StructuredDataId;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 
 public class TestServeralFunc {
-    static ProcessBuilder pB = new ProcessBuilder("pwsh", "-NoExit", "-NoLogo");
-    static Process process;
-    static OutputStream stdin;
-    static InputStream stdout;
-    public static void main(String[] args) throws IOException {
-        pB.directory(new File("D:\\tmp\\"));
-        pB.redirectErrorStream(true);
 
-        LinkedList<String> command = new LinkedList<>();
-        ExeLongCommand("cd D:\\tmp");
-        ExeLongCommand("pwd");
-        ExeLongCommand("cd D:\\Clash");
-        ExeLongCommand("pwd");
+    public static void main(String[] args) {
+        List<String> command = new ArrayList<>(); // 执行的命令;
+        command.add("pwsh");
+        command.add("-Command");
+        command.add("cd " + "D:\\GitRepository\\autokeras\n");
+        command.add("git switch --detach d22b71d190f68b95b7171f1fddf6ff4692078a0d\n");
+        command.add("cp -r ..\\autokeras D:\\tmp\\autokeras");
+        implLongCommand(command); // 执行命令，将每个commitId对应的diff结果存到文件中;
     }
-    // 传入一个长命令，使用pwsh执行，并
-    public static void ExeLongCommand(String command) {
+
+
+    public static void implLongCommand(List<String> command) {
         try {
-            process = pB.start();
-            stdin = process.getOutputStream();
-            stdout = process.getInputStream();
-            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(stdin));
-            writer.write(command);
-            writer.flush();;
-            writer.close();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(stdout));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                System.out.println(line);
-            }
+            ProcessBuilder processBuilder = new ProcessBuilder(command);
+            processBuilder.redirectErrorStream(true);
+            Process process = processBuilder.start();
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+//            BufferedWriter writer = new BufferedWriter(new FileWriter(target.getParent() + File.separator + "bug_fixing_commit_" + index + ".txt"));
+//            String line;
+//            while ((line = reader.readLine()) != null) {
+//                writer.write(line + "\n");
+//            }
 
             process.waitFor();
             reader.close();
-
+//            writer.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
