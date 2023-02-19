@@ -1,7 +1,6 @@
 package features;
 
 import java.io.*;
-import java.security.AlgorithmConstraints;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -83,12 +82,14 @@ public class ProcessCommit {
             System.out.println("commit总数: " + totalCommit + ", bugfix数量: " + bugCommit + "    " + name);
         }
     }
+
     // 检查commit的格式是否是 commit + 空格 + 40位hash值
     public static boolean checkIfIsCommit(String str) throws IOException {
         String regex = "commit\\s[0-9a-f]{40}";
         Pattern pattern = Pattern.compile(regex);
         return pattern.matcher(str).find() && str.startsWith("commit");
     }
+
     // 检查关键字是否匹配;
     public static boolean checkIfKeyWordsMatch(String str, String[] keyWords) {
         for (String keyWord : keyWords) {
@@ -96,8 +97,6 @@ public class ProcessCommit {
         }
         return false;
     }
-
-
 
 
     // 功能2： 利用每个项目的所有bug-fixing Id，提取所有的bug_fixing commit的diff结果存到文件中;
@@ -133,6 +132,7 @@ public class ProcessCommit {
             bR.close();
         }
     }
+
     // 执行一个长命令，把命令结果输出到target文件所在目录的新文件中，文件的名字格式为 "bug_fixing_commit_" + index;
     public static void implLongCommand(List<String> command, int index, File target) {
         try {
@@ -156,8 +156,6 @@ public class ProcessCommit {
     }
 
 
-
-
     // 功能： 3. 从diff文件中提取修改行到目标文件中;
     public static void CalAllChangedLinesToFile(String projectDir, String gitRepoPath) throws IOException {
         File[] projects = new File(projectDir).listFiles();
@@ -176,29 +174,30 @@ public class ProcessCommit {
                 BufferedWriter minusWriter = new BufferedWriter(new FileWriter(new File(project.getAbsolutePath() + File.separator + "ChangedLines_commit_Minus_" + index + ".txt")));
 
                 String line = reader.readLine();
-                while(line != null) { // 读取文件的每一行;
+                while (line != null) { // 读取文件的每一行;
                     // 处理每一个diff，一个diff就是一个文件内的变化，因此保存文件的路径，以及这个文件中发生修改的这些行号。
                     if (line.startsWith("diff --git")) {
                         String[] str = line.split(" ");
                         String minusFilePath = project.getName() + "/" + str[2].substring(str[2].indexOf("/") + 1, str[2].length()); // 被比较文件的路径;
                         String addFilePath = project.getName() + "/" + str[3].substring(str[3].indexOf("/") + 1, str[3].length()); // 比较文件的路径;
-                        minusWriter.write("___" + minusFilePath + "___\n"); //每一diff都是一个文件内的变化;
-                        addWriter.write("___" + addFilePath + "___\n"); // 每一个diff都是一个文件内的变化;
-                        // 保存发生修改的行号，是离散的行号
+                        minusWriter.write("***** " + minusFilePath + " *****\n"); //每一diff都是一个文件内的变化;
+                        addWriter.write("***** " + addFilePath + " *****\n"); // 每一个diff都是一个文件内的变化;
+                        // 保存发生修改的行号，是离散的行号;一个diff都是一个文件内的修改行号;
                         StringBuilder msb = new StringBuilder(); // 被比较的 修改行
                         StringBuilder asb = new StringBuilder(); // 比较的 修改行
 
-                        line = reader.readLine();
-                        if (line.startsWith("index")) { // 情况一：同时删除和增加同一文件中的行的diff的模式，当前行一定是index开头的;
+                        line = reader.readLine(); // 读到diff的第二行
+                        // 只考虑同时修改，仅删除，仅新加的情况，像什么文件更名，文件的权限更改的请求，都不考虑。
+                        if (line.startsWith("index") || line.startsWith("deleted") || line.startsWith("new")) {
                             // 提取所有的hunk块
                             while (line != null) {
                                 while (line != null && !line.startsWith("diff --git") && !line.startsWith("@@")) line = reader.readLine();
-                                if (line == null || line.startsWith("diff --git")) break;
+                                if (line == null || line.startsWith("diff --git")) break; // 提前结束
                                 // 找到了一对hunk块;
                                 // 提取被比较文件的起始行，和比较文件的起始行;
                                 int[] startsLine = analyzeHunk(line); // startLines[0]，是被比较文件的起始行，[1]是比较文件的起始行;
                                 int mK = startsLine[0] - 1, aK = startsLine[1] - 1;
-                                line = reader.readLine();
+                                line = reader.readLine(); // 开始读取hunk的下每一个内容
                                 while (line != null && !line.startsWith("diff --git") && !line.startsWith("@@")) {
                                     if (line.startsWith(" ")) {
                                         mK++;
@@ -227,12 +226,10 @@ public class ProcessCommit {
                             addWriter.newLine();
                             addWriter.newLine();
 
-                        } else if (line.startsWith("deleted")){ // 情况二：删除了一个文件
-
-                        } else if (line.startsWith("new")) { // 情况三：增加了一个文件;
-
                         }
                         minusWriter.newLine();
+                        minusWriter.newLine();
+                        addWriter.newLine();
                         addWriter.newLine();
                     } else {
                         line = reader.readLine();
@@ -245,7 +242,8 @@ public class ProcessCommit {
             }
         }
     }
-    // 提取每一个的hunk "@@...@@@"的起始行;
+
+    // 提取每一个的hunk "@@...@@"的起始行;
     public static int[] analyzeHunk(String hunk) {
         // 先求被比较的起始行号;
         int i = hunk.indexOf("-");
