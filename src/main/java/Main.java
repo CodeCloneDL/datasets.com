@@ -15,7 +15,7 @@ public class Main {
 //
         File input = new File("Input");
         File output = new File("Output");
-
+        if (!output.exists()) output.mkdir();
 
         File[] inputfiles = input.listFiles();
         assert inputfiles != null;
