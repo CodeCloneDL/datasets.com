@@ -1,5 +1,3 @@
-package features;
-
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -8,8 +6,8 @@ import java.util.regex.Pattern;
 
 public class ProcessCommit {
     public static void main(String[] args) throws IOException {
-        String projectsDir = "D:\\tmp";
-        String gitRepoPath = "D:\\GitRepository";
+        String projectsDir = "D:\\tmp"; // 所有项目处理结果的目录，其中的每个文件夹都是一个项目;
+        String gitRepoPath = "D:\\GitRepository"; // 每个项目的仓库所在地;
         // 1. 提取commit 和bug-fixing commit,及对应的id
          // 每个项目的目录所在的目录; 自定义
 //        ProcessCommit.calCommitNum(projectsDir);
@@ -278,7 +276,8 @@ public class ProcessCommit {
 
 
     // 功能4： 到每个项目的git仓库中，切换到每一个bug-fixing commit版本以及commit^版本， 并将当前目录的所有文件都复制一份到
-    // 目标目录下即可;
+    // 目标目录下即可; 生成的目录名称格式为 name-Add-index， 名字-比较版本(记为Add)-第几个bug-fixing commit的序号
+    // 比较版本（bug-fixing commit）记为Add， 被比较版本(bug-fixing commit^)记为Minus
     public static void saveAllBugFixingCommitDir(String projectsDir, String gitRepoPath) throws IOException {
         File projectDir = new File(projectsDir); // 项目所在的目录;
         for (File project : Objects.requireNonNull(projectDir.listFiles())) { // 遍历每一个项目的目录;
@@ -308,8 +307,8 @@ public class ProcessCommit {
                 command.add("cd " + "D:\\GitRepository\\" + name +"\n");
                 command.add("git switch --detach " + commit + "\n");
                 command.add("cp -r ..\\" + name + " D:\\tmp\\" + name + "\n");
-                command.add("mv D:\\tmp\\" + name + "\\" + name + " D:\\tmp\\" + name + "\\" + name + "_Add_" + index);
-                implCommand(command); // 执行命令，将每个commitId对应的diff结果存到文件中;
+                command.add("mv D:\\tmp\\" + name + "\\" + name + " D:\\tmp\\" + name + "\\" + name + "-Add-" + index);
+                Utilities.implCommand(command); // 执行命令，将每个commitId对应的diff结果存到文件中;
 
                 // 第二次执行命令，拿到commitId^的版本文件;
                 command = new ArrayList<>();
@@ -318,24 +317,12 @@ public class ProcessCommit {
                 command.add("cd " + "D:\\GitRepository\\" + name +"\n");
                 command.add("git switch --detach " + commit + "^\n");
                 command.add("cp -r ..\\" + name + " D:\\tmp\\" + name + "\n");
-                command.add("mv D:\\tmp\\" + name + "\\" + name + " D:\\tmp\\" + name + "\\" + name + "_Minus_" + index);
-                implCommand(command);
+                command.add("mv D:\\tmp\\" + name + "\\" + name + " D:\\tmp\\" + name + "\\" + name + "-Minus-" + index);
+                Utilities.implCommand(command);
             }
         }
     }
 
-    // 仅仅执行一次传入的命令， 不要求返回值;
-    public static void implCommand(List<String> command) {
-        try {
-            ProcessBuilder processBuilder = new ProcessBuilder(command);
-            processBuilder.redirectErrorStream(true);
-            Process process = processBuilder.start();
-            process.waitFor();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-
     // 功能5： 对每个commit版本，都执行一次Nicad克隆，得到Nicad克隆的结果。
+    // 这个功能在linux中使用脚本功能能够实现。
 }

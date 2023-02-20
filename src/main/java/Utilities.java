@@ -1,6 +1,7 @@
 import java.io.*;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
 
 /**
  * @author CrazyYao
@@ -225,6 +226,18 @@ public class Utilities {
         bufferedReader.close();
         return sum;
     }
+
+    // 仅仅执行一次传入的pwsh命令， 不要求返回值;
+    public static void implCommand(List<String> command) {
+        try {
+            ProcessBuilder processBuilder = new ProcessBuilder(command);
+            processBuilder.redirectErrorStream(true);
+            Process process = processBuilder.start();
+            process.waitFor();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }
 
 class AlphanumFileComparator<T> implements Comparator<T> {
@@ -301,4 +314,6 @@ class AlphanumFileComparator<T> implements Comparator<T> {
     public boolean isDigit(char ch) {
         return ch >= 48 && ch <= 57;
     }
+
+
 }
