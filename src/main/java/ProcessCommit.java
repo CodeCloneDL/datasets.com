@@ -5,6 +5,7 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 public class ProcessCommit {
+    
     public static void main(String[] args) throws IOException {
         String projectsDir = "D:\\tmp"; // 所有项目处理结果的目录，其中的每个文件夹都是一个项目;
         String gitRepoPath = "D:\\GitRepository"; // 每个项目的仓库所在地;
