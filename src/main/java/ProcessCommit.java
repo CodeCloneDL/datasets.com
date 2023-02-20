@@ -5,21 +5,21 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 public class ProcessCommit {
-    
+
     public static void main(String[] args) throws IOException {
-        String projectsDir = "D:\\tmp"; // 所有项目处理结果的目录，其中的每个文件夹都是一个项目;
-        String gitRepoPath = "D:\\GitRepository"; // 每个项目的仓库所在地;
+        String projectsDir = "/home/yao/tmp"; // 所有项目处理结果的目录，其中的每个文件夹都是一个项目;
+        String gitRepoPath = "/home/yao/gitRepo"; // 每个项目的仓库所在地;
         // 1. 提取commit 和bug-fixing commit,及对应的id
-         // 每个项目的目录所在的目录; 自定义
-//        ProcessCommit.calCommitNum(projectsDir);
+        // 每个项目的目录所在的目录; 自定义
+        ProcessCommit.calCommitNum(projectsDir);
 
         // 2. 提取所有bug-fixing commit的diff结果到文件中;
-//        extractAllDiffOfBugFixingCommitToFile(projectsDir, gitRepoPath);
+        extractAllDiffOfBugFixingCommitToFile(projectsDir, gitRepoPath);
 
-        // 3. 从diff文件提取修改行;
-//        CalAllChangedLinesToFile(projectsDir);
+//         3. 从diff文件提取修改行;
+        CalAllChangedLinesToFile(projectsDir);
 
-        // 4. saveAllVersionFiles
+//         4. saveAllVersionFiles
         saveAllBugFixingCommitDir(projectsDir, gitRepoPath);
     }
 
@@ -104,8 +104,6 @@ public class ProcessCommit {
     }
 
 
-
-
     // 功能2： 利用每个项目的所有bug-fixing Id，提取所有的bug_fixing commit的diff结果存到文件中;
     public static void extractAllDiffOfBugFixingCommitToFile(String projectsDir, String gitRepoPath) throws IOException {
         File[] projects = new File(projectsDir).listFiles();
@@ -133,8 +131,9 @@ public class ProcessCommit {
 
                 // 开始执行命令行命令，将每个bug-fixing commit的 diff内容求出，并得到一个bug_fixing_commit_index.txt文件;：
                 List<String> command = new ArrayList<>(); // 执行的命令;
-                command.add("pwsh");
-                command.add("-Command");
+
+                command.add("zsh");
+                command.add("-c");
                 command.add("cd " + gitRepoPath + File.separator + name + "; git diff " + commitId + " " + commitId + "^");
                 implLongCommand(command, index, target); // 执行命令，将每个commitId对应的diff结果存到文件中;
             }
@@ -163,8 +162,6 @@ public class ProcessCommit {
             e.printStackTrace();
         }
     }
-
-
 
 
     // 功能3. 从diff文件中提取修改行到目标文件中;
@@ -203,7 +200,8 @@ public class ProcessCommit {
                         if (line.startsWith("index") || line.startsWith("deleted") || line.startsWith("new")) {
                             // 提取所有的hunk块
                             while (true) {
-                                while (line != null && !line.startsWith("diff --git") && !line.startsWith("@@")) line = reader.readLine();
+                                while (line != null && !line.startsWith("diff --git") && !line.startsWith("@@"))
+                                    line = reader.readLine();
                                 if (line == null || line.startsWith("diff --git")) break; // 提前结束
                                 // 找到了一对hunk块;
                                 // 提取被比较文件的起始行，和比较文件的起始行;
@@ -274,8 +272,6 @@ public class ProcessCommit {
     }
 
 
-
-
     // 功能4： 到每个项目的git仓库中，切换到每一个bug-fixing commit版本以及commit^版本， 并将当前目录的所有文件都复制一份到
     // 目标目录下即可; 生成的目录名称格式为 name-Add-index， 名字-比较版本(记为Add)-第几个bug-fixing commit的序号
     // 比较版本（bug-fixing commit）记为Add， 被比较版本(bug-fixing commit^)记为Minus
@@ -293,6 +289,7 @@ public class ProcessCommit {
             }
 
             // 开始读取每一个commitId
+            assert commitIdsFile != null;
             BufferedReader reader = new BufferedReader(new FileReader(commitIdsFile));
             String line;
             while ((line = reader.readLine()) != null) { // 读取每一个;
@@ -302,25 +299,25 @@ public class ProcessCommit {
 
                 // 拿到Id, 开始去git仓库里面切换版本，并保存版本文件;
                 // 第一次执行命令，拿到commitId的版本文件；
-                List<String> command = new ArrayList<>();
-                command.add("pwsh");
-                command.add("-Command");
-                command.add("cd " + "D:\\GitRepository\\" + name +"\n");
-                command.add("git switch --detach " + commit + "\n");
-                command.add("cp -r ..\\" + name + " D:\\tmp\\" + name + "\n");
-                command.add("mv D:\\tmp\\" + name + "\\" + name + " D:\\tmp\\" + name + "\\" + name + "-Add-" + index);
-                Utilities.implCommand(command); // 执行命令，将每个commitId对应的diff结果存到文件中;
-
+                String[] command1 = {"/bin/bash", "-c", "cd " + gitRepoPath + "/" + name + ";" + "git switch --detach " + commit + ";" + "cp -r ../" + name + " " + projectsDir + "/" + name + ";" + "mv " + projectsDir + "/" + name + "/" + name + " " + projectsDir + "/" + name + "/" + name + "-Add-" + index};
+                implCommand(command1);
                 // 第二次执行命令，拿到commitId^的版本文件;
-                command = new ArrayList<>();
-                command.add("pwsh");
-                command.add("-Command");
-                command.add("cd " + "D:\\GitRepository\\" + name +"\n");
-                command.add("git switch --detach " + commit + "^\n");
-                command.add("cp -r ..\\" + name + " D:\\tmp\\" + name + "\n");
-                command.add("mv D:\\tmp\\" + name + "\\" + name + " D:\\tmp\\" + name + "\\" + name + "-Minus-" + index);
-                Utilities.implCommand(command);
+                String[] command2 = {"/bin/bash", "-c", "cd " + gitRepoPath + "/" + name + ";" + "git switch --detach " + commit + "^;" + "cp -r ../" + name + " " + projectsDir + "/" + name + ";" + "mv " + projectsDir + "/" + name + "/" + name + " " + projectsDir + "/" + name + "/" + name + "-Minus-" + index};
+                implCommand(command2);
             }
+        }
+    }
+
+    // 仅仅执行一次传入的pwsh命令， 不要求返回值，这是数组参数，仅当前使用;
+    public static void implCommand(String[] command) {
+        try {
+            ProcessBuilder processBuilder = new ProcessBuilder();
+            processBuilder.command(command);
+            processBuilder.redirectErrorStream(true);
+            Process process = processBuilder.start();
+            process.waitFor();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
