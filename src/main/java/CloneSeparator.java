@@ -573,6 +573,7 @@ public class CloneSeparator {
                 assert files1 != null;
                 File file = new File(filetmp.getAbsolutePath() + File.separator + files1[0].getName());
                 file.mkdir();
+
                 Utilities.copyDir(files1[0].getAbsolutePath(), file.getAbsolutePath());
                 Utilities.deleteFileOrDir(files1[0]);
             }
