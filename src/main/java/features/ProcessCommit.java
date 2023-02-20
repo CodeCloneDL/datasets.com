@@ -335,4 +335,7 @@ public class ProcessCommit {
             e.printStackTrace();
         }
     }
+
+
+    // 功能5： 对每个commit版本，都执行一次Nicad克隆，得到Nicad克隆的结果。
 }
