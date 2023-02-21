@@ -7,8 +7,8 @@ import java.util.regex.Pattern;
 public class ProcessCommit {
 
     public static void main(String[] args) throws IOException {
-        String projectsDir = "/home/yao/tmp"; // 所有项目处理结果的目录，其中的每个文件夹都是一个项目;
-        String gitRepoPath = "/home/yao/gitRepo"; // 每个项目的仓库所在地;
+        String projectsDir = "/home/haosun/yao/tmp"; // 所有项目处理结果的目录，其中的每个文件夹都是一个项目;
+        String gitRepoPath = "/home/haosun/yao/gitRepo"; // 每个项目的仓库所在地;
         // 1. 提取commit 和bug-fixing commit,及对应的id
         // 每个项目的目录所在的目录; 自定义
         calCommitNum(projectsDir);
@@ -132,7 +132,7 @@ public class ProcessCommit {
                 // 开始执行命令行命令，将每个bug-fixing commit的 diff内容求出，并得到一个bug_fixing_commit_index.txt文件;：
                 List<String> command = new ArrayList<>(); // 执行的命令;
 
-                command.add("zsh");
+                command.add("bash");
                 command.add("-c");
                 command.add("cd " + gitRepoPath + File.separator + name + "; git diff " + commitId + " " + commitId + "^");
                 implLongCommand(command, index, target); // 执行命令，将每个commitId对应的diff结果存到文件中;
@@ -299,10 +299,10 @@ public class ProcessCommit {
 
                 // 拿到Id, 开始去git仓库里面切换版本，并保存版本文件;
                 // 第一次执行命令，拿到commitId的版本文件；
-                String[] command1 = {"/bin/bash", "-c", "cd " + gitRepoPath + "/" + name + ";" + "git switch --detach " + commit + ";" + "cp -r ../" + name + " " + projectsDir + "/" + name + ";" + "mv " + projectsDir + "/" + name + "/" + name + " " + projectsDir + "/" + name + "/" + name + "-Add-" + index};
+                String[] command1 = {"bash", "-c", "cd " + gitRepoPath + "/" + name + ";" + "git switch --detach " + commit + ";" + "cp -r ../" + name + " " + projectsDir + "/" + name + ";" + "mv " + projectsDir + "/" + name + "/" + name + " " + projectsDir + "/" + name + "/" + name + "-Add-" + index};
                 Utilities.implCommand(command1);
                 // 第二次执行命令，拿到commitId^的版本文件;
-                String[] command2 = {"/bin/bash", "-c", "cd " + gitRepoPath + "/" + name + ";" + "git switch --detach " + commit + "^;" + "cp -r ../" + name + " " + projectsDir + "/" + name + ";" + "mv " + projectsDir + "/" + name + "/" + name + " " + projectsDir + "/" + name + "/" + name + "-Minus-" + index};
+                String[] command2 = {"bash", "-c", "cd " + gitRepoPath + "/" + name + ";" + "git switch --detach " + commit + "^;" + "cp -r ../" + name + " " + projectsDir + "/" + name + ";" + "mv " + projectsDir + "/" + name + "/" + name + " " + projectsDir + "/" + name + "/" + name + "-Minus-" + index};
                 Utilities.implCommand(command2);
             }
             reader.close();
