@@ -154,15 +154,18 @@ public class Main {
         bufferedReader.close();
 
 
-//        删除中间文件，同时移动两个结果文件放进同一个文件夹。
-        files2_1[0].delete();
+    //    删除中间文件，同时移动两个结果文件放进同一个文件夹。
+        for (File file : files2_1) {
+            if (file.getName().contains("Allresult")) {
+                file.delete();
+                break;
+            }
+        }
         File[] files3 = output.listFiles();
-        assert files3 != null;
-        Utilities.copyFile(files3[1].getAbsolutePath(), files3[0].getAbsolutePath() + File.separator + files3[1].getName());
-        Utilities.copyFile(files3[2].getAbsolutePath(), files3[0].getAbsolutePath() + File.separator + files3[2].getName());
-        files3[1].delete();
-        files3[2].delete();
-
+        String[] command1 = {"bash", "-c", "mv " + files3[0].getAbsolutePath() + " " + files3[2].getAbsolutePath()};
+        Utilities.implCommand(command1);
+        String[] command2 = {"bash", "-c", "mv " + files3[1].getAbsolutePath() + " " + files3[2].getAbsolutePath()};
+        Utilities.implCommand(command2);
 
         long endtime = System.currentTimeMillis();
         Utilities.printTime(endtime - starttime);

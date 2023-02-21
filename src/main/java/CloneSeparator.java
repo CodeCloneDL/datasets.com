@@ -609,7 +609,7 @@ public class CloneSeparator {
                     }
                 }
                 // 调用zsh执行命令 "mv " 命令
-                String[] command = { "zsh", "-c", "mv " + target.getAbsolutePath() + " " + filetmp.getAbsolutePath() };
+                String[] command = { "bash", "-c", "mv " + target.getAbsolutePath() + " " + filetmp.getAbsolutePath() };
                 Utilities.implCommand(command);
             }
             i++;

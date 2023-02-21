@@ -300,25 +300,12 @@ public class ProcessCommit {
                 // 拿到Id, 开始去git仓库里面切换版本，并保存版本文件;
                 // 第一次执行命令，拿到commitId的版本文件；
                 String[] command1 = {"/bin/bash", "-c", "cd " + gitRepoPath + "/" + name + ";" + "git switch --detach " + commit + ";" + "cp -r ../" + name + " " + projectsDir + "/" + name + ";" + "mv " + projectsDir + "/" + name + "/" + name + " " + projectsDir + "/" + name + "/" + name + "-Add-" + index};
-                implCommand(command1);
+                Utilities.implCommand(command1);
                 // 第二次执行命令，拿到commitId^的版本文件;
                 String[] command2 = {"/bin/bash", "-c", "cd " + gitRepoPath + "/" + name + ";" + "git switch --detach " + commit + "^;" + "cp -r ../" + name + " " + projectsDir + "/" + name + ";" + "mv " + projectsDir + "/" + name + "/" + name + " " + projectsDir + "/" + name + "/" + name + "-Minus-" + index};
-                implCommand(command2);
+                Utilities.implCommand(command2);
             }
             reader.close();
-        }
-    }
-
-    // 仅仅执行一次传入的pwsh命令， 不要求返回值，这是数组参数，仅当前使用;
-    public static void implCommand(String[] command) {
-        try {
-            ProcessBuilder processBuilder = new ProcessBuilder();
-            processBuilder.command(command);
-            processBuilder.redirectErrorStream(true);
-            Process process = processBuilder.start();
-            process.waitFor();
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 
