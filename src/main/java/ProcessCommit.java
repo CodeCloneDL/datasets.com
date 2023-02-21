@@ -11,7 +11,7 @@ public class ProcessCommit {
         String gitRepoPath = "/home/yao/gitRepo"; // 每个项目的仓库所在地;
         // 1. 提取commit 和bug-fixing commit,及对应的id
         // 每个项目的目录所在的目录; 自定义
-        ProcessCommit.calCommitNum(projectsDir);
+        calCommitNum(projectsDir);
 
         // 2. 提取所有bug-fixing commit的diff结果到文件中;
         extractAllDiffOfBugFixingCommitToFile(projectsDir, gitRepoPath);
@@ -305,6 +305,7 @@ public class ProcessCommit {
                 String[] command2 = {"/bin/bash", "-c", "cd " + gitRepoPath + "/" + name + ";" + "git switch --detach " + commit + "^;" + "cp -r ../" + name + " " + projectsDir + "/" + name + ";" + "mv " + projectsDir + "/" + name + "/" + name + " " + projectsDir + "/" + name + "/" + name + "-Minus-" + index};
                 implCommand(command2);
             }
+            reader.close();
         }
     }
 
