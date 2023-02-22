@@ -162,14 +162,23 @@ public class Main {
             }
         }
         File[] files3 = output.listFiles();
-        String[] command1 = {"bash", "-c", "mv " + files3[0].getAbsolutePath() + " " + files3[2].getAbsolutePath()};
+        File FinalResult = null, noduplicated = null, other = null;
+        for (File file : files3) {
+            if (file.getName().contains("FinalResult")) {
+                FinalResult = file;
+            } else if (file.getName().contains("noduplicated")) {
+                noduplicated = file;
+            } else {
+                other = file;
+            }
+        }
+        String[] command1 = {"bash", "-c", "mv " + FinalResult.getAbsolutePath() + " " + other.getAbsolutePath()};
         Utilities.implCommand(command1);
-        String[] command2 = {"bash", "-c", "mv " + files3[1].getAbsolutePath() + " " + files3[2].getAbsolutePath()};
+        String[] command2 = {"bash", "-c", "mv " + noduplicated.getAbsolutePath() + " " + other.getAbsolutePath()};
         Utilities.implCommand(command2);
 
         long endtime = System.currentTimeMillis();
         Utilities.printTime(endtime - starttime);
-
     }
 
 }
