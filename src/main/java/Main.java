@@ -29,7 +29,6 @@ public class Main {
 
             // 获取项目的名称, 这个不是base版本的名称;
             String fullName = inputfiles[index].getName(); // 包含project-Add-index_functions-blind-clones的全部名称;
-            String name = fullName.substring(0, fullName.indexOf("_"));// 项目文件的全名; project-Add-index 这种形式;
 
             String pureName = fullName.substring(0, fullName.indexOf("-"));  // 项目的前一部分名称，用来判断是否是同一个项目块;
             // 获取当前项目块的最后一个位置; 就base版本项目的位置；
@@ -121,7 +120,7 @@ public class Main {
                                 tmp1 = bufferedReader.readLine();
                                 continue;
                             }
-                            // 以下是更标准的写法，但是先不这样做。
+//                             以下是更标准的写法，但是先不这样做。
 //                            int hashValue = pcid1.hashCode() ^ pcid2.hashCode();
 //
 //                            if (!set.add(hashValue)) { // 如果添加失败，说明组合重复
@@ -202,6 +201,7 @@ public class Main {
             }
             File[] files3 = output.listFiles();
             File FinalResult = null, noduplicated = null, other = null;
+            assert files3 != null;
             for (File file : files3) {
                 if (file.getName().contains("FinalResult") && file.getName().contains(subjectname1)) {
                     FinalResult = file;
@@ -211,9 +211,12 @@ public class Main {
                     other = file;
                 }
             }
+            assert FinalResult != null;
+            assert other != null;
             String[] command1 = {"bash", "-c", "mv " + FinalResult.getAbsolutePath() + " " + other.getAbsolutePath()};
             Utilities.implCommand(command1);
-            String[] command2 = {"bash", "-c", "mv " + noduplicated.getAbsolutePath() + " " + other.getAbsolutePath()};
+            assert noduplicated != null;
+            String[] command2 = new String[]{"bash", "-c", "mv " + noduplicated.getAbsolutePath() + " " + other.getAbsolutePath()};
             Utilities.implCommand(command2);
 
             long endtime = System.currentTimeMillis();
