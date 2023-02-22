@@ -1,7 +1,6 @@
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.lang.reflect.Array;
+import java.util.*;
 import java.util.regex.Pattern;
 
 public class ProcessCommit {
@@ -314,7 +313,116 @@ public class ProcessCommit {
 
 
     // 功能6： 实现共变克隆的共变检测的问题;
-    public void extracAllBuggyCochangedClones(String projectsDir, String gitRepo, String Output) {
-        File[] projectsList = new File(Output).listFiles(); // 共变结果文件
+    public void extracAllBuggyCochangedClones(String projectsDir, String gitRepo, String Output, String tmp) throws IOException {
+        File[] projectsList = new File(Output).listFiles(); // 共变结果文件的列表;
+        assert projectsList != null;
+        Arrays.sort(projectsList, Comparator.comparing(File::getName)); // 排序;
+
+        // 取每一个项目进行讨论
+        for (File outPutProject : projectsList) {
+            // 取得项目的名称
+            String fullNameBase = outPutProject.getName(); // （包含-ZZZ, -Add, -Minus），同时该文件名就是该项目的base版本名
+            String name = fullNameBase.substring(0, fullNameBase.indexOf("-ZZZ")); // 纯项目名字;（不包含-ZZZ, -Add, -Minus）;
+
+            for (File aFile : outPutProject.listFiles()) { // 考虑项目的每个A文件。
+                if (aFile.getName().endsWith("-A.txt")) { // 找到一个A文件;
+                    // base文件就是fullName文件， 现在取得被比较的文件;
+                    String fileName = aFile.getName();
+                    // 取得被比较文件的全名;
+                    String fullNameCompare = fileName.substring(fileName.indexOf("___") + 3, fileName.lastIndexOf("-A.txt"));
+
+                    // 现在去取对应的B文件;
+                    File bFile = null;
+                    for (File file : outPutProject.listFiles()) {
+                        if (file.getName().contains(fullNameCompare) && file.getName().endsWith("-B.txt")) {
+                            bFile = file;
+                            break;
+                        }
+                    }
+
+                    // 现在去取对应的changedFile文件; 根据纯项目名确定对应的位置; changedFile位于tmp目录下;
+                    File tmpProjectDir = new File(tmp + File.separator + name);
+                    // 找到对应的changedFile文件;
+                    // 所以先拿标记，bug-fixing commit 为 Add， bug-fixing commit^ 为 Minus
+                    // 还有index, 表示第一个bug-fixing
+                    int index = Integer.parseInt(fullNameCompare.substring(fullNameBase.lastIndexOf("-") + 1));
+                    // 获得标记;
+                    String sign;
+                    if (fullNameCompare.contains("-Add-")) {
+                        sign = "Add";
+                    } else {
+                        sign = "Minus";
+                    }
+                    // 获得修改行中的那个文件。
+                    File changedFile = null;
+                    for (File file : Objects.requireNonNull(tmpProjectDir.listFiles())) { // 遍历tmp/project目录下的每个文件;
+                        if (file.getName().endsWith("_" + sign + "_" + index + ".txt")) {
+                            changedFile = file;
+                            break;
+                        }
+                    }
+                    // 保存具有bug倾向的base版本的克隆;
+                    BufferedWriter changedWriter = new BufferedWriter(new FileWriter(new File(outPutProject.getAbsolutePath() + File.separator + fullNameBase + "___" + fullNameCompare + "-BuggyCClone.txt")));
+                    // 读取修改行的每个修改的文件路径，并记录发生的修改行;
+                    assert changedFile != null;
+                    BufferedReader changedFileReader = new BufferedReader(new FileReader(changedFile));
+                    String line;
+                    while ((line = changedFileReader.readLine()) != null) {
+                        if (line.startsWith("***** ")) { // 读取每一个文件路径;
+                            TreeSet<Integer> set = new TreeSet<>(); // 该路径下发生的修改行记录到有序集合中;
+                            // 首先提取发生的路径是什么; 该求得的路径不包含纯文件名，默认是在对应文件的根目录下;
+                            String path = line.substring(line.indexOf("/") + 1, line.lastIndexOf(" "));
+                            // 提取发生的修改行;
+                            line = changedFileReader.readLine();
+                            for (String s : line.split(" ")) {
+                                if (!s.equals("")) {
+                                    set.add(Integer.parseInt(s));
+                                }
+                            }
+                            // 去bFile中，找是否有对应的路径，并发生了修改; 要求找出每一个路径发生修改的克隆对;
+                            assert bFile != null;
+                            BufferedReader bFileReader = new BufferedReader(new FileReader(bFile));
+                            String bLine;
+                            while ((bLine = bFileReader.readLine()) != null) {
+                                if (bLine.startsWith("<clonepair")) {
+                                    // 读取每一对克隆对，看是否有路径匹配;
+                                    String clonepair = bLine; // 连续保存三条记录;
+                                    String firstFile = bFileReader.readLine();
+                                    String nextFile = bFileReader.readLine();
+
+                                    // 开始判断是否两个克隆片段中是否任意一克隆片段涉及到修改，如果是，则这个克隆片段有bug倾向
+                                    // 然后就能把对应的A文件的对应的克隆对，存入文件中；
+                                    boolean isChanged;
+                                    isChanged = isChanged(set, path, firstFile, false);
+                                    isChanged = isChanged(set, path, nextFile, isChanged);
+                                    // 如果这一对克隆对发生了修改，那就去对应的A文件，找到这对克隆对应的克隆。
+                                    if (isChanged) {
+
+                                    }
+                                }
+                            }
+                            bFileReader.close();
+                        }
+                    }
+                    changedWriter.close();
+                    changedFileReader.close();
+                }
+            }
+
+        }
+    }
+
+    private boolean isChanged(TreeSet<Integer> set, String path, String file, boolean isChanged) {
+        if (isChanged) return isChanged;
+        if (file.contains(path)) {
+            int startLine = Utilities.getStartLine(file);
+            int endLine = Utilities.getEndLine(file);
+            // 判断是否有修改行在区间内：
+            Integer ceiling = set.ceiling(startLine);
+            if (ceiling != null && ceiling <= endLine) {
+                isChanged = true;
+            }
+        }
+        return isChanged;
     }
 }
