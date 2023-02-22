@@ -1,5 +1,4 @@
 import java.io.*;
-import java.lang.reflect.Array;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -8,18 +7,22 @@ public class ProcessCommit {
     public static void main(String[] args) throws IOException {
         String projectsDir = "/home/haosun/yao/tmp"; // 所有项目处理结果的目录，其中的每个文件夹都是一个项目;
         String gitRepo = "/home/haosun/yao/gitRepo"; // 每个项目的仓库所在地;
+        String Output = "/home/haosun/yao/gitRepo/datasets.com/Output";
         // 1. 提取commit 和bug-fixing commit,及对应的id
         // 每个项目的目录所在的目录; 自定义
-        calCommitNum(projectsDir);
+//        calCommitNum(projectsDir);
 
         // 2. 提取所有bug-fixing commit的diff结果到文件中;
-        extractAllDiffOfBugFixingCommitToFile(projectsDir, gitRepo);
+//        extractAllDiffOfBugFixingCommitToFile(projectsDir, gitRepo);
 
 //         3. 从diff文件提取修改行;
-        CalAllChangedLinesToFile(projectsDir);
+//        CalAllChangedLinesToFile(projectsDir);
 
 //         4. saveAllVersionFiles
-        saveAllBugFixingCommitDir(projectsDir, gitRepo);
+//        saveAllBugFixingCommitDir(projectsDir, gitRepo);
+
+         // 6. 提取buggy的共变克隆。
+        extracAllBuggyCochangedClones(projectsDir, gitRepo, Output);
     }
 
     // 功能： 1. 计算 'git log commit1..commit2'产生的commit信息文件中所有的commit数量
@@ -313,7 +316,7 @@ public class ProcessCommit {
 
 
     // 功能6： 实现共变克隆的共变检测的问题;
-    public void extracAllBuggyCochangedClones(String projectsDir, String gitRepo, String Output, String tmp) throws IOException {
+    public static void extracAllBuggyCochangedClones(String projectsDir, String gitRepo, String Output) throws IOException {
         File[] projectsList = new File(Output).listFiles(); // 共变结果文件的列表;
         assert projectsList != null;
         Arrays.sort(projectsList, Comparator.comparing(File::getName)); // 排序;
@@ -321,19 +324,19 @@ public class ProcessCommit {
         // 取每一个项目进行讨论
         for (File outPutProject : projectsList) {
             // 取得项目的名称
-            String fullNameBase = outPutProject.getName(); // （包含-ZZZ, -Add, -Minus），同时该文件名就是该项目的base版本名
+            String fullNameBase = outPutProject.getName(); // （包含-ZZZ），同时该文件名就是该项目的base版本名
             String name = fullNameBase.substring(0, fullNameBase.indexOf("-ZZZ")); // 纯项目名字;（不包含-ZZZ, -Add, -Minus）;
 
-            for (File aFile : outPutProject.listFiles()) { // 考虑项目的每个A文件。
-                if (aFile.getName().endsWith("-A.txt")) { // 找到一个A文件;
+            for (File aFile : Objects.requireNonNull(outPutProject.listFiles())) { // 考虑项目的每个A文件,一对AB项目，就是一个具体版本项目的克隆的映射;
+                if (aFile.getName().endsWith("-A.txt")) { // 找到一个A文件，即保存发生共变的base版本中的克隆的文件;
                     // base文件就是fullName文件， 现在取得被比较的文件;
                     String fileName = aFile.getName();
                     // 取得被比较文件的全名;
                     String fullNameCompare = fileName.substring(fileName.indexOf("___") + 3, fileName.lastIndexOf("-A.txt"));
 
-                    // 现在去取对应的B文件;
+                    // 现在去取对应的B文件，即保存发生共变的被计较版本中的克隆
                     File bFile = null;
-                    for (File file : outPutProject.listFiles()) {
+                    for (File file : Objects.requireNonNull(outPutProject.listFiles())) {
                         if (file.getName().contains(fullNameCompare) && file.getName().endsWith("-B.txt")) {
                             bFile = file;
                             break;
@@ -341,11 +344,11 @@ public class ProcessCommit {
                     }
 
                     // 现在去取对应的changedFile文件; 根据纯项目名确定对应的位置; changedFile位于tmp目录下;
-                    File tmpProjectDir = new File(tmp + File.separator + name);
+                    File tmpProjectDir = new File(projectsDir + File.separator + name);
                     // 找到对应的changedFile文件;
                     // 所以先拿标记，bug-fixing commit 为 Add， bug-fixing commit^ 为 Minus
                     // 还有index, 表示第一个bug-fixing
-                    int index = Integer.parseInt(fullNameCompare.substring(fullNameBase.lastIndexOf("-") + 1));
+                    int index = Integer.parseInt(fullNameCompare.substring(fullNameCompare.lastIndexOf("-") + 1));
                     // 获得标记;
                     String sign;
                     if (fullNameCompare.contains("-Add-")) {
@@ -353,7 +356,7 @@ public class ProcessCommit {
                     } else {
                         sign = "Minus";
                     }
-                    // 获得修改行中的那个文件。
+                    // 获得修改行中的那个文件，ChangedFile, 保存当前被比较版本项目中所有的修改行;
                     File changedFile = null;
                     for (File file : Objects.requireNonNull(tmpProjectDir.listFiles())) { // 遍历tmp/project目录下的每个文件;
                         if (file.getName().endsWith("_" + sign + "_" + index + ".txt")) {
@@ -361,8 +364,8 @@ public class ProcessCommit {
                             break;
                         }
                     }
-                    // 保存具有bug倾向的base版本的克隆;
-                    BufferedWriter changedWriter = new BufferedWriter(new FileWriter(new File(outPutProject.getAbsolutePath() + File.separator + fullNameBase + "___" + fullNameCompare + "-BuggyCClone.txt")));
+                    // 保存具有bug倾向的base版本的共变克隆, 一个项目版本一个文件。
+                    BufferedWriter changedWriter = new BufferedWriter(new FileWriter(outPutProject.getAbsolutePath() + File.separator + fullNameBase + "___" + fullNameCompare + "-BuggyCClone.txt"));
                     // 读取修改行的每个修改的文件路径，并记录发生的修改行;
                     assert changedFile != null;
                     BufferedReader changedFileReader = new BufferedReader(new FileReader(changedFile));
@@ -372,6 +375,7 @@ public class ProcessCommit {
                             TreeSet<Integer> set = new TreeSet<>(); // 该路径下发生的修改行记录到有序集合中;
                             // 首先提取发生的路径是什么; 该求得的路径不包含纯文件名，默认是在对应文件的根目录下;
                             String path = line.substring(line.indexOf("/") + 1, line.lastIndexOf(" "));
+                            changedWriter.write("以下路径有buggy共变克隆 " + name + File.separator + path + "\n");
                             // 提取发生的修改行;
                             line = changedFileReader.readLine();
                             for (String s : line.split(" ")) {
@@ -396,8 +400,23 @@ public class ProcessCommit {
                                     isChanged = isChanged(set, path, firstFile, false);
                                     isChanged = isChanged(set, path, nextFile, isChanged);
                                     // 如果这一对克隆对发生了修改，那就去对应的A文件，找到这对克隆对应的克隆。
-                                    if (isChanged) {
-
+                                    if (isChanged) { // 发生了修改，找到了发生修改的共变克隆;
+                                        BufferedReader aFileReader = new BufferedReader(new FileReader(aFile));
+                                        String aLine;
+                                        while ((aLine = aFileReader.readLine()) != null) {
+                                            if (aLine.contains(clonepair)) { // 找到了a(即base)文件中的对应的克隆;
+                                                // 先把base的克隆放在前头，compare的放在后头;
+                                                changedWriter.write(aFileReader.readLine() + "\n");
+                                                changedWriter.write(aFileReader.readLine() + "\n");
+                                                changedWriter.write(firstFile + "\n");
+                                                changedWriter.write(nextFile + "\n");
+                                                changedWriter.newLine();
+                                                changedWriter.newLine();
+                                                changedWriter.newLine();
+                                                break;
+                                            }
+                                        }
+                                        aFileReader.close();
                                     }
                                 }
                             }
@@ -412,7 +431,7 @@ public class ProcessCommit {
         }
     }
 
-    private boolean isChanged(TreeSet<Integer> set, String path, String file, boolean isChanged) {
+    private static boolean isChanged(TreeSet<Integer> set, String path, String file, boolean isChanged) {
         if (isChanged) return isChanged;
         if (file.contains(path)) {
             int startLine = Utilities.getStartLine(file);
