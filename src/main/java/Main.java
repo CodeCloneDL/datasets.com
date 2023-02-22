@@ -23,32 +23,31 @@ public class Main {
         assert inputfiles != null;
         Arrays.sort(inputfiles, new AlphanumFileComparator<>()); // 按照项目进行块分类。
 
-        int len = inputfiles.length;
         int index = 0; // 表示来到第几个项目块了；
-        while (true) { // 遍历Input文件夹中的所有项目，一个项目是一个整块;
+        int projectNum = 0;
+        while (index < inputfiles.length) { // 遍历Input文件夹中的所有项目，一个项目是一个整块;
 
-            // 获取项目的名称
-            String fullName = inputfiles[index].getName(); // 项目文件的全名;
+            // 获取项目的名称, 这个不是base版本的名称;
+            String fullName = inputfiles[index].getName(); // 包含project-Add-index_functions-blind-clones的全部名称;
+            String name = fullName.substring(0, fullName.indexOf("_"));// 项目文件的全名; project-Add-index 这种形式;
             StringBuilder pureNameSB = new StringBuilder(); // 获取项目的纯名称;
-            for (int i = 0; i < fullName.length(); ++i) {
-                char ch = fullName.charAt(i);
+            for (int i = 0; i < name.length(); ++i) {
+                char ch = name.charAt(i);
                 if (ch != '-') {
                     pureNameSB.append(ch);
-
                 } else {
-                    String str = fullName.substring(i + 1);
-                    if (!str.startsWith("Add") || !str.startsWith("Minus")) {
-                        pureNameSB.append("-");
-                        ++i;
-                        while (fullName.charAt(i) != '-') {
-                            pureNameSB.append(fullName.charAt(i++));
-                        }
-                        break;
+                    String str = name.substring(i + 1);
+                    if (str.startsWith("Add") || str.startsWith("Minus")) break;
+                    pureNameSB.append("ch");
+                    ++i;
+                    while (name.charAt(i) != '-') {
+                        pureNameSB.append(name.charAt(i++));
                     }
+                    break;
                 }
             }
-            String pureName = pureNameSB.toString();
-            // 获取当前项目块的最后一个位置;
+            String pureName = pureNameSB.toString();  // 项目的纯名称;
+            // 获取当前项目块的最后一个位置; 就base版本项目的位置；
             int nextIndex = index + 1;
             while (nextIndex < inputfiles.length && inputfiles[nextIndex].getName().contains(pureName)) ++nextIndex;
             --nextIndex;
@@ -56,7 +55,7 @@ public class Main {
 
 
 
-            //        选取最新版本为基版本，然后分别跟剩下的版本进行共变比较选择。
+            // 选取最新版本为基版本，然后分别跟剩下的版本进行共变比较选择。
             String subjectwholename1 = inputfiles[nextIndex].getName();
             String subjectname1 = subjectwholename1.substring(0, subjectwholename1.indexOf('_'));
             String inputf1, inputf1c, inputf2, inputf2c, outputfile1, outputfile2, AllResults, outputfile1withcode, outputfile2withcode;
@@ -100,7 +99,7 @@ public class Main {
             // 选择我们目标的那个结果项目;
             File target = null;
             for (File file : files2) {
-                if (file.getName().contains(pureName)) {
+                if (file.getName().contains(subjectname1)) {
                     target = file;
                     break;
                 }
@@ -113,7 +112,7 @@ public class Main {
             i = files2_1.length - 1;
 
             BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(output.getAbsolutePath() + File.separator + target.getName() + "__noduplicated.txt"));
-            HashSet<String> set = new HashSet<>();
+            HashSet<Integer> set = new HashSet<>(); // 使用两字符串的哈希值的异或，来保证一对字符串不会重复出现。
             while (i >= 0) {//遍历结果目录，提取基版本的非重复克隆对
                 if (files2_1[i].getName().endsWith("A.txt")) {
                     BufferedReader bufferedReader = new BufferedReader(new FileReader(files2_1[i]));
@@ -129,12 +128,13 @@ public class Main {
                             String pcid1 = Utilities.getPcid(tmp3);
                             String pcid2 = Utilities.getPcid(tmp1);
 
-                            boolean t1 = set.add(pcid1 + pcid2);
-                            boolean t2 = set.add(pcid2 + pcid1);
-                            if (!t1 && !t2) {
+                            int hashValue = pcid1.hashCode() ^ pcid2.hashCode();
+
+                            if (!set.add(hashValue)) { // 如果添加失败，说明组合重复
                                 tmp1 = bufferedReader.readLine();
                                 continue;
                             }
+                            // 是一对新的pcid
                             num++;
                             bufferedWriter.write(tmp2 + "\n");
                             bufferedWriter.write(tmp3 + "\n");
@@ -209,11 +209,11 @@ public class Main {
             File[] files3 = output.listFiles();
             File FinalResult = null, noduplicated = null, other = null;
             for (File file : files3) {
-                if (file.getName().contains("FinalResult")) {
+                if (file.getName().contains("FinalResult") && file.getName().contains(subjectname1)) {
                     FinalResult = file;
-                } else if (file.getName().contains("noduplicated")) {
+                } else if (file.getName().contains("noduplicated") && file.getName().contains(subjectname1)) {
                     noduplicated = file;
-                } else {
+                } else if (file.getName().contains(subjectname1) && !file.getName().contains("FinalResult") && !file.getName().contains("noduplicated")){
                     other = file;
                 }
             }
@@ -224,7 +224,8 @@ public class Main {
 
             long endtime = System.currentTimeMillis();
             Utilities.printTime(endtime - starttime);
-            System.out.println("已经处理完第" + index++ + "个项目的共变情况");
+            System.out.println("\n\n------------------\n\n已经处理完第" + ++projectNum + "个项目的共变情况");
+            index = nextIndex + 1;
         }
         }
 
