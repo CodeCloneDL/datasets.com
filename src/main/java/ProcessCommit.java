@@ -8,19 +8,19 @@ public class ProcessCommit {
 
     public static void main(String[] args) throws IOException {
         String projectsDir = "/home/haosun/yao/tmp"; // 所有项目处理结果的目录，其中的每个文件夹都是一个项目;
-        String gitRepoPath = "/home/haosun/yao/gitRepo"; // 每个项目的仓库所在地;
+        String gitRepo = "/home/haosun/yao/gitRepo"; // 每个项目的仓库所在地;
         // 1. 提取commit 和bug-fixing commit,及对应的id
         // 每个项目的目录所在的目录; 自定义
         calCommitNum(projectsDir);
 
         // 2. 提取所有bug-fixing commit的diff结果到文件中;
-        extractAllDiffOfBugFixingCommitToFile(projectsDir, gitRepoPath);
+        extractAllDiffOfBugFixingCommitToFile(projectsDir, gitRepo);
 
 //         3. 从diff文件提取修改行;
         CalAllChangedLinesToFile(projectsDir);
 
 //         4. saveAllVersionFiles
-        saveAllBugFixingCommitDir(projectsDir, gitRepoPath);
+        saveAllBugFixingCommitDir(projectsDir, gitRepo);
     }
 
     // 功能： 1. 计算 'git log commit1..commit2'产生的commit信息文件中所有的commit数量
@@ -311,4 +311,10 @@ public class ProcessCommit {
 
     // 功能5： 对每个commit版本，都执行一次Nicad克隆，得到Nicad克隆的结果。
     // 这个功能在linux中使用脚本功能能够实现。
+
+
+    // 功能6： 实现共变克隆的共变检测的问题;
+    public void extracAllBuggyCochangedClones(String projectsDir, String gitRepo, String Output) {
+        File[] projectsList = new File(Output).listFiles(); // 共变结果文件
+    }
 }
