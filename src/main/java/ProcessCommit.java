@@ -1,4 +1,5 @@
 import java.io.*;
+import java.lang.annotation.Target;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -337,7 +338,7 @@ public class ProcessCommit {
                     // 现在去取对应的B文件，即保存发生共变的被计较版本中的克隆
                     File bFile = null;
                     for (File file : Objects.requireNonNull(outPutProject.listFiles())) {
-                        if (file.getName().contains(fullNameCompare) && file.getName().endsWith("-B.txt")) {
+                        if (file.getName().contains(fullNameCompare + "-B.txt")) {
                             bFile = file;
                             break;
                         }
@@ -375,7 +376,7 @@ public class ProcessCommit {
                             TreeSet<Integer> set = new TreeSet<>(); // 该路径下发生的修改行记录到有序集合中;
                             // 首先提取发生的路径是什么; 该求得的路径不包含纯文件名，默认是在对应文件的根目录下;
                             String path = line.substring(line.indexOf("/") + 1, line.lastIndexOf(" "));
-                            changedWriter.write("以下路径有buggy共变克隆 " + name + File.separator + path + "\n");
+                            changedWriter.write("以下路径有---buggy共变克隆--- " + name + File.separator + path + "\n");
                             // 提取发生的修改行;
                             line = changedFileReader.readLine();
                             for (String s : line.split(" ")) {
@@ -420,6 +421,7 @@ public class ProcessCommit {
                                     }
                                 }
                             }
+                            changedWriter.newLine();
                             bFileReader.close();
                         }
                     }
@@ -428,6 +430,68 @@ public class ProcessCommit {
                 }
             }
 
+
+            // 下面开始对base版本的buggy共变进行去重； 采用的方法和对共变克隆去重的方式相同，可能不太准确！！！
+            int num = 0; // 计算不重复的buggy共变的数量;
+            Set<String> set = new HashSet<>(); // 对当前项目进行去重;
+            for (File file : outPutProject.listFiles()) { // 遍历这些文件;
+                if (file.getName().contains("-BuggyCClone.txt")) { // 目标文件;
+                    BufferedReader reader = new BufferedReader(new FileReader(file)); // 读取这个文件;
+                    // 因为一个项目的不同克隆对的pcid是不同的，因此只需要根据pcid去重即可：
+                    String line = reader.readLine();
+                    while (line != null) {
+                        if ((line.contains("---buggy"))) { // 目标路径;
+                            // 读当前路径下的所有buggy对;
+                            line = reader.readLine();
+                            while (line != null && !line.contains("---buggy")) {
+                                if (line.startsWith("<source file=")) {
+                                    String pcid1 = Utilities.getPcid(line);
+                                    String pcid2 = Utilities.getPcid((line = reader.readLine()));
+                                    line = reader.readLine(); // 跳过不需要的行;
+                                    line = reader.readLine();
+                                    line = reader.readLine();
+
+                                    boolean t1 = set.add(pcid1 + pcid2);
+                                    boolean t2 = set.add(pcid2 + pcid1);
+                                    if (t1 && t2) {
+                                        ++num;
+                                    }
+                                    // 标准的写法
+//                                    int hashValue = pcid1.hashCode() ^ pcid2.hashCode();
+//                                    if (set.add(hashValue)) {
+//                                        num++;
+//                                    }
+                                }
+                                line = reader.readLine();
+                            }
+                        } else {
+                            line = reader.readLine();
+                        }
+                    }
+                    reader.close();
+                }
+            }
+
+            // 把最终结果写入大FinalResult文件中;
+            File FinalResult = null;
+            for (File file : outPutProject.listFiles()) {
+                if (file.getName().contains("FinalResult")) {
+                    FinalResult = file;
+                    break;
+                }
+            }
+
+            // 把结果写入
+            assert FinalResult != null;
+            BufferedWriter writer = new BufferedWriter(new FileWriter(FinalResult, true));
+            writer.newLine();
+            writer.newLine();
+
+            writer.write("--------去除掉重复的buggy共变克隆，还有" + num +"对--------------");
+
+
+
+            writer.close();
         }
     }
 
