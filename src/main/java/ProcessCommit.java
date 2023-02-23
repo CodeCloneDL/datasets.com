@@ -1,5 +1,6 @@
 import javax.print.attribute.standard.MediaSize;
 import java.io.*;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -8,25 +9,32 @@ public class ProcessCommit {
     public static void main(String[] args) throws IOException {
         String projectsDir = "/home/haosun/yao/tmp"; // 所有项目处理结果的目录，其中的每个文件夹都是一个项目;
         String gitRepo = "/home/haosun/yao/gitRepo"; // 每个项目的仓库所在地;
-        String Output = "/home/haosun/yao/gitRepo/datasets.com/Output";
+        String Output = "/home/haosun/yao/gitRepo/datasets.com/Output"; // 共变结果文件所在的目录;
+        String targetFile = "/home/haosun/yao/target.txt"; // 格式化的文件，里面按空格分割，每一行是项目名 git链接 最新版本号 最远版本号
+        String NiCadSystemsDir = "/home/haosun/yao/software/NiCad-6.2/systems"; // Nicad 对项目执行克隆检测的目录;
         // 1. 提取commit 和bug-fixing commit,及对应的id
         // 每个项目的目录所在的目录; 自定义
 //        calCommitNum(projectsDir);
 
         // 2. 提取所有bug-fixing commit的diff结果到文件中;
 //        extractAllDiffOfBugFixingCommitToFile(projectsDir, gitRepo);
-
-//         3. 从diff文件提取修改行;
+//
+////         3. 从diff文件提取修改行;
 //        CalAllChangedLinesToFile(projectsDir);
 
-//         4. saveAllVersionFiles
-//        saveAllBugFixingCommitDir(projectsDir, gitRepo);
+//         4. saveAllVersionFile
+
+//        saveAllBugFixingCommitDir(projectsDir, gitRepo, NiCadSystemsDir);
 
          // 6. 提取buggy的共变克隆。
 //        extracAllBuggyCochangedClones(projectsDir, gitRepo, Output);
 
-        // 7. 一点功能
-        extractLogForProjects(projectsDir, gitRepo);
+        // 7. 实现一点功能， 实现从格式化target.txt文件中自动提取commit区间的信息：
+
+//        extractLogForProjects(projectsDir, gitRepo, targetFile);
+
+        // 8. 提取每个项目的最新的版本作为base版本，放入到Nicad/systems/下;
+            generateLatestProjects(targetFile, gitRepo, NiCadSystemsDir);
     }
 
     // 功能： 1. 计算 'git log commit1..commit2'产生的commit信息文件中所有的commit数量
@@ -38,9 +46,9 @@ public class ProcessCommit {
 
         File[] Dir = new File(projectsDir).listFiles(); // 项目目录所在目录;
         assert Dir != null;
+        Arrays.sort(Dir, Comparator.comparing(File::getName));
         for (File project : Dir) { // 每次取一个项目目录
             String name = project.getName(); // 项目名
-
             // 找到项目文件夹中的目标log文件;
             File target = null;
             for (File file : Objects.requireNonNull(project.listFiles())) {
@@ -279,9 +287,9 @@ public class ProcessCommit {
 
 
     // 功能4： 到每个项目的git仓库中，切换到每一个bug-fixing commit版本以及commit^版本， 并将当前目录的所有文件都复制一份到
-    // 目标目录下即可; 生成的目录名称格式为 name-Add-index， 名字-比较版本(记为Add)-第几个bug-fixing commit的序号
+    // Nicad/systems目录下即可; 生成的目录名称格式为 name-Add-index， 名字-比较版本(记为Add)-第几个bug-fixing commit的序号
     // 比较版本（bug-fixing commit）记为Add， 被比较版本(bug-fixing commit^)记为Minus
-    public static void saveAllBugFixingCommitDir(String projectsDir, String gitRepoPath) throws IOException {
+    public static void saveAllBugFixingCommitDir(String projectsDir, String gitRepo, String NiCadSystemsDir) throws IOException {
         File projectDir = new File(projectsDir); // 项目所在的目录;
         for (File project : Objects.requireNonNull(projectDir.listFiles())) { // 遍历每一个项目的目录;
             String name = project.getName(); // 项目的名称;
@@ -305,10 +313,10 @@ public class ProcessCommit {
 
                 // 拿到Id, 开始去git仓库里面切换版本，并保存版本文件;
                 // 第一次执行命令，拿到commitId的版本文件；
-                String[] command1 = {"bash", "-c", "cd " + gitRepoPath + "/" + name + ";" + "git switch --detach " + commit + ";" + "cp -r ../" + name + " " + projectsDir + "/" + name + ";" + "mv " + projectsDir + "/" + name + "/" + name + " " + projectsDir + "/" + name + "/" + name + "-Add-" + index};
+                String[] command1 = {"bash", "-c", "cd " + gitRepo + "/" + name + ";" + "git switch --detach " + commit + ";" + "cp -r ../" + name + " " + NiCadSystemsDir + ";" + "mv " + NiCadSystemsDir + "/" + name + " " + NiCadSystemsDir + "/" + name + "-Add-" + index};
                 Utilities.implCommand(command1);
                 // 第二次执行命令，拿到commitId^的版本文件;
-                String[] command2 = {"bash", "-c", "cd " + gitRepoPath + "/" + name + ";" + "git switch --detach " + commit + "^;" + "cp -r ../" + name + " " + projectsDir + "/" + name + ";" + "mv " + projectsDir + "/" + name + "/" + name + " " + projectsDir + "/" + name + "/" + name + "-Minus-" + index};
+                String[] command2 = {"bash", "-c", "cd " + gitRepo + "/" + name + ";" + "git switch --detach " + commit + "^;" + "cp -r ../" + name + " " + NiCadSystemsDir + ";" + "mv " + NiCadSystemsDir + "/" + name + " " + NiCadSystemsDir + "/" + name + "-Minus-" + index};
                 Utilities.implCommand(command2);
             }
             reader.close();
@@ -320,7 +328,7 @@ public class ProcessCommit {
 
 
     // 功能6： 实现共变克隆的共变检测的问题， 并记录每个bug-fixing中，有多少commit是与共变克隆相关的；
-    public static void extracAllBuggyCochangedClones(String projectsDir, String gitRepo, String Output) throws IOException {
+    public static void extractAllBuggyCochangedClones(String projectsDir, String gitRepo, String Output) throws IOException {
         File[] projectsList = new File(Output).listFiles(); // 共变结果文件的列表;
         assert projectsList != null;
         Arrays.sort(projectsList, Comparator.comparing(File::getName)); // 排序;
@@ -523,18 +531,9 @@ public class ProcessCommit {
     }
 
     // 7. 实现一个小功能， 自动提取 一个commit区间中的所有commit信息;
-    // 给定一个格式化的文件target.txt，里面的每一行都是 项目名 git克隆链接 最新版本号 最远版本号;
-    public static void extractLogForProjects(String projectsDir, String gitRepo) throws IOException {
-        // 找到tmp目录下的target.txt文件;
-        File target = null;
-        for (File file : Objects.requireNonNull(new File(projectsDir).listFiles())) {
-            if (file.getName().equals("target.txt")) {
-                target = file;
-                break;
-            }
-        }
-
-        assert target != null;
+    // 给定一个格式化的文件 "target.txt" ，里面的每一行都是 项目名 git克隆链接 最新版本号 最远版本号;
+    public static void extractLogForProjects(String projectsDir, String gitRepo, String targetFile) throws IOException {
+        File target = new File(targetFile);
         BufferedReader targetReader = new BufferedReader(new FileReader(target));
         String line;
         while ((line = targetReader.readLine()) != null) { // 读取每一行;
@@ -543,9 +542,34 @@ public class ProcessCommit {
             File dir = new File(target.getParent() + File.separator + name); // 存储每个项目的目录;
             if (!dir.exists()) dir.mkdir(); // 创建这个文件夹;
 
-            // 在gitRepo目录下克隆该项目;
+            // 在gitRepo目录下克隆该项目, 如果已存在该项目，不会执行克隆;
             String[] clone = {"bash", "-c", "cd " + gitRepo + ";git clone " + gitLink};
             Utilities.implCommand(clone);
+
+            // 来到gitRepo目录下， 执行git log命令;
+            String[] gitLog = {"bash", "-c", "cd " + gitRepo + File.separator + name + "; git log " + olderVersion + ".." + latestVersion + " > " + dir.getAbsolutePath() + File.separator + name + "_log.txt"};
+            Utilities.implCommand(gitLog);
+
+
         }
+        targetReader.close();
+    }
+
+    // 8. 提取每个项目的最新的版本作为base版本，放入到Nicad/systems/下;
+    public static void generateLatestProjects(String targetFile, String gitRepo, String NiCadSystemsDir) throws IOException {
+        BufferedReader targetReader = new BufferedReader(new FileReader(targetFile)); // 读取每一行文件;
+        String line;
+        while ((line = targetReader.readLine()) != null) {
+            String[] str = line.split(" ");
+            String name = str[0], gitLink = str[1], latestVersion = str[2], olderVersion = str[3];
+
+            // 把最新版本的项目复制一份到NiCadSystemsDir下;
+            String[] command1 = {"bash", "-c", "cd " + gitRepo + File.separator + name + "; git checkout " + latestVersion + "; cp -r ../" + name + " " + NiCadSystemsDir};
+            Utilities.implCommand(command1);
+            // 改名一下：
+            String[] command2 = {"bash", "-c", "cd " + NiCadSystemsDir + "; mv ./" + name + " ./" + name + "-ZZZ-999"};
+            Utilities.implCommand(command2);
+        }
+        targetReader.close();
     }
 }
