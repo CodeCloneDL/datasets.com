@@ -1,10 +1,8 @@
-import javax.print.attribute.standard.MediaSize;
 import java.io.*;
-import java.nio.file.Files;
 import java.util.*;
 import java.util.regex.Pattern;
 
-public class ProcessCommit {
+public class FindBuggyCClone {
 
     public static void main(String[] args) throws IOException {
         String projectsDir = "/home/haosun/yao/tmp"; // 所有项目处理结果的目录，其中的每个文件夹都是一个项目;
@@ -27,14 +25,14 @@ public class ProcessCommit {
 //        saveAllBugFixingCommitDir(projectsDir, gitRepo, NiCadSystemsDir);
 
          // 6. 提取buggy的共变克隆。
-//        extracAllBuggyCochangedClones(projectsDir, gitRepo, Output);
+        extractAllBuggyCochangedClones(projectsDir, gitRepo, Output);
 
         // 7. 实现一点功能， 实现从格式化target.txt文件中自动提取commit区间的信息：
 
 //        extractLogForProjects(projectsDir, gitRepo, targetFile);
 
         // 8. 提取每个项目的最新的版本作为base版本，放入到Nicad/systems/下;
-            generateLatestProjects(targetFile, gitRepo, NiCadSystemsDir);
+//            generateLatestProjects(targetFile, gitRepo, NiCadSystemsDir);
     }
 
     // 功能： 1. 计算 'git log commit1..commit2'产生的commit信息文件中所有的commit数量

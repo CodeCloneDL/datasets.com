@@ -26,7 +26,7 @@ This process is implemented by Class *Main*.
 - Output : *InputCS/Results/“......clone-abstract”*.
 
 ### 3.  Co-changed Clone Separation
-This process is implemented by Class *CCCloneSeparator*.
+This process is implemented by Class *CCloneSeparator*.
 - Input1 : *InputCCTA*.If you don't have this folder, you need to create it by yourself and then, put the *Co-change Detection* result files in this folder.As shown in the figure below.
 
 ![Image](https://user-images.githubusercontent.com/105061953/168298657-c6745cbf-4349-4d47-96b4-f70c6d52fdd8.png)

@@ -6,7 +6,7 @@ import java.util.HashSet;
  * @author CrazyYao
  * @create 2022-04-02 16:58
  */
-public class CCCloneSeparator {
+public class CCloneSeparator {
 
     //基于共变结果文件，对共变克隆进行类型分离，并且按照克隆类型，将方法块的代码行块对应到各自的范围。
     //输入：InputCCTA文件夹以及InputCS文件夹。将所有项目共变结果文件都放入InputCCTA文件夹中，所有项目的克隆提取的结果文件(abstract文件)放入然后运行
