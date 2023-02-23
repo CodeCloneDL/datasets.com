@@ -1,5 +1,4 @@
 import java.io.*;
-import java.lang.annotation.Target;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -328,19 +327,19 @@ public class ProcessCommit {
             String fullNameBase = outPutProject.getName(); // （包含-ZZZ），同时该文件名就是该项目的base版本名
             String name = fullNameBase.substring(0, fullNameBase.indexOf("-ZZZ")); // 纯项目名字;（不包含-ZZZ, -Add, -Minus）;
 
-            int bugfixingCommitNum = 0; // 记录bugfixingCommit的数量;
-            int bugfixingCommitRelatedToCCloneNum = 0; // 记录bugfixingCommit中，有多少是跟CClone相关的！
+            Set<Integer> commitNumSet = new HashSet<>(); // 对bug-fixing进行去重;
+            Set<Integer> commitRTCCloneNumSet = new HashSet<>(); // 对buggy共变克隆数量去重;
             for (File aFile : Objects.requireNonNull(outPutProject.listFiles())) { // 考虑项目的每个A文件,一对AB项目，就是一个具体版本项目的克隆的映射;
                 // 找到一个A文件，即保存发生共变的base版本中的克隆的文件;
-                // 一个A文件就是一个被比较版本文件， 其实也是一个bug-fixing commit 版本;
+                // 一个A文件就是一个被比较版本文件， 其实也是一个bug-fixing commit/commit^ 版本;
                 if (aFile.getName().endsWith("-A.txt")) {
-                    bugfixingCommitNum++; // 记录有多少个 bug-fixing commit的版本被检测了;
+
                     // base文件就是fullName文件， 现在取得被比较的文件;
                     String fileName = aFile.getName();
                     // 取得被比较文件的全名;
                     String fullNameCompare = fileName.substring(fileName.indexOf("___") + 3, fileName.lastIndexOf("-A.txt"));
 
-                    // 现在去取对应的B文件，即保存发生共变的被计较版本中的克隆
+                    // 现在去取对应的B文件，即保存发生共变的被比较版本中的克隆
                     File bFile = null;
                     for (File file : Objects.requireNonNull(outPutProject.listFiles())) {
                         if (file.getName().contains(fullNameCompare + "-B.txt")) {
@@ -362,6 +361,10 @@ public class ProcessCommit {
                     } else {
                         sign = "Minus";
                     }
+
+                    // 考虑所有的bug-fixing commit, 不考虑重复的index;
+                    commitNumSet.add(index);
+
                     // 获得修改行中的那个文件，ChangedFile, 保存当前被比较版本项目中所有的修改行;
                     File changedFile = null;
                     for (File file : Objects.requireNonNull(tmpProjectDir.listFiles())) { // 遍历tmp/project目录下的每个文件;
@@ -370,6 +373,7 @@ public class ProcessCommit {
                             break;
                         }
                     }
+
                     // 保存具有bug倾向的base版本的共变克隆, 一个项目版本一个文件。
                     BufferedWriter changedWriter = new BufferedWriter(new FileWriter(outPutProject.getAbsolutePath() + File.separator + fullNameBase + "___" + fullNameCompare + "-BuggyCClone.txt"));
                     // 读取修改行的每个修改的文件路径，并记录发生的修改行;
@@ -377,10 +381,9 @@ public class ProcessCommit {
                     BufferedReader changedFileReader = new BufferedReader(new FileReader(changedFile));
                     String line;
                     // 只要一次bug-fixing中任意一修改行和CClone相关，我们就认为这次bug-fixing为与CClone相关的bug-fixing;
-                    boolean isBugFixingCommitRelatedToCClone = false;
                     while ((line = changedFileReader.readLine()) != null) {
                         if (line.startsWith("***** ")) { // 读取每一个文件路径;
-                            TreeSet<Integer> set = new TreeSet<>(); // 该路径下发生的修改行记录到有序集合中;
+                            TreeSet<Integer> changedLinesSet = new TreeSet<>(); // 该路径下发生的修改行记录到有序集合中;
                             // 首先提取发生的路径是什么; 该求得的路径不包含纯文件名，默认是在对应文件的根目录下;
                             String path = line.substring(line.indexOf("/") + 1, line.lastIndexOf(" "));
                             changedWriter.write("以下路径有---buggy共变克隆--- " + name + File.separator + path + "\n");
@@ -388,7 +391,7 @@ public class ProcessCommit {
                             line = changedFileReader.readLine();
                             for (String s : line.split(" ")) {
                                 if (!s.equals("")) {
-                                    set.add(Integer.parseInt(s));
+                                    changedLinesSet.add(Integer.parseInt(s));
                                 }
                             }
                             // 去bFile中，找是否有对应的路径，并发生了修改; 要求找出每一个路径发生修改的克隆对;
@@ -396,7 +399,6 @@ public class ProcessCommit {
                             BufferedReader bFileReader = new BufferedReader(new FileReader(bFile));
                             String bLine;
                             while ((bLine = bFileReader.readLine()) != null) {
-
                                 if (bLine.startsWith("<clonepair")) {
                                     // 读取每一对克隆对，看是否有路径匹配;
                                     String clonepair = bLine; // 连续保存三条记录;
@@ -405,12 +407,10 @@ public class ProcessCommit {
 
                                     // 开始判断是否两个克隆片段中是否任意一克隆片段涉及到修改，如果是，则这个克隆片段有bug倾向
                                     // 然后就能把对应的A文件的对应的克隆对，存入文件中；
-                                    boolean isChanged;
-                                    isChanged = isChanged(set, path, firstFile, false);
-                                    isChanged = isChanged(set, path, nextFile, isChanged);
+                                    boolean isChanged = checkIfIsChanged(changedLinesSet, path, firstFile) || checkIfIsChanged(changedLinesSet, path, nextFile);
                                     // 如果这一对克隆对发生了修改，那就去对应的A文件，找到这对克隆对应的克隆。
                                     if (isChanged) { // 发生了修改，找到了发生修改的共变克隆;
-                                        isBugFixingCommitRelatedToCClone = true; // 说明有一对共变克隆具有bug倾向，因此标记为true;
+                                        commitRTCCloneNumSet.add(index);
                                         BufferedReader aFileReader = new BufferedReader(new FileReader(aFile));
                                         String aLine;
                                         while ((aLine = aFileReader.readLine()) != null) {
@@ -434,17 +434,16 @@ public class ProcessCommit {
                             bFileReader.close();
                         }
                     }
-                    if (isBugFixingCommitRelatedToCClone) bugfixingCommitRelatedToCCloneNum++;
                     changedWriter.close();
                     changedFileReader.close();
                 }
             }
 
 
-            // 下面开始对base版本的buggy共变进行去重； 采用的方法和对共变克隆去重的方式相同，可能不太准确！！！
+            // 下面开始对base版本的buggy共变克隆进行去重； 这里采用的方法和对共变克隆去重的方式是相同，可能不太准确！！！
             int num = 0; // 计算不重复的buggy共变的数量;
             Set<String> set = new HashSet<>(); // 对当前项目进行去重;
-            for (File file : outPutProject.listFiles()) { // 遍历这些文件;
+            for (File file : Objects.requireNonNull(outPutProject.listFiles())) { // 遍历这些文件;
                 if (file.getName().contains("-BuggyCClone.txt")) { // 目标文件;
                     BufferedReader reader = new BufferedReader(new FileReader(file)); // 读取这个文件;
                     // 因为一个项目的不同克隆对的pcid是不同的，因此只需要根据pcid去重即可：
@@ -457,7 +456,7 @@ public class ProcessCommit {
                                 if (line.startsWith("<source file=")) {
                                     String pcid1 = Utilities.getPcid(line);
                                     String pcid2 = Utilities.getPcid((line = reader.readLine()));
-                                    line = reader.readLine(); // 跳过不需要的行;
+                                    line = reader.readLine();
                                     line = reader.readLine();
                                     line = reader.readLine();
 
@@ -482,9 +481,9 @@ public class ProcessCommit {
                 }
             }
 
-            // 把最终结果写入大FinalResult文件中;
+            // 把最终结果写入大FinalResult文件中, 首先拿到这个文件。
             File FinalResult = null;
-            for (File file : outPutProject.listFiles()) {
+            for (File file : Objects.requireNonNull(outPutProject.listFiles())) {
                 if (file.getName().contains("FinalResult")) {
                     FinalResult = file;
                     break;
@@ -498,24 +497,24 @@ public class ProcessCommit {
             writer.newLine();
 
             writer.write("--------去除掉重复的buggy共变克隆，还有" + num +"对--------------\n\n");
-            writer.write("--------当前项目总共处理了" + bugfixingCommitNum + "个bugfixing, 其中有" + bugfixingCommitRelatedToCCloneNum + "个是跟CClone相关的");
+            writer.write("--------当前项目总共处理了" + commitNumSet.size() + "个bugfixing, 其中有" + commitRTCCloneNumSet.size()+ "个是跟CClone相关的");
 
 
             writer.close();
         }
     }
 
-    private static boolean isChanged(TreeSet<Integer> set, String path, String file, boolean isChanged) {
-        if (isChanged) return isChanged;
+    private static boolean checkIfIsChanged(TreeSet<Integer> set, String path, String file) {
+        boolean flag = false;
         if (file.contains(path)) {
             int startLine = Utilities.getStartLine(file);
             int endLine = Utilities.getEndLine(file);
             // 判断是否有修改行在区间内：
             Integer ceiling = set.ceiling(startLine);
             if (ceiling != null && ceiling <= endLine) {
-                isChanged = true;
+                flag = true;
             }
         }
-        return isChanged;
+        return flag;
     }
 }
