@@ -8,10 +8,12 @@ import java.util.List;
  */
 public class Utilities {
 
+
+    // 根据读取的行， 取得systems开头的文件路径
     public static String getFilePath(String str) {
         return str.substring(str.indexOf("systems"), str.indexOf(".py") + 3);
     }
-
+    // 获得pcid
     public static String getPcid(String str) {
         StringBuilder pcid = new StringBuilder();
         int t1 = str.indexOf("pcid") + 6;
@@ -21,7 +23,7 @@ public class Utilities {
         }
         return pcid.toString();
     }
-
+    // 获得起始行
     public static int getStartLine(String str) {
         StringBuilder strtmp = new StringBuilder();
         int t1 = str.indexOf("startline=") + 11;
@@ -31,7 +33,7 @@ public class Utilities {
         }
         return Integer.parseInt(strtmp.toString());
     }
-
+    // 获得结束行
     public static int getEndLine(String str) {
         StringBuilder strtmp = new StringBuilder();
         int t1 = str.indexOf("endline=") + 9;
@@ -41,7 +43,7 @@ public class Utilities {
         }
         return Integer.parseInt(strtmp.toString());
     }
-
+    // 比较1-4位置的共变克隆
     public static boolean judge1_4CCClone(String[] string1, String[] string2, String[] string3, String[] string4) {
         System.out.println("函数匹配成功！开始检测是否发生共变！");
         int changeflag1 = 0;
@@ -74,7 +76,7 @@ public class Utilities {
         }
         return changeflag1 != 0 && changeflag2 != 0;
     }
-
+    // 比较1-3位置的共变克隆
     public static boolean judge1_3CCClone(String[] string1, String[] string2, String[] string3, String[] string4) {
         System.out.println("函数匹配成功！开始检测是否发生共变！");
         int changeflag1 = 0;
@@ -107,7 +109,7 @@ public class Utilities {
 
         return changeflag1 != 0 && changeflag2 != 0;
     }
-
+    // 打印时间
     public static void printTime(long l) {
         long minute, second;
         minute = l / 1000 / 60;
@@ -115,59 +117,7 @@ public class Utilities {
         System.out.println("运行时间为：" + minute + "分" + second + "秒");
     }
 
-    public static void deleteFileOrDir(File file) throws Exception {
-        if (file.isFile()) {//判断是否为文件，是，则删除
-            if (!file.delete())
-                throw new Exception("删除" + file.getAbsolutePath() + "文件失败！");
-        } else {
-            File[] files = file.listFiles();
-            for (File filetmp : files) {
-                deleteFileOrDir(filetmp);//递归，对每个都进行判断
-            }
-            if (!file.delete())
-                throw new Exception("删除" + file.getAbsolutePath() + "文件夹失败！");
-        }
-    }
-
-    public static void copyFile(String rename1, String rename2) throws Exception {
-
-        BufferedReader bufferedReader = new BufferedReader(new FileReader(rename1));
-        BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(rename2));
-
-        String str;
-        while ((str = bufferedReader.readLine()) != null) {
-            bufferedWriter.write(str + "\n");
-        }
-
-        //关闭文件
-        bufferedReader.close();
-        bufferedWriter.close();
-
-    }
-
-    public static void copyDir(String sourceDir, String targetDir) throws Exception {
-        // 获取源文件夹当下的文件。
-        File[] file = (new File(sourceDir)).listFiles();
-
-        assert file != null;
-        for (File value : file) {
-            if (value.isFile()) {
-                copyFile(value.getAbsolutePath(), targetDir + File.separator + value.getName());
-            }
-
-            if (value.isDirectory()) {
-                // 准备复制的源文件夹
-                String dir1 = sourceDir + File.separator + value.getName();
-                // 准备复制的目标文件夹
-                String dir2 = targetDir + File.separator + value.getName();
-                File file1 = new File(dir2);
-                if (!file1.exists())
-                    file1.mkdir();
-                copyDir(dir1, dir2);
-            }
-        }
-    }
-
+    // 获得一个克隆文件中的所有片段的总共的sloc
     public static int GetTotalSLOC(File file) throws IOException {
         FileReader fileReader = new FileReader(file);
         BufferedReader bufferedReader = new BufferedReader(fileReader);
@@ -212,7 +162,7 @@ public class Utilities {
         bufferedReader.close();
         return sum;
     }
-
+    // 获得克隆文件，所有克隆对的数量;
     public static int GetTotalCloneNum(File file) throws IOException {
         BufferedReader bufferedReader = new BufferedReader(new FileReader(file));
         String tmp;

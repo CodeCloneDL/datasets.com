@@ -2,6 +2,7 @@ import javax.lang.model.element.Name;
 import java.io.*;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.function.Predicate;
 
 
@@ -15,7 +16,7 @@ public class Main {
 
         long starttime = System.currentTimeMillis();  //时间戳
 //
-        File input = new File("Input"); // 所有项目的输入文件所在处;
+        File input = new File("InputTmp2"); // 所有项目的输入文件所在处;
         File output = new File("Output"); // 所有项目的结果文件所在处;
         if (!output.exists()) output.mkdir();
 
@@ -76,14 +77,16 @@ public class Main {
                 --i;
             }
 
+
             //*************************************//
             //以下去除各版本之间的非重复共变克隆对,并提取出来；
-            File[] files2 = output.listFiles(); // 很多项目都在一个结果文件中
-            assert files2 != null;
+            // 即找到一个项目的所有A文件，然后提取其中的克隆对，然后进行去重。
+            File[] outputProject = output.listFiles(); // 很多项目都在一个结果文件中
+            assert outputProject != null;
             
-            // 选择我们目标的那个结果项目;
+            // 选择我们目标的那个结果项目，名字就是Base版本的名字;
             File target = null;
-            for (File file : files2) {
+            for (File file : outputProject) {
                 if (file.getName().contains(subjectname1)) {
                     target = file;
                     break;
@@ -91,33 +94,34 @@ public class Main {
             }
 
             assert target != null;
-            File[] files2_1 = target.listFiles();
-            assert files2_1 != null;
-            Arrays.sort(files2_1, new AlphanumFileComparator<>());
-            i = files2_1.length - 1;
+            File[] resultLists = target.listFiles(); // 获得Output/该项目/*
+            assert resultLists != null;
+            Arrays.sort(resultLists, new AlphanumFileComparator<>()); // 排个序;
+            i = resultLists.length - 1;
 
-            BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(output.getAbsolutePath() + File.separator + target.getName() + "__noduplicated.txt"));
-            HashSet<String> set = new HashSet<>(); // 使用两字符串的哈希值的异或，来保证一对字符串不会重复出现。
-            while (i >= 0) {//遍历结果目录，提取基版本的非重复克隆对
-                if (files2_1[i].getName().endsWith("A.txt")) {
-                    BufferedReader bufferedReader = new BufferedReader(new FileReader(files2_1[i]));
-                    bufferedWriter.write("以下是" + files2_1[i].getName() + "文件的共变克隆对\n");
-                    String tmp1 = bufferedReader.readLine();
+            // 把不重复的Base版本的克隆对写入noduplicated文件中;
+            BufferedWriter noDupWriter = new BufferedWriter(new FileWriter(output.getAbsolutePath() + File.separator + target.getName() + "__noduplicated.txt"));
+            // 去重，保存base版本不重复的克隆对到文件noduplicated.txt中;
+            HashSet<String> set = new HashSet<>();
+            while (i >= 0) {// 倒序遍历结果目录，提取基版本的非重复克隆对
+                if (resultLists[i].getName().endsWith("A.txt")) { // 找到一个版本的A文件;
+                    BufferedReader aFileReader = new BufferedReader(new FileReader(resultLists[i])); // 读取这个A文件
+                    noDupWriter.write("以下是" + resultLists[i].getName() + "文件的共变克隆对\n"); // 写下这个共变克隆的项目信息
+                    String tmp1 = aFileReader.readLine();
                     String tmp2, tmp3;
-                    int num = 0;
-                    while (tmp1 != null) {
-                        if (tmp1.contains("<clonepair")) {
+                    int num = 0; // 记录当前文件非重复克隆对的数量;
+                    while (tmp1 != null) { // 读取这个文件所有的非重复共变克隆对;
+                        if (tmp1.contains("<clonepair")) { // 找到一个克隆对;
                             tmp2 = tmp1;
-                            tmp3 = bufferedReader.readLine();
-                            tmp1 = bufferedReader.readLine();
+                            tmp3 = aFileReader.readLine();
+                            tmp1 = aFileReader.readLine();
                             String pcid1 = Utilities.getPcid(tmp3);
                             String pcid2 = Utilities.getPcid(tmp1);
-
-
+                            // 对克隆对进行全局去重，一个base版本的克隆对，不能重复;
                             boolean t1 = set.add(pcid1 + pcid2);
                             boolean t2 = set.add(pcid2 + pcid1);
                             if (!t1 || !t2) {
-                                tmp1 = bufferedReader.readLine();
+                                tmp1 = aFileReader.readLine();
                                 continue;
                             }
 //                             以下是更标准的写法，但是先不这样做。
@@ -129,49 +133,65 @@ public class Main {
 //                            }
                             // 是一对新的pcid
                             num++;
-                            bufferedWriter.write(tmp2 + "\n");
-                            bufferedWriter.write(tmp3 + "\n");
-                            bufferedWriter.write(tmp1 + "\n");
-                            tmp1 = bufferedReader.readLine();
-                            bufferedWriter.write(tmp1 + "\n\n\n");
+                            noDupWriter.write(tmp2 + "\n");
+                            noDupWriter.write(tmp3 + "\n");
+                            noDupWriter.write(tmp1 + "\n");
+                            tmp1 = aFileReader.readLine();
+                            noDupWriter.write(tmp1 + "\n\n\n");
                         }
-                        tmp1 = bufferedReader.readLine();
+                        tmp1 = aFileReader.readLine();
                     }
+                    // 如果这个A文件没有共变克隆对，那么没关系，来几个回车隔绝一下：
                     if (num == 0) {
-                        bufferedWriter.write("\n\n\n\n\n");
+                        noDupWriter.write("\n\n\n\n\n");
                     }
-                    bufferedReader.close();
-                    bufferedWriter.write("\n\n\n\n\n");
+                    aFileReader.close();
+                    noDupWriter.write("\n\n\n\n\n"); // 每个文件之间的位置空一点点;
                 }
                 --i;
             }
-            bufferedWriter.close();
+            noDupWriter.close();
 
             //开始写入总结果。
-            BufferedWriter bufferedWriter1 = new BufferedWriter(new FileWriter(output.getAbsolutePath() + File.separator + target.getName() + "__FinalResults.txt"));
-            BufferedReader bufferedReader = new BufferedReader(new FileReader(files2_1[0]));
-            String tmp = bufferedReader.readLine();
+            // 把结果写入到 FinalResult文件中
+            BufferedWriter FinalResultFiles = new BufferedWriter(new FileWriter(output.getAbsolutePath() + File.separator + target.getName() + "__FinalResults.txt"));
 
-            while (tmp != null) {
-                bufferedWriter1.write(tmp + "\n");
-                tmp = bufferedReader.readLine();
+            // 读取Allresult中的所有数据;
+            // 首先找到这个文件
+            File AllresultFile = null;
+            for (File file : Objects.requireNonNull(target.listFiles())) {
+                if (file.getName().contains("Allresults")) {
+                    AllresultFile = file;
+                    break;
+                }
             }
+            // 开始读取Allresults文件
+            assert AllresultFile != null;
+            BufferedReader AllresultReader = new BufferedReader(new FileReader(AllresultFile));
+            String tmp = AllresultReader.readLine();
+            while (tmp != null) {
+                FinalResultFiles.write(tmp + "\n");
+                tmp = AllresultReader.readLine();
+            }
+            FinalResultFiles.write("\n\n");
+            AllresultReader.close(); // 读完该文件即关闭
 
-            bufferedWriter1.write("\n\n");
-            bufferedReader.close();
+            // 再次读取这个文件
+            AllresultReader = new BufferedReader(new FileReader(AllresultFile));
+            tmp = AllresultReader.readLine();
 
-
-            bufferedReader = new BufferedReader(new FileReader(files2_1[0]));
-            tmp = bufferedReader.readLine();
-
+            // 读取base版本项目共有多少的代码克隆
             StringBuilder str = new StringBuilder();
-            int sum = 0;
             int x = tmp.indexOf("检测了") + 3;
             while (tmp.charAt(x) != '个') {
                 str.append(tmp.charAt(x++));
             }
-            bufferedWriter1.write("本次基版本项目" + target.getName() + "共有" + str + "个克隆对。\n\n");
+            // 把base版本的代码克隆数量打印出来；
+            FinalResultFiles.write("本次基版本项目" + target.getName() + "共有" + str + "个克隆对。\n\n");
 
+            // 开始记录base版本和所有比较版本发生出现共变的次数;
+            int sum = 0;
+            int n = 0; // 记录当前被比较版本有多少个！
             while (tmp != null) {
                 if (tmp.contains("发生了")) {
                     str.delete(0, str.length());
@@ -180,20 +200,21 @@ public class Main {
                         str.append(tmp.charAt(x++));
                     }
                     sum += Integer.parseInt(str.toString());
+                    ++n;
                 }
-                tmp = bufferedReader.readLine();
+                tmp = AllresultReader.readLine();
             }
-
-            bufferedWriter1.write("几次共变检测过程中，共检测到了" + sum + "对共变克隆对\n\n" + "去掉重复的共变克隆对，还有" +
+            // 写入最终结果, Utilities.GetTotalCloneNum是根据文件中"<clonepair"的数量，来求克隆对是数量的;
+            FinalResultFiles.write(n + " 次共变检测过程中，共检测到了" + sum + "对共变克隆对\n\n" + "去掉重复的共变克隆对，还有" +
                     Utilities.GetTotalCloneNum(new File(output.getAbsolutePath() + File.separator + target.getName() + "__noduplicated.txt")) + "对共变的克隆对！！\n\n");
-            bufferedWriter1.close();
-            bufferedReader.close();
+            FinalResultFiles.close();
+            AllresultReader.close();
 
 
 
 
             //    删除中间文件，同时移动两个结果文件放进同一个文件夹。
-            for (File file : files2_1) {
+            for (File file : resultLists) {
                 if (file.getName().contains("Allresult")) {
                     file.delete();
                     break;

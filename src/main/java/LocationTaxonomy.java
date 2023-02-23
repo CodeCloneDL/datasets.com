@@ -4,6 +4,7 @@ import java.util.Set;
 
 public class LocationTaxonomy {
     // 本类实现与共变克隆和克隆的位置分类的功能（same file, same dir, different dir）;
+    // 只需要考虑固定的文件格式即可，即ASE——Datasets;
     public static void main(String[] args) throws IOException {
         String sourcePath = "C:\\Users\\yao\\Desktop\\ASE_Datasets\\Results"; // 克隆与共变克隆的结果文件的存放处。
         classifyCoChangedCloneByLocation(sourcePath);

@@ -389,6 +389,7 @@ public class ProcessCommit {
                             BufferedReader bFileReader = new BufferedReader(new FileReader(bFile));
                             String bLine;
                             while ((bLine = bFileReader.readLine()) != null) {
+
                                 if (bLine.startsWith("<clonepair")) {
                                     // 读取每一对克隆对，看是否有路径匹配;
                                     String clonepair = bLine; // 连续保存三条记录;
