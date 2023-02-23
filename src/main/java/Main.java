@@ -16,7 +16,7 @@ public class Main {
 
         long starttime = System.currentTimeMillis();  //时间戳
 //
-        File input = new File("InputTmp2"); // 所有项目的输入文件所在处;
+        File input = new File("Input"); // 所有项目的输入文件所在处;
         File output = new File("Output"); // 所有项目的结果文件所在处;
         if (!output.exists()) output.mkdir();
 
@@ -168,6 +168,7 @@ public class Main {
             // 开始读取Allresults文件
             assert AllresultFile != null;
             BufferedReader AllresultReader = new BufferedReader(new FileReader(AllresultFile));
+
             String tmp = AllresultReader.readLine();
             while (tmp != null) {
                 FinalResultFiles.write(tmp + "\n");
