@@ -196,6 +196,15 @@ public class Utilities {
             processBuilder.command(command);
             processBuilder.redirectErrorStream(true);
             Process process = processBuilder.start();
+
+            InputStream stdout = process.getInputStream();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(stdout));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println(line);
+            }
+            reader.close();
+
             process.waitFor();
         } catch (Exception e) {
             e.printStackTrace();

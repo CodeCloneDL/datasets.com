@@ -1,3 +1,4 @@
+import javax.print.attribute.standard.MediaSize;
 import java.io.*;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -22,7 +23,10 @@ public class ProcessCommit {
 //        saveAllBugFixingCommitDir(projectsDir, gitRepo);
 
          // 6. 提取buggy的共变克隆。
-        extracAllBuggyCochangedClones(projectsDir, gitRepo, Output);
+//        extracAllBuggyCochangedClones(projectsDir, gitRepo, Output);
+
+        // 7. 一点功能
+        extractLogForProjects(projectsDir, gitRepo);
     }
 
     // 功能： 1. 计算 'git log commit1..commit2'产生的commit信息文件中所有的commit数量
@@ -516,5 +520,32 @@ public class ProcessCommit {
             }
         }
         return flag;
+    }
+
+    // 7. 实现一个小功能， 自动提取 一个commit区间中的所有commit信息;
+    // 给定一个格式化的文件target.txt，里面的每一行都是 项目名 git克隆链接 最新版本号 最远版本号;
+    public static void extractLogForProjects(String projectsDir, String gitRepo) throws IOException {
+        // 找到tmp目录下的target.txt文件;
+        File target = null;
+        for (File file : Objects.requireNonNull(new File(projectsDir).listFiles())) {
+            if (file.getName().equals("target.txt")) {
+                target = file;
+                break;
+            }
+        }
+
+        assert target != null;
+        BufferedReader targetReader = new BufferedReader(new FileReader(target));
+        String line;
+        while ((line = targetReader.readLine()) != null) { // 读取每一行;
+            String[] info = line.split(" ");
+            String name = info[0], gitLink = info[1], latestVersion = info[2], olderVersion = info[3];
+            File dir = new File(target.getParent() + File.separator + name); // 存储每个项目的目录;
+            if (!dir.exists()) dir.mkdir(); // 创建这个文件夹;
+
+            // 在gitRepo目录下克隆该项目;
+            String[] clone = {"bash", "-c", "cd " + gitRepo + ";git clone " + gitLink};
+            Utilities.implCommand(clone);
+        }
     }
 }
