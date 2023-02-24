@@ -1,6 +1,3 @@
-import org.apache.poi.hssf.record.FnGroupCountRecord;
-
-import javax.print.attribute.standard.MediaSize;
 import java.io.*;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -14,7 +11,7 @@ public class FindBuggyCClone {
         String targetFile = "/home/4TDisk/yao/8projects.txt"; // 格式化的文件，里面按空格分割，每一行是项目名 git链接 最新版本号 最远版本号
         String NiCadSystemsDir = "/home/4TDisk/yao/NiCad-6.2/systems"; // Nicad 对项目执行克隆检测的目录;
 
-        // 1. 实现一点功能， 实现从格式化target.txt文件中自动提取commit区间的信息：
+        // 1. 实现从格式化target.txt文件中自动提取commit区间的信息;
         extractLogForProjects(projectsDir, gitRepo, targetFile);
 
         // 2. 提取每个项目的最新的版本作为base版本，放入到Nicad/systems/下;
@@ -27,14 +24,16 @@ public class FindBuggyCClone {
         // 4. 提取所有bug-fixing commit的diff结果到文件中;
         extractAllDiffOfBugFixingCommitToFile(projectsDir, gitRepo);
 //
-////         5. 从diff文件提取修改行;
+////       5. 从diff文件提取修改行;
         CalAllChangedLinesToFile(projectsDir);
 
-//         6. saveAllVersionFile
-
+//         6. 保存所有项目的版本到Nicad/systems下;
         saveAllBugFixingCommitDir(projectsDir, gitRepo, NiCadSystemsDir);
 
-         // 7. 提取buggy的共变克隆。
+        // 7. 对Nicad/system目录下的所有项目进行克隆共变检测;
+        Utilities.implCommand(new String[] {"bash", "-c", "cd " + NiCadSystemsDir + File.separator + ".." + "; ./scripts.sh"});
+
+         // 8. 提取buggy的共变克隆。
 //        extractAllBuggyCochangedClones(projectsDir, gitRepo, Output);
     }
     // 1. 实现一个小功能， 自动提取 一个commit区间中的所有commit信息;
@@ -356,7 +355,7 @@ public class FindBuggyCClone {
                 String[] arr = line.split(" ");
                 String commit = arr[0]; // commitId的值
                 int index = Integer.parseInt(arr[1]); // 第几个id;
-
+                System.out.println("正在处理项目 " + name + "的第 " + index + " 个commit, 它为：  " + commit);
                 // 拿到Id, 开始去git仓库里面切换版本，并保存版本文件;
                 // 第一次执行命令，拿到commitId的版本文件；
                 String[] command1 = {"bash", "-c", "cd " + gitRepo + "/" + name + ";" + "git switch --detach " + commit + ";" + "cp -r ../" + name + " " + NiCadSystemsDir + ";" + "mv " + NiCadSystemsDir + "/" + name + " " + NiCadSystemsDir + "/" + name + "-Add-" + index};
