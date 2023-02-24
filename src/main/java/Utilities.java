@@ -7,8 +7,6 @@ import java.util.List;
  * @create 2022-03-21 10:08
  */
 public class Utilities {
-
-
     // 根据读取的行， 取得systems开头的文件路径
     public static String getFilePath(String str) {
         return str.substring(str.indexOf("systems"), str.indexOf(".py") + 3);

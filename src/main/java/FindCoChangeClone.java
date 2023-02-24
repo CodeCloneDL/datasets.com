@@ -10,11 +10,19 @@ import java.util.Objects;
 public class FindCoChangeClone {
 
     public static void main(String[] args) throws Exception {
+        String Input = "/home/haosun/yao/gitRepo/datasets.com/Input";
+        String Output = "/home/haosun/yao/gitRepo/datasets.com/Output";
+        implementToFindCCloneInBatch(Input, Output);
+    }
+
+
+    // 本方法，传入Input, OutPut的路径，即可实现，批量对Input中不同项目进行共变处理;
+    public static void implementToFindCCloneInBatch(String Input, String Output) throws Exception {
 
         long starttime = System.currentTimeMillis();  //时间戳
 //
-        File input = new File("Input"); // 所有项目的输入文件所在处;
-        File output = new File("Output"); // 所有项目的结果文件所在处;
+        File input = new File(Input); // 所有项目的输入文件所在处;
+        File output = new File(Output); // 所有项目的结果文件所在处;
         if (!output.exists()) output.mkdir();
 
         File[] inputfiles = input.listFiles(); // 所有项目文件;
@@ -242,6 +250,7 @@ public class FindCoChangeClone {
             index = nextIndex + 1;
         }
     }
+
 
 
     //本方法实现从版本1文件到版本2文件的共变克隆的查找！包括克隆对的路径的文件和源码的文件两类。

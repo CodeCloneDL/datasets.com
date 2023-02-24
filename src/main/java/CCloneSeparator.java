@@ -12,7 +12,12 @@ public class CCloneSeparator {
     //输入：InputCCTA文件夹以及InputCS文件夹。将所有项目共变结果文件都放入InputCCTA文件夹中，所有项目的克隆提取的结果文件(abstract文件)放入然后运行
     //输出：FinalResults文件。在原有的FinalResults文件上添加。
     public static void main(String[] args) throws Exception {
-        File[] inputCCTAS = new File("InputCCTA").listFiles();//该文件夹存入的共变数据结果来作为输入。
+        String InputCCTA = "/home/haosun/yao/gitRepo/datasets.com/InputCCTA";
+        run(InputCCTA);
+    }
+
+    public static void run (String InputCCTA) throws IOException {
+        File[] inputCCTAS = new File(InputCCTA).listFiles();//该文件夹存入的共变数据结果来作为输入。
 
         assert inputCCTAS != null;
         Arrays.sort(inputCCTAS, new AlphanumFileComparator<>());

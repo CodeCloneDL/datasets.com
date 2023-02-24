@@ -6,7 +6,7 @@ public class FindBuggyCClone {
 
     public static void main(String[] args) throws IOException {
         String projectsDir = "/home/4TDisk/yao/tmp/"; // 所有项目处理结果的目录，其中的每个文件夹都是一个项目;
-        String gitRepo = "/home/haosun/yao/gitRepo"; // 每个项目的仓库所在地;
+        String gitRepo = "/home/haosun/yao/gitRepo"; // 每个项目的git仓库所在地;
         String Output = "/home/haosun/yao/gitRepo/datasets.com/Output"; // 共变结果文件所在的目录;
         String targetFile = "/home/4TDisk/yao/8projects.txt"; // 格式化的文件，里面按空格分割，每一行是项目名 git链接 最新版本号 最远版本号
         String NiCadSystemsDir = "/home/4TDisk/yao/NiCad-6.2/systems"; // Nicad 对项目执行克隆检测的目录;
@@ -17,7 +17,7 @@ public class FindBuggyCClone {
         // 2. 提取每个项目的最新的版本作为base版本，放入到Nicad/systems/下;
             generateLatestProjects(targetFile, gitRepo, NiCadSystemsDir);
 
-        // 3. 提取commit 和bug-fixing commit,及对应的id
+        // 3. 提取commit 和bug-fixing commit,及分配一个id
         // 每个项目的目录所在的目录; 自定义
         calCommitNum(projectsDir);
 

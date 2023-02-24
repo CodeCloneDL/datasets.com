@@ -14,7 +14,8 @@ import java.util.HashSet;
 
 public class CloneSeparator {
     public static void main(String[] args) throws Exception {
-        run("InputCS");
+        String InputCS = "/home/haosun/yao/gitRepo/datasets.com/InputCS";
+        run(InputCS);
     }
 
     public static void run(String srcdir) throws Exception {
