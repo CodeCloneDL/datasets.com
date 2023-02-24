@@ -12,12 +12,12 @@ public class FindCoChangeClone {
     public static void main(String[] args) throws Exception {
         String Input = "/home/haosun/yao/gitRepo/datasets.com/Input";
         String Output = "/home/haosun/yao/gitRepo/datasets.com/Output";
-        implementToFindCCloneInBatch(Input, Output);
+        run(Input, Output);
     }
 
 
     // 本方法，传入Input, OutPut的路径，即可实现，批量对Input中不同项目进行共变处理;
-    public static void implementToFindCCloneInBatch(String Input, String Output) throws Exception {
+    public static void run(String Input, String Output) throws Exception {
 
         long starttime = System.currentTimeMillis();  //时间戳
 //

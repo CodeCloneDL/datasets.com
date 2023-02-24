@@ -3,10 +3,11 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 public class FindBuggyCClone {
-
-    public static void main(String[] args) throws IOException {
+    // 一站式 检测所有的Bug共变克隆，只需要配置好路径即可。
+    public static void main(String[] args) throws Exception {
         String projectsDir = "/home/4TDisk/yao/tmp/"; // 所有项目处理结果的目录，其中的每个文件夹都是一个项目;
         String gitRepo = "/home/haosun/yao/gitRepo"; // 每个项目的git仓库所在地;
+        String Input = "/home/haosun/yao/gitRepo/datasets.com/Input"; // 共变克隆检测结果文件所存放的目录
         String Output = "/home/haosun/yao/gitRepo/datasets.com/Output"; // 共变结果文件所在的目录;
         String targetFile = "/home/4TDisk/yao/8projects.txt"; // 格式化的文件，里面按空格分割，每一行是项目名 git链接 最新版本号 最远版本号
         String NiCadSystemsDir = "/home/4TDisk/yao/NiCad-6.2/systems"; // Nicad 对项目执行克隆检测的目录;
@@ -33,8 +34,13 @@ public class FindBuggyCClone {
         // 7. 对Nicad/system目录下的所有项目进行克隆共变检测;
         Utilities.implCommand(new String[] {"bash", "-c", "cd " + NiCadSystemsDir + File.separator + ".." + "; ./scripts.sh"});
 
-         // 8. 提取buggy的共变克隆。
-//        extractAllBuggyCochangedClones(projectsDir, gitRepo, Output);
+        // 8. 调用共变检测函数，实施共变检测
+        // 先把Nicad结果文件移动到Input文件夹下;
+        Utilities.implCommand(new String[] {"bash", "-c", "cd " + NiCadSystemsDir + "; cp -r ./*functions-blind-clones " + Input});
+        FindCoChangeClone.run(Input, Output);
+
+         // 9. 提取buggy的共变克隆。
+        extractAllBuggyCochangedClones(projectsDir, gitRepo, Output);
     }
     // 1. 实现一个小功能， 自动提取 一个commit区间中的所有commit信息;
     // 给定一个格式化的文件 "target.txt" ，里面的每一行都是 项目名 git克隆链接 最新版本号 最远版本号;

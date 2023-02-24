@@ -7,11 +7,11 @@ public class LocationTaxonomy {
     // 只需要考虑固定的文件格式即可，即ASE——Datasets;
     public static void main(String[] args) throws IOException {
         String sourcePath = "C:\\Users\\yao\\Desktop\\ASE_Datasets\\Results"; // 克隆与共变克隆的结果文件的存放处。
-        classifyCoChangedCloneByLocation(sourcePath);
+        run(sourcePath);
     }
 
     // 对共变克隆按位置进行分类
-    public static void classifyCoChangedCloneByLocation(String sourcePath) throws IOException {
+    public static void run(String sourcePath) throws IOException {
         File[] CCprojectLists = new File(sourcePath + File.separator + "Co-change").listFiles(); // 共变所有项目文件所在;
         File[] CloneprojectLists = new File(sourcePath + File.separator + "Clone" + File.separator + "DL").listFiles(); // 代码克隆所有项目文件所在
         // 开始遍历每一个项目;
