@@ -1,3 +1,6 @@
+import org.apache.poi.hssf.record.FnGroupCountRecord;
+
+import javax.print.attribute.standard.MediaSize;
 import java.io.*;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -5,11 +8,11 @@ import java.util.regex.Pattern;
 public class FindBuggyCClone {
 
     public static void main(String[] args) throws IOException {
-        String projectsDir = "/home/4TDisk/yao/tmp"; // 所有项目处理结果的目录，其中的每个文件夹都是一个项目;
+        String projectsDir = "/home/haosun/yao/tmp1"; // 所有项目处理结果的目录，其中的每个文件夹都是一个项目;
         String gitRepo = "/home/haosun/yao/gitRepo"; // 每个项目的仓库所在地;
         String Output = "/home/haosun/yao/gitRepo/datasets.com/Output"; // 共变结果文件所在的目录;
-        String targetFile = "/home/4TDisk/yao/8projects.txt"; // 格式化的文件，里面按空格分割，每一行是项目名 git链接 最新版本号 最远版本号
-        String NiCadSystemsDir = "/home/4TDisk/yao/NiCad-6.2/systems"; // Nicad 对项目执行克隆检测的目录;
+        String targetFile = "/home/haosun/yao/8projects.txt"; // 格式化的文件，里面按空格分割，每一行是项目名 git链接 最新版本号 最远版本号
+        String NiCadSystemsDir = "/home/haosun/yao/software/NiCad-6.2/systems1"; // Nicad 对项目执行克隆检测的目录;
 
         // 1. 实现一点功能， 实现从格式化target.txt文件中自动提取commit区间的信息：
 
@@ -35,6 +38,8 @@ public class FindBuggyCClone {
          // 7. 提取buggy的共变克隆。
 //        extractAllBuggyCochangedClones(projectsDir, gitRepo, Output);
 
+        // 8. 自动提取克隆检测文件;
+        implementAllFunctionsInOneMethod(projectsDir, gitRepo, NiCadSystemsDir);
     }
     // 1. 实现一个小功能， 自动提取 一个commit区间中的所有commit信息;
     // 给定一个格式化的文件 "target.txt" ，里面的每一行都是 项目名 git克隆链接 最新版本号 最远版本号;
@@ -571,5 +576,71 @@ public class FindBuggyCClone {
             }
         }
         return flag;
+    }
+
+    // 实现一个功能：根据projectsDir目录下的所有项目文件夹中的commitIds文件，来获取Commit;
+    // 然后到gitRepo目录下找到对应的项目， 根据commit的index来讲这个项目重命名, 然后使用Nicad的软链接，链接到这个项目，执行Nicad克隆3次;
+    // 然后删除这个软链接, 然后回到gitRepo目录，将结果移回projectsDir目录，然后向文件名改为原来的名字;
+    // 循环执行下一步;
+    public static void implementAllFunctionsInOneMethod(String projectsDir, String gitRepo, String NiCadSystemsDir) throws IOException {
+        File[] projectsList = new File(projectsDir).listFiles();
+        assert projectsList != null;
+        Arrays.sort(projectsList, Comparator.comparing(File::getName));
+        for (File project : projectsList) { // 遍历每一个项目;
+            String name = project.getName(); // 项目的名称;
+            System.out.println("正在检测项目 " + name);
+            // 拿到commitIds.txt文件
+            File commidIdsFile = null;
+            for (File file : Objects.requireNonNull(project.listFiles())) {
+                if (file.getName().endsWith("commitIds.txt")) {
+                    commidIdsFile = file;
+                    break;
+                }
+            }
+
+            // 读取其中的每一个commit；
+            assert commidIdsFile != null;
+            BufferedReader commitIdsReader = new BufferedReader(new FileReader(commidIdsFile));
+            String line;
+            while ((line = commitIdsReader.readLine()) != null) {
+                String[] str = line.split(" ");
+                String commitId = str[0], index = str[1]; // 每个commit的id 以及序号index
+                System.out.println("正在检测项目" + name + "的" + commitId);
+                // 执行commit克隆
+                executeCloneDetect(projectsDir, gitRepo, NiCadSystemsDir, commitId, name, name + "-Add-" + index);
+                // 执行commit^ 克隆检测;
+                executeCloneDetect(projectsDir, gitRepo, NiCadSystemsDir, commitId + "^", name, name + "-Minus-" + index);
+                break;
+            }
+            commitIdsReader.close();
+            break;
+        }
+    }
+    public static void executeCloneDetect(String projectsDir, String gitRepo, String NiCadSystemsDir, String commitId, String name, String fullName) {
+        // 1 到gitRepo对应项目切换到响应的commit；
+        String[] checkoutToCommit = {"bash", "-c", "cd " + gitRepo + File.separator + name + "; git checkout " + commitId};
+        Utilities.implCommand(checkoutToCommit);
+        // 2. 到gitRepo目录对项目名重命名;
+        String[] rename = {"bash", "-c", "cd " + gitRepo + "; mv ./" + name + " ./" + fullName};
+        Utilities.implCommand(rename);
+        // 3. 创建软链接;
+        String[] createSoftLink = {"bash", "-c", "cd " + NiCadSystemsDir + "; ln -s " + gitRepo + File.separator + fullName + " " + "./"};
+        Utilities.implCommand(createSoftLink);
+        // 4. 执行克隆检测;
+        String[] cloneDetectt3 = {"bash", "-c", "cd " + NiCadSystemsDir + "; cd ..;" + "./nicad6 functions py " + NiCadSystemsDir + File.separator + fullName + " t3"};
+        String[] cloneDetectt2 = {"bash", "-c", "cd " + NiCadSystemsDir + "; cd ..;" + "./nicad6 functions py " + NiCadSystemsDir + File.separator + fullName + " t2"};
+        String[] cloneDetectt1 = {"bash", "-c", "cd " + NiCadSystemsDir + "; cd ..;" + "./nicad6 functions py " + NiCadSystemsDir + File.separator + fullName + " t1"};
+        Utilities.implCommand(cloneDetectt1);
+        Utilities.implCommand(cloneDetectt2);
+        Utilities.implCommand(cloneDetectt3);
+        // 5. 删除 当前的软链接;
+        String[] deleteSoftLink = {"bash", "-c", "cd " + NiCadSystemsDir + "; rm " + fullName};
+        Utilities.implCommand(deleteSoftLink);
+        // 6. 把systems下面的生成的Nicad的克隆文件全部移动到projectsDir下;
+        String[] moveResults = {"bash", "-c", "cd " + NiCadSystemsDir + "; mv " + fullName + "* " + projectsDir + File.separator + name};
+        Utilities.implCommand(moveResults);
+        // 7. 将gitRepo改为原名;
+        String[] renameToFirst = {"bash", "-c", "cd " + gitRepo + "; mv " + fullName + " " + name};
+        Utilities.implCommand(renameToFirst);
     }
 }
