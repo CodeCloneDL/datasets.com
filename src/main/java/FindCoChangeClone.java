@@ -2,6 +2,7 @@ import java.io.*;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * @author CrazyYao
@@ -12,12 +13,20 @@ public class FindCoChangeClone {
     public static void main(String[] args) throws Exception {
         String Input = "/home/haosun/yao/gitRepo/datasets.com/Input";
         String Output = "/home/haosun/yao/gitRepo/datasets.com/Output";
+
         run(Input, Output);
     }
 
 
     // 本方法，传入Input, OutPut的路径，即可实现，批量对Input中不同项目进行共变处理;
     public static void run(String Input, String Output) throws Exception {
+        // 跳过一些出问题的项目; 仅测试
+        Set<String> test = new HashSet<>();
+        for (File file : Objects.requireNonNull(new File(Output).listFiles())) {
+            String name = file.getName();
+            name = name.substring(0, name.indexOf("-ZZZ"));
+            test.add(name);
+        }
 
         long starttime = System.currentTimeMillis();  //时间戳
 //
@@ -25,59 +34,65 @@ public class FindCoChangeClone {
         File output = new File(Output); // 所有项目的结果文件所在处;
         if (!output.exists()) output.mkdir();
 
-        File[] inputfiles = input.listFiles(); // 所有项目文件;
-        assert inputfiles != null;
-        Arrays.sort(inputfiles, new AlphanumFileComparator<>()); // 按照项目进行块分类。
+        File[] projectsList = input.listFiles(); // 所有项目文件;
+        assert projectsList != null;
+        Arrays.sort(projectsList, new AlphanumFileComparator<>()); // 按照项目进行块分类。
 
         int index = 0; // 表示某个的项目块的起始位置；
         int projectNum = 0; // 表示到第几个项目了
-        while (index < inputfiles.length) { // 遍历Input文件夹中的所有项目，一个项目是一个整块;
+        while (index < projectsList.length) { // 遍历Input文件夹中的所有项目，一个项目是一个整块;
 
             // 获取项目的名称, 这个不是base版本的名称;
-            String fullName = inputfiles[index].getName(); // 包含project-Add-index_functions-blind-clones的全部名称;
-
+            String fullName = projectsList[index].getName(); // 包含project-Add-index_functions-blind-clones的全部名称;
             String pureName = fullName.substring(0, fullName.indexOf("-"));  // 项目的前一部分名称，用来判断是否是同一个项目块;
+            
             // 获取当前项目块的最后一个位置; 就base版本项目的位置；
             int nextIndex = index + 1;
-            while (nextIndex < inputfiles.length && inputfiles[nextIndex].getName().contains(pureName)) ++nextIndex;
+            while (nextIndex < projectsList.length && projectsList[nextIndex].getName().contains(pureName)) ++nextIndex;
             --nextIndex;
+            if (!test.add(pureName)) {
+                index = nextIndex + 1;
+                continue;
+            }
 
             // 即目前的版本块的范围为[index, nextIndex]
 
 
             // 选取最新版本为基版本，然后分别跟剩下的版本进行共变比较选择。
-            String subjectwholename1 = inputfiles[nextIndex].getName();
-            String subjectname1 = subjectwholename1.substring(0, subjectwholename1.indexOf('_'));
-            String inputf1, inputf1c, inputf2, inputf2c, outputfile1, outputfile2, AllResults, outputfile1withcode, outputfile2withcode;
-            inputf1 = inputfiles[nextIndex].getAbsolutePath() + File.separator + subjectwholename1 + "-0.30.xml";
-            inputf1c = inputfiles[nextIndex].getAbsolutePath() + File.separator + subjectwholename1 + "-0.30-classes-withsource.xml";
+            String subjectwholename1 = projectsList[nextIndex].getName(); // 即 name-functions-blind-clones形式
+            String subjectname1 = subjectwholename1.substring(0, subjectwholename1.indexOf('_')); // 即进行Nicad检测之前的名字
+            String inputf1, inputf1c, inputf2, inputf2c, outputAFile, outputBFile, AllResults, outputAWithCodeFile, outputBWithCodeFile;
+            inputf1 = projectsList[nextIndex].getAbsolutePath() + File.separator + subjectwholename1 + "-0.30.xml"; // 项目所有克隆对所在的文件
+            inputf1c = projectsList[nextIndex].getAbsolutePath() + File.separator + subjectwholename1 + "-0.30-classes-withsource.xml"; // 项目所有克隆源码所在的文件， 用来提取源码的;
 
+            // 在Output文件夹中创建项目结果所存放的目录;
             File file1 = new File(output.getAbsolutePath() + File.separator + subjectname1);
             if (!file1.exists()) {
                 file1.mkdir();
             }
+            
             int i = nextIndex - 1;
             while (i >= index) {//该循环，输出1-2，1-3,1-4,1-5....版本的共变信息。
 
-                String subjectwholename2 = inputfiles[i].getName();
+                String subjectwholename2 = projectsList[i].getName();
 
                 String subjectname2 = subjectwholename2.substring(0, subjectwholename2.indexOf('_'));
 
-                inputf2 = inputfiles[i].getAbsolutePath() + File.separator + subjectwholename2 + "-0.30.xml";
-                inputf2c = inputfiles[i].getAbsolutePath() + File.separator + subjectwholename2 + "-0.30-classes-withsource.xml";
+                inputf2 = projectsList[i].getAbsolutePath() + File.separator + subjectwholename2 + "-0.30.xml";
+                inputf2c = projectsList[i].getAbsolutePath() + File.separator + subjectwholename2 + "-0.30-classes-withsource.xml";
 
 
-                outputfile1 = output.getAbsolutePath() + File.separator + subjectname1 + File.separator + subjectname1 + "___" + subjectname2 + "-A.txt";
-                outputfile2 = output.getAbsolutePath() + File.separator + subjectname1 + File.separator + subjectname1 + "___" + subjectname2 + "-B" + ".txt";
+                outputAFile = output.getAbsolutePath() + File.separator + subjectname1 + File.separator + subjectname1 + "___" + subjectname2 + "-A.txt";
+                outputBFile = output.getAbsolutePath() + File.separator + subjectname1 + File.separator + subjectname1 + "___" + subjectname2 + "-B" + ".txt";
 
                 AllResults = output.getAbsolutePath() + File.separator + subjectname1 + File.separator + "Allresults___" + subjectname1.substring(0, subjectname1.indexOf('-')) + ".txt";
 
-                outputfile1withcode = output.getAbsolutePath() + File.separator + subjectname1 + File.separator + subjectname1 + "___" + subjectname2 + "-A-withcode.txt";
-                outputfile2withcode = output.getAbsolutePath() + File.separator + subjectname1 + File.separator + subjectname1 + "___" + subjectname2 + "-B-withcode" + ".txt";
+                outputAWithCodeFile = output.getAbsolutePath() + File.separator + subjectname1 + File.separator + subjectname1 + "___" + subjectname2 + "-A-withcode.txt";
+                outputBWithCodeFile = output.getAbsolutePath() + File.separator + subjectname1 + File.separator + subjectname1 + "___" + subjectname2 + "-B-withcode" + ".txt";
 
 
 //            克隆对信息和源码文件。
-                run(inputf1, inputf1c, inputf2, inputf2c, outputfile1, outputfile2, subjectname2, AllResults, outputfile1withcode, outputfile2withcode);
+                run(inputf1, inputf1c, inputf2, inputf2c, outputAFile, outputBFile, subjectname2, AllResults, outputAWithCodeFile, outputBWithCodeFile);
                 --i;
             }
 
@@ -254,19 +269,27 @@ public class FindCoChangeClone {
 
 
     //本方法实现从版本1文件到版本2文件的共变克隆的查找！包括克隆对的路径的文件和源码的文件两类。
-    public static void run(String inputf1, String inputf1c, String inputf2, String inputf2c, String outputfile1, String outputfile2, String subjectname2, String AllResults, String outputfile1withcode, String outputfile2withcode) throws Exception {
+    // 输入文件
+    // inputf1 : 版本1克隆对所在文件
+//    inputf1c : 版本1 克隆源码所在文件
+//    inputf2 : 版本2 克隆对所在文件
+//    inputf2c : 版本2 克隆源码所在文件;
+//    outputAFile : A.txt文件
+//    outputBFile B.txt文件
+//    outputAWithCodeFile A-WithCode.txt文件
+//    outputBWithCodeFile B-withCode.txt文件。
+    public static void run(String inputf1, String inputf1c, String inputf2, String inputf2c, String outputAFile, String outputBFile, String subjectname2, String AllResults, String outputAWithCodeFile, String outputBWithCodeFile) throws Exception {
 
         //打开版本1克隆对的文件
         FileReader fileReader = new FileReader(inputf1);
         BufferedReader bufferedReader = new BufferedReader(fileReader);                      //bufferedReader是版本1文件的遍历流。tmp是版本1文件的中介。
 
         //打开需要写入的文件。
-        BufferedWriter bufferedWriterOld = new BufferedWriter(new FileWriter(outputfile1));
-        BufferedWriter bufferedWriterNew = new BufferedWriter(new FileWriter(outputfile2));
+        BufferedWriter bufferedWriterOld = new BufferedWriter(new FileWriter(outputAFile));
+        BufferedWriter bufferedWriterNew = new BufferedWriter(new FileWriter(outputBFile));
         BufferedWriter bufferedWriterALL = new BufferedWriter(new FileWriter(AllResults, true));
-
-        BufferedWriter bufferedWriterOldWithCode = new BufferedWriter(new FileWriter(outputfile1withcode));
-        BufferedWriter bufferedWriterNewWithCode = new BufferedWriter(new FileWriter(outputfile2withcode));
+        BufferedWriter bufferedWriterOldWithCode = new BufferedWriter(new FileWriter(outputAWithCodeFile));
+        BufferedWriter bufferedWriterNewWithCode = new BufferedWriter(new FileWriter(outputBWithCodeFile));
 
         String tmp;//用来遍历版本1克隆对文件。
         String pcid;//使用Pcid定位。
@@ -434,7 +457,8 @@ public class FindCoChangeClone {
 
                 //现在判断是否匹配第二个克隆，两种情况ft1==ft2为true                                                                                                                         情况2：ft1==f2为false。
                 //情况1进入入口：ft1==ft2为true
-                if (ft1.equals(ft2) && ft1.equals(filepath3) && ft1.equals(filepath4)) {//四个路径完全相同。
+                if (ft1.equals(ft2) && ft1.equals(filepath3) && ft1.equals(filepath4)) {
+                    //四个路径完全相同。
                     //先取匹配到的克隆的函数名字；
                     String pcid3t = Utilities.getPcid(tmp3);
                     FileReader fileReader5t = new FileReader(inputf2c);
@@ -1501,7 +1525,8 @@ public class FindCoChangeClone {
 
                 //情况2进入入口：ft1==ft2为false                                                                                                                                         //情况2：ft1==ft2为假
                 //如果f1==ft2为false，那么多匹配到的也只能只存在1-3&&2-4和1-4&&2-3两种情况
-                else if (ft1.equals(filepath3) && ft2.equals(filepath4) || ft1.equals(filepath4) && ft2.equals(filepath3)) {//filepath3匹配到了f1或ft2，filepath4正好匹配到了剩下一个，那就是合适的匹配。
+                else if (ft1.equals(filepath3) && ft2.equals(filepath4) || ft1.equals(filepath4) && ft2.equals(filepath3)) {
+                    //filepath3匹配到了f1或ft2，filepath4正好匹配到了剩下一个，那就是合适的匹配。
 
 
                     //我们目前仍然不知道，匹配到的路径中对应函数名字是否匹配我们版本1的函数名字，有可能只是恰好，路径相同，函数不同！！！！
@@ -1977,7 +2002,6 @@ public class FindCoChangeClone {
                     }
 
                 }
-
 
                 //情况3进入入口：前面两个if条件必进，但是中间可能终止，所有tmp3可能为null或者值；
                 if (tmp3 != null)
