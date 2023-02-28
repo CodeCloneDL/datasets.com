@@ -1,3 +1,6 @@
+import org.apache.commons.collections4.iterators.UnmodifiableIterator;
+import org.apache.commons.math3.Field;
+
 import java.io.*;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -6,30 +9,30 @@ public class FindBuggyCClone {
     // 一站式 检测所有的Bug共变克隆，只需要配置好路径即可。
     public static void main(String[] args) throws Exception {
         String projectsDir = "/home/haosun/yao/tmp1/"; // 所有项目处理结果的目录，其中的每个文件夹都是一个项目;
-        String gitRepo = "/home/haosun/yao/gitRepo"; // 每个项目的git仓库所在地;
+        String gitRepo = "/home/haosun/yao/gitRepo1"; // 每个项目的git仓库所在地;
         String Input = "/home/haosun/yao/gitRepo/datasets.com/Input"; // 共变克隆检测结果文件所存放的目录
         String Output = "/home/haosun/yao/gitRepo/datasets.com/Output"; // 共变结果文件所在的目录;
         String targetFile = "/home/haosun/yao/4projects.txt"; // 格式化的文件，里面按空格分割，每一行是项目名 git链接 最新版本号 最远版本号
         String NiCadSystemsDir = "/home/haosun/yao/software/NiCad-6.2/systems1/"; // Nicad 对项目执行克隆检测的目录;
 
         // 1. 实现从格式化target.txt文件中自动提取commit区间的信息;
-        extractLogForProjects(projectsDir, gitRepo, targetFile);
+//        extractLogForProjects(projectsDir, gitRepo, targetFile);
 
 //        // 2. 提取每个项目的最新的版本作为base版本，放入到Nicad/systems/下;
-            generateLatestProjects(targetFile, gitRepo, NiCadSystemsDir);
+//            generateLatestProjects(targetFile, gitRepo, NiCadSystemsDir);
 //
 //        // 3. 提取commit 和bug-fixing commit,及分配一个id
 //        // 每个项目的目录所在的目录; 自定义
-        calCommitNum(projectsDir);
+//        calCommitNum(projectsDir);
 //
 //        // 4. 提取所有bug-fixing commit的diff结果到文件中;
-        extractAllDiffOfBugFixingCommitToFile(projectsDir, gitRepo);
+//        extractAllDiffOfBugFixingCommitToFile(projectsDir, gitRepo);
 ////
 //////       5. 从diff文件提取修改行;
-        CalAllChangedLinesToFile(projectsDir);
+//        CalAllChangedLinesToFile(projectsDir);
 //
 ////         6. 保存所有项目的版本到Nicad/systems下;
-        saveAllBugFixingCommitDir(projectsDir, gitRepo, NiCadSystemsDir);
+//        saveAllBugFixingCommitDir(projectsDir, gitRepo, NiCadSystemsDir);
 //
 //        // 7. 对Nicad/system目录下的所有项目进行克隆共变检测;
           // 建议单独使用终端执行，否则一但远程连接终端，就中断了;
@@ -39,10 +42,12 @@ public class FindBuggyCClone {
 //        // 8. 调用共变检测函数，实施共变检测
 //        // 先把Nicad结果文件移动到Input文件夹下;
 //        Utilities.implCommand(new String[] {"bash", "-c", "cd " + NiCadSystemsDir + "; cp -r ./*functions-blind-clones " + Input});
-        FindCoChangeClone.run(Input, Output);
+//        FindCoChangeClone.run(Input, Output);
 //
 //         // 9. 提取buggy的共变克隆。
-        extractAllBuggyCochangedClones(projectsDir, gitRepo, Output);
+//        extractAllBuggyCochangedClones(projectsDir, gitRepo, Output);
+
+        oneFunc(NiCadSystemsDir, gitRepo, projectsDir, Input);
     }
     // 1. 实现一个小功能， 自动提取 一个commit区间中的所有commit信息;
     // 给定一个格式化的文件 "target.txt" ，里面的每一行都是 项目名 git克隆链接 最新版本号 最远版本号;
@@ -581,5 +586,60 @@ public class FindBuggyCClone {
         return flag;
     }
 
-    
+    // 一次性完成项目所有的克隆检测， 不需要创建太多副本;
+    public static void oneFunc(String NiCadSystemsDir, String gitRepo, String projectsDir, String Input) throws IOException {
+        File[] projectsList = new File(projectsDir).listFiles();
+        assert projectsList != null;
+        Arrays.sort(projectsList, Comparator.comparing(File::getName));
+        for (File project : Objects.requireNonNull(projectsList)) { // 遍历所有项目;
+            String name = project.getName(); // 获得项目的名称;
+
+            File commitIdsFile = null; // 找到存储所有bug-fixing 所在的文件;
+            for (File file : Objects.requireNonNull(project.listFiles())) {
+                if (file.getName().endsWith("commitIds.txt")) {
+                    commitIdsFile = file;
+                    break;
+                }
+            }
+
+            // 对每一个
+            assert commitIdsFile != null;
+            BufferedReader commitIdsReader = new BufferedReader(new FileReader(commitIdsFile));
+            String line;
+            while ((line = commitIdsReader.readLine()) != null) { // 读取每一个bug-fixing commit；
+                String[] arr = line.split(" ");
+                String commitId = arr[0]; // commit
+                int index = Integer.parseInt(arr[1]); // bug-fixing commit的序号;
+                String name_Add = name + "-Add-" + index;
+                String name_Minus = name_Add + "-Minus-" + index;
+
+                executeSomeLinuxCommand(gitRepo, NiCadSystemsDir, name, name_Add, commitId, Input);
+                executeSomeLinuxCommand(gitRepo,NiCadSystemsDir, name, name_Minus, commitId + "^", Input);
+            }
+            commitIdsReader.close();
+        }
+    }
+    public static void executeSomeLinuxCommand(String gitRepo, String NiCadSystemsDir, String name, String name_target, String commit, String Input) {
+        // 开始检测克隆;
+        // 1. 首先到了git仓库，切换到commit;
+        String[] checkout = {"bash", "-c", "cd " + gitRepo + File.separator + name + "; git checkout " + commit};
+        Utilities.implCommand(checkout);
+        // 2. 将当前git仓库改名为目标名称;
+        String[] rename = {"bash", "-c", "cd " + gitRepo + "; mv " + name + " " + name_target};
+        Utilities.implCommand(rename);
+        // 3. 检测克隆;
+        String[] clone1 = {"bash", "-c", "cd " + NiCadSystemsDir + File.separator + "..;" + "./nicad6 functions py " + gitRepo + File.separator + name_target + " t1"};
+        String[] clone2 = {"bash", "-c", "cd " + NiCadSystemsDir + File.separator + "..;" + "./nicad6 functions py " + gitRepo + File.separator + name_target + " t2"};
+        String[] clone3 = {"bash", "-c", "cd " + NiCadSystemsDir + File.separator + "..;" + "./nicad6 functions py " + gitRepo + File.separator + name_target + " t3"};
+        Utilities.implCommand(clone1);
+        Utilities.implCommand(clone2);
+        Utilities.implCommand(clone3);
+        // 4. 检测完克隆之后，将仓库名改回去;
+        String[] renameAgain = {"bash", "-c", "cd " + gitRepo + "; mv " + name_target + " " + name};
+        Utilities.implCommand(renameAgain);
+
+        // 5. 将目标结果移动到Input目录下;
+        String[] moveToInput = {"bash", "-c", "cd " + gitRepo + "; cp -r " + name_target + "_functions-blind-clones " + Input};
+        Utilities.implCommand(moveToInput);
+    }
 }
