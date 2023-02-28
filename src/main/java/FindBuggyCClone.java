@@ -587,6 +587,8 @@ public class FindBuggyCClone {
     }
 
     // 一次性完成项目所有的克隆检测， 不需要创建太多副本;
+    // 实现功能：检测所有的bug-fixing commit 与 对应的 commit^的代码克隆，并将检测文件复制一份到Input目录下;
+    // 缺点： gitRepo目录下，会产生 NiCad的检测文件;
     public static void oneFunc(String NiCadSystemsDir, String gitRepo, String projectsDir, String Input) throws IOException {
         File[] projectsList = new File(projectsDir).listFiles();
         assert projectsList != null;
@@ -602,7 +604,7 @@ public class FindBuggyCClone {
                 }
             }
 
-            // 对每一个
+            // 对每一个commit Id进行克隆检测
             assert commitIdsFile != null;
             BufferedReader commitIdsReader = new BufferedReader(new FileReader(commitIdsFile));
             String line;
@@ -611,10 +613,10 @@ public class FindBuggyCClone {
                 String commitId = arr[0]; // commit
                 int index = Integer.parseInt(arr[1]); // bug-fixing commit的序号;
                 String name_Add = name + "-Add-" + index;
-                String name_Minus = name_Add + "-Minus-" + index;
+                String name_Minus = name + "-Minus-" + index;
 
                 executeSomeLinuxCommand(gitRepo, NiCadSystemsDir, name, name_Add, commitId, Input);
-                executeSomeLinuxCommand(gitRepo,NiCadSystemsDir, name, name_Minus, commitId + "^", Input);
+                executeSomeLinuxCommand(gitRepo, NiCadSystemsDir, name, name_Minus, commitId + "^", Input);
             }
             commitIdsReader.close();
         }

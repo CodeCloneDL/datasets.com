@@ -49,6 +49,7 @@ public class FindCoChangeClone {
 
 
 
+            
             // 获取当前项目块的最后一个位置; 就base版本项目的位置；
             int nextIndex = index + 1;
             while (nextIndex < projectsList.length && projectsList[nextIndex].getName().contains(pureName)) ++nextIndex;
