@@ -49,9 +49,11 @@ public class FindBuggyCClone {
 //         // 9. 提取buggy的共变克隆。
 //        extractAllBuggyCochangedClones(projectsDir, gitRepo, Output);
 
-        // 生成需要检测的共变文件;
+        // 10. 根据之前生成的共变结果文件，生成需要检测的共变文件，即name_functions-blind-clones,
+        // 里面是自己手动生成的0.30和0.30-withsource.xml文件，用来与其它的bug-fixing commit检测共变克隆;
         generateFilesForCClone(InputBC, Input);
 
+        // 11. 直接使用git仓库，来检测代码克隆，不需要创建每个commit的副本了;
 //        oneFunc(NiCadSystemsDir, gitRepo, projectsDir, Input);
     }
     // 1. 实现一个小功能， 自动提取 一个commit区间中的所有commit信息;
@@ -591,16 +593,16 @@ public class FindBuggyCClone {
         return flag;
     }
 
-    // 首先构造我们需要的 name_functions-blind-clones-0.30.xml 和 name_functions-blind-clones-0.30-classes-withsource.xml
-    // 遍历 InputBC 中的每一个项目;
-    // 在 Input 中生成类似 name-ZZZ-999_functions-blind-clones的文件夹;
-    // 在上述文件夹中，创建0.30.xml文件 和 withsource文件;
-    // 取得 name_noduplicated.txt 文件;
-    // 获得文件中的每一对克隆放入0.30.xml文件中;
-    // 每取一对克隆就把对应的源码放入到withsource文件夹下;
+    // 10. 根据之前的共变结果，产生新的共变文件。
+    // 构造我们需要的 name_functions-blind-clones-0.30.xml 和 name_functions-blind-clones-0.30-classes-withsource.xml
+    // 1. 遍历 InputBC 中的每一个项目;
+    // 2. 在 Input 中生成类似 name-ZZZ-999_functions-blind-clones的文件夹;
+    // 3. 在上述文件夹中，创建0.30.xml文件 和 withsource文件;
+    // 4. 取得 name_noduplicated.txt 文件;
+    // 5. 获得文件中的每一对克隆放入0.30.xml文件中;
+    // 6. 再次取得name_noduplicated.txt, 每取一对克隆就把对应的源码放入到withsource文件夹下;
     public static void generateFilesForCClone(String InputBC, String Input) throws IOException {
         File InputBCFile = new File(InputBC);
-        File InputFile = new File(Input);
         for (File project : Objects.requireNonNull(InputBCFile.listFiles())) { // 遍历每个项目;
             System.out.println("正在处理项目" + project.getName());
             // 获得项目的纯名字;
@@ -658,7 +660,7 @@ public class FindBuggyCClone {
             String currFile = null; // 获得对应的比较信息;
             line = noduplicatedReader.readLine();
             System.out.println("开始读取源码");
-            int index = 0;
+            int index = 0; // 记录目前已经到哪一个对比文件了;
             while (line != null) {
                 if (line.startsWith("以下是")) { // 定位到一个共变文件;
                     System.out.println("开始读取第" + index++ + "文件");
@@ -703,8 +705,9 @@ public class FindBuggyCClone {
             file030WithSource.close();
         }
     }
-    // 一次性完成项目所有的克隆检测， 不需要创建太多副本;
-    // 实现功能：检测所有的bug-fixing commit 与 对应的 commit^的代码克隆，并将检测文件复制一份到Input目录下;
+
+    // 11. 一次性完成项目所有的克隆检测， 不需要创建太多副本;
+    // 实现功能：检测所有的bug-fixing commit 与 对应的 commit^的代码克隆，并将检测结果文件复制一份到Input目录下;
     // 缺点： gitRepo目录下，会产生 NiCad的检测文件;
     public static void oneFunc(String NiCadSystemsDir, String gitRepo, String projectsDir, String Input) throws IOException {
         File[] projectsList = new File(projectsDir).listFiles();
