@@ -1,3 +1,6 @@
+import org.apache.commons.collections4.iterators.UnmodifiableIterator;
+import org.apache.commons.math3.Field;
+
 import java.io.*;
 import java.lang.reflect.Parameter;
 import java.util.*;
@@ -14,7 +17,6 @@ public class FindBuggyCClone {
         String targetFile = "/home/zhuxx/yao/4projects.txt"; // 格式化的文件，里面按空格分割，每一行是项目名 git链接 最新版本号 最远版本号
         String NiCadSystemsDir = "/home/zhuxx/yao/software/NiCad-6.2/systems1/"; // Nicad 对项目执行克隆检测的目录;
         String InputBC = "/home/zhuxx/yao/gitRepo/datasets.com/InputBC";
-
         // 1. 实现从格式化target.txt文件中自动提取commit区间的信息;
 //        extractLogForProjects(projectsDir, gitRepo, targetFile);
 
@@ -49,6 +51,8 @@ public class FindBuggyCClone {
 
         // 生成需要检测的共变文件;
         generateFilesForCClone(InputBC, Input);
+
+//        oneFunc(NiCadSystemsDir, gitRepo, projectsDir, Input);
     }
     // 1. 实现一个小功能， 自动提取 一个commit区间中的所有commit信息;
     // 给定一个格式化的文件 "target.txt" ，里面的每一行都是 项目名 git克隆链接 最新版本号 最远版本号;
@@ -587,7 +591,6 @@ public class FindBuggyCClone {
         return flag;
     }
 
-
     // 首先构造我们需要的 name_functions-blind-clones-0.30.xml 和 name_functions-blind-clones-0.30-classes-withsource.xml
     // 遍历 InputBC 中的每一个项目;
     // 在 Input 中生成类似 name-ZZZ-999_functions-blind-clones的文件夹;
@@ -699,5 +702,63 @@ public class FindBuggyCClone {
             noduplicatedReader.close();
             file030WithSource.close();
         }
+    }
+    // 一次性完成项目所有的克隆检测， 不需要创建太多副本;
+    // 实现功能：检测所有的bug-fixing commit 与 对应的 commit^的代码克隆，并将检测文件复制一份到Input目录下;
+    // 缺点： gitRepo目录下，会产生 NiCad的检测文件;
+    public static void oneFunc(String NiCadSystemsDir, String gitRepo, String projectsDir, String Input) throws IOException {
+        File[] projectsList = new File(projectsDir).listFiles();
+        assert projectsList != null;
+        Arrays.sort(projectsList, Comparator.comparing(File::getName));
+        for (File project : Objects.requireNonNull(projectsList)) { // 遍历所有项目;
+            String name = project.getName(); // 获得项目的名称;
+
+            File commitIdsFile = null; // 找到存储所有bug-fixing 所在的文件;
+            for (File file : Objects.requireNonNull(project.listFiles())) {
+                if (file.getName().endsWith("commitIds.txt")) {
+                    commitIdsFile = file;
+                    break;
+                }
+            }
+
+            // 对每一个commit Id进行克隆检测
+            assert commitIdsFile != null;
+            BufferedReader commitIdsReader = new BufferedReader(new FileReader(commitIdsFile));
+            String line;
+            while ((line = commitIdsReader.readLine()) != null) { // 读取每一个bug-fixing commit；
+                String[] arr = line.split(" ");
+                String commitId = arr[0]; // commit
+                int index = Integer.parseInt(arr[1]); // bug-fixing commit的序号;
+                String name_Add = name + "-Add-" + index;
+                String name_Minus = name + "-Minus-" + index;
+
+                executeSomeLinuxCommand(gitRepo, NiCadSystemsDir, name, name_Add, commitId, Input);
+                executeSomeLinuxCommand(gitRepo, NiCadSystemsDir, name, name_Minus, commitId + "^", Input);
+            }
+            commitIdsReader.close();
+        }
+    }
+    public static void executeSomeLinuxCommand(String gitRepo, String NiCadSystemsDir, String name, String name_target, String commit, String Input) {
+        // 开始检测克隆;
+        // 1. 首先到了git仓库，切换到commit;
+        String[] checkout = {"bash", "-c", "cd " + gitRepo + File.separator + name + "; git checkout " + commit};
+        Utilities.implCommand(checkout);
+        // 2. 将当前git仓库改名为目标名称;
+        String[] rename = {"bash", "-c", "cd " + gitRepo + "; mv " + name + " " + name_target};
+        Utilities.implCommand(rename);
+        // 3. 检测克隆;
+        String[] clone1 = {"bash", "-c", "cd " + NiCadSystemsDir + File.separator + "..;" + "./nicad6 functions py " + gitRepo + File.separator + name_target + " t1"};
+        String[] clone2 = {"bash", "-c", "cd " + NiCadSystemsDir + File.separator + "..;" + "./nicad6 functions py " + gitRepo + File.separator + name_target + " t2"};
+        String[] clone3 = {"bash", "-c", "cd " + NiCadSystemsDir + File.separator + "..;" + "./nicad6 functions py " + gitRepo + File.separator + name_target + " t3"};
+        Utilities.implCommand(clone1);
+        Utilities.implCommand(clone2);
+        Utilities.implCommand(clone3);
+        // 4. 检测完克隆之后，将仓库名改回去;
+        String[] renameAgain = {"bash", "-c", "cd " + gitRepo + "; mv " + name_target + " " + name};
+        Utilities.implCommand(renameAgain);
+
+        // 5. 将目标结果移动到Input目录下;
+        String[] moveToInput = {"bash", "-c", "cd " + gitRepo + "; cp -r " + name_target + "_functions-blind-clones " + Input};
+        Utilities.implCommand(moveToInput);
     }
 }

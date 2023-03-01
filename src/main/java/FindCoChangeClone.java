@@ -20,6 +20,7 @@ public class FindCoChangeClone {
 
     // 本方法，传入Input, OutPut的路径，即可实现，批量对Input中不同项目进行共变处理;
     public static void run(String Input, String Output) throws Exception {
+        new File(Output).mkdir();
         // 跳过一些出问题的项目; 仅测试
         Set<String> test = new HashSet<>();
         for (File file : Objects.requireNonNull(new File(Output).listFiles())) {
@@ -45,6 +46,9 @@ public class FindCoChangeClone {
             // 获取项目的名称, 这个不是base版本的名称;
             String fullName = projectsList[index].getName(); // 包含project-Add-index_functions-blind-clones的全部名称;
             String pureName = fullName.substring(0, fullName.indexOf("-"));  // 项目的前一部分名称，用来判断是否是同一个项目块;
+
+
+
             
             // 获取当前项目块的最后一个位置; 就base版本项目的位置；
             int nextIndex = index + 1;
