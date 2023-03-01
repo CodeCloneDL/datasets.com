@@ -638,6 +638,7 @@ public class FindBuggyCClone {
                     file030.write("</clone>\n\n");
                 }
             }
+            file030.write("</clones>");
             noduplicatedReader.close();
             file030.close();
             System.out.println("克隆对存储完毕;");
@@ -674,7 +675,9 @@ public class FindBuggyCClone {
                                 // 把两对源码全部录入文件;
                                 if (line1.startsWith(pair)) {
                                     line1 = AWithCodeFile.readLine();
-                                    file030WithSource.write(line1.replace(fullName, targetName) + "\n");
+                                    String t1 = line1.replace(fullName, targetName);
+                                    String t2 = t1.substring(0, t1.lastIndexOf("</source>"));
+                                    file030WithSource.write(t2 + "\n");
                                     while (!(line1 = AWithCodeFile.readLine()).startsWith("</clonepair")) {
                                         file030WithSource.write(line1 + "\n");
                                     }
@@ -692,6 +695,7 @@ public class FindBuggyCClone {
                 }
             }
             System.out.println("源码读取结束");
+            file030WithSource.write("</clones>");
             noduplicatedReader.close();
             file030WithSource.close();
         }
