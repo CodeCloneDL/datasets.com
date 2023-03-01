@@ -11,8 +11,8 @@ import java.util.Set;
 public class FindCoChangeClone {
 
     public static void main(String[] args) throws Exception {
-        String Input = "/home/haosun/yao/gitRepo/datasets.com/Input";
-        String Output = "/home/haosun/yao/gitRepo/datasets.com/Output";
+        String Input = "/home/zhuxx/yao/gitRepo/datasets.com/Input";
+        String Output = "/home/zhuxx/yao/gitRepo/datasets.com/Output";
 
         run(Input, Output);
     }
@@ -268,7 +268,7 @@ public class FindCoChangeClone {
 
 
 
-    //本方法实现从版本1文件到版本2文件的共变克隆的查找！包括克隆对的路径的文件和源码的文件两类。
+    // 本方法实现从版本1文件到版本2文件的共变克隆的查找！包括克隆对的路径的文件和源码的文件两类。
     // 输入文件
     // inputf1 : 版本1克隆对所在文件
 //    inputf1c : 版本1 克隆源码所在文件

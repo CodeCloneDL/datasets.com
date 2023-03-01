@@ -1,35 +1,38 @@
 import java.io.*;
+import java.lang.reflect.Parameter;
 import java.util.*;
+import java.util.function.DoubleUnaryOperator;
 import java.util.regex.Pattern;
 
 public class FindBuggyCClone {
     // 一站式 检测所有的Bug共变克隆，只需要配置好路径即可。
     public static void main(String[] args) throws Exception {
-        String projectsDir = "/home/haosun/yao/tmp1/"; // 所有项目处理结果的目录，其中的每个文件夹都是一个项目;
-        String gitRepo = "/home/haosun/yao/gitRepo"; // 每个项目的git仓库所在地;
-        String Input = "/home/haosun/yao/gitRepo/datasets.com/Input"; // 共变克隆检测结果文件所存放的目录
-        String Output = "/home/haosun/yao/gitRepo/datasets.com/Output"; // 共变结果文件所在的目录;
-        String targetFile = "/home/haosun/yao/4projects.txt"; // 格式化的文件，里面按空格分割，每一行是项目名 git链接 最新版本号 最远版本号
-        String NiCadSystemsDir = "/home/haosun/yao/software/NiCad-6.2/systems1/"; // Nicad 对项目执行克隆检测的目录;
+        String projectsDir = "/home/zhuxx/yao/tmp1/"; // 所有项目处理结果的目录，其中的每个文件夹都是一个项目;
+        String gitRepo = "/home/zhuxx/yao/gitRepo"; // 每个项目的git仓库所在地;
+        String Input = "/home/zhuxx/yao/gitRepo/datasets.com/Input"; // 共变克隆检测结果文件所存放的目录
+        String Output = "/home/zhuxx/yao/gitRepo/datasets.com/Output"; // 共变结果文件所在的目录;
+        String targetFile = "/home/zhuxx/yao/4projects.txt"; // 格式化的文件，里面按空格分割，每一行是项目名 git链接 最新版本号 最远版本号
+        String NiCadSystemsDir = "/home/zhuxx/yao/software/NiCad-6.2/systems1/"; // Nicad 对项目执行克隆检测的目录;
+        String InputBC = "/home/zhuxx/yao/gitRepo/datasets.com/InputBC";
 
         // 1. 实现从格式化target.txt文件中自动提取commit区间的信息;
-        extractLogForProjects(projectsDir, gitRepo, targetFile);
+//        extractLogForProjects(projectsDir, gitRepo, targetFile);
 
 //        // 2. 提取每个项目的最新的版本作为base版本，放入到Nicad/systems/下;
-            generateLatestProjects(targetFile, gitRepo, NiCadSystemsDir);
+//            generateLatestProjects(targetFile, gitRepo, NiCadSystemsDir);
 //
 //        // 3. 提取commit 和bug-fixing commit,及分配一个id
 //        // 每个项目的目录所在的目录; 自定义
-        calCommitNum(projectsDir);
+//        calCommitNum(projectsDir);
 //
 //        // 4. 提取所有bug-fixing commit的diff结果到文件中;
-        extractAllDiffOfBugFixingCommitToFile(projectsDir, gitRepo);
+//        extractAllDiffOfBugFixingCommitToFile(projectsDir, gitRepo);
 ////
 //////       5. 从diff文件提取修改行;
-        CalAllChangedLinesToFile(projectsDir);
+//        CalAllChangedLinesToFile(projectsDir);
 //
 ////         6. 保存所有项目的版本到Nicad/systems下;
-        saveAllBugFixingCommitDir(projectsDir, gitRepo, NiCadSystemsDir);
+//        saveAllBugFixingCommitDir(projectsDir, gitRepo, NiCadSystemsDir);
 //
 //        // 7. 对Nicad/system目录下的所有项目进行克隆共变检测;
           // 建议单独使用终端执行，否则一但远程连接终端，就中断了;
@@ -39,10 +42,13 @@ public class FindBuggyCClone {
 //        // 8. 调用共变检测函数，实施共变检测
 //        // 先把Nicad结果文件移动到Input文件夹下;
 //        Utilities.implCommand(new String[] {"bash", "-c", "cd " + NiCadSystemsDir + "; cp -r ./*functions-blind-clones " + Input});
-        FindCoChangeClone.run(Input, Output);
+//        FindCoChangeClone.run(Input, Output);
 //
 //         // 9. 提取buggy的共变克隆。
-        extractAllBuggyCochangedClones(projectsDir, gitRepo, Output);
+//        extractAllBuggyCochangedClones(projectsDir, gitRepo, Output);
+
+        // 生成需要检测的共变文件;
+        generateFilesForCClone(InputBC, Input);
     }
     // 1. 实现一个小功能， 自动提取 一个commit区间中的所有commit信息;
     // 给定一个格式化的文件 "target.txt" ，里面的每一行都是 项目名 git克隆链接 最新版本号 最远版本号;
@@ -581,5 +587,113 @@ public class FindBuggyCClone {
         return flag;
     }
 
-    
+
+    // 首先构造我们需要的 name_functions-blind-clones-0.30.xml 和 name_functions-blind-clones-0.30-classes-withsource.xml
+    // 遍历 InputBC 中的每一个项目;
+    // 在 Input 中生成类似 name-ZZZ-999_functions-blind-clones的文件夹;
+    // 在上述文件夹中，创建0.30.xml文件 和 withsource文件;
+    // 取得 name_noduplicated.txt 文件;
+    // 获得文件中的每一对克隆放入0.30.xml文件中;
+    // 每取一对克隆就把对应的源码放入到withsource文件夹下;
+    public static void generateFilesForCClone(String InputBC, String Input) throws IOException {
+        File InputBCFile = new File(InputBC);
+        File InputFile = new File(Input);
+        for (File project : Objects.requireNonNull(InputBCFile.listFiles())) { // 遍历每个项目;
+            System.out.println("正在处理项目" + project.getName());
+            // 获得项目的纯名字;
+            String fullName = project.getName();
+            String name = fullName.substring(0, fullName.lastIndexOf("-"));
+            String targetName = name + "-ZZZ-999"; // 改名
+            // 在 Input中创建 name-ZZZ-999_functions-blind-clones即对应的文件;
+            File NiCadDir = new File(Input + File.separator + targetName + "_functions-blind-clones");
+            NiCadDir.mkdir();
+            BufferedWriter file030 = new BufferedWriter(new FileWriter(NiCadDir.getAbsolutePath() + File.separator + NiCadDir.getName() + "-0.30.xml"));
+            BufferedWriter file030WithSource = new BufferedWriter(new FileWriter(NiCadDir.getAbsolutePath() + File.separator + NiCadDir.getName() + "-0.30-classes-withsource.xml"));
+
+            // 获得noduplicated文件;
+            File noduplicatedFile = null;
+            for (File file : Objects.requireNonNull(project.listFiles())) {
+                if (file.getName().contains("noduplicated.txt")) {
+                    noduplicatedFile = file;
+                    break;
+                }
+            }
+            System.out.println("获得noduplicated文件");
+            assert noduplicatedFile != null;
+            BufferedReader noduplicatedReader = new BufferedReader(new FileReader(noduplicatedFile));
+            // 先把030文件中的头部写进入;
+            file030.write("<clones>\n");
+            file030.write("<systeminfo processor=\"nicad6\" system=\"" + targetName + "\" granularity=\"functions-blind\" threshold=\"30%\" minlines=\"10\" maxlines=\"2500\"/>\n");
+            file030.write("<cloneinfo npcs=\"9999\" npairs=\"9999\"/>\n");
+            file030.write("<runinfo ncompares=\"9999\" cputime=\"9999\"/>\n\n");
+            // 然后读取所有的克隆对放入030文件;
+            String line;
+            while ((line = noduplicatedReader.readLine()) != null) {
+                if (line.startsWith("<clonepair")) { // 找到一对克隆;
+                    file030.write("<clone nlines=\"999\" similarity=\"999\">\n");
+                    line = noduplicatedReader.readLine();
+                    file030.write( line.replace(fullName, targetName) + "\n");
+                    line = noduplicatedReader.readLine();
+                    file030.write(line.replace(fullName, targetName)+ "\n");
+                    file030.write("</clone>\n\n");
+                }
+            }
+            noduplicatedReader.close();
+            file030.close();
+            System.out.println("克隆对存储完毕;");
+
+            // 开始读取所有的源码文件，放入withsource文件下;
+            // 首先写入头;
+            file030WithSource.write("<clones>\n");
+            file030WithSource.write("<systeminfo processor=\"nicad6\" system=\"" + targetName + "\" granularity=\"functions-blind\" threshold=\"30%\" minlines=\"10\" maxlines=\"2500\"/>\n");
+            file030WithSource.write("<cloneinfo npcs=\"9999\" npairs=\"9999\"/>\n");
+            file030WithSource.write("<runinfo ncompares=\"9999\" cputime=\"9999\"/>\n");
+            file030WithSource.write("<classinfo nclasses=\"999\"/>\n\n");
+            // 新开一个noduplicatedReader;
+            noduplicatedReader = new BufferedReader(new FileReader(noduplicatedFile));
+            String currFile = null; // 获得对应的比较信息;
+            line = noduplicatedReader.readLine();
+            System.out.println("开始读取源码");
+            int index = 0;
+            while (line != null) {
+                if (line.startsWith("以下是")) { // 定位到一个共变文件;
+                    System.out.println("开始读取第" + index++ + "文件");
+                    currFile = line.substring(3, line.lastIndexOf("-A.txt"));
+                    // 读取该文件下对应的共变克隆对源码;
+                    line = noduplicatedReader.readLine();
+                    int i1 = 0;
+                    while (line != null && !line.startsWith("以下是")) {
+                        if (line.startsWith("<clonepair")) { // 读取一对克隆对，写入一对源码;
+                            System.out.println("开始读取第" + index + "文件的第" + i1++ + "克隆");
+                            String pair = line; // 是对应的第几对;
+
+                            // 读取对应的源码文件;
+                            BufferedReader AWithCodeFile = new BufferedReader(new FileReader(project.getAbsolutePath() + File.separator + currFile + "-A-withcode.txt"));
+                            String line1;
+                            while ((line1 = AWithCodeFile.readLine()) != null) {
+                                // 把两对源码全部录入文件;
+                                if (line1.startsWith(pair)) {
+                                    line1 = AWithCodeFile.readLine();
+                                    file030WithSource.write(line1.replace(fullName, targetName) + "\n");
+                                    while (!(line1 = AWithCodeFile.readLine()).startsWith("</clonepair")) {
+                                        file030WithSource.write(line1 + "\n");
+                                    }
+                                    file030WithSource.write("</source>\n\n");
+                                }
+                            }
+                            AWithCodeFile.close();
+                            line = noduplicatedReader.readLine();
+                        } else {
+                            line = noduplicatedReader.readLine();
+                        }
+                    }
+                } else {
+                    line = noduplicatedReader.readLine();
+                }
+            }
+            System.out.println("源码读取结束");
+            noduplicatedReader.close();
+            file030WithSource.close();
+        }
+    }
 }
