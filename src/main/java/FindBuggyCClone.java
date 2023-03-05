@@ -10,13 +10,14 @@ import java.util.regex.Pattern;
 public class FindBuggyCClone {
     // 一站式 检测所有的Bug共变克隆，只需要配置好路径即可。
     public static void main(String[] args) throws Exception {
-        String projectsDir = "/home/zhuxx/yao/tmp1/"; // 所有项目处理结果的目录，其中的每个文件夹都是一个项目;
-        String gitRepo = "/home/zhuxx/yao/gitRepo"; // 每个项目的git仓库所在地;
-        String Input = "/home/zhuxx/yao/gitRepo/datasets.com/Input"; // 共变克隆检测结果文件所存放的目录
-        String Output = "/home/zhuxx/yao/gitRepo/datasets.com/Output"; // 共变结果文件所在的目录;
-        String targetFile = "/home/zhuxx/yao/4projects.txt"; // 格式化的文件，里面按空格分割，每一行是项目名 git链接 最新版本号 最远版本号
-        String NiCadSystemsDir = "/home/zhuxx/yao/software/NiCad-6.2/systems1/"; // Nicad 对项目执行克隆检测的目录;
-        String InputBC = "/home/zhuxx/yao/gitRepo/datasets.com/InputBC";
+        String projectsDir = "/home/haosun/yao/tmp1/"; // 所有项目处理结果的目录，其中的每个文件夹都是一个项目;
+        String gitRepo = "/home/haosun/yao/gitRepo1"; // 每个项目的git仓库所在地;
+        String Input = "/home/haosun/yao/gitRepo/datasets.com/Input"; // 共变克隆检测结果文件所存放的目录
+        String Output = "/home/haosun/yao/gitRepo/datasets.com/Output"; // 共变结果文件所在的目录;
+        String targetFile = "/home/haosun/yao/4projects.txt"; // 格式化的文件，里面按空格分割，每一行是项目名 git链接 最新版本号 最远版本号
+        String NiCadSystemsDir = "/home/haosun/yao/software/NiCad-6.2/systems1/"; // Nicad 对项目执行克隆检测的目录;
+        String InputBC = "/home/haosun/yao/gitRepo/datasets.com/InputBC";
+        String InputPath = "/home/haosun/yao/gitRepo/datasets.com/sourcePath";
         // 1. 实现从格式化target.txt文件中自动提取commit区间的信息;
 //        extractLogForProjects(projectsDir, gitRepo, targetFile);
 
@@ -55,6 +56,8 @@ public class FindBuggyCClone {
 
         // 11. 直接使用git仓库，来检测代码克隆，不需要创建每个commit的副本了;
 //        oneFunc(NiCadSystemsDir, gitRepo, projectsDir, Input);
+
+         func1(InputPath, Input);
     }
     // 1. 实现一个小功能， 自动提取 一个commit区间中的所有commit信息;
     // 给定一个格式化的文件 "target.txt" ，里面的每一行都是 项目名 git克隆链接 最新版本号 最远版本号;
@@ -763,5 +766,58 @@ public class FindBuggyCClone {
         // 5. 将目标结果移动到Input目录下;
         String[] moveToInput = {"bash", "-c", "cd " + gitRepo + "; cp -r " + name_target + "_functions-blind-clones " + Input};
         Utilities.implCommand(moveToInput);
+    }
+    
+    // 将比较版本中路径不对的项目，修改为systems/...的路径。
+    // 只需要修改0.30.xml和0.30-classes-withsource.xml文件
+    // 将sourcePath目录下的所有项目中的0.30.xml和0.30-classes-withsource.xml文件，进行修改，然后存放到Input目录下;
+    public static void func1(String InputPath, String Input) throws IOException {
+        for (File project : new File(InputPath).listFiles()) {
+            String name = project.getName(); // 项目的名称; name-Add-index_functions-blind-clones
+            String purename = name.substring(0, name.indexOf("_functions"));
+            //找到file030 和 file030WithSource文件
+            File file030 = null;
+            File file030WithSource = null;
+            for (File listFiles : project.listFiles()) {
+                if (listFiles.getName().contains("-0.30.xml")) {
+                    file030 = listFiles;
+                } 
+                if (listFiles.getName().contains("-0.30-classes-withsource.xml")) {
+                    file030WithSource = listFiles;
+                }
+            }
+            File dir = new File(Input + File.separator + project.getName());
+            dir.mkdir();
+            BufferedReader file030Reader = new BufferedReader(new FileReader(file030));
+            BufferedWriter file030Writer = new BufferedWriter(new FileWriter(dir.getAbsolutePath() + File.separator + file030.getName()));
+
+            // 开始写入文件file030;
+            String line;
+            while((line = file030Reader.readLine()) != null) {
+                if (line.startsWith("<source file=")) {
+                    String newLine = "<source file=\"systems/" + line.substring(line.indexOf(purename));
+                    file030Writer.write(newLine + "\n");
+                } else {
+                    file030Writer.write(line + "\n");
+                }
+            }
+            file030Reader.close();
+            file030Writer.close();
+
+            // 开始写入文件file030withsource;
+            BufferedReader file030WithSourceReader = new BufferedReader(new FileReader(file030WithSource));
+            BufferedWriter file030WithSourceWriter = new BufferedWriter(new FileWriter(dir.getAbsolutePath() + File.separator + file030WithSource.getName()));
+
+            while ((line = file030WithSourceReader.readLine()) != null) {
+                if (line.startsWith("<source file=")) {
+                    String newLine = "<source file=\"systems/" + line.substring(line.indexOf(purename));
+                    file030WithSourceWriter.write(newLine + "\n");
+                } else {
+                    file030WithSourceWriter.write(line + "\n");
+                }
+            }
+            file030WithSourceReader.close();
+            file030WithSourceWriter.close();
+        }
     }
 }

@@ -11,8 +11,8 @@ import java.util.Set;
 public class FindCoChangeClone {
 
     public static void main(String[] args) throws Exception {
-        String Input = "/home/zhuxx/yao/gitRepo/datasets.com/Input";
-        String Output = "/home/zhuxx/yao/gitRepo/datasets.com/Output";
+        String Input = "/home/haosun/yao/gitRepo/datasets.com/Input";
+        String Output = "/home/haosun/yao/gitRepo/datasets.com/Output";
 
         run(Input, Output);
     }
