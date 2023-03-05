@@ -8,7 +8,6 @@ import java.util.function.DoubleUnaryOperator;
 import java.util.regex.Pattern;
 
 public class FindBuggyCClone {
-    // 一站式 检测所有的Bug共变克隆，只需要配置好路径即可。
     public static void main(String[] args) throws Exception {
         String projectsDir = "/home/haosun/yao/tmp1/"; // 所有项目处理结果的目录，其中的每个文件夹都是一个项目;
         String gitRepo = "/home/haosun/yao/gitRepo1"; // 每个项目的git仓库所在地;
@@ -16,8 +15,8 @@ public class FindBuggyCClone {
         String Output = "/home/haosun/yao/gitRepo/datasets.com/Output"; // 共变结果文件所在的目录;
         String targetFile = "/home/haosun/yao/4projects.txt"; // 格式化的文件，里面按空格分割，每一行是项目名 git链接 最新版本号 最远版本号
         String NiCadSystemsDir = "/home/haosun/yao/software/NiCad-6.2/systems1/"; // Nicad 对项目执行克隆检测的目录;
-        String InputBC = "/home/haosun/yao/gitRepo/datasets.com/InputBC";
-        String InputPath = "/home/haosun/yao/gitRepo/datasets.com/sourcePath";
+        String InputBC = "/home/haosun/yao/gitRepo/datasets.com/InputBC"; // 待放
+        String InputPath = "/home/haosun/yao/gitRepo/datasets.com/sourcePath"; // 待放
         // 1. 实现从格式化target.txt文件中自动提取commit区间的信息;
 //        extractLogForProjects(projectsDir, gitRepo, targetFile);
 
@@ -50,13 +49,15 @@ public class FindBuggyCClone {
 //         // 9. 提取buggy的共变克隆。
 //        extractAllBuggyCochangedClones(projectsDir, gitRepo, Output);
 
-        // 10. 根据之前生成的共变结果文件，生成需要检测的共变文件，即name_functions-blind-clones,
+        // 10. 根据之前生成的共变结果文件，生成需要检测的共变文件，即name-ZZZ-999_functions-blind-clones,
         // 里面是自己手动生成的0.30和0.30-withsource.xml文件，用来与其它的bug-fixing commit检测共变克隆;
         generateFilesForCClone(InputBC, Input);
 
         // 11. 直接使用git仓库，来检测代码克隆，不需要创建每个commit的副本了;
 //        oneFunc(NiCadSystemsDir, gitRepo, projectsDir, Input);
 
+        // 12. 由于NiCad的检测方式不同，其文件路径不一定以systems开头，因此该函数把所有文件路径都替换为systems开头
+        // 并把结果移到Input目录下。
          func1(InputPath, Input);
     }
     // 1. 实现一个小功能， 自动提取 一个commit区间中的所有commit信息;
