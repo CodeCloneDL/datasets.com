@@ -1,6 +1,8 @@
 import org.apache.commons.collections4.iterators.UnmodifiableIterator;
 import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.math3.Field;
 
 import java.io.*;
@@ -20,7 +22,8 @@ public class FindBuggyCClone {
         String InputBC = "/home/haosun/yao/gitRepo/datasets.com/InputBC"; // 待放
         String InputPath = "/home/haosun/yao/gitRepo/datasets.com/sourcePath"; // 待放
         String CSVFile = "/home/haosun/yao/Halstead";
-
+        String sourceCSVDir = "C:\\Users\\yao\\Desktop\\CK";
+        String targetCSV = "C:\\Users\\yao\\Desktop\\CK.csv";
         // 1. 实现从格式化target.txt文件中自动提取commit区间的信息;
 //        extractLogForProjects(projectsDir, gitRepo, targetFile);
 
@@ -66,7 +69,8 @@ public class FindBuggyCClone {
 
     //    returnOrigin(gitRepo, targetFile);
 
-        extractAllHalsteadMetric(gitRepo, CSVFile);
+//        extractAllHalsteadMetric(gitRepo, CSVFile);
+        extractMetricFromCSV(sourceCSVDir, targetCSV);
     }
 
     // 1. 实现一个小功能， 自动提取 一个commit区间中的所有commit信息;
@@ -919,5 +923,53 @@ public class FindBuggyCClone {
             }
             reader.close();
         }
+    }
+
+    // 提取Understand里面生成的metric，并求和。
+    public static void extractMetricFromCSV(String sourceCSVDir, String targetCSV) throws IOException {
+        CSVPrinter printer = new CSVPrinter(new FileWriter(targetCSV), CSVFormat.DEFAULT);
+        printer.printRecord("project", "Cyclomatic", "WMC(SumCyclomatic)", "DIT(MaxInheritanceTree)", "NOC(CountClassDerived)", "CBO(CountClassCoupled)", "RFC(CountDeclMethodAll)");
+        // 遍历所有的CSV文件
+        for (File file : Objects.requireNonNull(new File(sourceCSVDir).listFiles())) {
+            String fullname = file.getName(); // 包含后缀名
+            String name = fullname.substring(0, fullname.indexOf(".csv")); // 不包含后缀名的项目名称;
+
+            FileReader reader = new FileReader(file);
+            CSVParser parse = CSVFormat.EXCEL.parse(reader);
+            List<CSVRecord> records = parse.getRecords();
+            // 确定对应指标所在的位置;
+            int[] arr = new int[6];
+            for (CSVRecord record : records) {
+                for (int i = 0; i < record.size(); ++i) {
+                    if (record.get(i).equals("Cyclomatic")) {
+                        arr[0] = i;
+                    } else if (record.get(i).equals("SumCyclomatic")) {
+                        arr[1] = i;
+                    } else if (record.get(i).equals("MaxInheritanceTree")) {
+                        arr[2] = i;
+                    } else if (record.get(i).equals("CountClassDerived")) {
+                        arr[3] = i;
+                    } else if (record.get(i).equals("CountClassCoupled")) {
+                        arr[4] = i;
+                    } else if (record.get(i).equals("CountDeclMethodAll")) {
+                        arr[5] = i;
+                    }
+                }
+                break;
+            }
+
+            double[] ans = new double[6]; // 记录每个指标的值;
+            for (int i = 1; i < records.size(); i++) {
+                CSVRecord csvRecord = records.get(i); // 考虑每一行;
+                for (int j = 0; j < 6; ++j) {
+                    if (!csvRecord.get(arr[j]).equals("")) {
+                        ans[j] += Double.parseDouble(csvRecord.get(arr[j]));
+                    }
+                }
+            }
+            printer.printRecord(name, ans[0], ans[1], ans[2], ans[3], ans[4], ans[5]);
+            parse.close();
+        }
+        printer.close();
     }
 }
