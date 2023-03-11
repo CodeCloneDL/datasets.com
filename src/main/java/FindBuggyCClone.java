@@ -12,14 +12,14 @@ import java.util.regex.Pattern;
 public class FindBuggyCClone {
     public static void main(String[] args) throws Exception {
         String projectsDir = "/home/haosun/yao/tmp1/"; // 所有项目处理结果的目录，其中的每个文件夹都是一个项目;
-        String gitRepo = "D:\\GitRepository"; // 每个项目的git仓库所在地;
+        String gitRepo = "/home/haosun/yao/gitRepo"; // 每个项目的git仓库所在地;
         String Input = "/home/haosun/yao/gitRepo/datasets.com/Input"; // 共变克隆检测结果文件所存放的目录
         String Output = "/home/haosun/yao/gitRepo/datasets.com/Output"; // 共变结果文件所在的目录;
-        String targetFile = "D:\\SyncFiles\\Master2\\TOSEM修改\\bug倾向\\42target.txt"; // 格式化的文件，里面按空格分割，每一行是项目名 git链接 最新版本号 最远版本号
+        String targetFile = "/home/haosun/yao/42target.txt"; // 格式化的文件，里面按空格分割，每一行是项目名 git链接 最新版本号 最远版本号
         String NiCadSystemsDir = "/home/haosun/yao/software/NiCad-6.2/systems1/"; // Nicad 对项目执行克隆检测的目录;
         String InputBC = "/home/haosun/yao/gitRepo/datasets.com/InputBC"; // 待放
         String InputPath = "/home/haosun/yao/gitRepo/datasets.com/sourcePath"; // 待放
-        String CSVFile = "C:\\Users\\yao\\Desktop\\Halstead";
+        String CSVFile = "/home/haosun/yao/Halstead";
 
         // 1. 实现从格式化target.txt文件中自动提取commit区间的信息;
 //        extractLogForProjects(projectsDir, gitRepo, targetFile);
@@ -64,7 +64,7 @@ public class FindBuggyCClone {
         // 并把结果移到Input目录下。
 //         func1(InputPath, Input);
 
-//        returnOrigin(gitRepo, targetFile);
+    //    returnOrigin(gitRepo, targetFile);
 
         extractAllHalsteadMetric(gitRepo, CSVFile);
     }
@@ -843,7 +843,16 @@ public class FindBuggyCClone {
         while ((line = targetReader.readLine()) != null) {
             String[] s = line.split(" ");
             String name = s[0], gitLink = s[1], latestVersion = s[2], oldestVersion = s[3];
-            String[] cloneCommand = {"pwsh", "-Command", "cd " + gitRepo + "; git clone " + gitLink + "; cd " + name + "; git checkout " + latestVersion};
+            String osName = System.getProperty("os.name");
+            String terminal = null, option = null;
+            if (osName.contains("Windows")) {
+                 terminal = "cmd";
+                 option = "/c";
+            } else if (osName.contains("Linux")) {
+                 terminal = "bash";
+                 option = "-c";
+            }
+            String[] cloneCommand = {terminal, option, "cd " + gitRepo + "; git clone " + gitLink + "; cd " + name + "; git checkout " + latestVersion};
             Utilities.implCommand(cloneCommand);
         }
         targetReader.close();
@@ -859,6 +868,7 @@ public class FindBuggyCClone {
             double[] arr = new double[5];
             processFiles(file, printer, arr);
             printer.printRecord(name, arr[0], arr[1], arr[2], arr[3], arr[4]);
+            break;
         }
         printer.close();
     }
@@ -876,7 +886,16 @@ public class FindBuggyCClone {
         else if (file.isFile() && file.getName().endsWith(".py")) {
             System.out.println("开始处理文件" + file.getAbsolutePath());
             // 构造执行命令的字符串
-            String[] command = {"cmd", "/c", "multimetric " + file.getAbsolutePath()};
+           String osName = System.getProperty("os.name");
+           String terminal = null, option = null;
+           if (osName.contains("Windows")) {
+                terminal = "cmd";
+                option = "/c";
+           } else if (osName.contains("Linux")) {
+                terminal = "bash";
+                option = "-c";
+           }
+            String[] command = {terminal, option, "multimetric " + file.getAbsolutePath()};
             // 构造ProcessBuilder对象
             ProcessBuilder processBuilder = new ProcessBuilder();
             processBuilder.redirectErrorStream(true);
