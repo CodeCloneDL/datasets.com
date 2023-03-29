@@ -40,10 +40,10 @@ public class FindBuggyCClone {
 //////       5. 从diff文件提取修改行;
 //        CalAllChangedLinesToFile(projectsDir);
 //
-////         6. 保存所有项目的版本到Nicad/systems下;
+////         6. 保存所有项目的版本到Nicad/systems下; (这个方式被遗弃了)
 //        saveAllBugFixingCommitDir(projectsDir, gitRepo, NiCadSystemsDir);
 //
-//        // 7. 对Nicad/system目录下的所有项目进行克隆共变检测;
+//        // 7. 对Nicad/system目录下的所有项目进行克隆共变检测;（被遗弃了）
           // 建议单独使用终端执行，否则一但远程连接终端，就中断了;
 //        // 注意： 这里记得要提供Nicad/scripts.sh文件
 //        Utilities.implCommand(new String[] {"bash", "-c", "cd " + NiCadSystemsDir + File.separator + ".." + "; ./scripts.sh"});
@@ -54,23 +54,26 @@ public class FindBuggyCClone {
 //        FindCoChangeClone.run(Input, Output);
 //
 //         // 9. 提取buggy的共变克隆。
-//        extractAllBuggyCochangedClones(projectsDir, gitRepo, Output);
+       extractAllBuggyCochangedClones(projectsDir, gitRepo, Output);
 
-        // 10. 根据之前生成的共变结果文件，生成需要检测的共变文件，即name-ZZZ-999_functions-blind-clones,
+        // 10. 根据之前生成的共变结果文件，手动生成需要检测的共变文件，即name-ZZZ-999_functions-blind-clones,
         // 里面是自己手动生成的0.30和0.30-withsource.xml文件，用来与其它的bug-fixing commit检测共变克隆;
 //        generateFilesForCClone(InputBC, Input);
 
-        // 11. 直接使用git仓库，来检测代码克隆，不需要创建每个commit的副本了;
+        // 11. 直接使用git仓库，来检测代码克隆，不需要创建每个commit的副本了;（新的NiCad检测方式，没有副本！）。
 //        oneFunc(NiCadSystemsDir, gitRepo, projectsDir, Input);
 
         // 12. 由于NiCad的检测方式不同，其文件路径不一定以systems开头，因此该函数把所有文件路径都替换为systems开头
         // 并把结果移到Input目录下。
 //         func1(InputPath, Input);
 
+        // 13. 让gitRepo中的项目都克隆好，并切换到对应的Base版本；
     //    returnOrigin(gitRepo, targetFile);
-
+        // 14. // 遍历一个项目中所有的.py文件，并计算相应的halstead度量;
 //        extractAllHalsteadMetric(gitRepo, CSVFile);
-        extractMetricFromCSV(sourceCSVDir, targetCSV);
+
+        // 15. 提取Understand里面生成的metric的文件，并求和其中的度量。 这个是用来求CK和圈复杂度等函数。
+        // extractMetricFromCSV(sourceCSVDir, targetCSV);
     }
 
     // 1. 实现一个小功能， 自动提取 一个commit区间中的所有commit信息;
@@ -862,7 +865,7 @@ public class FindBuggyCClone {
         targetReader.close();
     }
 
-    // 遍历一个项目中所有的.py文件，并计算响应的度量;
+    // 遍历一个项目中所有的.py文件，并计算相应的halstead度量;
     public static void extractAllHalsteadMetric(String gitrepo, String CSVFile) throws IOException {
         CSVPrinter printer = new CSVPrinter(new FileWriter(CSVFile + File.separator + "42halstead.csv"), CSVFormat.DEFAULT);
         printer.printRecord("Name", "halstead_bugprop", "halstead_difficulty", "halstead_effort", "halstead_timerequired", "halstead_volume");
@@ -876,6 +879,7 @@ public class FindBuggyCClone {
         }
         printer.close();
     }
+    // 利用命令行工具 multimetric计算halstead度量
     private static void processFiles(File file, CSVPrinter printer, double[] arr) throws IOException {
         // 如果是目录，递归遍历子文件
         if (file.isDirectory()) {

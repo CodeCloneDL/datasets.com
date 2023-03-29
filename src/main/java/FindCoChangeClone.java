@@ -21,14 +21,6 @@ public class FindCoChangeClone {
     // 本方法，传入Input, OutPut的路径，即可实现，批量对Input中不同项目进行共变处理;
     public static void run(String Input, String Output) throws Exception {
         new File(Output).mkdir();
-        // 跳过一些出问题的项目; 仅测试
-        Set<String> test = new HashSet<>();
-        for (File file : Objects.requireNonNull(new File(Output).listFiles())) {
-            String name = file.getName();
-            name = name.substring(0, name.indexOf("-ZZZ"));
-            test.add(name);
-        }
-
         long starttime = System.currentTimeMillis();  //时间戳
 //
         File input = new File(Input); // 所有项目的输入文件所在处;
@@ -54,10 +46,6 @@ public class FindCoChangeClone {
             int nextIndex = index + 1;
             while (nextIndex < projectsList.length && projectsList[nextIndex].getName().contains(pureName)) ++nextIndex;
             --nextIndex;
-            if (!test.add(pureName)) {
-                index = nextIndex + 1;
-                continue;
-            }
 
             // 即目前的版本块的范围为[index, nextIndex]
 
